@@ -20,8 +20,9 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-Domain-oriented partitioning is selected for the planned Godot and Rust stack. There is no application code or implemented game domain yet.
+Domain-oriented partitioning is selected for the Godot host and planned Rust integration. The host starts an empty scene; there are no implemented game domains yet.
 
 - [`structure.md`](structure.md) — domain boundaries, composition rules, and unresolved structural choices.
+- [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.
 - [`adr/0001-partition-the-system-by-domain.md`](adr/0001-partition-the-system-by-domain.md) — accepted domain-oriented partitioning.
 - [`adr/0000-template.md`](adr/0000-template.md) — template for future architecture decisions.
