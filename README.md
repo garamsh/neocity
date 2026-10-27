@@ -4,7 +4,7 @@ A minimal Godot host for a game project with Rust planned for custom engine and 
 
 ## Project status
 
-- The host uses the standard [Godot 4.7.2 stable release](https://godotengine.org/download/archive/4.7.2-stable/). Rust integration and its toolchain remain undecided.
+- The host uses the standard [Godot 4.7.2 stable release](https://godotengine.org/download/archive/4.7.2-stable/). Custom engine and visual systems will be authored in Rust; the Rust toolchain, Godot integration, graphics backend, and concrete subsystem boundaries remain undecided. This bootstrap supplies the host only, with no Rust implementation.
 - Genre, gameplay, 2D or 3D, target platforms, and gameplay scripting language remain undecided. GDScript is used only by the native startup check.
 - The main scene is an empty `Node`; running it opens a blank window. There is no playable game yet.
 - The domain-oriented structure is recorded in the [architecture documents](docs/architecture/README.md). Game domains have not been identified yet.
