@@ -27,4 +27,4 @@ The system uses domain-oriented partitioning. No game domains or application fol
 - Whether and how a domain may depend on a sibling. Record a policy in an ADR when the first cross-domain dependency is proposed; until then no sibling-dependency variant is selected here.
 - How domain ownership maps onto Cargo packages and Godot resource paths.
 - Where the composition site lives, and how Godot instantiates scenes within it.
-- How Godot and Rust integrate, and which engine and visualization responsibilities each owns.
+- How the custom engine and visual systems authored in Rust integrate with the Godot host, including the binding, graphics backend, package layout, and concrete subsystem boundaries. The intended language for that custom work is Rust; its implementation does not exist yet.
