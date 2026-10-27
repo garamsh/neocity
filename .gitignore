@@ -25,3 +25,10 @@ target/
 
 # Agent worktrees
 .claude/worktrees/
+
+# Godot caches, credentials, and generated files
+.godot/
+.nomedia
+export_credentials.cfg
+*.tmp
+*.translation
