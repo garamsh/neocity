@@ -231,7 +231,7 @@ Panel interpretation:
 - Confirm attribution where source history is unavailable. Retain original files and distinguish reference art from production resources.
 - Five originally selected images, two earlier supporting studies, and the two selected jump-map mockups are imported. The generic earlier illustrations/background inventory in issue #1 is not claimed complete.
 - The large human-invasion story, actual human character names, memory-food premise, laboratory revelation, and earlier proposed combat systems are not first-release requirements. No detailed future-game canon is approved by this art update.
-- Engine implementation remains with its existing owner: custom engine/visual work in Rust, minimal Godot host, integration details open. This document introduces no runtime code or architectural decision.
+- The playable slice now has a pure Rust engine and a separate Rust/Godot adapter; see the architecture documents for the selected binding and open production-backend decisions. Concept approval does not automatically approve the generated runtime assets.
 
 ## Using this material
 
@@ -241,4 +241,19 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 - Read the relevant image and its metadata before implementation. Inclusion in the gallery does not approve every visible element.
 - Keep design evidence here. Put eventual game-loaded assets with the implementation that owns them and link them to the reference; these images are not production sprite atlases or scene files.
 - Update the requested direction and the relevant metadata together when a creative decision is accepted. Link the actual issue/PR decision and retain the distinction between source references, candidates, and approved targets.
-- Verify documentation links and `make ci` for this change. Runtime camera motion, character readability in motion, imports, and performance remain unverified because this deliverable contains no playable implementation.
+- The initial concept gallery is still-image evidence. The runtime capture below records a real prototype frame; neither source establishes final animation quality, full-route balance, or production performance.
+
+### Playable slice reference
+
+![Real Godot frame of the Rust-driven neon ascent prototype](production/ascent-playable-v1.png)
+
+The implementation uses [the city texture](../../ascent/godot/assets/neon_city.png) and [the sprite atlas](../../ascent/godot/assets/ascent_atlas.png), owned by the Godot presentation package. [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation. The [ascent responsibility document](../architecture/ascent.md) records the engine/presentation split and prototype controls.
+
+| Field | Record |
+|---|---|
+| Status | Reference; runtime art is awaiting designer acceptance |
+| Intent | Translate ART-JUMP-001/002 into one playable course with independently rendered actors and platforms |
+| Adopted elements | Existing approved concept palette, city depth, protagonist identity, ingredient goal, and obstacle emphasis |
+| Open questions | Final animation, character interaction, balance, camera polish, background-versus-platform readability, audio, and final HUD |
+| Source | Built-in ImageGen assets plus Rust presentation; exact prompts linked above; runtime capture added with the verified build |
+| Decision record | Implementation requested in issue #7; this does not promote newly generated assets to approved production targets |

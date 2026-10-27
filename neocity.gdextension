@@ -1,0 +1,12 @@
+[configuration]
+entry_symbol = "gdext_rust_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+macos.debug = "res://target/release/libneocity_ascent.dylib"
+macos.release = "res://target/release/libneocity_ascent.dylib"
+linux.debug.x86_64 = "res://target/release/libneocity_ascent.so"
+linux.release.x86_64 = "res://target/release/libneocity_ascent.so"
+windows.debug.x86_64 = "res://target/release/neocity_ascent.dll"
+windows.release.x86_64 = "res://target/release/neocity_ascent.dll"
