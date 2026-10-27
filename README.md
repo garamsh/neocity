@@ -19,7 +19,7 @@ make ci
 
 `make lint` runs the same documentation checks. The [CI workflow](.github/workflows/ci.yml) invokes `make ci` for pull requests and pushes to `main`. Game formatting, tests, and builds have no commands yet.
 
-[Dependabot](.github/dependabot.yml) proposes weekly updates to GitHub Actions dependencies. @garamsh maintains the hosted runner selection in the CI workflow; inspect the resolved runner image in the run's job setup log when investigating environment changes.
+[Dependabot](.github/dependabot.yml) proposes weekly updates to GitHub Actions dependencies. @sauce-git maintains the hosted runner selection in the CI workflow; inspect the resolved runner image in the run's job setup log when investigating environment changes.
 
 ## Contributing
 

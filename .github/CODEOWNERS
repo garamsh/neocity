@@ -1,7 +1,7 @@
 # The rules are owned; changes to these paths require review from their owner.
-/AGENTS.md @garamsh
-/docs/convention/ @garamsh
-/docs/architecture/ @garamsh
-/.github/ @garamsh
-/.agents/ @garamsh
-/docs/collaboration.md @garamsh
+/AGENTS.md @sauce-git
+/docs/convention/ @sauce-git
+/docs/architecture/ @sauce-git
+/.github/ @sauce-git
+/.agents/ @sauce-git
+/docs/collaboration.md @sauce-git
