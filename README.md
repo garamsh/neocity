@@ -5,7 +5,7 @@ A game project in preparation using Godot together with Rust, with contribution 
 ## Project status
 
 - Godot and Rust are the intended stack. Rust is planned for custom engine and visualization work; their integration mechanism and division of responsibilities remain undecided. Neither toolchain is pinned yet.
-- Genre, gameplay, 2D or 3D, target platforms, Godot-side scripting language, and additional development tools are undecided.
+- Genre, gameplay, target platforms, Godot-side scripting language, and additional development tools are undecided. The requested 2D visual direction and remaining rendering questions are recorded in the [art direction and images](docs/art/README.md).
 - The repository has no Godot project or playable build yet, so there is no game run command.
 - The domain-oriented structure is recorded in the [architecture documents](docs/architecture/README.md). Game domains have not been identified yet.
 
