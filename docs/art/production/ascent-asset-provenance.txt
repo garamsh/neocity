@@ -1,0 +1,17 @@
+Playable ascent asset provenance, 2026-10-27
+
+Tool: built-in ImageGen. Model not reported. No explicit seed, dimensions, or quality argument. Generated raster assets are distinct from earlier approved concept images. Their final implementation fit remains subject to the art designer's review.
+
+Runtime owner: ascent/godot/assets/neon_city.png
+Reference: docs/art/concept-art/gameplay/jump-map-board-v1.png
+Setting: transparent_background=false
+Prompt as sent:
+Production game asset, one landscape 16:9 pixel-art BACKGROUND TEXTURE for the reference's side-on cyberpunk neon jump game. Background ONLY: no characters, no enemies, no HUD, no text, no front playable platforms. Layered midnight indigo-violet city, cyan magenta amber windows, distant elevated train viaduct across lower third, pale lavender moon upper right, rising dim steam, narrow city streets far below. Exquisite detailed discrete pixel clusters, 16-bit environment with selective luminous highlights; same rich urban material and light aesthetic as reference. Lower contrast in center and bottom so actual game sprites and physical platforms can be composited later. Perspective in distant architecture only. Fill entire rectangular canvas without frame or labels.
+
+Runtime owner: ascent/godot/assets/ascent_atlas.png
+References, in order: detective-sheet-v1.png, chef-sheet-v1.png, jump-map-board-v1.png under docs/art/concept-art/.
+Setting: transparent_background=true
+Prompt as sent:
+Production pixel-art sprite atlas on genuinely TRANSPARENT background. EXACT fixed grid FOUR equal columns by TWO equal rows, wide 2:1 image, eight equally spaced cells, no gridlines no text. Every isolated asset centered within its cell with padding. Reference1 detective identity, reference2 chef identity, reference3 pixel style. Top row left to right: full-body yellow chef standing facing right; same chef jumping right legs tucked; full-body green detective standing facing right; same detective jumping right. Chef has tall white hat, dark green hair, yellow face, magenta earring, white coat, black trousers, pan low. Detective has green head, two metal bolts, X eye, dark suit with burgundy lapel, large magnifying glass low. Each body entire silhouette inside cell, occupied width roughly60percent, height75percent, baseline85percent. Bottom row left to right: rust-orange squat toad pest glowing amber eyes facing left; purple bat-moth enemy spread magenta wings and pale eyes; wide isolated side-on steel platform tile flat amber rim and black-yellow caution stripe with rivets, thick underside, no legs/supports; luminous orange spice fruit green leaves. Strict clean pixel outlines and discrete sharp color clusters, same quality as references. No painted checkerboard, no scenery, no typography, no overlap between cells. This exact four-by-two equal grid will be sampled directly by game code.
+
+Observed output: the atlas spacing is not a uniform grid. The unedited original is retained; the presentation adapter samples measured source rectangles. It does not assume the requested grid exists. The generated backdrop includes decorative ledges at its edges; playable surfaces are separately drawn with bright amber/cyan rims and have engine-owned collision. No asset image establishes collision or reachability.

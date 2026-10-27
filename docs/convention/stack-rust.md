@@ -11,7 +11,7 @@ Toolchain-file syntax was checked against the [rustup overrides guide](https://g
 
 ## Entry points
 
-When Rust code is introduced, connect these commands to the project's Make entry points, running from the Cargo workspace root. Until then these are requirements for that introduction, not commands the current Makefile provides.
+The root Cargo workspace contains the ascent engine and Godot adapter packages. The Make entry points run the following commands from that workspace root; build the Rust release library before Godot import, and retain the host integration checks alongside the Rust tests.
 
 | Name | Rust command |
 |---|---|

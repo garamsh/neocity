@@ -32,3 +32,6 @@ target/
 export_credentials.cfg
 *.tmp
 *.translation
+
+# Project-local toolchains
+.tools/

@@ -1,48 +1,45 @@
 # neocity
 
-A minimal Godot host for a game project with Rust planned for custom engine and visualization work.
+A playable Rust-driven neon-city jump-course prototype hosted by Godot.
 
-## Project status
+## Play locally
 
-- The host uses the standard [Godot 4.7.2 stable release](https://godotengine.org/download/archive/4.7.2-stable/). Custom engine and visual systems will be authored in Rust; the Rust toolchain, Godot integration, graphics backend, and concrete subsystem boundaries remain undecided. This bootstrap supplies the host only, with no Rust implementation.
-- The first-release concept is a small single-player 2D jump-map adventure; its selected art direction and open design details are recorded in [art direction and images](docs/art/README.md). Target platforms and production gameplay scripting remain undecided. GDScript is used only by the native startup check.
-- The main scene is an empty `Node`; running it opens a blank window. There is no playable game yet.
-- The domain-oriented structure is recorded in the [architecture documents](docs/architecture/README.md). Game domains have not been identified yet.
+On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, then double-click `play.command` in Finder. The tools stay under ignored `.tools/`; the installer verifies the official Godot archive and does not modify global PATH or require an account. Xcode Command Line Tools must be present for native compilation.
 
-## Running locally
+`play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide Rust 1.99.1 and standard Godot 4.7.2 on PATH, then use `make run`; those platforms are not locally verified here.
 
-Install the standard Godot 4.7.2 editor and make its executable available as `godot` on `PATH`. `godot --version` must match `GODOT_VERSION` in the [Makefile](Makefile). On macOS the executable is inside `Godot.app/Contents/MacOS/Godot`.
+| Input | Action |
+|---|---|
+| A / D or left / right | Move |
+| Space, W, or up | Jump; hold for a higher jump |
+| Tab | Change the leading character |
+| R | Retry at the reached checkpoint; after completion, begin a new run |
+| Escape | Pause or continue |
 
-From the repository root:
+Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, and collect the glowing spice fruit at the top. There is one course, not the full campaign. The companion follows a delayed visual trace; the party has one collision body. This reversible prototype control choice is not the final two-character mechanic.
 
-```sh
-godot --editor --path .
-godot --path .
-```
+## Engine and screen ownership
 
-The first command opens the editor; the second starts the configured main scene. Close the window to stop it.
+- `ascent/engine` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
+- `ascent/godot` owns Godot input translation, camera, resources, canvas drawing, HUD, and the composition root. It depends only on the engine's public commands and value snapshots. Custom engine and screen orchestration are Rust; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
+- [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
-## Checks
-
-With Godot, Git, Make, and a POSIX shell with `awk` available:
+## Checks and toolchains
 
 ```sh
 make ci
 ```
 
-- `make lint` runs the document checks.
-- `make build` verifies the engine version and imports the project headlessly.
-- `make test` imports first, parses the smoke harness, and checks that the configured main scene becomes ready. It exits after that check and reports the scene path.
-- `make ci` runs the document, import, and startup checks in order. Set `GODOT=/path/to/godot` when invoking Make if the executable is elsewhere.
+- `make lint`: repository documentation checks and Cargo Clippy with warnings denied.
+- `make format`: Rust formatting check.
+- `make build`: locked Rust release build, pinned Godot version, and resource import.
+- `make test`: locked workspace tests, configured main-scene readiness, and live Godot move/jump/retry input checks.
+- `make ci`: the complete set. Engine-only checks can run with `cargo test -p neocity-ascent-engine --locked`, without Godot.
 
-The [CI workflow](.github/workflows/ci.yml) invokes `make ci` for pull requests and pushes to `main`. Its [Linux setup helper](.github/scripts/setup-godot.sh) verifies the editor archive against the repository-pinned checksum from the official release before extracting it. No export targets, gameplay tests, coverage tool, or formatter have been selected.
+Rust 1.99.1, godot-rust 0.5.5 targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice. The native binding follows the [godot-rust setup](https://godot-rust.github.io/book/intro/hello-world.html). The development build disables debug symbols and incremental artifacts to limit disk usage. `neocity.gdextension` selects the release library for both editor and game; build before importing a fresh checkout.
 
-[Dependabot](.github/dependabot.yml) proposes weekly updates to GitHub Actions dependencies. @sauce-git maintains the Godot version and checksum pins and the hosted runner selection; inspect the resolved runner image in the run's job setup log when investigating environment changes.
+CI uses the pinned Rust setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection, and @smonidema reviews Rust toolchain/binding updates. No platform export or audio pipeline is selected.
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md), the [conventions index](docs/convention/README.md), and the [architecture index](docs/architecture/README.md) before contributing. Changes land through pull requests using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
-
-Read [collaboration](docs/collaboration.md) for issue ownership, art/story/engine specialties, and the proposal-to-PR workflow.
-
-For visual work, use the repository's `$propose-art` skill and read the [art direction and images](docs/art/README.md). Concept art, references, and mockups are documented together there.
+Read [AGENTS.md](AGENTS.md), [conventions](docs/convention/README.md), [architecture](docs/architecture/README.md), and [collaboration](docs/collaboration.md) before changing responsibilities. Changes land through the existing PR template. Use the repository's propose-art skill for scoped visual work; final art/gameplay acceptance remains separate from engine tests.
