@@ -20,8 +20,20 @@ When two conventions genuinely disagree, stop and report it. Choosing one yourse
 
 These documents assign authority to two roles. One party may hold both; the rules do not relax when it does.
 
-- **PM** — owns what binds a contributor without implementing anything: `docs/convention/`, `docs/architecture/`, the templates under `.github/`, this file, and the issue tracker. Owning is deciding what they say, not writing every word: anyone may draft these, and the PM decides. Reviews every pull request and is the only role that merges one. Decides the convention questions a pull request raises. Proposes a change to a convention rather than making it alone. Does not implement.
+- **PM** — owns what binds a contributor without implementing anything: `docs/convention/`, `docs/architecture/`, the templates under `.github/`, `.agents/skills/`, `docs/collaboration.md`, this file, and the issue tracker. Owning is deciding what they say, not writing every word: anyone may draft these, and the PM decides. Reviews every pull request and is the only role that merges one. Decides the convention questions a pull request raises. Proposes a change to a convention rather than making it alone. Does not implement.
 - **Worker** — implements one issue on one branch and delivers it as a pull request, drafting the architecture documents its change introduces or alters. Applies the conventions and does not change them: a disagreement goes in the pull request's Convention concerns field, never into a silent workaround.
+
+### Work specialties
+
+Art, story, and engine are Worker specialties, not additional merge authorities or a division of the source tree. The issue names one accountable owner, the specialty, exact target paths, constraints, acceptance criteria, and any creative decision-maker. A specialty does not authorize unrelated changes.
+
+| Specialty | Work it can implement within the issue's scope |
+|---|---|
+| Art | Concept images and visual documentation, production assets, scenes, materials, shaders, animation, UI presentation, and Godot or Rust visualization code |
+| Story | Worldbuilding, characters, dialogue, narrative content and data, and the code that integrates that content |
+| Engine | Runtime systems, shared rendering infrastructure, performance, tooling, and the Godot/Rust integration |
+
+When work crosses specialties or changes a shared contract, the PM records an owner and updated scope on the issue before the affected implementation starts. Contributors may propose changes; approval of creative direction is recorded by the decision-maker named on the issue, and does not replace the PM's technical review. [Collaboration](docs/collaboration.md) describes the working procedure.
 
 ## What this file outranks
 
