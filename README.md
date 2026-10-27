@@ -25,4 +25,6 @@ make ci
 
 Read [AGENTS.md](AGENTS.md), the [conventions index](docs/convention/README.md), and the [architecture index](docs/architecture/README.md) before contributing. Changes land through pull requests using the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
-For visual work, read the [art direction and images](docs/art/README.md). Concept art, references, and mockups are documented together there.
+Read [collaboration](docs/collaboration.md) for issue ownership, art/story/engine specialties, and the proposal-to-PR workflow.
+
+For visual work, use the repository's `$propose-art` skill and read the [art direction and images](docs/art/README.md). Concept art, references, and mockups are documented together there.

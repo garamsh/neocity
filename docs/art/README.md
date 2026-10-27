@@ -27,6 +27,8 @@ No concept images or mockups have been added yet. Add real material rather than 
 
 ## Using this material
 
+Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.md) for art proposals and scoped visual implementation; the [collaboration procedure](../collaboration.md) covers ownership and handoffs. Art work may include code when the task scopes it.
+
 Before visual work, read the current direction and open the relevant images themselves. An image's caption identifies which elements apply; do not infer approval of every detail from its inclusion. Proposed changes remain candidates until approved, and an accepted change updates the current direction and its images together in a pull request.
 
 This directory holds design evidence and readable previews. Assets loaded by the game belong with the implementation that owns them; link between a design image and its production asset rather than maintaining two authoritative copies. If an editable source cannot be previewed directly, place a preview beside it and identify their relationship.

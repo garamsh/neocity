@@ -1,6 +1,6 @@
 ---
 name: Proposal
-about: A change the PM must decide on — convention, structure, tooling, process
+about: A proposed direction for art, story, gameplay, architecture, tooling, or conventions
 title: ""
 labels: proposal
 ---
@@ -15,7 +15,7 @@ labels: proposal
 
 ## Proposal
 
-<!-- The change itself, stated precisely enough to implement if accepted. -->
+<!-- The requested decision, alternatives, and proposed scope. For art or story, attach the candidate evidence and say which elements are proposed for adoption. -->
 
 ## Impact
 

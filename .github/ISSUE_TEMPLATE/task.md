@@ -1,6 +1,6 @@
 ---
 name: Task
-about: A unit of work for a worker agent
+about: A scoped unit of work for a human or agent contributor
 title: ""
 labels: task
 ---
@@ -11,7 +11,7 @@ labels: task
 
 ## Context
 
-<!-- Why now. Mandatory: target paths, constraints, related modules. Cite paths, not descriptions. -->
+<!-- Why now. Mandatory: specialty (art, story, engine, or another agreed specialty), one accountable owner, exact target paths, constraints, and related modules. For creative work, name who accepts the direction. Cite paths, not descriptions. -->
 
 ## Acceptance criteria
 

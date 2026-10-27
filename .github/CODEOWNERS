@@ -3,3 +3,5 @@
 /docs/convention/ @garamsh
 /docs/architecture/ @garamsh
 /.github/ @garamsh
+/.agents/ @garamsh
+/docs/collaboration.md @garamsh
