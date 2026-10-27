@@ -20,6 +20,8 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-No system structure has been selected. There is no application code, responsibility document, or recorded architecture decision yet.
+Domain-oriented partitioning is proposed for the planned Godot and Rust stack. There is no application code or implemented game domain yet.
 
+- [`structure.md`](structure.md) — domain boundaries, composition rules, and unresolved structural choices.
+- [`adr/0001-partition-the-system-by-domain.md`](adr/0001-partition-the-system-by-domain.md) — proposed domain-oriented partitioning.
 - [`adr/0000-template.md`](adr/0000-template.md) — template for future architecture decisions.

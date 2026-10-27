@@ -37,10 +37,12 @@ Selection is not once. A change that alters the project's stack carries the sele
 
 ## Stack-specific
 
-These apply only when the project uses that stack. No stack-specific convention is selected. Godot is the intended engine; the stack-neutral conventions govern until a stack-specific file is adopted.
+These apply only when the project uses that stack. Godot and Rust are the intended stack; the files below govern their respective artifacts when introduced.
 
 | File | Extends | Governs |
 |---|---|---|
+| `stack-godot.md` | — | Godot scenes, resources, and any GDScript: naming, file layout, comments, and import checks |
+| `stack-rust.md` | — | Rust packages: tooling, Cargo checks, types, unsafe boundaries, comments, and test placement |
 
 A stack file states the concrete form of what any stack-neutral file governs — the test client and file placement behind `testing.md`, the comment syntax behind `code-comments.md` and the commands behind an entry-point name in `ci.md` among them. It states the same of a structural rule (`docs/architecture/README.md` §Rules, "Structural rules live in `structure.md`"): the package and file names the unit takes in its language. It also states a structural case its framework decides (`docs/architecture/README.md` §Rules, "Structural rules yield only to what a framework imposes"). It never restates the rule itself. These two tables and those rules are where the split is recorded — the files do not point at each other.
 
