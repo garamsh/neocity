@@ -1,10 +1,10 @@
 # Structure
 
-The domain-oriented shape proposed for the system and the boundaries it imposes on future code.
+The domain-oriented shape selected for the system and the boundaries it imposes on future code.
 
 ## Current decisions
 
-The bootstrap proposes domain-oriented partitioning. No game domains or application folders exist yet; introduce a domain with the behavior that establishes its subject matter. Godot and Rust are implementation technologies within this shape, not the names of game domains.
+The system uses domain-oriented partitioning. No game domains or application folders exist yet; introduce a domain with the behavior that establishes its subject matter. Godot and Rust are implementation technologies within this shape, not the names of game domains.
 
 - **A domain is the unit.** One folder per domain, named for its subject matter and never for a technical role.
 - **A domain is reached only through what it declares public.** Everything else it holds is internal, and reaching past that surface is a defect even where the language permits it.
@@ -19,7 +19,7 @@ The bootstrap proposes domain-oriented partitioning. No game domains or applicat
 
 ## Rationale
 
-[ADR 0001](adr/0001-partition-the-system-by-domain.md) proposes domain ownership across the planned Godot and Rust stack. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language.
+[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the planned Godot and Rust stack. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language.
 
 ## Open questions
 

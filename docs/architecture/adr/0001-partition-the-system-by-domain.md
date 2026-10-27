@@ -1,6 +1,6 @@
 # ADR 0001: Partition the system by domain
 
-> Status: proposed
+> Status: accepted
 > Date: 2026-10-27
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.
@@ -13,7 +13,7 @@ The reference project's [structure document](https://github.com/garamsh/murim-24
 
 ## Decision
 
-Propose domain-oriented partitioning: each implemented subject area owns its files and declared public surface, including its Godot and Rust artifacts. Do not create speculative game domains; leave sibling-domain dependency policy, language-to-package mapping, composition details, and the Godot/Rust integration mechanism open in `structure.md` until implementation meets them.
+Use domain-oriented partitioning: each implemented subject area owns its files and declared public surface, including its Godot and Rust artifacts. Do not create speculative game domains; leave sibling-domain dependency policy, language-to-package mapping, composition details, and the Godot/Rust integration mechanism open in `structure.md` until implementation meets them.
 
 ## Consequences
 
