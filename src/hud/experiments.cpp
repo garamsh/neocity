@@ -57,6 +57,8 @@ void paint_experiment(godot::Node2D &canvas,
     drawing.text(canvas, 790.0F, 590.0F,
                  "Release levels the pan; inertia remains.", 19, colors.muted);
   }
+  drawing.text(canvas, 790.0F, 640.0F, "After menu/retry: release held keys.",
+               19, colors.muted);
   const bool finished = outcome != "playing";
   godot::String status = "Blue: player    Red X: hazard    Green: escape";
   if (finished) {

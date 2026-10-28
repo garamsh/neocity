@@ -12,7 +12,7 @@ constexpr godot::Vector2 CENTER{425.0F, 390.0F};
 void pan(godot::Node2D &canvas, float radius, float exit_width) {
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(19, 23, 30, 1.0F));
   canvas.draw_rect(
-      rect(CENTER.x - 22.0F, CENTER.y + radius - 10.0F, 44.0F, 72.0F),
+      rect(CENTER.x - 22.0F, CENTER.y + radius - 10.0F, 44.0F, 44.0F),
       color(105, 111, 125, 1.0F));
   canvas.draw_circle(CENTER, radius + 7.0F, color(143, 153, 172, 1.0F));
   canvas.draw_circle(CENTER, radius, color(42, 48, 60, 1.0F));
