@@ -17,16 +17,22 @@ The system uses domain-oriented partitioning. The first implemented domain is `a
 - **Every other unit receives what it depends on and constructs none of it**, whatever the shape makes the unit — a domain, a layer, or an adapter.
 - **The composition site stays thin.** It constructs and passes; it decides nothing else.
 
+## Repository layout
+
+- `src/<domain>/` holds a domain's C++ packages, one folder per package.
+- `project/` is the Godot project and holds every Godot resource. A domain's Godot resources sit in `project/<domain>/`, because Godot loads `res://` resources only from inside its project; `project/<domain>/` and `src/<domain>/` are one domain's folder in the two trees. The shipped scene, `project.godot`, and the extension's `bin/neocity.gdextension` sit in `project/` itself.
+- The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
+
 ## Engine and presentation boundary
 
-- `ascent/engine` owns game rules and its public commands/value snapshots, declared in `ascent/engine/include/`. It has no Godot, graphics, file, clock, or platform-input dependency; its build target has no Godot or godot-cpp include directory, so an engine source that includes one fails to compile.
-- `ascent/godot` owns the host adapter, resource loading, input translation, camera, and drawing. It may depend on the engine's public API; the engine may not depend on this adapter. Renderer-specific values do not cross inward.
-- Files are grouped by their actual responsibility; do not introduce generic common/shared containers. A change within one package (`ascent/engine`, `ascent/godot`) must not reach into the other's private sources under `src/`.
-- `ascent/godot/src/scene.cpp` is the application composition site. Frame/input/drawing adapters consume the engine; they do not reimplement collision or progression. Public contract changes are coordinated explicitly.
+- `src/ascent/engine` owns game rules and its public commands/value snapshots, declared in `src/ascent/engine/include/`. It has no Godot, graphics, file, clock, or platform-input dependency; its build target has no Godot or godot-cpp include directory, so an engine source that includes one fails to compile.
+- `src/ascent/godot` owns the host adapter, resource loading, input translation, camera, and drawing. It may depend on the engine's public API; the engine may not depend on this adapter. Renderer-specific values do not cross inward.
+- Files are grouped by their actual responsibility; do not introduce generic common/shared containers. A change within one package (`src/ascent/engine`, `src/ascent/godot`) must not reach into the other's private sources under `src/`.
+- `src/ascent/godot/src/scene.cpp` is the application composition site. Frame/input/drawing adapters consume the engine; they do not reimplement collision or progression. Public contract changes are coordinated explicitly.
 
 ## Rationale
 
-[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the Godot host and the custom implementation language. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language. [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) added the explicit engine/presentation boundary within the first domain; [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) keeps that boundary and implements both sides in C++.
+[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the Godot host and the custom implementation language. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language. [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) added the explicit engine/presentation boundary within the first domain; [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) keeps that boundary and implements both sides in C++. [ADR 0004](adr/0004-adopt-the-godot-cpp-template-layout.md) takes the godot-cpp template's split between the Godot project and the C++ sources and keeps the domain folders inside `src/`.
 
 ## Open questions
 

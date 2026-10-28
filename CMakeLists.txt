@@ -19,5 +19,5 @@ set(NEOCITY_WARNINGS
 )
 
 enable_testing()
-add_subdirectory(ascent/engine)
-add_subdirectory(ascent/godot)
+add_subdirectory(src/ascent/engine)
+add_subdirectory(src/ascent/godot)

@@ -22,8 +22,9 @@ Current architecture of the system and the decisions behind it. This file is the
 
 Domain-oriented partitioning is selected for the Godot bootstrap host and the custom engine and visual systems implemented in C++. Ascent is the first domain: its pure C++ engine feeds a separate C++/Godot presentation adapter through commands and value snapshots.
 
-- [`structure.md`](structure.md) — domain boundaries, composition rules, and unresolved structural choices.
+- [`structure.md`](structure.md) — domain boundaries, composition rules, repository layout, and unresolved structural choices.
 - [`ascent.md`](ascent.md) — playable ascent rules, adapter ownership, and prototype control limitations.
+- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — Godot project in `project/`, C++ sources in `src/<domain>/`, after the official godot-cpp template.
 - [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ engine and godot-cpp adapter, with each toolchain selection and its source.
 - [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary; superseded by ADR 0003.
 - [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.

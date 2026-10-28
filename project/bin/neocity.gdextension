@@ -1,0 +1,12 @@
+[configuration]
+entry_symbol = "neocity_ascent_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+macos.debug = "res://bin/libneocity_ascent.dylib"
+macos.release = "res://bin/libneocity_ascent.dylib"
+linux.debug.x86_64 = "res://bin/libneocity_ascent.so"
+linux.release.x86_64 = "res://bin/libneocity_ascent.so"
+windows.debug.x86_64 = "res://bin/libneocity_ascent.dll"
+windows.release.x86_64 = "res://bin/libneocity_ascent.dll"

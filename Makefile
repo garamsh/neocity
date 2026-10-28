@@ -5,7 +5,7 @@ PYTHON ?= python3
 # C++ tools are hash-pinned PyPI wheels installed into ignored .tools/cpp; one
 # line per tool, with a hash for each supported platform (macOS x86_64/arm64,
 # Linux x86_64). @sauce-git moves these pins together with the FetchContent
-# pins in ascent/engine/CMakeLists.txt and ascent/godot/CMakeLists.txt.
+# pins in src/ascent/engine/CMakeLists.txt and src/ascent/godot/CMakeLists.txt.
 CPP_TOOL_REQUIREMENTS := \
 	'cmake==4.4.4 --hash=sha256:883962a72b1b3a16ff445427f24c8caca9797dd9e563bbe208cbcd89e877f9d3 --hash=sha256:f773a0544c66370408f451acd487c2c643b0dfebb48c5d64f3638bc1bb820238' \
 	'ninja==1.13.2 --hash=sha256:fd82e26c0706ad4ab88e5fdd26f3fab0a987a90f810160f6c322e752c6af298b --hash=sha256:65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c' \
@@ -19,12 +19,13 @@ CTEST := $(TOOLS)/bin/ctest
 CLANG_FORMAT := $(TOOLS)/bin/clang-format
 CLANG_TIDY := $(TOOLS)/bin/clang-tidy
 BUILD_DIR := build
+PROJECT_DIR := project
 CONFIGURE := $(CMAKE) -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_MAKE_PROGRAM=$(TOOLS)/bin/ninja -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$(TOOLS)/bin/python
 
-CPP_FILES := git ls-files --cached --others --exclude-standard -- 'ascent/*.cpp' 'ascent/*.hpp'
-CPP_UNITS := git ls-files --cached --others --exclude-standard -- 'ascent/*.cpp'
+CPP_FILES := git ls-files --cached --others --exclude-standard -- 'src/*.cpp' 'src/*.hpp'
+CPP_UNITS := git ls-files --cached --others --exclude-standard -- 'src/*.cpp'
 CLANG_TIDY_CHECKS := -*,bugprone-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-bugprone-easily-swappable-parameters,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-union-access,-misc-include-cleaner,-modernize-use-trailing-return-type,-portability-avoid-pragma-once,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-trailing-comma
-CLANG_TIDY_FLAGS := -p $(BUILD_DIR) --quiet --checks='$(CLANG_TIDY_CHECKS)' --warnings-as-errors='*' --header-filter='ascent/'
+CLANG_TIDY_FLAGS := -p $(BUILD_DIR) --quiet --checks='$(CLANG_TIDY_CHECKS)' --warnings-as-errors='*' --header-filter='$(CURDIR)/src/'
 ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
 endif
@@ -36,7 +37,6 @@ $(TOOLS_STAMP): Makefile
 	printf '%s\n' $(CPP_TOOL_REQUIREMENTS) > $@.tmp
 	$(TOOLS)/bin/python -m pip install --quiet --disable-pip-version-check --require-hashes --only-binary=:all: --no-deps -r $@.tmp
 	mv $@.tmp $@
-	touch .tools/.gdignore
 
 lint: $(TOOLS_STAMP)
 	$(CONFIGURE)
@@ -56,21 +56,20 @@ build: $(TOOLS_STAMP)
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR)
 	@test "$$("$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
-	@touch $(BUILD_DIR)/.gdignore
-	"$(GODOT)" --headless --path . --import
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
-	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in ascent/engine/CMakeLists.txt"
-	"$(GODOT)" --headless --path . --script tests/godot_startup.gd --check-only
+	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/ascent/engine/CMakeLists.txt"
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --script res://tests/godot_startup.gd --check-only
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	"$(GODOT)" --headless --path . --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	"$(GODOT)" --headless --path . --main-loop AscentGameplayCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AscentGameplayCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Gameplay: 3 live input checks passed (move, jump, retry).' "$$log"
 
 ci: lint format test
 
 run: build
-	"$(GODOT)" --path .
+	"$(GODOT)" --path $(PROJECT_DIR)

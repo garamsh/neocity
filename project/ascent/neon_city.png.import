@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bquxxjqfayycg"
-path="res://.godot/imported/neon_city.png-419800e1b84fe59fab4346e7c22ed774.ctex"
+path="res://.godot/imported/neon_city.png-bbdbb8bb7689cb9956344910256cb397.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://ascent/godot/assets/neon_city.png"
-dest_files=["res://.godot/imported/neon_city.png-419800e1b84fe59fab4346e7c22ed774.ctex"]
+source_file="res://ascent/neon_city.png"
+dest_files=["res://.godot/imported/neon_city.png-bbdbb8bb7689cb9956344910256cb397.ctex"]
 
 [params]
 

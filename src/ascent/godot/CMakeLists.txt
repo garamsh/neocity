@@ -8,7 +8,7 @@ FetchContent_Declare(
     SYSTEM
 )
 set(GODOTCPP_DEFAULT_API_VERSION "4.7")
-set(GODOTCPP_BUILD_PROFILE "${CMAKE_CURRENT_SOURCE_DIR}/build_profile.json" CACHE FILEPATH "" FORCE)
+set(GODOTCPP_BUILD_PROFILE "${PROJECT_SOURCE_DIR}/build_profile.json" CACHE FILEPATH "" FORCE)
 FetchContent_MakeAvailable(godot-cpp)
 
 add_library(
@@ -23,12 +23,13 @@ add_library(
 )
 target_link_libraries(neocity_ascent PRIVATE ascent_engine godot-cpp)
 target_compile_options(neocity_ascent PRIVATE ${NEOCITY_WARNINGS})
-# One library for editor and game, as neocity.gdextension expects.
+# One library for editor and game, written to project/bin/ beside
+# neocity.gdextension, which loads it.
 set_target_properties(
     neocity_ascent
     PROPERTIES
         COMPILE_WARNING_AS_ERROR ON
         PREFIX "lib"
-        LIBRARY_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}>"
-        RUNTIME_OUTPUT_DIRECTORY "$<1:${CMAKE_BINARY_DIR}>"
+        LIBRARY_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/project/bin>"
+        RUNTIME_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/project/bin>"
 )

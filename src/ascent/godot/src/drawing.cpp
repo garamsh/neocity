@@ -62,9 +62,8 @@ AscentDrawing AscentDrawing::load() {
   godot::Ref<godot::Font> font =
       godot::ThemeDB::get_singleton()->get_fallback_font();
   CRASH_COND_MSG(font.is_null(), "Godot fallback font must be available");
-  return {load_texture("res://ascent/godot/assets/neon_city.png"),
-          load_texture("res://ascent/godot/assets/ascent_atlas.png"),
-          std::move(font)};
+  return {load_texture("res://ascent/neon_city.png"),
+          load_texture("res://ascent/ascent_atlas.png"), std::move(font)};
 }
 
 void AscentDrawing::text(godot::Node2D &canvas, float x, float y,

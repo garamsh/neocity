@@ -6,4 +6,4 @@ if [ ! -x .tools/Godot.app/Contents/MacOS/Godot ]; then
     exit 1
 fi
 make build
-exec .tools/Godot.app/Contents/MacOS/Godot --path .
+exec .tools/Godot.app/Contents/MacOS/Godot --path project
