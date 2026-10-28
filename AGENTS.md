@@ -29,9 +29,9 @@ Art, story, and engine are Worker specialties, not additional merge authorities 
 
 | Specialty | Work it can implement within the issue's scope |
 |---|---|
-| Art | Concept images and visual documentation, production assets, scenes, materials, shaders, animation, UI presentation, and Godot or Rust visualization code |
+| Art | Concept images and visual documentation, production assets, scenes, materials, shaders, animation, UI presentation, and Godot or C++ visualization code |
 | Story | Worldbuilding, characters, dialogue, narrative content and data, and the code that integrates that content |
-| Engine | Runtime systems, shared rendering infrastructure, performance, tooling, and the Godot/Rust integration |
+| Engine | Runtime systems, shared rendering infrastructure, performance, tooling, and the Godot/C++ integration |
 
 When work crosses specialties or changes a shared contract, the PM records an owner and updated scope on the issue before the affected implementation starts. Contributors may propose changes; approval of creative direction is recorded by the decision-maker named on the issue, and does not replace the PM's technical review. [Collaboration](docs/collaboration.md) describes the working procedure.
 

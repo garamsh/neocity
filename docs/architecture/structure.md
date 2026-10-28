@@ -4,7 +4,7 @@ The domain-oriented shape selected for the system and the boundaries it imposes 
 
 ## Current decisions
 
-The system uses domain-oriented partitioning. The first implemented domain is `ascent`; introduce additional domains only with behavior that establishes their subject matter. Godot and Rust are implementation technologies within this shape, not the names of game domains.
+The system uses domain-oriented partitioning. The first implemented domain is `ascent`; introduce additional domains only with behavior that establishes their subject matter. Godot and C++ are implementation technologies within this shape, not the names of game domains.
 
 - **A domain is the unit.** One folder per domain, named for its subject matter and never for a technical role.
 - **A domain is reached only through what it declares public.** Everything else it holds is internal, and reaching past that surface is a defect even where the language permits it.
@@ -19,19 +19,19 @@ The system uses domain-oriented partitioning. The first implemented domain is `a
 
 ## Engine and presentation boundary
 
-- `ascent/engine` owns game rules and its public commands/value snapshots. It has no Godot, graphics, file, clock, or platform-input dependency.
+- `ascent/engine` owns game rules and its public commands/value snapshots, declared in `ascent/engine/include/`. It has no Godot, graphics, file, clock, or platform-input dependency; its build target has no Godot or godot-cpp include directory, so an engine source that includes one fails to compile.
 - `ascent/godot` owns the host adapter, resource loading, input translation, camera, and drawing. It may depend on the engine's public API; the engine may not depend on this adapter. Renderer-specific values do not cross inward.
-- Files are grouped by their actual responsibility; do not introduce generic common/shared containers. A change within a package must not reach into another package's private modules.
-- `ascent/godot/src/scene.rs` is the application composition site. Frame/input/drawing adapters consume the engine; they do not reimplement collision or progression. Public contract changes are coordinated explicitly.
+- Files are grouped by their actual responsibility; do not introduce generic common/shared containers. A change within one package (`ascent/engine`, `ascent/godot`) must not reach into the other's private sources under `src/`.
+- `ascent/godot/src/scene.cpp` is the application composition site. Frame/input/drawing adapters consume the engine; they do not reimplement collision or progression. Public contract changes are coordinated explicitly.
 
 ## Rationale
 
-[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the planned Godot and Rust stack. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language. [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) adds the explicit engine/presentation package boundary within the first domain.
+[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the Godot host and the custom implementation language. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language. [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) added the explicit engine/presentation boundary within the first domain; [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) keeps that boundary and implements both sides in C++.
 
 ## Open questions
 
 - Which additional game domains future behavior establishes; ascent is the first.
 - Whether and how a domain may depend on a sibling. Record a policy in an ADR when the first cross-domain dependency is proposed; until then no sibling-dependency variant is selected here.
 - How additional domains map onto packages and resources; ascent is mapped in its responsibility document.
-- Whether a future host requires a different composition adapter; the current site is the Rust AscentScene loaded by Godot.
-- Whether production needs a graphics backend beyond Godot canvas; the current integration is godot-rust GDExtension.
+- Whether a future host requires a different composition adapter; the current site is the C++ AscentScene loaded by Godot.
+- Whether production needs a graphics backend beyond Godot canvas; the current integration is a godot-cpp GDExtension.

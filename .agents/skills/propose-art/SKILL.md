@@ -1,6 +1,6 @@
 ---
 name: propose-art
-description: Create or revise game art proposals, concept images, mockups, and issue-scoped visual implementation such as scenes, shaders, animation, UI presentation, or Rust visualization. Use for an art deliverable, not general engine or story work.
+description: Create or revise game art proposals, concept images, mockups, and issue-scoped visual implementation such as scenes, shaders, animation, UI presentation, or C++ visualization. Use for an art deliverable, not general engine or story work.
 ---
 # Propose art
 
@@ -12,7 +12,7 @@ Read repository-root `AGENTS.md`, `docs/convention/README.md`, `docs/collaborati
 
 Identify whether the request is a candidate proposal or implementation of an accepted direction. Use the existing proposal/task templates. If there is no issue, prepare a scoped proposal and file it when the user's request authorizes publication; otherwise return the proposal for triage. Before repository implementation, obtain the PM-recorded task brief described in `docs/collaboration.md`. Do not ask again for scope or publication already authorized by that brief and the current request.
 
-Derive allowed paths, visible acceptance criteria, the creative decision-maker, and required checks from that task. Visual work can include Godot and Rust code; inspect the relevant files and governing stack conventions before editing them. A requirement outside the accepted scope goes back to the PM for coordination, while independent in-scope work can continue.
+Derive allowed paths, visible acceptance criteria, the creative decision-maker, and required checks from that task. Visual work can include Godot and C++ code; inspect the relevant files and governing stack conventions before editing them. A requirement outside the accepted scope goes back to the PM for coordination, while independent in-scope work can continue.
 
 ## Produce the deliverable
 
@@ -20,7 +20,7 @@ For concept work, use the available image-generation or editing tool when reques
 
 Store design images and their interpretation together under `docs/art/`, following its README's metadata and status rules. Update the existing topic rather than creating another art-direction document. New directions stay candidates unless the named decision-maker has approved them; link the actual approval when applying one.
 
-Implement only the task's visual behavior and allowed code paths. Keep production assets with their implementation owner and link them to the design reference. A local shader, scene, animation, UI, or Rust visualization change is permitted when scoped; changing shared rendering infrastructure, engine interfaces, gameplay, or narrative meaning requires a coordinated task scope. Do not choose an engine binding or create a speculative runtime merely to display a concept image.
+Implement only the task's visual behavior and allowed code paths. Keep production assets with their implementation owner and link them to the design reference. A local shader, scene, animation, UI, or C++ visualization change is permitted when scoped; changing shared rendering infrastructure, engine interfaces, gameplay, or narrative meaning requires a coordinated task scope. Do not choose an engine binding or create a speculative runtime merely to display a concept image.
 
 ## Verify and deliver
 
