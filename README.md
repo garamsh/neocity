@@ -1,6 +1,6 @@
 # neocity
 
-Two independent frying-pan control experiments and the existing neon-city ascent reference, in one Godot-hosted C++ application.
+A neon-city ascent course and a developer page of playable experiments, in one Godot-hosted C++ application.
 
 ## Play locally
 
@@ -8,19 +8,15 @@ On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, 
 
 `play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
 
-The initial menu offers **1: direct dodge**, **2: tilt escape**, and **3: ascent reference**. M returns to that menu from any run. Release held keys after selecting, restarting, or returning to the menu before giving the next input.
+The game opens on the main menu: **1** plays the main game, currently the ascent course below, and **2** opens the developer page. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level. Release held keys after a menu choice before giving the next input.
 
-| Pan input | Action |
+| Experiment | Try it |
 |---|---|
-| WASD or arrow keys | Move directly in experiment 1; tilt the whole pan in experiment 2 |
-| R | Start a fresh experiment, including after success or failure |
-| M | Return to the common menu |
+| [`pan_dodge`](src/experiment/pan_dodge/README.md) | 3D. Move with WASD or the arrow keys on a pan that sways by itself, dodge the hazards dropping onto it, and leave through the green gate travelling around the rim. R restarts. |
 
-Avoid the red circles and move the blue player through the green opening at the top. Direct movement stops on release. Tilt moves both the player and the hazards: release levels the pan but leaves inertia, so reverse direction early to brake. Contact displays a loss; escaping displays a win. These are plain geometric experiments, not a final game selection or a claim of tested fun or balance.
+An experiment's scene also runs on its own, for example `godot --path project res://experiment/pan_dodge/pan_dodge.tscn` after `make build`. To add one, see [Contributing](#contributing).
 
-For a direct escape, move up along the left side to above the highest red circle, right toward the opening, then up through it. For tilt, take the left route, brake before the upper rim, steer right toward the opening, and tilt upward. The input-only harness below reproduces a complete winning route for each mode, as well as losses and restarts.
-
-The ascent reference keeps its original controls:
+The ascent course keeps its original controls:
 
 | Ascent input | Action |
 |---|---|
@@ -35,9 +31,9 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 ## Engine and screen ownership
 
 - `src/gameplay` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
-- `src/pan_dodge` and `src/pan_tilt` independently own direct movement and tilt physics, contact, outcomes, and reset. Each exposes its own commands and snapshots and has no Godot, ascent, or mutual dependencies.
-- `src/session` owns common selection and run timing. `src/input`, `src/camera`, `src/rendering`, and `src/hud` own input translation, the camera, resources and canvas drawing, and the HUD; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rule libraries' public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
-- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
+- `src/experiment/<id>/` holds one experiment: a rules library with no Godot, ascent, or mutual dependencies, its Godot node in `view/`, and its record. `src/experiment/catalog.hpp` lists them for the developer page.
+- `src/session` owns the main menu, the developer page, and run timing. `src/input`, `src/camera`, `src/rendering`, and `src/hud` own input translation, the camera, resources and canvas drawing, and the HUD; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rule libraries' public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window, input, canvas, and 3D services. No standalone GPU backend is claimed.
+- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, each experiment's scene in `experiment/<id>/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains
@@ -49,26 +45,27 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
-- `make test`: all three rule libraries' unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live experiment checks for menu selection, direct movement, shared tilt, losses, wins, replay, and transitions, and three session integration checks for partial-tick time and input edges.
-- `make ci`: the complete set. Once `build/` is configured, rules-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test pan_tilt_test`, then `.tools/cpp/bin/ctest --test-dir build`.
+- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 17 live checks of both menus and the `pan_dodge` experiment, and three session integration checks for partial-tick time and input edges.
+- `make ci`: the complete set. Once `build/` is configured, rules-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test`, then `.tools/cpp/bin/ctest --test-dir build`.
 
-Each new rule library also configures from its own folder without fetching or building Godot. After the first Make entry point installs the pinned tools, run both independent builds from the repository root:
+Each experiment's rules library also configures from its own folder without fetching or building Godot; its record lists the commands. After the first Make entry point installs the pinned tools, run them for every experiment from the repository root:
 
 ```sh
-for experiment in dodge tilt; do
-  .tools/cpp/bin/cmake -S "src/pan_$experiment" -B "build/pan-$experiment-only" -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release
-  .tools/cpp/bin/cmake --build "build/pan-$experiment-only"
-  .tools/cpp/bin/ctest --test-dir "build/pan-$experiment-only" --output-on-failure --no-tests=error
+for experiment in src/experiment/*/; do
+  id=$(basename "$experiment")
+  .tools/cpp/bin/cmake -S "$experiment" -B "build/$id-only" -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release
+  .tools/cpp/bin/cmake --build "build/$id-only"
+  .tools/cpp/bin/ctest --test-dir "build/$id-only" --output-on-failure --no-tests=error
 done
 ```
 
-After `make build`, reproduce the real-input escape routes and transition checks with:
+After `make build`, reproduce the real-input menu, experiment, and direct-launch checks with:
 
 ```sh
 godot --headless --path project --main-loop PanExperimentsCheck --fixed-fps 120
 ```
 
-Remove `--headless` to watch the same key-driven run in one window. The harness steers the tilt player along three waypoints, using opposite tilt to brake; it does not set positions or outcomes. `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` saves actual menu/direct/tilt frames as `user://pan-menu.png`, `user://pan-direct.png`, and `user://pan-tilt.png`; it requires a rendering display. The preserved ascent capture uses `--main-loop AscentCapture` and now selects ascent through the menu. Actual rendered examples: [menu](docs/architecture/evidence/pan-experiments/menu.png), [direct dodge](docs/architecture/evidence/pan-experiments/direct.png), and [tilt escape](docs/architecture/evidence/pan-experiments/tilt.png).
+Remove `--headless` to watch the same key-driven run in one window. The harness only presses keys: it steers toward the travelling gate, circles to dodge drops, and stands still to be hit; it does not set positions or outcomes. `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` saves real main-menu, developer-page, and `pan_dodge` frames as `user://main-menu.png`, `user://developer.png`, and `user://pan-dodge.png`; it requires a rendering display. The ascent capture uses `--main-loop AscentCapture` and selects the main game through the menu. Rendered examples: [main menu](docs/architecture/evidence/pan-experiments/main-menu.png), [developer page](docs/architecture/evidence/pan-experiments/developer.png), and [`pan_dodge`](docs/architecture/evidence/pan-experiments/pan-dodge.png).
 
 C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 
@@ -76,4 +73,4 @@ CI uses the pinned Python setup action and the checksum-verified Linux Godot hel
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md), [conventions](docs/convention/README.md), [architecture](docs/architecture/README.md), and [collaboration](docs/collaboration.md) before changing responsibilities. Changes land through the existing PR template. Use the repository's propose-art skill for scoped visual work; final art/gameplay acceptance remains separate from engine tests.
+Read [AGENTS.md](AGENTS.md), [conventions](docs/convention/README.md), [architecture](docs/architecture/README.md), and [collaboration](docs/collaboration.md) before changing responsibilities. Changes land through the existing PR template. Use the repository's propose-art skill for scoped visual work. To add a developer-page experiment, follow [collaboration](docs/collaboration.md#adding-an-experiment) and the create-experiment skill. Final art and gameplay acceptance remain separate from engine tests.
