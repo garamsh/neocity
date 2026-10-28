@@ -28,8 +28,6 @@ This rule governs over `docs/convention/simplicity.md` §Rules, "A division is a
 - `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit in `project/levels/<level>/`; the first level is `project/levels/ascent/`. An experiment's scene and its own resources sit in `project/experiment/<id>/`, mirroring its source folder. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
 - The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
 
-The `project/experiment/<id>/` placement governs over `docs/convention/stack-godot.md` §Naming and resources, "Keep a scene's scripts and dedicated resources beside it in its level folder", for experiment scenes, under `docs/architecture/README.md` §Rules 8: an experiment is not a level of the main game, and one id names both of its folders.
-
 ## Rationale
 
 [ADR 0004](adr/0004-adopt-the-godot-cpp-template-layout.md) records the purpose folders and the godot-cpp template layout, superseding the domain partitioning of [ADR 0001](adr/0001-partition-the-system-by-domain.md). [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) introduced the rules/presentation boundary and [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) implements both sides in C++; the ascent boundary remains the `gameplay` target. [ADR 0005](adr/0005-isolate-experiment-rules-behind-one-host.md) adds the `experiment` purpose with one self-contained folder per experiment.
