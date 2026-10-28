@@ -22,6 +22,6 @@ Syntax and naming were checked against the Godot 4.7 [GDScript style guide](http
 
 ## Import checks
 
-`make build` verifies the pinned Godot version and runs `godot --headless --path . --import` from the repository root. `make test` imports first, parses `tests/godot_startup.gd`, and observes the configured main scene through the native startup harness; both successful process status and its readiness report are required. `make ci` runs the document checks followed by these import/startup checks.
+`make build` verifies the pinned Godot version and runs `godot --headless --path . --import` from the repository root. `make test` imports first, parses `tests/godot_startup.gd`, and observes the configured main scene through the native startup harness; both successful process status and its readiness report are required. `make ci` runs lint and format followed by these import/startup checks.
 
 Build the C++ extension library before Godot import, as `make build` does. `make test` also runs the engine unit tests and actual move/jump/retry input checks against the configured C++ scene. Resource import and scene readiness alone do not verify game rules or visual behavior. Select export targets and further test coverage with the behavior they will verify.

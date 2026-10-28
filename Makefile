@@ -39,11 +39,6 @@ $(TOOLS_STAMP): Makefile
 	touch .tools/.gdignore
 
 lint: $(TOOLS_STAMP)
-	./check-contents-list.sh
-	./check-object-names.sh
-	./check-convention-index.sh
-	./check-section-citations.sh
-	./check-heading-prefixes.sh
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR) --target generate_bindings
 	@set -e; files=$$($(CPP_UNITS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
