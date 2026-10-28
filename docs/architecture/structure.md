@@ -1,37 +1,36 @@
 # Structure
 
-The domain-oriented shape selected for the system and the boundaries it imposes on future code.
+The purpose-folder shape selected for the C++ sources and the Godot project, and the boundaries it imposes on future code.
 
 ## Current decisions
 
-The system uses domain-oriented partitioning. The first implemented domain is `ascent`; introduce additional domains only with behavior that establishes their subject matter. Godot and C++ are implementation technologies within this shape, not the names of game domains.
+The C++ sources are partitioned by purpose: each folder directly under `src/` holds one thing the game does. Godot and C++ are implementation technologies within this shape, not folder names.
 
-- **A domain is the unit.** One folder per domain, named for its subject matter and never for a technical role.
-- **A domain is reached only through what it declares public.** Everything else it holds is internal, and reaching past that surface is a defect even where the language permits it.
-- **Whether a domain may depend on a sibling at all is contested.** *Domain-Driven Design* (Evans, 2003) gives no single answer: its relations between contexts run from Shared Kernel, where two share code, to Separate Ways, where neither may reference the other. A project takes one, records which, and a reference the recorded choice does not permit is a defect.
-- **Shared code sits below every domain, never beside one.** What two domains both need is extracted below them, or owned by one and reached through its declared surface; it never becomes a sibling folder no domain owns.
-- **A cycle between domains means the split is wrong**, and so does a file that belongs in two of them.
-- **A new domain is earned** by subject matter with its own lifecycle and vocabulary, which something outside it depends on, and whose public surface can stay stable while its inside changes.
-
-- **The application has one composition site.** It is the one place that constructs concrete implementations, and it decides which implementation each declared abstraction receives.
-- **Every other unit receives what it depends on and constructs none of it**, whatever the shape makes the unit — a domain, a layer, or an adapter.
+- **A purpose is the unit.** One shallow folder per purpose directly under `src/`, named for what it does: `gameplay`, `camera`, `input`, `rendering`, `hud`.
+- **A new purpose earns a new folder, and a folder that mixes two purposes is split.** Folders are created when the purpose is named, not when its code outgrows a file.
+- **No generic container.** No `common`, `shared`, `util`, or similar folder that no single purpose owns.
+- **`gameplay` is the one build-enforced boundary.** It holds the game rules, depends on nothing in Godot, and builds as its own target, whose only include directory is `src/gameplay/include`. A gameplay source that includes a Godot or godot-cpp header fails to compile. Its public surface is `include/gameplay/`; everything in `src/gameplay/src/` is internal, and other folders include only `<gameplay/...>`.
+- **Presentation depends on gameplay, never the reverse.** `camera`, `input`, `rendering`, and `hud` read gameplay's commands and snapshots and do not reimplement collision or progression. Renderer-specific values do not cross into gameplay.
+- **A cycle between folders means the split is wrong**, and so does a file that belongs in two of them.
+- **The application has one composition site**, `src/scene.cpp`. It is the one place that constructs concrete implementations.
+- **Every other unit receives what it depends on and constructs none of it.**
 - **The composition site stays thin.** It constructs and passes; it decides nothing else.
+- `src/register_types.cpp` is the GDExtension entry point, at the `src/` root as in the godot-cpp template.
 
-## Engine and presentation boundary
+This rule governs over `docs/convention/simplicity.md` §Rules, "A division is a response, not a plan", for the folders under `src/`: the requester chose to create the purpose folders now so the structure holds as the game grows, and under `docs/architecture/README.md` §Rules 8 a structural rule here decides that case.
 
-- `ascent/engine` owns game rules and its public commands/value snapshots, declared in `ascent/engine/include/`. It has no Godot, graphics, file, clock, or platform-input dependency; its build target has no Godot or godot-cpp include directory, so an engine source that includes one fails to compile.
-- `ascent/godot` owns the host adapter, resource loading, input translation, camera, and drawing. It may depend on the engine's public API; the engine may not depend on this adapter. Renderer-specific values do not cross inward.
-- Files are grouped by their actual responsibility; do not introduce generic common/shared containers. A change within one package (`ascent/engine`, `ascent/godot`) must not reach into the other's private sources under `src/`.
-- `ascent/godot/src/scene.cpp` is the application composition site. Frame/input/drawing adapters consume the engine; they do not reimplement collision or progression. Public contract changes are coordinated explicitly.
+## Repository layout
+
+- `src/` holds the C++ sources, one folder per purpose, with `register_types.cpp` and `scene.*` at its root.
+- `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit in `project/levels/<level>/`; the first level is `project/levels/ascent/`. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
+- The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
 
 ## Rationale
 
-[ADR 0001](adr/0001-partition-the-system-by-domain.md) records domain ownership across the Godot host and the custom implementation language. Keeping behavior and its presentation together by subject gives future changes an owner without imposing a technical layer for every language. [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) added the explicit engine/presentation boundary within the first domain; [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) keeps that boundary and implements both sides in C++.
+[ADR 0004](adr/0004-adopt-the-godot-cpp-template-layout.md) records the purpose folders and the godot-cpp template layout, superseding the domain partitioning of [ADR 0001](adr/0001-partition-the-system-by-domain.md). [ADR 0002](adr/0002-isolate-the-ascent-engine-from-presentation.md) introduced the rules/presentation boundary and [ADR 0003](adr/0003-implement-the-ascent-domain-in-cpp.md) implements both sides in C++; that boundary is now the `gameplay` target.
 
 ## Open questions
 
-- Which additional game domains future behavior establishes; ascent is the first.
-- Whether and how a domain may depend on a sibling. Record a policy in an ADR when the first cross-domain dependency is proposed; until then no sibling-dependency variant is selected here.
-- How additional domains map onto packages and resources; ascent is mapped in its responsibility document.
-- Whether a future host requires a different composition adapter; the current site is the C++ AscentScene loaded by Godot.
-- Whether production needs a graphics backend beyond Godot canvas; the current integration is a godot-cpp GDExtension.
+- When `gameplay` grows enough to need subfolders, and how they are cut.
+- Whether a future host requires a different composition site; the current one is the C++ `AscentScene` loaded by Godot.
+- Whether production needs a graphics backend beyond the Godot canvas; the current integration is a godot-cpp GDExtension.

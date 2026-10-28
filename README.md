@@ -20,8 +20,9 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 
 ## Engine and screen ownership
 
-- `ascent/engine` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
-- `ascent/godot` owns Godot input translation, camera, resources, canvas drawing, HUD, and the composition root. It depends only on the engine's public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
+- `src/gameplay` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
+- `src/input`, `src/camera`, `src/rendering`, and `src/hud` own Godot input translation, the camera, resources and canvas drawing, and the HUD; `src/scene.cpp` is the composition root and `src/register_types.cpp` the extension entry point. They depend only on gameplay's public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
+- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains
@@ -33,10 +34,10 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of both C++ targets, pinned Godot version, and resource import.
-- `make test`: engine unit tests through CTest, configured main-scene readiness, and live Godot move/jump/retry input checks.
-- `make ci`: the complete set. Once `build/` is configured, engine-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target ascent_engine_test`, then `.tools/cpp/bin/ctest --test-dir build`.
+- `make test`: gameplay unit tests through CTest, configured main-scene readiness, and live Godot move/jump/retry input checks.
+- `make ci`: the complete set. Once `build/` is configured, gameplay-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test`, then `.tools/cpp/bin/ctest --test-dir build`.
 
-C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `neocity.gdextension` selects the optimized library in `build/` for both editor and game; build before importing a fresh checkout.
+C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 
 CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export or audio pipeline is selected.
 

@@ -34,3 +34,8 @@ export_credentials.cfg
 
 # Project-local toolchains
 .tools/
+
+# Extension libraries that the build writes beside the committed .gdextension
+/project/bin/*
+!/project/bin/neocity.gdextension
+!/project/bin/neocity.gdextension.uid
