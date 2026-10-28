@@ -10,6 +10,15 @@ How contributors turn proposals into scoped work and reviewed changes in this re
 - An accepted art task may include visual code and assets together. Define the desired visible behavior and the allowed implementation paths; selecting the art specialty does not grant all code paths or restrict the worker to image files.
 - If implementation needs a shared API, another owner's file, or a change to gameplay rules, record the dependency and let the PM coordinate scope before changing that part. Continue independent work already in scope. Do not split one feature into competing branches that edit the same files.
 
+## Adding an experiment
+
+Anyone may propose a playable idea to try on the developer page.
+
+1. Propose it in [Discussion #15](https://github.com/garamsh/neocity/discussions/15) as a reply in the form `<주제: 내용>`, or as a proposal issue. The proposal stays a candidate until the PM scopes it.
+2. The PM scopes a task as in Starting work, naming the experiment's id and its two folders, `src/experiment/<id>/` and `project/experiment/<id>/`, plus the shared files [experiments](architecture/experiments.md#registration-and-launch) lists for registration.
+3. The assigned worker, or an AI session acting for them, follows [create-experiment](../.agents/skills/create-experiment/SKILL.md), keeps the experiment's record from the [experiment template](development/experiment-template.md), and delivers it as below.
+4. Play feedback is recorded in the experiment's record, attributed to who played. Moving an experiment into the main game follows [experiments](architecture/experiments.md#main-game).
+
 ## Delivering a change
 
 1. Work on the issue's branch or isolated checkout. A contributor's personal account and credentials identify their work; do not share the PM's account or credentials to submit a PR.
@@ -20,8 +29,8 @@ How contributors turn proposals into scoped work and reviewed changes in this re
 
 ## Shared tools and tracking
 
-- Use repository-local skills for repeatable procedures. [propose-art](../.agents/skills/propose-art/SKILL.md) covers art candidates and issue-scoped visual implementation; invoke it with `$propose-art` in an environment that has loaded the repository skill. A skill provides instructions and grants no additional GitHub or filesystem permission.
-- Start a contributor AI session with the authority role `Worker`, its specialty, the issue URL, and the requested deliverable. For art, invoke `$propose-art`; changing the session's specialty does not grant PM authority.
+- Use repository-local skills for repeatable procedures. [propose-art](../.agents/skills/propose-art/SKILL.md) covers art candidates and issue-scoped visual implementation; invoke it with `$propose-art` in an environment that has loaded the repository skill. [create-experiment](../.agents/skills/create-experiment/SKILL.md) builds a scoped developer-page experiment; invoke it with `$create-experiment`. A skill provides instructions and grants no additional GitHub or filesystem permission.
+- Start a contributor AI session with the authority role `Worker`, its specialty, the issue URL, and the requested deliverable. For art, invoke `$propose-art`; for an experiment, `$create-experiment`. Changing the session's specialty does not grant PM authority.
 - Keep durable role authority in `AGENTS.md`, domain boundaries in the architecture documents, and the current visual direction in `docs/art/`. Skills read those sources rather than maintaining copies of their rules.
 - Start with the existing proposal/task templates and issue assignees. If a board becomes useful, configure one GitHub Project with backlog, ready, in progress, review, and done states and specialty views. Record exact ownership and scope on the issue rather than relying on a board column or label.
 - Create story or engine skills when their actual recurring workflow is known. Do not manufacture a skill, agent, or source-code folder for each anticipated specialty.

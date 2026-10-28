@@ -20,12 +20,15 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the game rules with no Godot dependency and feeds the C++/Godot presentation through commands and value snapshots. Ascent is the first level.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the main game's rules, and each experiment under `src/experiment/<id>/` holds its own rules library with no Godot or mutual dependencies. The shared C++/Godot host opens on a main menu that plays the main game or opens a developer page listing the experiments, each a self-contained scene.
 
-- [`structure.md`](structure.md) — purpose folders, the gameplay boundary, composition rules, repository layout, and unresolved structural choices.
+- [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
+- [`experiments.md`](experiments.md) — what an experiment is made of, registration, launch, verification, and promotion; each experiment's rules live in its own record `src/experiment/<id>/README.md`.
+- [`session.md`](session.md) — main menu, developer page, run lifetime, input isolation, and fixed-step delivery.
+- [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — one self-contained folder per experiment behind a developer page; supersedes ADR 0004's single rules boundary.
 - [`gameplay.md`](gameplay.md) — game rules of the ascent level, their public surface, and prototype control limitations.
-- [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, and HUD.
-- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names.
+- [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, HUD, and experiment hosting.
+- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names; its single rules boundary superseded by ADR 0005.
 - [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ rules library and godot-cpp adapter, with each toolchain selection and its source; partitioning and target names superseded by ADR 0004.
 - [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary; superseded by ADR 0003.
 - [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.

@@ -6,6 +6,7 @@ The game rules of the playable ascent level and the public surface presentation 
 
 - `src/gameplay` builds the `gameplay` static library, which depends only on the C++ standard library. Its public surface is `include/gameplay/engine.hpp` (`AscentEngine` and `PlayerCommand`) and `include/gameplay/world_snapshot.hpp` (framework-independent presentation values). Code outside the folder includes only `<gameplay/...>`.
 - `src/simulation.cpp` owns fixed-step movement, input edges, run state, checkpoint recovery, character identity, and ingredient completion. `src/collision.cpp` owns one-way landings and obstacle contact; `src/course.cpp` owns course surfaces and obstacle patterns. These and their headers are internal to the folder.
+- Ascent is the main game for now: main menu 1 plays it. Its rules and art are unchanged by the experiments; menu return and a fresh selection start a new ascent run through the composition root.
 - Unit tests sit beside the sources they test as `src/*_test.cpp` and build into `gameplay_test`.
 - The slice has one ascending course, moving ledges, patrol/flying/projectile obstacles, a checkpoint, retries, an ingredient goal, pause, and restart. Physics is stepped at 120 Hz independently of render cadence.
 - One collision body represents the party. Tab changes the lead identity; the companion is a delayed visual trace without an independent collision or damage body. This is an explicit prototype control choice, not final dual-character gameplay.

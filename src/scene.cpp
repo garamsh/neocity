@@ -1,29 +1,43 @@
 #include "scene.hpp"
 
-#include "hud/hud.hpp"
-#include "input/input.hpp"
+#include "experiment/catalog.hpp"
+#include "input/menu.hpp"
 
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/packed_scene.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <algorithm>
+#include <cstdlib>
 
 namespace neocity {
 
 namespace {
 
-constexpr double TICK = 1.0 / 120.0;
-
 bool in_editor() { return godot::Engine::get_singleton()->is_editor_hint(); }
+
+constexpr const char *EXPERIMENT_NODE = "Experiment";
 
 } // namespace
 
-AscentScene::AscentScene() : camera(engine.snapshot()) {}
+AscentScene::AscentScene()
+    : camera(engine.snapshot()),
+      session(
+          engine, camera,
+          [this] {
+            engine = gameplay::AscentEngine{};
+            camera = camera::AscentCamera(engine.snapshot());
+          },
+          experiment::CATALOG,
+          [this](const std::optional<godot::String> &scene) { mount(scene); }) {
+}
 
 void AscentScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("actor_position"),
                               &AscentScene::actor_position);
+  godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
+                              &AscentScene::screen_name);
 }
 
 void AscentScene::_ready() {
@@ -32,44 +46,50 @@ void AscentScene::_ready() {
   }
   drawing = rendering::AscentDrawing::load();
   godot::UtilityFunctions::print(
-      "Ascent: C++ simulation and presentation ready.");
+      "Host: main menu, main game, and developer experiments ready.");
 }
 
 void AscentScene::_process(double delta) {
   if (in_editor()) {
     return;
   }
-  const gameplay::PlayerCommand sampled = input::sample_input();
-  pending.horizontal = sampled.horizontal;
-  pending.jump_held = sampled.jump_held;
-  pending.jump_pressed = pending.jump_pressed || sampled.jump_pressed;
-  pending.switch_character =
-      pending.switch_character || sampled.switch_character;
-  pending.pause_pressed = pending.pause_pressed || sampled.pause_pressed;
-  pending.retry_pressed = pending.retry_pressed || sampled.retry_pressed;
-  accumulator = std::min(accumulator + delta, 0.1);
-  while (accumulator >= TICK) {
-    engine.step(pending);
-    pending.jump_pressed = false;
-    pending.switch_character = false;
-    pending.pause_pressed = false;
-    pending.retry_pressed = false;
-    accumulator -= TICK;
-  }
-  camera.follow(engine.snapshot(), static_cast<float>(std::min(delta, 0.1)));
+  session.advance(delta, input::sample_session_input());
   queue_redraw();
 }
 
 void AscentScene::_draw() {
   if (drawing) {
-    drawing->paint(*this, engine.snapshot(), camera.y());
-    hud::paint(*this, *drawing, engine.snapshot());
+    session.paint(*this, *drawing);
   }
 }
 
 godot::Vector2 AscentScene::actor_position() const {
-  const gameplay::Point p = engine.snapshot().leader.feet;
-  return {p.x, p.y};
+  return session.actor_position();
+}
+godot::String AscentScene::screen_name() const { return session.screen_name(); }
+
+void AscentScene::mount(const std::optional<godot::String> &scene) {
+  if (godot::Node *open = get_node_or_null(EXPERIMENT_NODE)) {
+    remove_child(open);
+    open->queue_free();
+  }
+  if (!scene) {
+    return;
+  }
+  const godot::Ref<godot::PackedScene> packed =
+      godot::ResourceLoader::get_singleton()->load(*scene);
+  if (packed.is_null()) {
+    godot::UtilityFunctions::push_error("Experiment scene missing: ", *scene);
+    std::abort();
+  }
+  godot::Node *experiment = packed->instantiate();
+  if (experiment == nullptr) {
+    godot::UtilityFunctions::push_error(
+        "Experiment scene did not instantiate: ", *scene);
+    std::abort();
+  }
+  experiment->set_name(EXPERIMENT_NODE);
+  add_child(experiment);
 }
 
 } // namespace neocity
