@@ -64,7 +64,7 @@ Candidate motion studies:
 - After a safe arrival, widen or reframe to reveal the city or the next course. Avoid an unexpected framing change during a committed jump.
 - Explore separate foreground/background motion for depth while keeping collision surfaces visually stable. This does not select a rendering technique or graphics backend.
 
-Exact tracking, zoom, transitions, stage boundaries, and ordinary/special presentation ratios remain undecided. Still-image approval cannot verify camera motion, jump reachability, collisions, parallax, or performance. The custom engine and visual systems are planned in Rust; see the [runtime responsibility document](../architecture/godot-runtime.md) for the selected host and open integration details.
+Exact tracking, zoom, transitions, stage boundaries, and ordinary/special presentation ratios remain undecided. Still-image approval cannot verify camera motion, jump reachability, collisions, parallax, or performance. The custom engine and visual systems are implemented in C++; see the [runtime responsibility document](../architecture/godot-runtime.md) for the selected host and open integration details.
 
 ## Environment and light
 
@@ -231,7 +231,7 @@ Panel interpretation:
 - Confirm attribution where source history is unavailable. Retain original files and distinguish reference art from production resources.
 - Five originally selected images, two earlier supporting studies, and the two selected jump-map mockups are imported. The generic earlier illustrations/background inventory in issue #1 is not claimed complete.
 - The large human-invasion story, actual human character names, memory-food premise, laboratory revelation, and earlier proposed combat systems are not first-release requirements. No detailed future-game canon is approved by this art update.
-- The playable slice now has a pure Rust engine and a separate Rust/Godot adapter; see the architecture documents for the selected binding and open production-backend decisions. Concept approval does not automatically approve the generated runtime assets.
+- The playable slice now has a pure C++ engine and a separate C++/Godot adapter; see the architecture documents for the selected binding and open production-backend decisions. Concept approval does not automatically approve the generated runtime assets.
 
 ## Using this material
 
@@ -245,7 +245,7 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 
 ### Playable slice reference
 
-![Real Godot frame of the Rust-driven neon ascent prototype](production/ascent-playable-v1.png)
+![Real Godot frame of the neon ascent prototype](production/ascent-playable-v1.png)
 
 The implementation uses [the city texture](../../ascent/godot/assets/neon_city.png) and [the sprite atlas](../../ascent/godot/assets/ascent_atlas.png), owned by the Godot presentation package. [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation. The [ascent responsibility document](../architecture/ascent.md) records the engine/presentation split and prototype controls.
 
@@ -255,5 +255,5 @@ The implementation uses [the city texture](../../ascent/godot/assets/neon_city.p
 | Intent | Translate ART-JUMP-001/002 into one playable course with independently rendered actors and platforms |
 | Adopted elements | Existing approved concept palette, city depth, protagonist identity, ingredient goal, and obstacle emphasis |
 | Open questions | Final animation, character interaction, balance, camera polish, background-versus-platform readability, audio, and final HUD |
-| Source | Built-in ImageGen assets plus Rust presentation; exact prompts linked above; runtime capture added with the verified build |
+| Source | Built-in ImageGen assets plus the presentation adapter's drawing; exact prompts linked above; runtime capture taken from the earlier Rust build, whose drawing the C++ adapter reproduces |
 | Decision record | Implementation requested in issue #7; this does not promote newly generated assets to approved production targets |

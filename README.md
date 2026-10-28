@@ -1,12 +1,12 @@
 # neocity
 
-A playable Rust-driven neon-city jump-course prototype hosted by Godot.
+A playable C++-driven neon-city jump-course prototype hosted by Godot.
 
 ## Play locally
 
-On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, then double-click `play.command` in Finder. The tools stay under ignored `.tools/`; the installer verifies the official Godot archive and does not modify global PATH or require an account. Xcode Command Line Tools must be present for native compilation.
+On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, then double-click `play.command` in Finder. The tools stay under ignored `.tools/`; the installer verifies the official Godot archive and does not modify global PATH or require an account. Xcode Command Line Tools must be present for native compilation and supply the Python that installs the pinned C++ tools under `.tools/cpp` on the first build.
 
-`play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide Rust 1.99.1 and standard Godot 4.7.2 on PATH, then use `make run`; those platforms are not locally verified here.
+`play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
 
 | Input | Action |
 |---|---|
@@ -21,7 +21,7 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 ## Engine and screen ownership
 
 - `ascent/engine` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
-- `ascent/godot` owns Godot input translation, camera, resources, canvas drawing, HUD, and the composition root. It depends only on the engine's public commands and value snapshots. Custom engine and screen orchestration are Rust; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
+- `ascent/godot` owns Godot input translation, camera, resources, canvas drawing, HUD, and the composition root. It depends only on the engine's public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window/input/canvas services. No standalone GPU backend is claimed.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains
@@ -30,15 +30,15 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 make ci
 ```
 
-- `make lint`: repository documentation checks and Cargo Clippy with warnings denied.
-- `make format`: Rust formatting check.
-- `make build`: locked Rust release build, pinned Godot version, and resource import.
-- `make test`: locked workspace tests, configured main-scene readiness, and live Godot move/jump/retry input checks.
-- `make ci`: the complete set. Engine-only checks can run with `cargo test -p neocity-ascent-engine --locked`, without Godot.
+- `make lint`: repository documentation checks and clang-tidy with warnings as errors.
+- `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
+- `make build`: optimized CMake build of both C++ targets, pinned Godot version, and resource import.
+- `make test`: engine unit tests through CTest, configured main-scene readiness, and live Godot move/jump/retry input checks.
+- `make ci`: the complete set. Once `build/` is configured, engine-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target ascent_engine_test`, then `.tools/cpp/bin/ctest --test-dir build`.
 
-Rust 1.99.1, godot-rust 0.5.5 targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice. The native binding follows the [godot-rust setup](https://godot-rust.github.io/book/intro/hello-world.html). The development build disables debug symbols and incremental artifacts to limit disk usage. `neocity.gdextension` selects the release library for both editor and game; build before importing a fresh checkout.
+C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `neocity.gdextension` selects the optimized library in `build/` for both editor and game; build before importing a fresh checkout.
 
-CI uses the pinned Rust setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection, and @smonidema reviews Rust toolchain/binding updates. No platform export or audio pipeline is selected.
+CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export or audio pipeline is selected.
 
 ## Contributing
 

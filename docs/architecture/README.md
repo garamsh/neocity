@@ -20,11 +20,12 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-Domain-oriented partitioning is selected for the Godot bootstrap host and the custom engine and visual systems planned in Rust. Ascent is the first domain: its pure Rust engine feeds a separate Rust/Godot presentation adapter through commands and value snapshots.
+Domain-oriented partitioning is selected for the Godot bootstrap host and the custom engine and visual systems implemented in C++. Ascent is the first domain: its pure C++ engine feeds a separate C++/Godot presentation adapter through commands and value snapshots.
 
 - [`structure.md`](structure.md) — domain boundaries, composition rules, and unresolved structural choices.
 - [`ascent.md`](ascent.md) — playable ascent rules, adapter ownership, and prototype control limitations.
-- [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary.
+- [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ engine and godot-cpp adapter, with each toolchain selection and its source.
+- [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary; superseded by ADR 0003.
 - [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.
 - [`adr/0001-partition-the-system-by-domain.md`](adr/0001-partition-the-system-by-domain.md) — accepted domain-oriented partitioning.
 - [`adr/0000-template.md`](adr/0000-template.md) — template for future architecture decisions.
