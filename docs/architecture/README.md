@@ -20,9 +20,13 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the game rules with no Godot dependency and feeds the C++/Godot presentation through commands and value snapshots. Ascent is the first level.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay`, `pan_dodge`, and `pan_tilt` libraries hold independent rules with no Godot or mutual dependencies. They feed the shared C++/Godot host through commands and value snapshots; a common menu selects the two pan experiments or the ascent reference.
 
-- [`structure.md`](structure.md) — purpose folders, the gameplay boundary, composition rules, repository layout, and unresolved structural choices.
+- [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
+- [`pan-dodge.md`](pan-dodge.md) — direct-movement pan rules and standalone verification.
+- [`pan-tilt.md`](pan-tilt.md) — tilt, shared body physics, outcomes, and standalone verification.
+- [`session.md`](session.md) — menu selection, run lifetime, input isolation, and fixed-step delivery.
+- [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — independent experiment rule libraries behind one Godot host; extends ADR 0004's single rules boundary.
 - [`gameplay.md`](gameplay.md) — game rules of the ascent level, their public surface, and prototype control limitations.
 - [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, and HUD.
 - [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names.

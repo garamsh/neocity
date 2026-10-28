@@ -60,7 +60,7 @@ build: $(TOOLS_STAMP)
 
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
-	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt"
+	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/{gameplay,pan_dodge,pan_tilt}/CMakeLists.txt"
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --script res://tests/godot_startup.gd --check-only
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
@@ -68,6 +68,10 @@ test: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AscentGameplayCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Gameplay: 3 live input checks passed (move, jump, retry).' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop PanExperimentsCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 18 live checks passed (menu, direct, tilt, loss, win, replay, switch).' "$$log"
 
 ci: lint format test
 

@@ -1,29 +1,38 @@
 #include "scene.hpp"
 
-#include "hud/hud.hpp"
-#include "input/input.hpp"
+#include "input/experiments.hpp"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <algorithm>
-
 namespace neocity {
 
 namespace {
-
-constexpr double TICK = 1.0 / 120.0;
 
 bool in_editor() { return godot::Engine::get_singleton()->is_editor_hint(); }
 
 } // namespace
 
-AscentScene::AscentScene() : camera(engine.snapshot()) {}
+AscentScene::AscentScene()
+    : camera(engine.snapshot()), session(dodge, tilt, engine, camera, [this] {
+        engine = gameplay::AscentEngine{};
+        camera = camera::AscentCamera(engine.snapshot());
+      }) {}
 
 void AscentScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("actor_position"),
                               &AscentScene::actor_position);
+  godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
+                              &AscentScene::screen_name);
+  godot::ClassDB::bind_method(godot::D_METHOD("outcome"),
+                              &AscentScene::outcome);
+  godot::ClassDB::bind_method(godot::D_METHOD("actor_velocity"),
+                              &AscentScene::actor_velocity);
+  godot::ClassDB::bind_method(godot::D_METHOD("hazard_position"),
+                              &AscentScene::hazard_position);
+  godot::ClassDB::bind_method(godot::D_METHOD("pan_tilt"),
+                              &AscentScene::pan_tilt);
 }
 
 void AscentScene::_ready() {
@@ -32,44 +41,34 @@ void AscentScene::_ready() {
   }
   drawing = rendering::AscentDrawing::load();
   godot::UtilityFunctions::print(
-      "Ascent: C++ simulation and presentation ready.");
+      "Experiments: menu and three independent rule engines ready.");
 }
 
 void AscentScene::_process(double delta) {
   if (in_editor()) {
     return;
   }
-  const gameplay::PlayerCommand sampled = input::sample_input();
-  pending.horizontal = sampled.horizontal;
-  pending.jump_held = sampled.jump_held;
-  pending.jump_pressed = pending.jump_pressed || sampled.jump_pressed;
-  pending.switch_character =
-      pending.switch_character || sampled.switch_character;
-  pending.pause_pressed = pending.pause_pressed || sampled.pause_pressed;
-  pending.retry_pressed = pending.retry_pressed || sampled.retry_pressed;
-  accumulator = std::min(accumulator + delta, 0.1);
-  while (accumulator >= TICK) {
-    engine.step(pending);
-    pending.jump_pressed = false;
-    pending.switch_character = false;
-    pending.pause_pressed = false;
-    pending.retry_pressed = false;
-    accumulator -= TICK;
-  }
-  camera.follow(engine.snapshot(), static_cast<float>(std::min(delta, 0.1)));
+  session.advance(delta, input::sample_session_input());
   queue_redraw();
 }
 
 void AscentScene::_draw() {
   if (drawing) {
-    drawing->paint(*this, engine.snapshot(), camera.y());
-    hud::paint(*this, *drawing, engine.snapshot());
+    session.paint(*this, *drawing);
   }
 }
 
 godot::Vector2 AscentScene::actor_position() const {
-  const gameplay::Point p = engine.snapshot().leader.feet;
-  return {p.x, p.y};
+  return session.actor_position();
 }
+godot::String AscentScene::screen_name() const { return session.screen_name(); }
+godot::String AscentScene::outcome() const { return session.outcome(); }
+godot::Vector2 AscentScene::actor_velocity() const {
+  return session.actor_velocity();
+}
+godot::Vector2 AscentScene::hazard_position() const {
+  return session.hazard_position();
+}
+godot::Vector2 AscentScene::pan_tilt() const { return session.pan_tilt(); }
 
 } // namespace neocity
