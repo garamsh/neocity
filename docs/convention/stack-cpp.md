@@ -5,7 +5,7 @@ The C++ form of toolchain, check commands, types, ownership, lint suppressions, 
 ## Toolchain
 
 - Project targets build as C++20 with compiler extensions off. Fetched dependencies keep the standard and flags their own build declares.
-- CMake with the Ninja generator. The root `CMakeLists.txt` adds one subdirectory per package; each package's `CMakeLists.txt` declares its targets and fetched dependencies.
+- CMake with the Ninja generator. A library that is its own build boundary has its own `CMakeLists.txt` in its folder, declaring its targets and fetched dependencies; the root `CMakeLists.txt` adds it and declares the GDExtension target with its fetched dependencies.
 - Every fetched source is a commit archive in `FetchContent_Declare` with `URL_HASH SHA256=`. CMake, Ninja, clang-format and clang-tidy are PyPI wheels listed in `Makefile` with one `--hash=sha256:` per supported platform, installed with `--require-hashes` into ignored `.tools/cpp`. A pin's comment names who moves it.
 - Project targets compile with `-Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wdouble-promotion -Wshadow`, with `COMPILE_WARNING_AS_ERROR` on.
 
@@ -15,8 +15,8 @@ Checked against godot-cpp's CMake documentation in [godot-docs at `9adca4c1c7291
 
 | Name | C++ command |
 |---|---|
-| `make format` | `clang-format --style=LLVM --dry-run --Werror` over every tracked or new `ascent/*.cpp` and `ascent/*.hpp` |
-| `make lint` | `clang-tidy -p build --warnings-as-errors='*'` with the check list in `Makefile` over every `ascent/*.cpp`, after configure and `generate_bindings` |
+| `make format` | `clang-format --style=LLVM --dry-run --Werror` over every tracked or new `src/*.cpp` and `src/*.hpp` |
+| `make lint` | `clang-tidy -p build --warnings-as-errors='*'` with the check list in `Makefile` over every `src/*.cpp`, after configure and `generate_bindings` |
 | `make build` | `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release`, then `cmake --build build` |
 | `make test` | `ctest --test-dir build --output-on-failure --no-tests=error`, alongside the Godot host checks |
 
@@ -27,7 +27,7 @@ Apply formatting with `clang-format --style=LLVM -i`. A check disabled in the cl
 - `std::optional<T>` for absence; `enum class` for variants, matched by a `switch` with no `default` and followed by `std::abort()` so `-Wswitch` reports a missing case.
 - Index runtime-sized containers with `.at()`.
 - Hold values by value or `std::unique_ptr`; no owning raw pointer and no `new` outside a framework macro that requires it.
-- A public API lives under the package's `include/<package>/`; everything under `src/` is internal to the package.
+- A library that is its own build boundary declares its public API under its own `include/<library>/`; everything in its own `src/` is internal to it.
 
 ## Lint suppressions
 
@@ -37,5 +37,5 @@ A `NOLINTNEXTLINE(<check>)` is allowed only for a diagnostic raised inside a thi
 
 - `///` for documentation comments on declarations; `//` for ordinary comments.
 - Headers use `#pragma once`; source files use `.cpp`, headers `.hpp`.
-- Unit tests use GoogleTest, co-located as `src/<unit>_test.cpp`, linked into one test executable per package and registered with `gtest_discover_tests`. Test names read `Suite.SentenceInPascalCase`.
-- Integration and end-to-end tests of the shipped application stay in the Godot harnesses under repository-root `tests/` and `e2e/`.
+- Unit tests use GoogleTest, co-located as `src/<unit>_test.cpp`, linked into one test executable per library and registered with `gtest_discover_tests`. Test names read `Suite.SentenceInPascalCase`.
+- Integration and end-to-end tests of the shipped application stay in the Godot harnesses under `project/tests/` and `project/e2e/`.
