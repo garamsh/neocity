@@ -175,9 +175,10 @@ void PanDodgeScene::build() {
         "red balls slide and\ndrop off the edge.\n\nEscape through the "
         "green gate\nas it travels around the rim.",
         20, white);
-  label(*hud, {900.0F, 470.0F}, "R: fresh run\nM: developer page", 22,
+  label(*hud, {900.0F, 470.0F},
+        "R: fresh run\nM: developer page\n(when opened from it)", 22,
         godot::Color(0.37F, 0.86F, 0.9F));
-  label(*hud, {900.0F, 560.0F}, "Plain prototype: no fun or\nbalance claim.",
+  label(*hud, {900.0F, 590.0F}, "Plain prototype: no fun or\nbalance claim.",
         18, muted);
   status = label(*hud, {40.0F, 660.0F}, "", 24, white);
 }
@@ -214,10 +215,10 @@ void PanDodgeScene::_process(double /*delta*/) {
     status->set_text("Blue: you    Red: hazard    Green: exit");
     return;
   case pan_dodge::Outcome::Escaped:
-    status->set_text("ESCAPED - R to replay / M for the developer page");
+    status->set_text("ESCAPED - R to replay");
     return;
   case pan_dodge::Outcome::Hit:
-    status->set_text("HIT A HAZARD - R to retry / M for the developer page");
+    status->set_text("HIT A HAZARD - R to retry");
     return;
   }
   std::abort();

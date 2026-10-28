@@ -35,9 +35,9 @@ Dodge hazards dropped onto a frying pan that sways by itself, and escape through
 
 | Field | Record |
 |---|---|
-| Unit tests | Nine `PanDodge.*` cases in `src/engine_test.cpp`. The revision, results, and the behaviours removed to see each fail are in [PR #17](https://github.com/garamsh/neocity/pull/17)'s Verification |
-| Live checks | `PanExperimentsCheck` in `project/e2e/experiments.gd`: developer page, mount after release, movement, sway and gate travel, a hit, an escape, drops and removals, unmount, and direct launch |
-| Capture | [`docs/architecture/evidence/pan-experiments/pan-dodge.png`](../../../docs/architecture/evidence/pan-experiments/pan-dodge.png), from `PanExperimentsCapture` |
+| Unit tests | Nine `PanDodge.*` cases in `src/engine_test.cpp`, run with the Rules alone commands. The revision, results, and the behaviours removed to see each fail are in [PR #17](https://github.com/garamsh/neocity/pull/17)'s Verification, at the head it states |
+| Live checks | `godot --headless --path project --main-loop PanExperimentsCheck --fixed-fps 120` (`project/e2e/experiments.gd`), revision as above: developer page, mount after release, movement, sway and gate travel, a hit, an escape, drops and removals, unmount, and direct launch |
+| Capture | [`docs/architecture/evidence/pan-experiments/pan-dodge.png`](../../../docs/architecture/evidence/pan-experiments/pan-dodge.png), from `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` on the tree of the commit that last changed the image, `git log -1 -- docs/architecture/evidence/pan-experiments/pan-dodge.png` |
 | Play feedback | none yet |
 | Not verified | Fun and balance; platforms other than Linux x86_64; platform export |
 
@@ -46,5 +46,5 @@ Dodge hazards dropped onto a frying pan that sways by itself, and escape through
 | Field | Record |
 |---|---|
 | State | Implemented in [PR #17](https://github.com/garamsh/neocity/pull/17) |
-| Deferred | Space-bar jumping, from the [#16 scope decision](https://github.com/garamsh/neocity/issues/16#issuecomment-6462939840) |
+| Deferred | Space-bar jumping, from the [#16 scope decision](https://github.com/garamsh/neocity/issues/16#issuecomment-6463884135) |
 | Main game | not accepted |

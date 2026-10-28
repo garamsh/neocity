@@ -83,6 +83,11 @@ void AscentScene::mount(const std::optional<godot::String> &scene) {
     std::abort();
   }
   godot::Node *experiment = packed->instantiate();
+  if (experiment == nullptr) {
+    godot::UtilityFunctions::push_error(
+        "Experiment scene did not instantiate: ", *scene);
+    std::abort();
+  }
   experiment->set_name(EXPERIMENT_NODE);
   add_child(experiment);
 }

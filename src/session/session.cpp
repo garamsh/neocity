@@ -27,9 +27,8 @@ Session::Session(gameplay::AscentEngine &ascent_engine,
       mount(std::move(mount_scene)) {}
 
 void Session::enter(Screen destination) {
-  if (mounted) {
+  if (screen == Screen::Experiment && !waiting_for_release) {
     mount(std::nullopt);
-    mounted = false;
   }
   screen = destination;
   reset();
@@ -81,11 +80,11 @@ void Session::advance(double delta, Command command) {
     waiting_for_release = command.controls_held;
     if (!waiting_for_release && screen == Screen::Experiment) {
       mount(godot::String::utf8(active.scene));
-      mounted = true;
     }
     return;
   }
-  if (command.option) {
+  if (command.option &&
+      (screen == Screen::Main || screen == Screen::Developer)) {
     choose(*command.option);
     return;
   }

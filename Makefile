@@ -72,7 +72,7 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop PanExperimentsCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 17 live checks passed (menus, mount, move, sway, loss, win, spawn, despawn, direct launch).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 18 live checks passed (menus, mount, move, sway, loss, win, spawn, despawn, direct launch).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SessionTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \

@@ -89,13 +89,20 @@ TEST(PanDodge, ThePanSwaysByItselfAndItsExitTravelsAroundTheRim) {
   EXPECT_GT(std::hypot(later.player.center.x, later.player.center.y), 10.0F);
 }
 
-TEST(PanDodge, TheRimBlocksTravelAwayFromTheExit) {
-  Engine engine;
-  move(engine, {.vertical = Direction::Positive}, 250);
-  const auto world = engine.snapshot();
+TEST(PanDodge, TheRimBlocksTravelExceptThroughTheTravellingExit) {
+  Engine blocked;
+  move(blocked, {.vertical = Direction::Positive}, 250);
+  const auto world = blocked.snapshot();
   ASSERT_EQ(world.outcome, Outcome::Playing);
   EXPECT_NEAR(std::hypot(world.player.center.x, world.player.center.y),
               world.pan_radius - world.player.radius, 0.01F);
+
+  Engine open;
+  chase_exit(open);
+  ASSERT_EQ(open.snapshot().outcome, Outcome::Escaped);
+  EXPECT_GT(std::hypot(open.snapshot().player.center.x,
+                       open.snapshot().player.center.y),
+            open.snapshot().pan_radius);
 }
 
 TEST(PanDodge, SteeringThroughTheTravellingExitEscapes) {
@@ -109,6 +116,17 @@ TEST(PanDodge, SteeringThroughTheTravellingExitEscapes) {
 }
 
 TEST(PanDodge, ADropFollowsTheIdlePlayerButMissesOnceThePlayerLeavesItsMark) {
+  Engine followed;
+  idle_until(followed, 200);
+  move(followed, {.horizontal = Direction::Positive}, 20);
+  const auto tracking = followed.snapshot();
+  ASSERT_EQ(tracking.hazards.size(), 1U);
+  ASSERT_EQ(tracking.hazards.front().phase, Phase::Tracking);
+  EXPECT_FLOAT_EQ(tracking.hazards.front().body.center.x,
+                  tracking.player.center.x);
+  EXPECT_FLOAT_EQ(tracking.hazards.front().body.center.y,
+                  tracking.player.center.y);
+
   Engine idle;
   idle_until(idle, 299);
   ASSERT_EQ(idle.snapshot().outcome, Outcome::Playing);

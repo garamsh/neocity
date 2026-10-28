@@ -17,6 +17,8 @@ func _run() -> void:
 	scene = current_scene as AscentScene
 	if not _check(scene != null and scene.screen_name() == "main", "configured startup main menu"):
 		return
+	if not _check(InputMap.has_action("option_1") and InputMap.has_action("option_9"), "every developer-page number has an action"):
+		return
 	await _tap(KEY_2)
 	if not _check(scene.screen_name() == "developer", "main menu opens the developer page"):
 		return

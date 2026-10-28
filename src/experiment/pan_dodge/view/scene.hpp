@@ -44,7 +44,7 @@ protected:
   static void _bind_methods();
 
 private:
-  /// Scene-tree children owned by Godot; null until _ready builds them.
+  /// One pooled hazard's body and drop shadow, children of the pan.
   struct HazardView {
     godot::MeshInstance3D *body = nullptr;
     godot::MeshInstance3D *shadow = nullptr;
@@ -54,6 +54,7 @@ private:
   void show_hazards(const pan_dodge::Snapshot &world);
 
   pan_dodge::Engine engine;
+  // Scene-tree children owned by Godot; null until _ready builds them.
   godot::Node3D *pan = nullptr;
   godot::MeshInstance3D *player = nullptr;
   godot::MeshInstance3D *exit = nullptr;

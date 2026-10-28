@@ -63,7 +63,6 @@ private:
   Mount mount;
   Screen screen = Screen::Main;
   experiment::Entry active;
-  bool mounted = false;
   bool waiting_for_release = true;
   double accumulator = 0.0;
   gameplay::PlayerCommand pending;
