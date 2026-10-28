@@ -16,7 +16,7 @@ Checked against godot-cpp's CMake documentation in [godot-docs at `9adca4c1c7291
 | Name | C++ command |
 |---|---|
 | `make format` | `clang-format --style=LLVM --dry-run --Werror` over every tracked or new `ascent/*.cpp` and `ascent/*.hpp` |
-| `make lint` | `clang-tidy -p build --warnings-as-errors='*'` with the check list in `Makefile` over every `ascent/*.cpp`, after configure and `generate_bindings`, alongside the document checks |
+| `make lint` | `clang-tidy -p build --warnings-as-errors='*'` with the check list in `Makefile` over every `ascent/*.cpp`, after configure and `generate_bindings` |
 | `make build` | `cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release`, then `cmake --build build` |
 | `make test` | `ctest --test-dir build --output-on-failure --no-tests=error`, alongside the Godot host checks |
 

@@ -30,7 +30,7 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 make ci
 ```
 
-- `make lint`: repository documentation checks and clang-tidy with warnings as errors.
+- `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of both C++ targets, pinned Godot version, and resource import.
 - `make test`: engine unit tests through CTest, configured main-scene readiness, and live Godot move/jump/retry input checks.
