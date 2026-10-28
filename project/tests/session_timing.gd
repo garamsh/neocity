@@ -31,7 +31,7 @@ func _process(_delta: float) -> bool:
 			if scene.screen_name() != "dodge" or scene.actor_position() != Vector2(-170.0, 130.0):
 				return _fail("second direct run not fresh")
 			Input.action_press("move_right")
-		14:
+		15:
 			if scene.actor_position() != Vector2(-170.0, 130.0):
 				return _fail("old partial tick leaked across menu selection")
 		18:
