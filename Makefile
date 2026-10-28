@@ -73,6 +73,10 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop PanExperimentsCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 18 live checks passed (menu, direct, tilt, loss, win, replay, switch).' "$$log"
 
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SessionTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Session: 3 integration checks passed (discard time, accumulate time, retain edge).' "$$log"
+
 ci: lint format test
 
 run: build

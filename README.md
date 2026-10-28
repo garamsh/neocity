@@ -49,15 +49,17 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
-- `make test`: all three rule libraries' unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, and 18 live experiment checks for menu selection, direct movement, shared tilt, losses, wins, replay, and transitions.
+- `make test`: all three rule libraries' unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live experiment checks for menu selection, direct movement, shared tilt, losses, wins, replay, and transitions, and three session integration checks for partial-tick time and input edges.
 - `make ci`: the complete set. Once `build/` is configured, rules-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test pan_tilt_test`, then `.tools/cpp/bin/ctest --test-dir build`.
 
-Each new rule library also configures from its own folder without fetching or building Godot. After the first Make entry point installs the pinned tools, run this from the repository root, substituting `pan_tilt` for `pan_dodge` for the other experiment:
+Each new rule library also configures from its own folder without fetching or building Godot. After the first Make entry point installs the pinned tools, run both independent builds from the repository root:
 
 ```sh
-.tools/cpp/bin/cmake -S src/pan_dodge -B build/pan-dodge-only -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release
-.tools/cpp/bin/cmake --build build/pan-dodge-only
-.tools/cpp/bin/ctest --test-dir build/pan-dodge-only --output-on-failure --no-tests=error
+for experiment in dodge tilt; do
+  .tools/cpp/bin/cmake -S "src/pan_$experiment" -B "build/pan-$experiment-only" -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release
+  .tools/cpp/bin/cmake --build "build/pan-$experiment-only"
+  .tools/cpp/bin/ctest --test-dir "build/pan-$experiment-only" --output-on-failure --no-tests=error
+done
 ```
 
 After `make build`, reproduce the real-input escape routes and transition checks with:
