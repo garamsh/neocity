@@ -7,7 +7,7 @@ Checked against the Godot 4.7 documentation linked below. The bootstrap host use
 ## Naming and resources
 
 - Godot scene, resource, and folder names use `snake_case`; scene node names use `PascalCase`.
-- Keep a scene's scripts and dedicated resources beside it in its level folder, `project/levels/<level>/`. Shared resources sit in the nearest folder of their owner that serves their consumers.
+- Keep a scene's scripts and dedicated resources beside it in its own folder: `project/levels/<level>/` for a main-game level, `project/experiment/<id>/` for a developer-page experiment. Shared resources sit in the nearest folder of their owner that serves their consumers.
 - Commit authored scenes, resources, source assets, and their resource-reference metadata. Exclude `.godot/` and generated `*.translation` files. Use an empty `.gdignore` in non-resource directories inside the Godot project that the importer must skip.
 - The Godot project is `project/`: `project/project.godot` starts the C++ AscentScene in `project/levels/ascent/ascent.tscn`. The scene uses the `neocity` C++ extension, which `project/bin/neocity.gdextension` loads from beside it. Its Godot canvas adapter does not select a standalone production graphics backend.
 
