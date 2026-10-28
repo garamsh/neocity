@@ -68,8 +68,11 @@ TEST(PanTilt, ReleaseLevelsThePanButReverseTiltBrakesTheRemainingInertia) {
   EXPECT_FLOAT_EQ(coasting.tilt.y, 0.0F);
   EXPECT_LT(coasting.player.velocity.y, -10.0F);
   EXPECT_LT(coasting.player.center.y, moving.player.center.y);
+  Engine level_control = engine;
+  tilt(level_control, {}, 40);
   tilt(engine, {.vertical = Direction::Positive}, 40);
-  EXPECT_GT(engine.snapshot().player.velocity.y, coasting.player.velocity.y);
+  EXPECT_GT(engine.snapshot().player.velocity.y,
+            level_control.snapshot().player.velocity.y + 20.0F);
 }
 
 TEST(PanTilt, SlidingHazardsBounceAtTheRimAndContactLoses) {
