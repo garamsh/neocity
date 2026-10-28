@@ -20,8 +20,15 @@ The developer-page experiments: what one is made of, how it is registered and ru
 
 ### Registration and launch
 
-- `src/experiment/catalog.hpp` lists every experiment's id, title, one-line summary, and scene path, in developer-page order. Adding the entry is the only host change an experiment makes. No folder discovery or manifest parsing happens at runtime.
-- The node's class is registered in `src/register_types.cpp`, its sources are added to the `neocity` target and its library to the root `CMakeLists.txt`, and any Godot class it newly uses is added to `build_profile.json`.
+Besides its two folders, an experiment touches exactly these shared files, each with one entry:
+
+- `src/experiment/catalog.hpp`: id, title, one-line summary, and scene path, in developer-page order. No folder discovery or manifest parsing happens at runtime.
+- `src/register_types.cpp`: its node class.
+- Root `CMakeLists.txt`: its library's `add_subdirectory`, its `view/` sources in the `neocity` target, and its library in that target's links.
+- `build_profile.json`: any Godot class its node newly uses.
+- `project/e2e/experiments.gd` and the line `Makefile` matches: its live route.
+
+The developer page selects at most nine experiments, the digit keys `option_1` to `option_9` in `project/project.godot`; a tenth fails to compile.
 - The developer page numbers the catalog. Choosing an entry mounts its scene under the host once every control is released; M removes it and returns to the developer page. Running the scene file directly plays the identical scene.
 - An experiment never mutates the host, the main game, or another experiment.
 
