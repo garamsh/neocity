@@ -247,7 +247,7 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 
 ![Real Godot frame of the neon ascent prototype](production/ascent-playable-v1.png)
 
-The implementation uses [the city texture](../../project/ascent/neon_city.png) and [the sprite atlas](../../project/ascent/ascent_atlas.png), owned by the ascent domain in the Godot project. [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation. The [ascent responsibility document](../architecture/ascent.md) records the engine/presentation split and prototype controls.
+The implementation uses [the city texture](../../project/levels/ascent/neon_city.png) and [the sprite atlas](../../project/levels/ascent/ascent_atlas.png), owned by the ascent level in the Godot project. [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation. The [gameplay](../architecture/gameplay.md) and [presentation](../architecture/presentation.md) responsibility documents record the rules/presentation split and prototype controls.
 
 | Field | Record |
 |---|---|

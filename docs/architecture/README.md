@@ -20,13 +20,14 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-Domain-oriented partitioning is selected for the Godot bootstrap host and the custom engine and visual systems implemented in C++. Ascent is the first domain: its pure C++ engine feeds a separate C++/Godot presentation adapter through commands and value snapshots.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the game rules with no Godot dependency and feeds the C++/Godot presentation through commands and value snapshots. Ascent is the first level.
 
-- [`structure.md`](structure.md) — domain boundaries, composition rules, repository layout, and unresolved structural choices.
-- [`ascent.md`](ascent.md) — playable ascent rules, adapter ownership, and prototype control limitations.
-- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — Godot project in `project/`, C++ sources in `src/<domain>/`, after the official godot-cpp template.
-- [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ engine and godot-cpp adapter, with each toolchain selection and its source.
+- [`structure.md`](structure.md) — purpose folders, the gameplay boundary, composition rules, repository layout, and unresolved structural choices.
+- [`gameplay.md`](gameplay.md) — game rules of the ascent level, their public surface, and prototype control limitations.
+- [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, and HUD.
+- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names.
+- [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ rules library and godot-cpp adapter, with each toolchain selection and its source; partitioning and target names superseded by ADR 0004.
 - [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary; superseded by ADR 0003.
 - [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.
-- [`adr/0001-partition-the-system-by-domain.md`](adr/0001-partition-the-system-by-domain.md) — accepted domain-oriented partitioning.
+- [`adr/0001-partition-the-system-by-domain.md`](adr/0001-partition-the-system-by-domain.md) — domain-oriented partitioning; superseded by ADR 0004.
 - [`adr/0000-template.md`](adr/0000-template.md) — template for future architecture decisions.

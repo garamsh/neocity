@@ -5,7 +5,7 @@ PYTHON ?= python3
 # C++ tools are hash-pinned PyPI wheels installed into ignored .tools/cpp; one
 # line per tool, with a hash for each supported platform (macOS x86_64/arm64,
 # Linux x86_64). @sauce-git moves these pins together with the FetchContent
-# pins in src/ascent/engine/CMakeLists.txt and src/ascent/godot/CMakeLists.txt.
+# pins in CMakeLists.txt and src/gameplay/CMakeLists.txt.
 CPP_TOOL_REQUIREMENTS := \
 	'cmake==4.4.4 --hash=sha256:883962a72b1b3a16ff445427f24c8caca9797dd9e563bbe208cbcd89e877f9d3 --hash=sha256:f773a0544c66370408f451acd487c2c643b0dfebb48c5d64f3638bc1bb820238' \
 	'ninja==1.13.2 --hash=sha256:fd82e26c0706ad4ab88e5fdd26f3fab0a987a90f810160f6c322e752c6af298b --hash=sha256:65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c' \
@@ -60,7 +60,7 @@ build: $(TOOLS_STAMP)
 
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
-	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/ascent/engine/CMakeLists.txt"
+	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt"
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --script res://tests/godot_startup.gd --check-only
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
