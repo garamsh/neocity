@@ -7,9 +7,9 @@ var frames: int = 0
 func _process(_delta: float) -> bool:
 	frames += 1
 	if frames == 2:
-		_key(KEY_3, true)
+		_key(KEY_1, true)
 	elif frames == 3:
-		_key(KEY_3, false)
+		_key(KEY_1, false)
 	elif frames == 40:
 		var destination: String = ProjectSettings.globalize_path("user://ascent-preview.png")
 		var result: Error = root.get_texture().get_image().save_png(destination)

@@ -1,72 +1,72 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 #include "../camera/camera.hpp"
+#include "../experiment/catalog.hpp"
 #include "../rendering/drawing.hpp"
 
 #include <gameplay/engine.hpp>
-#include <pan_dodge/engine.hpp>
-#include <pan_tilt/engine.hpp>
 
 #include <functional>
 #include <optional>
+#include <span>
 
 namespace neocity::session {
 
-/// The shared host's selectable screens.
-enum class Screen : std::uint8_t { Menu, Dodge, Tilt, Ascent };
+/// The shared host's screens: the main menu, the developer page, the main
+/// game, and one mounted experiment scene.
+enum class Screen : std::uint8_t { Main, Developer, Ascent, Experiment };
 
-/// One host frame's sampled actions; each rules library keeps its own command.
+/// One host frame's sampled actions.
 struct Command {
-  std::optional<Screen> selection;
+  /// Menu option pressed this frame, numbered from 1.
+  std::optional<std::size_t> option;
   bool menu = false;
-  bool retry = false;
   bool controls_held = false;
-  pan_dodge::Command dodge;
-  pan_tilt::Command tilt;
   gameplay::PlayerCommand ascent;
 };
 
-/// Owns selection and fixed-step delivery, using implementations supplied by
-/// the scene composition root.
+/// Mounts the given experiment scene, or removes the mounted one when empty.
+using Mount = std::function<void(std::optional<godot::String> scene)>;
+
+/// Owns menu navigation, run lifetime, and fixed-step delivery to the main
+/// game, using implementations supplied by the scene composition root.
 class Session {
 public:
-  /// Receives independent engines, the legacy camera, and its fresh-run reset.
-  Session(pan_dodge::Engine &dodge_engine, pan_tilt::Engine &tilt_engine,
-          gameplay::AscentEngine &ascent_engine,
+  /// Receives the main game, its camera and fresh-run reset, the registered
+  /// experiments, and the operation that mounts their scenes.
+  Session(gameplay::AscentEngine &ascent_engine,
           camera::AscentCamera &ascent_camera,
-          std::function<void()> reset_legacy);
-  /// Samples edges once and accumulates bounded frame time for the active run.
+          std::function<void()> reset_ascent,
+          std::span<const experiment::Entry> experiments, Mount mount_scene);
+  /// Samples edges once and accumulates bounded frame time for the main game.
   void advance(double delta, Command command);
-  /// Delegates the selected screen to its world painter and HUD.
+  /// Draws the menus or the main game; a mounted experiment draws itself.
   void paint(godot::Node2D &canvas,
              const rendering::AscentDrawing &drawing) const;
-  /// Exposes visible host state for the shipped-scene verification harness.
+  /// Names the current screen, using the experiment id while one is open.
   [[nodiscard]] godot::String screen_name() const;
-  /// Exposes the active scenario's displayed outcome.
-  [[nodiscard]] godot::String outcome() const;
-  /// Exposes active player position in its rules library's coordinates.
+  /// Exposes the main game's leader position for host integration checks.
   [[nodiscard]] godot::Vector2 actor_position() const;
-  /// Exposes tilt player inertia for repeatable input-based route checks.
-  [[nodiscard]] godot::Vector2 actor_velocity() const;
-  /// Exposes the first sliding hazard for live shared-tilt checks.
-  [[nodiscard]] godot::Vector2 hazard_position() const;
-  /// Exposes the normalized pan tilt shown on screen.
-  [[nodiscard]] godot::Vector2 pan_tilt() const;
 
 private:
   void enter(Screen destination);
-  void tick();
-  std::reference_wrapper<pan_dodge::Engine> dodge;
-  std::reference_wrapper<pan_tilt::Engine> tilt;
+  void choose(std::size_t option);
+  void tick_ascent(double delta);
+
   std::reference_wrapper<gameplay::AscentEngine> ascent;
   std::reference_wrapper<camera::AscentCamera> camera;
-  std::function<void()> reset_ascent;
-  Screen screen = Screen::Menu;
+  std::function<void()> reset;
+  std::span<const experiment::Entry> catalog;
+  Mount mount;
+  Screen screen = Screen::Main;
+  experiment::Entry active;
+  bool mounted = false;
   bool waiting_for_release = true;
   double accumulator = 0.0;
-  Command pending;
+  gameplay::PlayerCommand pending;
 };
 
 } // namespace neocity::session

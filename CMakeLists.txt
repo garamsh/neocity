@@ -20,8 +20,7 @@ set(NEOCITY_WARNINGS
 
 enable_testing()
 add_subdirectory(src/gameplay)
-add_subdirectory(src/pan_dodge)
-add_subdirectory(src/pan_tilt)
+add_subdirectory(src/experiment/pan_dodge)
 
 include(FetchContent)
 # godot-cpp 10.0.0-stable, built against its bundled Godot 4.7 API; moved with
@@ -40,17 +39,17 @@ add_library(
     neocity
     SHARED
     src/camera/camera.cpp
+    src/experiment/pan_dodge/view/scene.cpp
     src/hud/hud.cpp
-    src/hud/experiments.cpp
-    src/input/experiments.cpp
-    src/rendering/pan.cpp
-    src/session/session.cpp
+    src/hud/menus.cpp
     src/input/input.cpp
+    src/input/menu.cpp
     src/register_types.cpp
     src/rendering/drawing.cpp
     src/scene.cpp
+    src/session/session.cpp
 )
-target_link_libraries(neocity PRIVATE gameplay pan_dodge pan_tilt godot-cpp)
+target_link_libraries(neocity PRIVATE gameplay pan_dodge godot-cpp)
 target_compile_options(neocity PRIVATE ${NEOCITY_WARNINGS})
 # One library for editor and game, written to project/bin/ beside
 # neocity.gdextension, which loads it.

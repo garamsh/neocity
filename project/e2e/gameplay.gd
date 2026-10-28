@@ -10,9 +10,9 @@ var scene: AscentScene
 func _process(_delta: float) -> bool:
 	frames += 1
 	if frames == 2:
-		_key(KEY_3, true)
+		_key(KEY_1, true)
 	elif frames == 3:
-		_key(KEY_3, false)
+		_key(KEY_1, false)
 	elif frames == 5:
 		scene = current_scene as AscentScene
 		if scene == null or scene.screen_name() != "ascent":

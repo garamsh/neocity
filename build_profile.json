@@ -1,14 +1,28 @@
 {
 	"enabled_classes": [
+		"BoxMesh",
+		"Camera3D",
+		"CanvasLayer",
+		"CylinderMesh",
+		"DirectionalLight3D",
 		"Engine",
+		"Environment",
 		"Font",
 		"Input",
+		"Label",
+		"MeshInstance3D",
 		"Node2D",
+		"Node3D",
 		"OS",
+		"PackedScene",
 		"ResourceLoader",
 		"SceneTree",
+		"SphereMesh",
+		"StandardMaterial3D",
 		"TextServer",
 		"Texture2D",
-		"ThemeDB"
+		"ThemeDB",
+		"TorusMesh",
+		"WorldEnvironment"
 	]
 }

@@ -1,4 +1,5 @@
-// Registers the Godot classes; game rules stay in gameplay.
+// Registers the Godot classes; game rules stay in their rule libraries.
+#include "experiment/pan_dodge/view/scene.hpp"
 #include "scene.hpp"
 
 #include <gdextension_interface.h>
@@ -13,6 +14,7 @@ void initialize(godot::ModuleInitializationLevel level) {
     return;
   }
   GDREGISTER_CLASS(neocity::AscentScene);
+  GDREGISTER_CLASS(neocity::experiment::PanDodgeScene);
 }
 
 void uninitialize(godot::ModuleInitializationLevel /*level*/) {}

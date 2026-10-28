@@ -13,8 +13,8 @@
 
 namespace neocity {
 
-/// Godot composition root: wires the pure engine to input, camera, and canvas
-/// adapters.
+/// Godot composition root: wires the main game, the menus, and the registered
+/// experiments to input, camera, and canvas adapters.
 // The suppressed diagnostics fire inside godot-cpp's GDCLASS expansion.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 class AscentScene : public godot::Node2D {
@@ -28,27 +28,18 @@ public:
   void _process(double delta) override;
   void _draw() override;
 
-  /// Exposes the actual actor location for host integration assertions.
+  /// Exposes the main game's actor location for host integration assertions.
   [[nodiscard]] godot::Vector2 actor_position() const;
-
-  /// Reports the selected experiment or menu.
+  /// Reports the open screen, or the id of the mounted experiment.
   [[nodiscard]] godot::String screen_name() const;
-  /// Reports the displayed outcome of the active experiment.
-  [[nodiscard]] godot::String outcome() const;
-  /// Reports the tilt player's current velocity for input route checks.
-  [[nodiscard]] godot::Vector2 actor_velocity() const;
-  /// Reports a sliding hazard's location for live tilt checks.
-  [[nodiscard]] godot::Vector2 hazard_position() const;
-  /// Reports the displayed tilt direction.
-  [[nodiscard]] godot::Vector2 pan_tilt() const;
 
 protected:
   static void _bind_methods();
 
 private:
+  void mount(const std::optional<godot::String> &scene);
+
   gameplay::AscentEngine engine;
-  pan_dodge::Engine dodge;
-  pan_tilt::Engine tilt;
   camera::AscentCamera camera;
   session::Session session;
   std::optional<rendering::AscentDrawing> drawing;
