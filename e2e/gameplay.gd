@@ -1,6 +1,6 @@
 class_name AscentGameplayCheck
 extends SceneTree
-## Exercises live input and the actual Rust scene through Godot's normal startup.
+## Exercises live input and the actual C++ scene through Godot's normal startup.
 
 var frames: int = 0
 var start: Vector2
@@ -12,7 +12,7 @@ func _process(_delta: float) -> bool:
 	if frames == 2:
 		scene = current_scene as AscentScene
 		if scene == null or not scene.has_method("actor_position"):
-			push_error("Configured Rust scene is missing")
+			push_error("Configured C++ scene is missing")
 			quit(1)
 			return true
 		start = scene.actor_position()

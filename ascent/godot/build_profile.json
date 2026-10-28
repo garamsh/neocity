@@ -1,0 +1,14 @@
+{
+	"enabled_classes": [
+		"Engine",
+		"Font",
+		"Input",
+		"Node2D",
+		"OS",
+		"ResourceLoader",
+		"SceneTree",
+		"TextServer",
+		"Texture2D",
+		"ThemeDB"
+	]
+}
