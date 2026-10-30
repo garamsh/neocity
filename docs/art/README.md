@@ -222,6 +222,20 @@ Panel interpretation:
 | Source | Supplied earlier in this discussion as `a8f4466a-6522-4a96-889a-b8dfb480f12b.png`; previously described as a generated comparison, but generator, model, prompt, and settings not available |
 | Decision record | Included for source completeness under issue #1; supporting material from the earlier discussion, not a first-release camera or sprite target |
 
+## Dystopian game candidates
+
+[Open the offline game-card viewer](concept-art/dystopia-studies/index.html) to compare four AI-proposed occupations and seven conveyor-based citizen-sorting candidates, with ten earlier text proposals. Select a card to open one game, return to the catalog, or compare the four occupation studies. Open the HTML file locally; its images and styling are relative files requiring no server or network. Korean viewer copy follows the audience requested in [issue #19](https://github.com/garamsh/neocity/issues/19).
+
+| Field | Record |
+|---|---|
+| Status | Candidate; v1; proposal exhibit, not adopted game direction or playable screenshots |
+| Intent | Compare small one/two-screen dystopian game ideas through new concept art, concrete choices, prototype limits, and unverified risks |
+| Images | ART-DYS-001: `demolition-v1.png`; ART-DYS-002: `relay-v1.png`; ART-DYS-003: `lifespan-v1.png`; ART-DYS-004: `windows-v1.png`; ART-CON-001–007: `conveyor-{sort,pack,inspect,family,shift,swap,escape}-v1.png`, all under `concept-art/dystopia-studies/` |
+| Adopted elements | None from these new proposals; existing character identities and city palette are references only |
+| Open questions | Selection of any candidate, game rules, visual production treatment, narrative meaning, feasibility, and fun |
+| Source | Codex-authored proposals from the user–AI conversation on 2026-10-30; eleven new built-in ImageGen illustrations; exact prompts, reference roles, and observed metadata for the [four occupation studies](concept-art/dystopia-studies/prompts.md) and [seven conveyor studies](concept-art/dystopia-studies/conveyor-prompts.md) |
+| Decision record | [Issue #19 assignment](https://github.com/garamsh/neocity/issues/19#issuecomment-6504854269) and [conveyor scope extension](https://github.com/garamsh/neocity/issues/19#issuecomment-6515011779) authorize proposal delivery; creative acceptance remains with the requesting project owner |
+
 ## Pending decisions
 
 - The selected concept is not a complete game specification. Define the two-character control scheme, jump model, collision rules, recovery/checkpoints, progression, creature interactions, and difficulty in a scoped gameplay task before implementation.
