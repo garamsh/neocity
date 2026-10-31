@@ -21,6 +21,7 @@ set(NEOCITY_WARNINGS
 enable_testing()
 add_subdirectory(src/gameplay)
 add_subdirectory(src/experiment/pan_dodge)
+add_subdirectory(src/survival)
 
 include(FetchContent)
 # godot-cpp 10.0.0-stable, built against its bundled Godot 4.7 API; moved with
