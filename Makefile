@@ -61,7 +61,7 @@ build: $(TOOLS_STAMP)
 
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
-	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt and src/experiment/pan_dodge/CMakeLists.txt"
+	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt, src/experiment/pan_dodge/CMakeLists.txt and src/survival/CMakeLists.txt"
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --script res://tests/godot_startup.gd --check-only
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \

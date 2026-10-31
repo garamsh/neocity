@@ -27,6 +27,7 @@ The C++ sources are partitioned into purpose folders under `src/`, and the Godot
 - [`session.md`](session.md) — main menu, developer page, run lifetime, input isolation, and fixed-step delivery.
 - [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — one self-contained folder per experiment behind a developer page; supersedes ADR 0004's single rules boundary.
 - [`gameplay.md`](gameplay.md) — game rules of the ascent level, their public surface, and prototype control limitations.
+- [`survival.md`](survival.md) — 괴물 입속 탈출의 독립 진행 규칙, 공통 상태, 기능별 파일 소유 계획과 미정 사항.
 - [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, HUD, and experiment hosting.
 - [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names; its single rules boundary superseded by ADR 0005.
 - [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ rules library and godot-cpp adapter, with each toolchain selection and its source; partitioning and target names superseded by ADR 0004.
