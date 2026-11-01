@@ -7,7 +7,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <optional>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -310,6 +312,76 @@ TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessAnotherWayExists) {
   EXPECT_EQ(gapped.simulation.snapshot().chef.location, Location::City);
 }
 
+TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 9);
+  auto building = object_of(WALL, ObjectKind::Building, 3);
+  view.world.objects.push_back(building);
+  ASSERT_EQ(ai_action(view, Actor::Chef), Action{ReturnToBase{}});
+  view.world.objects.back().state = ObjectState::Destroyed;
+  EXPECT_EQ(companion_with()
+                .command(Actor::Chef, ALL_AI, NO_INPUT, view)
+                .movement.direction,
+            Direction::Right);
+}
+
+TEST(Companion, ACollectableSourceComesBeforeANearerRepair) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 9);
+  auto door = object_of(DOOR, ObjectKind::Entrance, 0);
+  door.state = ObjectState::Destroyed;
+  door.repair_with = WRENCH;
+  view.world.objects.push_back(door);
+  view.progression.chef.tools = {WRENCH};
+  const auto heading = [&] {
+    return companion_with()
+        .command(Actor::Chef, ALL_AI, NO_INPUT, view)
+        .movement.direction;
+  };
+  EXPECT_EQ(heading(), Direction::Right);
+  view.exploration.sources.front().remaining = 0;
+  EXPECT_EQ(heading(), Direction::Left);
+}
+
+TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
+  Game game({floor_of(5),
+             {.id = DOOR,
+              .kind = ObjectKind::Entrance,
+              .area = {.x = 2},
+              .exposed_at = WorldThreshold{.elapsed = 1h}},
+             ingredient_source(SOURCE, 4)},
+            tuning({{.id = SOURCE}}), kitchen());
+  ASSERT_EQ(game.view().world.objects.at(1).state, ObjectState::Dormant);
+  for (int tick = 0; tick < 5; ++tick) {
+    game.step(ALL_AI);
+  }
+  EXPECT_EQ(game.exploration.snapshot().sources.front().remaining, 0U);
+}
+
+TEST(Companion, RoutesDoNotWrapAroundTheEndsOfTheGrid) {
+  constexpr auto LOWEST = std::numeric_limits<std::int32_t>::min();
+  constexpr auto HIGHEST = std::numeric_limits<std::int32_t>::max();
+  const auto companion = companion_with();
+  const auto stranded = [&](GridPosition position, WorldArea next_floor,
+                            WorldArea source) {
+    auto view = city_view(position);
+    view.world.objects.front().area = {.x = position.x, .y = position.y};
+    auto floor = object_of(ObjectId{2}, ObjectKind::Terrain, 0);
+    floor.area = next_floor;
+    floor.traversable = true;
+    view.world.objects.push_back(floor);
+    add_source(view, SOURCE, 0);
+    view.world.objects.back().area = source;
+    return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).action ==
+           Action{ReturnToBase{}};
+  };
+  ASSERT_FALSE(stranded({.x = 0}, {.x = 1}, {.x = 2}));
+  EXPECT_TRUE(stranded({.x = HIGHEST}, {.x = LOWEST}, {.x = LOWEST + 1}));
+  EXPECT_TRUE(stranded({.x = LOWEST}, {.x = HIGHEST}, {.x = HIGHEST - 1}));
+  EXPECT_TRUE(stranded({.y = HIGHEST}, {.y = LOWEST}, {.y = LOWEST + 1}));
+  EXPECT_TRUE(stranded({.y = LOWEST}, {.y = HIGHEST}, {.y = HIGHEST - 1}));
+}
+
 TEST(Companion, SkipsDepletedAndUnavailableSourcesForOneItCanUse) {
   auto view = city_view({.x = 5});
   add_source(view, SOURCE, 3);
@@ -338,7 +410,7 @@ TEST(Companion, ReturnsToBaseWhenNothingInTheCityIsReachable) {
 
 TEST(Companion, EntersOnlyWithTimeASafeEntryAndSomethingToDo) {
   auto view = base_view();
-  add_source(view, SOURCE, 3);
+  add_source(view, SOURCE, 1);
   ASSERT_EQ(ai_action(view, Actor::Chef), Action{Enter{}});
   auto no_time = view;
   no_time.progression.remaining_exploration = 0us;
