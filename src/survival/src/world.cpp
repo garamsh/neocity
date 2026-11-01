@@ -46,7 +46,8 @@ World::World(const std::vector<ObjectDefinition> &definitions) {
         !valid_threshold(definition.exposed_at) ||
         !valid_threshold(definition.destroyed_after) ||
         (definition.repair_with && !is_passage(definition.kind)) ||
-        (definition.ingredient.has_value() !=
+        (definition.ingredient && definition.tool) ||
+        ((definition.ingredient || definition.tool) !=
          (definition.kind == ObjectKind::MaterialSource)) ||
         (definition.supported_by &&
          definition.kind != ObjectKind::MaterialSource)) {
@@ -133,8 +134,10 @@ WorldSnapshot World::snapshot() const {
          .state = object.state,
          .traversable = intact && (is_passage(definition.kind) ||
                                    definition.kind == ObjectKind::Terrain),
-         .material_available = intact && supported && definition.ingredient,
+         .material_available =
+             intact && supported && (definition.ingredient || definition.tool),
          .ingredient = definition.ingredient,
+         .tool = definition.tool,
          .repair_with = definition.repair_with});
   }
   return result;

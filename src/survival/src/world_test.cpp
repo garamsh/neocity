@@ -284,5 +284,38 @@ TEST(WorldIntegration,
   EXPECT_FALSE(object(world.snapshot(), NPC_SOURCE).material_available);
 }
 
+TEST(World, AMaterialSourceSuppliesAToolWithTheIngredientSupplyRules) {
+  constexpr ObjectId SHOP{1};
+  constexpr ObjectId CRATE{2};
+  World world({{.id = SHOP,
+                .kind = ObjectKind::Building,
+                .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
+               {.id = CRATE,
+                .kind = ObjectKind::MaterialSource,
+                .tool = WRENCH,
+                .supported_by = SHOP}});
+  EXPECT_TRUE(object(world.snapshot(), CRATE).material_available);
+  EXPECT_EQ(object(world.snapshot(), CRATE).tool, WRENCH);
+  EXPECT_EQ(object(world.snapshot(), CRATE).ingredient, std::nullopt);
+  ASSERT_EQ(world.update({.elapsed = 1s, .acid = AcidLevel{1}}),
+            WorldUpdateResult::Applied);
+  EXPECT_FALSE(object(world.snapshot(), CRATE).material_available);
+}
+
+TEST(World, RejectsASourceWithBothOrNeitherItemAndAToolOutsideASource) {
+  const ObjectDefinition valid{
+      .id = ObjectId{1}, .kind = ObjectKind::MaterialSource, .tool = WRENCH};
+  EXPECT_NO_THROW(World({valid}));
+  auto both = valid;
+  both.ingredient = IngredientId{1};
+  EXPECT_THROW(World({both}), std::invalid_argument);
+  auto neither = valid;
+  neither.tool = std::nullopt;
+  EXPECT_THROW(World({neither}), std::invalid_argument);
+  auto terrain = valid;
+  terrain.kind = ObjectKind::Terrain;
+  EXPECT_THROW(World({terrain}), std::invalid_argument);
+}
+
 } // namespace
 } // namespace neocity::survival

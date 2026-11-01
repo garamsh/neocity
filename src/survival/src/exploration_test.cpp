@@ -51,7 +51,7 @@ TEST(Exploration, BothRolesMoveIdenticallyAndShareOneClock) {
   EXPECT_EQ(exploration.snapshot().chef, exploration.snapshot().appraiser);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4800ms);
   EXPECT_EQ(world.snapshot().progression.elapsed, 200ms);
-  EXPECT_EQ(simulation.snapshot().acid, 0U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{});
 }
 
 TEST(Exploration,
@@ -371,7 +371,7 @@ TEST(Exploration,
   EXPECT_EQ(exploration.snapshot().chef.position, BASE);
   EXPECT_EQ(world.snapshot().objects.front().state, ObjectState::Destroyed);
   EXPECT_EQ(world.snapshot().peak_acid, (AcidLevel{2}));
-  EXPECT_EQ(simulation.snapshot().acid, 0U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{});
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::NotExploring);
   const auto before = simulation.snapshot();
   ASSERT_EQ(exploration.advance(1s, IDLE, {}), Result::Applied);
@@ -422,6 +422,154 @@ TEST(Exploration,
   config.entry = BASE;
   EXPECT_THROW(Exploration(simulation, world, config), std::invalid_argument);
   EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
+}
+
+constexpr ObjectId TOOL_SOURCE{30};
+constexpr ObjectId LADDER{31};
+constexpr ToolId WRENCH{5};
+constexpr ToolId HAMMER{6};
+
+/// The ladder at x = 3 breaks at acid 1 and takes a wrench; the crate at x = 1
+/// holds two wrenches.
+std::vector<ObjectDefinition> toolbox_city() {
+  auto objects = city();
+  objects.push_back({.id = TOOL_SOURCE,
+                     .kind = ObjectKind::MaterialSource,
+                     .area = {.x = 1},
+                     .tool = WRENCH});
+  objects.push_back({.id = LADDER,
+                     .kind = ObjectKind::Ladder,
+                     .area = {.x = 3},
+                     .destroyed_after = WorldThreshold{.acid = AcidLevel{1}},
+                     .repair_with = WRENCH});
+  return objects;
+}
+
+ExplorationConfig toolbox_tuning() {
+  auto config = tuning();
+  config.sources.push_back({.id = TOOL_SOURCE, .remaining = 2});
+  return config;
+}
+
+TEST(Exploration, BothRolesCollectToolsWithoutTouchingIngredients) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(toolbox_city());
+  Exploration exploration(simulation, world, toolbox_tuning());
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Appraiser, TOOL_SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Appraiser, TOOL_SOURCE),
+            CollectionResult::Depleted);
+  EXPECT_EQ(simulation.snapshot().chef.tools, (std::vector<ToolId>{WRENCH}));
+  EXPECT_EQ(simulation.snapshot().appraiser.tools,
+            (std::vector<ToolId>{WRENCH}));
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+  EXPECT_TRUE(simulation.snapshot().appraiser.inventory.empty());
+}
+
+TEST(Exploration, ToolCollectionChecksDistanceAndSupply) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  auto objects = toolbox_city();
+  objects.at(2).destroyed_after = WorldThreshold{.acid = AcidLevel{1}};
+  objects.at(2).area = {.x = 2};
+  World world(objects);
+  Exploration exploration(simulation, world, toolbox_tuning());
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
+            CollectionResult::OutOfRange);
+  ASSERT_EQ(exploration.advance(100ms, WALK, {}), Result::Applied);
+  ASSERT_EQ(exploration.advance({}, IDLE, AcidLevel{1}), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
+            CollectionResult::Unavailable);
+  EXPECT_TRUE(simulation.snapshot().chef.tools.empty());
+  EXPECT_EQ(exploration.snapshot().sources.at(1).remaining, 2U);
+}
+
+TEST(Exploration, ToolsSurviveAFallAndAnExhaustionAndStockStaysSpent) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(toolbox_city());
+  Exploration exploration(simulation, world, toolbox_tuning());
+  const std::array<ExplorationInput, 2> up{
+      ExplorationInput{.direction = Direction::Up}, {}};
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.advance(100ms, up, {}), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.tools, (std::vector<ToolId>{WRENCH}));
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(exploration.damage(Actor::Chef), Result::Applied);
+  }
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.tools, (std::vector<ToolId>{WRENCH}));
+  EXPECT_EQ(exploration.snapshot().sources.at(1).remaining, 1U);
+}
+
+TEST(Exploration, RepairNeedsTheCorrectToolCarriedByThatActorAndKeepsIt) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  auto objects = toolbox_city();
+  objects.at(2).area = {.x = 0, .y = 1};
+  objects.push_back({.id = ObjectId{32},
+                     .kind = ObjectKind::MaterialSource,
+                     .area = {.x = 0, .y = 1},
+                     .tool = HAMMER});
+  World world(objects);
+  auto config = tuning();
+  config.collection_distance = 3;
+  config.sources.push_back({.id = TOOL_SOURCE});
+  config.sources.push_back({.id = ObjectId{32}});
+  Exploration exploration(simulation, world, config);
+  const auto ladder_state = [&] {
+    const auto snapshot = world.snapshot();
+    return std::ranges::find(snapshot.objects, LADDER, &ObjectSnapshot::id)
+        ->state;
+  };
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(exploration.advance({}, IDLE, AcidLevel{1}), Result::Applied);
+  ASSERT_EQ(ladder_state(), ObjectState::Destroyed);
+
+  EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, WRENCH),
+            RepairResult::ToolNotCarried);
+  ASSERT_EQ(exploration.collect(Actor::Appraiser, TOOL_SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, WRENCH),
+            RepairResult::ToolNotCarried);
+  ASSERT_EQ(exploration.collect(Actor::Chef, ObjectId{32}),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, HAMMER),
+            RepairResult::WrongTool);
+  EXPECT_EQ(ladder_state(), ObjectState::Destroyed);
+
+  EXPECT_EQ(exploration.repair(Actor::Appraiser, LADDER, WRENCH),
+            RepairResult::Applied);
+  EXPECT_EQ(ladder_state(), ObjectState::Intact);
+  EXPECT_EQ(simulation.snapshot().appraiser.tools,
+            (std::vector<ToolId>{WRENCH}));
+}
+
+TEST(Exploration, RepairIsRefusedFromBaseOutOfRangeAndForUnknownObjects) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(toolbox_city());
+  Exploration exploration(simulation, world, toolbox_tuning());
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.advance({}, IDLE, AcidLevel{1}), Result::Applied);
+  EXPECT_EQ(exploration.repair(Actor::Chef, ObjectId{99}, WRENCH),
+            RepairResult::UnknownObject);
+  EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, WRENCH),
+            RepairResult::OutOfRange);
+  EXPECT_EQ(exploration.repair(Actor::Appraiser, LADDER, WRENCH),
+            RepairResult::NotExploring);
+  ASSERT_EQ(exploration.advance(200ms, WALK, AcidLevel{1}), Result::Applied);
+  ASSERT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+  EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, WRENCH),
+            RepairResult::Applied);
 }
 
 } // namespace

@@ -28,6 +28,16 @@ bool carried(const Snapshot &snapshot, IngredientId ingredient) {
              snapshot.appraiser.inventory.end();
 }
 
+std::uint32_t owner_exhaustions(const Snapshot &snapshot, WorkshopTool tool) {
+  switch (tool) {
+  case WorkshopTool::Magnifier:
+    return snapshot.appraiser.exhaustions;
+  case WorkshopTool::Spatula:
+    return snapshot.chef.exhaustions;
+  }
+  std::abort();
+}
+
 MonsterReaction react(const Recipe &recipe, std::uint64_t score,
                       std::uint32_t satisfying_score) {
   if (recipe.disliked) {
@@ -37,8 +47,7 @@ MonsterReaction react(const Recipe &recipe, std::uint64_t score,
                                    : MonsterReaction::Unsatisfied;
 }
 
-std::uint32_t acid_rise(MonsterReaction reaction,
-                        const WorkshopConfig &config) {
+AcidLevel acid_rise(MonsterReaction reaction, const WorkshopConfig &config) {
   switch (reaction) {
   case MonsterReaction::Disliked:
     return config.disliked_acid_rise;
@@ -46,7 +55,7 @@ std::uint32_t acid_rise(MonsterReaction reaction,
     return config.unsatisfied_acid_rise;
   case MonsterReaction::Satisfied:
   case MonsterReaction::Unfed:
-    return 0;
+    return {};
   }
   std::abort();
 }
@@ -56,6 +65,9 @@ std::uint32_t acid_rise(MonsterReaction reaction,
 Workshop::Workshop(Simulation &progression, WorkshopConfig settings)
     : simulation(progression), config(std::move(settings)),
       generator(progression.snapshot().seed) {
+  if (config.magnifier == config.spatula) {
+    throw std::invalid_argument("base tools require distinct identities");
+  }
   std::vector<FoodId> foods;
   for (const auto &recipe : config.recipes) {
     if (recipe.ingredients.empty() ||
@@ -81,7 +93,7 @@ WorkshopResult Workshop::appraise(Actor actor, IngredientId ingredient) {
   if (!carried(simulation.get().snapshot(), ingredient)) {
     return WorkshopResult::NotCarried;
   }
-  if (!attempt(state.magnifier)) {
+  if (!attempt(condition(WorkshopTool::Magnifier))) {
     return WorkshopResult::Failed;
   }
   state.identified.push_back(ingredient);
@@ -110,7 +122,7 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
   if (simulation.get().consume(recipe->ingredients) != Result::Applied) {
     return WorkshopResult::NotCarried;
   }
-  if (!attempt(state.spatula)) {
+  if (!attempt(condition(WorkshopTool::Spatula))) {
     return WorkshopResult::Failed;
   }
   state.foods.push_back(food);
@@ -147,8 +159,8 @@ WorkshopResult Workshop::feed(FoodId food) {
   state.foods.erase(stored);
   state.eaten_foods.push_back(food);
   state.eaten_ingredients.insert(state.eaten_ingredients.end(),
-                                 recipe.ingredients.begin(),
-                                 recipe.ingredients.end());
+                                 new_ingredients.begin(),
+                                 new_ingredients.end());
   state.last_day = {.completed_day = day,
                     .reaction = reaction,
                     .score = score,
@@ -156,7 +168,7 @@ WorkshopResult Workshop::feed(FoodId food) {
   return WorkshopResult::Applied;
 }
 
-WorkshopResult Workshop::end_day_unfed(std::uint32_t acid_penalty) {
+WorkshopResult Workshop::end_day_unfed(AcidLevel acid_penalty) {
   const auto day = simulation.get().snapshot().day;
   if (simulation.get().finish_day(acid_penalty) != Result::Applied) {
     return WorkshopResult::NotInWorkshop;
@@ -176,11 +188,26 @@ WorkshopResult Workshop::replace_tool(WorkshopTool tool) {
   if (!in_workshop()) {
     return WorkshopResult::NotInWorkshop;
   }
+  if (condition(tool) == ToolState::Intact) {
+    return WorkshopResult::ToolIntact;
+  }
+  const auto replacement =
+      tool == WorkshopTool::Magnifier ? config.magnifier : config.spatula;
+  if (simulation.get().consume_tool(replacement) != Result::Applied) {
+    return WorkshopResult::NotCarried;
+  }
   tool_state(tool) = ToolState::Intact;
+  settled_exhaustions(tool) =
+      owner_exhaustions(simulation.get().snapshot(), tool);
   return WorkshopResult::Applied;
 }
 
-WorkshopSnapshot Workshop::snapshot() const { return state; }
+WorkshopSnapshot Workshop::snapshot() const {
+  auto result = state;
+  result.magnifier = condition(WorkshopTool::Magnifier);
+  result.spatula = condition(WorkshopTool::Spatula);
+  return result;
+}
 
 ToolState &Workshop::tool_state(WorkshopTool tool) {
   switch (tool) {
@@ -190,6 +217,27 @@ ToolState &Workshop::tool_state(WorkshopTool tool) {
     return state.spatula;
   }
   std::abort();
+}
+
+std::uint32_t &Workshop::settled_exhaustions(WorkshopTool tool) {
+  switch (tool) {
+  case WorkshopTool::Magnifier:
+    return magnifier_exhaustions;
+  case WorkshopTool::Spatula:
+    return spatula_exhaustions;
+  }
+  std::abort();
+}
+
+// Derived from the count so no exhaustion path can miss a tool.
+ToolState Workshop::condition(WorkshopTool tool) const {
+  const auto explicit_state =
+      tool == WorkshopTool::Magnifier ? state.magnifier : state.spatula;
+  const auto settled = tool == WorkshopTool::Magnifier ? magnifier_exhaustions
+                                                       : spatula_exhaustions;
+  return owner_exhaustions(simulation.get().snapshot(), tool) > settled
+             ? ToolState::Damaged
+             : explicit_state;
 }
 
 bool Workshop::in_workshop() const {
