@@ -188,7 +188,7 @@ void SurvivalRun::advance(double delta,
     }
     held.at(index) = movement;
   }
-  while (accumulated >= STEP_SECONDS) {
+  while (accumulated >= STEP_SECONDS && !escaped()) {
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
       if (held.at(index).direction != survival::Direction::Idle) {
@@ -198,6 +198,10 @@ void SurvivalRun::advance(double delta,
     step();
     pending = {};
   }
+}
+
+bool SurvivalRun::escaped() const {
+  return features.simulation.get().snapshot().phase == survival::Phase::Escaped;
 }
 
 survival::ControlMap SurvivalRun::control() const { return controllers; }
@@ -225,12 +229,18 @@ void SurvivalRun::step() {
       walked_home.at(index) =
           std::holds_alternative<survival::ReturnToBase>(*command.action);
       run_action(actor, *command.action, progression.day);
+      // The roll follows the finishing command at once, before the partner's
+      // command can set out and take the party out of the workshop.
+      if (features.escape.get().check() == survival::EscapeResult::Escaped) {
+        return;
+      }
     }
   }
   if (features.exploration.get().advance(STEP, movement,
                                          simulation.snapshot().acid) !=
       survival::Result::Applied) {
-    std::abort(); // unreachable: a 100ms step cannot overflow world time
+    // unreachable: no step runs after escape, and 100ms cannot overflow time
+    std::abort();
   }
   hurt_in_hazards(positions);
   report_returns(progression, walked_home);
@@ -372,6 +382,7 @@ godot::Dictionary SurvivalRun::status() const {
   status.set("eaten",
              static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
   status.set("rolls", view.workshop.rolls);
+  status.set("escape_rolls", features.escape.get().snapshot().rolls);
   if (view.workshop.last_day) {
     status.set("reaction", reaction_name(view.workshop.last_day->reaction));
     status.set("score", view.workshop.last_day->score);

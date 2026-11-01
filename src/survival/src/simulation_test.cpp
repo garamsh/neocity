@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <limits>
@@ -363,6 +364,50 @@ TEST(Survival, OnlyRunningOutOfHealthCountsAsAnExhaustion) {
   }
   EXPECT_EQ(simulation.snapshot().chef.exhaustions, 1U);
   EXPECT_EQ(simulation.snapshot().appraiser.exhaustions, 0U);
+}
+
+TEST(Survival, EscapeIsRefusedUntilBothActorsAreBackInTheWorkshop) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 3});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  const auto exploring = simulation.snapshot();
+  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), exploring);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.escape(), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Escaped);
+}
+
+TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
+  constexpr IngredientId RICE{5};
+  constexpr ToolId WRENCH{6};
+  const std::array ingredients{RICE};
+  Simulation simulation({.exploration_budget = 10s, .seed = 4});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Chef, WRENCH), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  // The control: each refused command applies here, one phase earlier.
+  Simulation control = simulation;
+  EXPECT_EQ(control.consume(ingredients), Result::Applied);
+  EXPECT_EQ(control.consume_tool(WRENCH), Result::Applied);
+  EXPECT_EQ(control.finish_day(AcidLevel{1}), Result::Applied);
+  EXPECT_EQ(control.enter(Actor::Chef), Result::Applied);
+
+  ASSERT_EQ(simulation.escape(), Result::Applied);
+  const auto escaped = simulation.snapshot();
+  ASSERT_EQ(escaped.phase, Phase::Escaped);
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::Escaped);
+  EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::Escaped);
+  EXPECT_EQ(simulation.return_to_base(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(simulation.advance(1s), Result::Applied);
+  EXPECT_EQ(simulation.damage(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::NotExploring);
+  EXPECT_EQ(simulation.collect_tool(Actor::Chef, WRENCH), Result::NotExploring);
+  EXPECT_EQ(simulation.consume(ingredients), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.consume_tool(WRENCH), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), escaped);
 }
 
 } // namespace

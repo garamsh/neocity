@@ -107,7 +107,8 @@ public:
   [[nodiscard]] WorkshopResult feed(FoodId food);
   /// Starts the next day with no dish at the caller's acid penalty.
   [[nodiscard]] WorkshopResult end_day_unfed(AcidLevel acid_penalty);
-  /// Applies in any phase: damage events can arrive during exploration.
+  /// Applies in any phase but the escaped one: damage events can arrive
+  /// during exploration.
   void damage_tool(WorkshopTool tool);
   /// Spends one carried tool of the configured identity to restore a damaged
   /// base tool, including exhaustion damage.

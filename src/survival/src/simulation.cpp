@@ -30,6 +30,9 @@ Simulation::Simulation(Config config)
 }
 
 Result Simulation::enter(Actor actor) {
+  if (world.phase == Phase::Escaped) {
+    return Result::Escaped;
+  }
   if (world.remaining_exploration == std::chrono::microseconds::zero()) {
     return Result::NoExplorationTime;
   }
@@ -130,6 +133,14 @@ Result Simulation::finish_day(AcidLevel acid_rise) {
                std::numeric_limits<std::uint32_t>::max() - world.acid.value);
   ++world.day;
   world.remaining_exploration = daily_budget;
+  return Result::Applied;
+}
+
+Result Simulation::escape() {
+  if (world.phase != Phase::Workshop) {
+    return Result::NotInWorkshop;
+  }
+  world.phase = Phase::Escaped;
   return Result::Applied;
 }
 

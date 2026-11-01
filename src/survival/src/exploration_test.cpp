@@ -572,5 +572,37 @@ TEST(Exploration, RepairIsRefusedFromBaseOutOfRangeAndForUnknownObjects) {
             RepairResult::Applied);
 }
 
+TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
+  constexpr ObjectId WEAK{30};
+  constexpr AcidLevel ACID{10};
+  auto objects = city();
+  objects.push_back({.id = WEAK,
+                     .kind = ObjectKind::Npc,
+                     .area = {.x = 6},
+                     .destroyed_after = WorldThreshold{.acid = ACID}});
+  const auto state_of_weak = [](const World &world) {
+    return world.snapshot().objects.back().state;
+  };
+
+  // The control: the same call in a run that stayed destroys the object.
+  Simulation stayed({.exploration_budget = 5s, .seed = 1});
+  World stayed_world(objects);
+  Exploration stayed_exploration(stayed, stayed_world, tuning());
+  ASSERT_EQ(stayed.finish_day(ACID), Result::Applied);
+  ASSERT_EQ(state_of_weak(stayed_world), ObjectState::Intact);
+  EXPECT_EQ(stayed_exploration.advance(1s, IDLE, ACID), Result::Applied);
+  EXPECT_EQ(state_of_weak(stayed_world), ObjectState::Destroyed);
+
+  Simulation escaped({.exploration_budget = 5s, .seed = 1});
+  World escaped_world(objects);
+  Exploration escaped_exploration(escaped, escaped_world, tuning());
+  ASSERT_EQ(escaped.finish_day(ACID), Result::Applied);
+  ASSERT_EQ(escaped.escape(), Result::Applied);
+  const auto before = escaped_world.snapshot();
+  EXPECT_EQ(escaped_exploration.advance(1s, IDLE, ACID), Result::Escaped);
+  EXPECT_EQ(escaped_world.snapshot(), before);
+  EXPECT_EQ(state_of_weak(escaped_world), ObjectState::Intact);
+}
+
 } // namespace
 } // namespace neocity::survival

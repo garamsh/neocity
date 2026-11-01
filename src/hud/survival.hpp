@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/string.hpp>
 
 #include <array>
+#include <cstdint>
 #include <functional>
 #include <optional>
 #include <variant>
@@ -64,6 +65,9 @@ struct SurvivalFrame {
   std::vector<Event> events;
 };
 
+/// The two authored moments of a run.
+enum class Cinematic : std::uint8_t { Intro, Ending };
+
 /// Draws the choice of who plays which actor.
 void paint_survival_setup(godot::Node2D &canvas,
                           const rendering::AscentDrawing &drawing);
@@ -71,6 +75,12 @@ void paint_survival_setup(godot::Node2D &canvas,
 void paint_survival(godot::Node2D &canvas,
                     const rendering::AscentDrawing &drawing,
                     const SurvivalFrame &frame);
+/// Draws the dark stage under a cinematic scene or, with `fallback`, the
+/// placeholder card that stands in when no scene can play.
+void paint_cinematic(godot::Node2D &canvas,
+                     const rendering::AscentDrawing &drawing,
+                     Cinematic cinematic, bool fallback,
+                     const SurvivalFrame &frame);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The sentence the event log shows for `event`.

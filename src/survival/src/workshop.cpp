@@ -181,6 +181,9 @@ WorkshopResult Workshop::end_day_unfed(AcidLevel acid_penalty) {
 }
 
 void Workshop::damage_tool(WorkshopTool tool) {
+  if (simulation.get().snapshot().phase == Phase::Escaped) {
+    return;
+  }
   tool_state(tool) = ToolState::Damaged;
 }
 

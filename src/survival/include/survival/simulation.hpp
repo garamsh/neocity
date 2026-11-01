@@ -74,7 +74,8 @@ enum class Result : std::uint8_t {
   InvalidElapsed,
   NotInWorkshop,
   MissingIngredients,
-  MissingTool
+  MissingTool,
+  Escaped
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
@@ -106,6 +107,9 @@ public:
   /// Raises acid, saturating at its limit, and starts the next day with a full
   /// exploration budget.
   [[nodiscard]] Result finish_day(AcidLevel acid_rise);
+  /// Ends the run from the workshop; every later command leaves the snapshot
+  /// unchanged.
+  [[nodiscard]] Result escape();
   /// Returns the complete current state, including the supplied replay seed.
   [[nodiscard]] Snapshot snapshot() const;
 
