@@ -231,9 +231,11 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (stock->remaining == 0) {
     return CollectionResult::Depleted;
   }
-  require_applied(object->ingredient
-                      ? simulation.get().collect(actor, *object->ingredient)
-                      : simulation.get().collect_tool(actor, *object->tool));
+  if (object->ingredient) {
+    require_applied(simulation.get().collect(actor, *object->ingredient));
+  } else if (object->tool) {
+    require_applied(simulation.get().collect_tool(actor, *object->tool));
+  }
   --stock->remaining;
   return CollectionResult::Applied;
 }

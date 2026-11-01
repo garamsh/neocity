@@ -515,7 +515,7 @@ TEST(Workshop, ReplacingAnIntactToolIsRefusedAndKeepsTheCarriedTool) {
 
 TEST(Workshop, ExhaustionDamagesOnlyThatActorsBaseTool) {
   Simulation simulation({.exploration_budget = 10s, .seed = 1});
-  Workshop workshop(simulation, balance());
+  const Workshop workshop(simulation, balance());
   const auto exhaust = [&](Actor actor) {
     ASSERT_EQ(simulation.enter(actor), Result::Applied);
     for (int hit = 0; hit < 3; ++hit) {
@@ -542,7 +542,7 @@ TEST(Workshop, ExhaustionLowersTheNextAttemptToTheDamagedRate) {
 
 TEST(Workshop, HarmlessReturnsLeaveToolsIntact) {
   Simulation simulation({.exploration_budget = 10s, .seed = 1});
-  Workshop workshop(simulation, balance());
+  const Workshop workshop(simulation, balance());
   ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(simulation.damage(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
