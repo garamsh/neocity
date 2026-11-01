@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 namespace neocity::survival {
@@ -15,7 +16,7 @@ enum class Phase : std::uint8_t { Workshop, Exploration, Escaped };
 /// Exhaustion relocates one actor without ending the other actor's exploration.
 enum class Location : std::uint8_t { Base, City };
 
-/// Ingredient identity shared with the future collection and workshop rules.
+/// Ingredient identity shared with the collection and workshop rules.
 struct IngredientId {
   std::uint32_t value = 0;
   friend bool operator==(const IngredientId &, const IngredientId &) = default;
@@ -30,8 +31,8 @@ struct ActorSnapshot {
                          const ActorSnapshot &) = default;
 };
 
-/// Caller-supplied exploration budget and seed, with no production balance
-/// default.
+/// Caller-supplied daily exploration budget and seed, with no production
+/// balance default.
 struct Config {
   std::chrono::microseconds exploration_budget;
   std::uint32_t seed;
@@ -55,7 +56,9 @@ enum class Result : std::uint8_t {
   Applied,
   NotExploring,
   NoExplorationTime,
-  InvalidElapsed
+  InvalidElapsed,
+  NotInWorkshop,
+  MissingIngredients
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
@@ -77,6 +80,12 @@ public:
   /// Records collection authorized by exploration rules; no world lookup occurs
   /// here.
   [[nodiscard]] Result collect(Actor actor, IngredientId ingredient);
+  /// Removes every listed ingredient from the two inventories, the chef's
+  /// first, or removes none.
+  [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
+  /// Raises acid, saturating at its limit, and starts the next day with a full
+  /// exploration budget.
+  [[nodiscard]] Result finish_day(std::uint32_t acid_rise);
   /// Returns the complete current state, including the supplied replay seed.
   [[nodiscard]] Snapshot snapshot() const;
 
@@ -85,6 +94,7 @@ private:
   void relocate(ActorSnapshot &actor);
 
   Snapshot world;
+  std::chrono::microseconds daily_budget;
 };
 
 } // namespace neocity::survival

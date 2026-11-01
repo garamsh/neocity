@@ -4,13 +4,13 @@
 
 ## 현재 결정
 
-- `src/survival/`의 `survival` 정적 라이브러리는 C++ 표준 라이브러리에만 의존한다. 기존 `gameplay`, 실험, Godot와 연결하지 않는다. 공개 경계는 [`include/survival/simulation.hpp`](../../src/survival/include/survival/simulation.hpp), [`include/survival/world.hpp`](../../src/survival/include/survival/world.hpp), [`include/survival/exploration.hpp`](../../src/survival/include/survival/exploration.hpp)이고 내부 구현과 단위 테스트는 같은 라이브러리의 `src/`에 둔다.
-- [`Simulation`](../../src/survival/include/survival/simulation.hpp)은 두 인물의 위치·탐색 체력·소지품, 일수, 단계, 공용 탐색 잔여 시간, 위산, 실행 시드를 소유한다. 외부에는 값 스냅샷과 명시적인 입장·귀환·피해·수집·시간 진행 명령을 제공한다. 거점은 시간제한 없는 작업 단계에 포함한다.
+- `src/survival/`의 `survival` 정적 라이브러리는 C++ 표준 라이브러리에만 의존한다. 기존 `gameplay`, 실험, Godot와 연결하지 않는다. 공개 경계는 [`include/survival/simulation.hpp`](../../src/survival/include/survival/simulation.hpp), [`include/survival/world.hpp`](../../src/survival/include/survival/world.hpp), [`include/survival/exploration.hpp`](../../src/survival/include/survival/exploration.hpp), [`include/survival/workshop.hpp`](../../src/survival/include/survival/workshop.hpp)이고 내부 구현과 단위 테스트는 같은 라이브러리의 `src/`에 둔다.
+- [`Simulation`](../../src/survival/include/survival/simulation.hpp)은 두 인물의 위치·탐색 체력·소지품, 일수, 단계, 공용 탐색 잔여 시간, 위산, 실행 시드를 소유한다. 외부에는 값 스냅샷과 명시적인 입장·귀환·피해·수집·시간 진행·재료 소비·하루 종료 명령을 제공한다. 거점은 시간제한 없는 작업 단계에 포함한다.
 - 한 인물이라도 탐색 중일 때만 탐색 시간이 흐른다. 만료하면 둘 다 거점으로 돌아오고 작업 단계로 바뀐다. 인물 한 명이 체력을 소진하면 그 인물만 귀환하며, 일수·소지품·공용 잔여 시간·위산을 보존한다. 자발적 귀환·체력 소진·시간 만료 모두 귀환한 인물의 체력을 3칸으로 회복한다. 둘 다 거점에 있으면 작업 단계로 전환해 시간을 멈추는 것은 현재 기반의 임시 경계이며 최종 거점 시간 규칙을 확정하지 않는다.
 - 남은 시간이 있으면 회복된 체력으로 재입장할 수 있다. 거점 귀환 시 3칸 회복은 [사용자 결정 기록](https://github.com/garamsh/neocity/issues/23#issuecomment-6544525723)에 따른다.
 - 호출자가 양수 탐색 예산과 시드를 제공한다. 공통 `Simulation`에 직접 같은 명령 순서와 총 탐색 시간을 전달할 때의 진행 상태는 프레임 분할과 무관하다. 시간은 벽시계 대신 정수 마이크로초로 전달하며 음수 시간은 상태 변경 없이 거부한다. 이 보장은 월드 변화에 따른 탐색 귀환 시각까지 포함하지 않는다.
-- 현재 난수 소비는 없다. 시드는 스냅샷에 보존하는 실행 식별 입력이다. 일수는 첫날, 위산은 초기 상태로 유지된다. 탈출 단계는 공개 상태에 예약되어 있으나 전환 명령은 없다. 날짜 진행·난수 판정·요리·위산 상승식·Godot 실행부 연결·화면은 구현되지 않았다.
-- 테스트는 [`src/simulation_test.cpp`](../../src/survival/src/simulation_test.cpp), [`src/world_test.cpp`](../../src/survival/src/world_test.cpp), [`src/exploration_test.cpp`](../../src/survival/src/exploration_test.cpp)에 있으며 같은 `survival_test`로 등록한다. 월드·진행·탐색을 직접 함께 구성한 검사는 라이브러리 통합 테스트이며 실제 화면 연결을 검증하지 않는다. Godot 검사는 기존 게임을 계속 검증한다.
+- 시드는 스냅샷에 보존하는 실행 식별 입력이고 `Workshop`이 자체 난수를 초기화할 때 읽는다. `Simulation`은 난수를 소비하지 않는다. 탈출 단계는 공개 상태에 예약되어 있으나 전환 명령은 없다. 탈출 판정·최종 위산식·Godot 실행부 연결·화면은 구현되지 않았다.
+- 테스트는 [`src/simulation_test.cpp`](../../src/survival/src/simulation_test.cpp), [`src/world_test.cpp`](../../src/survival/src/world_test.cpp), [`src/exploration_test.cpp`](../../src/survival/src/exploration_test.cpp), [`src/workshop_test.cpp`](../../src/survival/src/workshop_test.cpp)에 있으며 같은 `survival_test`로 등록한다. 월드·진행·탐색·거점을 직접 함께 구성한 검사는 라이브러리 통합 테스트이며 실제 화면 연결을 검증하지 않는다. Godot 검사는 기존 게임을 계속 검증한다.
 
 ### 월드 상태
 
@@ -19,7 +19,7 @@
 - 진행 입력은 실행 전체의 누적 탐색 시간과 현재 위산이다. 누적 시간 역행은 입력 전체를 거부하고, 같은 입력은 상태를 다시 전이시키지 않는다. 위산 하락은 현재 값만 바꾸며 역사상 최고 위산과 파괴·노출 이력을 되돌리지 않는다. 거점 귀환·체력 회복 명령은 월드를 소유하거나 초기화하지 않는다.
 - 손상은 설정한 시간 또는 최고 위산 증가 임계 중 하나가 충족되면 발생한다. 처음에는 실행 시작을 기준으로 하며 미노출 상태에도 같은 누적 기준을 적용한다. 통로 수리 시 그 대상의 기준점만 현재 누적 시간·최고 위산으로 옮긴다. 같은 위험 입력은 수리를 취소하지 않고 추가 시간이나 새 최고 위산의 증가가 다시 임계에 도달하면 재파손한다. 이는 현재 최소 손상 모델이며 최종 부식·수리 밸런스가 아니다.
 - 노출은 설정한 누적 시간 또는 최고 위산 임계를 한 번 넘으면 유지된다. 호출자 설정으로 건물이 파괴되고 다른 건물·통로·재료원이 나타나는 사례를 검증한다. 파편 물리·건물 간 연쇄 붕괴나 실제 새 화면은 구현하지 않았다.
-- `Exploration`이 실제 소비한 공용 탐색 시간을 기존 월드 누적 시간에 한 번만 더한다. 호출자는 같은 프레임에 `Simulation`의 시간 진행이나 `World`의 누적 시간 갱신을 별도로 호출하지 않는다. 귀환해도 누적 시간이나 월드 인스턴스를 초기화하지 않는다. 현재 위산은 탐색 호출자가 별도로 제공한다. `Simulation`의 위산은 아직 0으로 고정되어 있으며 급식 결과와의 연결은 후속 범위다. #28은 기존 단일 조립 지점에서 이 구체 기능을 구성하고 입력·시간·위산을 전달한다.
+- `Exploration`이 실제 소비한 공용 탐색 시간을 기존 월드 누적 시간에 한 번만 더한다. 호출자는 같은 프레임에 `Simulation`의 시간 진행이나 `World`의 누적 시간 갱신을 별도로 호출하지 않는다. 귀환해도 누적 시간이나 월드 인스턴스를 초기화하지 않는다. 현재 위산은 탐색 호출자가 별도로 제공한다. `Simulation`의 위산이 실제 값이며 `Exploration.advance`가 이를 직접 읽지는 않는다. #28은 기존 단일 조립 지점에서 이 구체 기능을 구성하고 입력·시간과 `Simulation`의 위산을 전달한다.
 
 ### 탐색 동작
 
@@ -30,16 +30,43 @@
 - 자판기·NPC·상점·가방 표시는 모두 월드의 재료원 ID에 연결한다. 실재하는 재료원·접근 거리·공급 상태·남은 공유 재고를 확인한 뒤 재료 수집 명령을 적용한다. 소모한 재고는 귀환·재출발로 복구되지 않으며 도구를 재료로 표현하지 않는다.
 - 수동 귀환·추락·체력 소진·만료 때 상세 위치를 거점으로 맞춘다. 재출발은 지정된 도시 입구에서 시작하며 이전 부분 이동을 재사용하지 않는다. 수집 요청을 보관하지 않으므로 다음 출발에 이전 요청이 실행되지 않는다. 소지품·월드·공용 시간은 기존 진행 규칙대로 보존한다.
 
+### 거점 작업
+
+- `Workshop`은 외부에서 받은 `Simulation`을 소유하지 않는다. 역할 검사, 식별된 재료, 도구 상태, 보관 음식, 먹인 음식·재료 이력, 마지막 하루 결과, 자체 난수 상태를 소유한다. `Simulation`은 재료의 원자적 소비, 위산, 다음 날 전환, 탐색 예산 복구를 맡는다. 이 경계는 [PM 결정](https://github.com/garamsh/neocity/issues/26#issuecomment-6553559757)을 따른다.
+- 모든 거점 명령은 두 인물이 거점에 있는 작업 단계에서만 적용한다. 예외는 도구 손상으로, 탐색 중 사건도 전달할 수 있도록 단계를 가리지 않는다. 거점 명령은 체력·스태미나·탐색 시간을 사용하지 않고 시간제한이 없다.
+- 감정사만 감정하고 요리사만 조리한다. 급식과 미급식 종료는 역할을 가리지 않는다. 감정 결과는 성공/실패와 식별된 재료만 구분하며 실패가 오정보인지 실패 표시인지는 정하지 않는다.
+- 도구 정상 90%·손상 40%는 [사용자 결정](https://github.com/garamsh/neocity/issues/21#issuecomment-6526232827)이다. 도구 상태와 교체 명령만 제공하며 소지 검증·비용과 도구 획득은 #32, 손상 사건 연결은 호출자 범위다. 도구는 월드의 `ToolId`와 별개의 거점 상태다.
+- `Simulation`의 하루 종료는 위산을 올리고 다음 날로 넘기며 탐색 예산을 설정값으로 되돌린다. 위산은 저장 범위 끝에서 포화한다. 급식 또는 미급식 종료가 명령 하나로 하루를 끝내므로 하루 급식은 한 번이다. 월드·재고는 날짜로 초기화하지 않는다.
+- 마지막 하루 결과는 끝난 일수·괴물 반응·점수·위산 상승량이다. #28은 이 일수로 30일 이후 탈출 판정을 연결한다. 30일 경계의 포함 여부와 확률은 여기서 정하지 않는다.
+
+#### 난수
+
+- 소유자는 `Workshop`이다. 실행 시드로 생성할 때 한 번 초기화한 `std::mt19937` 하나를 감정과 조리가 공유한다.
+- 소비 순서는 명령 호출 순서다. 실제로 시도한 감정 또는 조리 한 번이 한 값을 소비하며 스냅샷의 `rolls`가 누적 소비 수를 보여 준다. 조리는 재료를 소비한 뒤 판정한다. 잘못된 역할·단계·재료 요청은 상태와 난수를 소비하지 않는다.
+- 판정값은 엔진 출력을 100으로 나눈 나머지이며 도구별 성공 백분율 미만이면 성공이다. 표준이 고정한 엔진 출력만 사용하고 구현마다 결과가 다른 표준 분포는 쓰지 않는다. `2^32`가 100의 배수가 아니라서 생기는 편향은 `2^32`분의 96 이하다.
+- 범용 난수 서비스는 없다. 탈출 난수의 소유와 스트림 분리는 #28 범위다. 같은 시드로 같은 엔진을 그대로 만들면 거점 판정과 같은 값이 나오므로 #28에서 분리한다.
+
+#### 임시 정책
+
+아래는 프로토타입을 플레이 가능하게 하는 임시값이며 사용자가 확정한 최종 밸런스가 아니다.
+
+- 레시피, 싫어하는 음식 표시, 새 음식·새 재료 점수, 만족 기준, 위산 상승량은 호출자가 제공하며 기본값이 없다.
+- 점수는 처음 먹는 음식 점수에 처음 먹는 재료 종류마다의 점수를 더한다. 싫어하는 음식은 점수와 무관하게 설정된 위산만큼 올린다. 기준 미달은 설정된 위산만큼 올리고 기준 이상은 위산을 올리지 않는다. 위산을 내리는 급식은 없다.
+- 급식 없이 하루 종료는 재료 부족으로 날짜가 막히지 않게 하는 [PM 임시 결정](https://github.com/garamsh/neocity/issues/26#issuecomment-6553559757)이다. 위산 불이익은 호출 입력이며 재료·음식을 만들지 않는다.
+- 조리에는 레시피의 모든 재료 식별이 필요하다. 식별은 재료 종류 단위이고 실행 내내 유지한다. 감정 실패 뒤 재시도는 제한하지 않는다. 이미 식별한 재료의 재감정은 거부한다.
+- 조리 실패는 재료를 소비하고 음식을 만들지 않는다. 음식은 먹일 때까지 보관되며 날짜로 상하지 않는다.
+- 거점에서 두 인물의 소지품은 합쳐서 사용하며 요리사 소지품부터 소비한다. 탐색 시간이 남아 있어도 작업 단계라면 하루를 끝낼 수 있고 남은 시간은 이월되지 않는다.
+
 ### 기능별 파일 소유 계획
 
-다음 표의 월드·탐색 파일은 구현됐으며 거점·AI 전용 후속 파일은 아직 존재하지 않는다. 이 계획은 책임과 최종 대상 경로를 정하며 #24~#29의 Worker 실행 배정을 대신하지 않는다. 각 배정에서 한 파일의 쓰기 소유자는 한 명이다.
+다음 표의 월드·탐색·거점 파일은 구현됐으며 AI 전용 후속 파일은 아직 존재하지 않는다. 이 계획은 책임과 최종 대상 경로를 정하며 #24~#29의 Worker 실행 배정을 대신하지 않는다. 각 배정에서 한 파일의 쓰기 소유자는 한 명이다.
 
 | 소유 작업 | 공개 경계 및 내부 구현 경로 | 읽기와 쓰기 방향 |
 |---|---|---|
 | 공통 진행 #23 및 후속 통합 담당 | `src/survival/include/survival/simulation.hpp`, `src/survival/src/simulation.cpp`, `src/survival/src/simulation_test.cpp`, `src/survival/CMakeLists.txt` | 공통 상태의 유일한 쓰기 소유자. 기능 결과를 명시적인 명령으로 반영한다. 공개 계약·빌드 등록 변경은 PM이 이 소유자에게 모아 배정한다. |
 | 탐색 #24 | `src/survival/include/survival/exploration.hpp`, `src/survival/src/exploration.cpp`, `src/survival/src/exploration_test.cpp` | 인물 입력과 진행·월드 스냅샷을 읽고 상세 이동·충돌·스태미나·재료원 재고·수집 검증을 소유한다. 기존 진행 명령과 월드 누적 시간 명령을 조정하고 화면에 값 스냅샷을 제공한다. 이 라운드의 빌드 등록과 문서 초안도 #24 소유다. |
 | 월드 변화 #25 | `src/survival/include/survival/world.hpp`, `src/survival/src/world.cpp`, `src/survival/src/world_test.cpp` | 누적 탐색 시간·현재 위산·수리 명령을 읽는다. NPC·지형·오브젝트와 통행·재료 공급 스냅샷을 소유하여 탐색에 제공한다. 일수별 초기화는 하지 않는다. 공통 상태를 직접 수정하지 않는다. |
-| 거점 #26 | `src/survival/include/survival/workshop.hpp`, `src/survival/src/workshop.cpp`, `src/survival/src/workshop_test.cpp` | 소지품과 감정·조리·급식 명령을 읽고 도구·조리 결과·섭취 이력·점수를 소유한다. 재료 소비·위산·다음 날 전환 결과를 공통 진행 담당에게 전달한다. 이 결과를 반영할 공통 명령 추가는 #26 시작 전에 PM이 별도 소유자로 확정한다. |
+| 거점 #26 | `src/survival/include/survival/workshop.hpp`, `src/survival/src/workshop.cpp`, `src/survival/src/workshop_test.cpp` | 소지품과 감정·조리·급식 명령을 읽고 도구·조리 결과·섭취 이력·점수·난수 상태를 소유한다. 재료 소비·위산·다음 날 전환은 `Simulation`의 공통 명령으로 반영한다. 이 라운드의 공통 진행 명령·빌드 등록·문서도 #26 소유다. |
 | 동료 AI #27 | `src/survival/include/survival/companion.hpp`, `src/survival/src/companion.cpp`, `src/survival/src/companion_test.cpp`, `src/input/survival.hpp`, `src/input/survival.cpp` | 두 인물의 입력 변환도 이 소유자가 맡는다. 탐색·월드·거점의 읽기 전용 스냅샷과 조작 인물을 입력받아 사람과 같은 기능 명령을 만든다. 진행 상태를 별도로 소유하거나 강제로 갱신하지 않는다. |
 | 화면 통합 #28 | `src/scene.cpp`, `src/scene.hpp`, `src/register_types.cpp`, `src/session/session.cpp`, `src/session/session.hpp`, `src/input/menu.cpp`, `src/input/menu.hpp`, `src/rendering/survival.cpp`, `src/rendering/survival.hpp`, `src/hud/survival.cpp`, `src/hud/survival.hpp`, `src/hud/menus.cpp`, `src/hud/menus.hpp`, `project/levels/monster-mouth-escape/survival.tscn`, `project/project.godot`, `project/tests/survival_timing.gd`, `project/e2e/survival.gd` 및 해당 `.uid`, 루트 `CMakeLists.txt`, `build_profile.json` | 기존 단일 조립 지점에서 각 구체 기능을 조립하고 입력·시간을 전달한다. 화면은 스냅샷을 읽으며 규칙을 재구현하지 않는다. #27의 두 인물 입력 변환을 사용하고 그 파일은 수정하지 않는다. `docs/architecture/session.md`·`presentation.md`·`survival.md`와 색인을 함께 갱신한다. 이 기존 경로는 #23에서 수정하지 않는다. |
 | 시작·엔딩 아트 #29 | `project/levels/monster-mouth-escape/cinematics/intro/`, `project/levels/monster-mouth-escape/cinematics/ending/` | 아트 Worker가 자산과 자체 장면을 소유한다. #28은 로딩·전환을 소유한다. 장면 공개 연결은 두 배정에서 합의하고 같은 파일에 쓰지 않는다. |
@@ -58,6 +85,7 @@
 ## 미정 사항
 
 - 두 인물이 모두 잠시 귀환했을 때와 실제 조리 중의 구분 및 거점 체류 중 탐색 시계의 최종 동작. 현재는 둘 다 거점이면 시간제한 없는 작업 단계로 취급한다.
-- 실제 탐색 예산, 위산 단위·상승식, 월드 손상·유입 임계와 수리 비용, 다음 날 전환, 최종 이동 물리와 기능별 후속 결과 타입. 테스트 입력은 밸런스 결정을 의미하지 않는다.
-- 30일 이후 매일 탈출 기회를 판정할 정확한 시점과 확률. 실제 난수 기능이 생길 때 공통 시드에서 재현되는 난수 상태와 소비 순서의 소유자를 정하고 검증한다.
+- 실제 탐색 예산, 위산 단위·최종 상승식과 하락 여부, 월드 손상·유입 임계와 수리 비용, 다음 날 시작 조건, 최종 이동 물리와 기능별 후속 결과 타입. 테스트 입력은 밸런스 결정을 의미하지 않는다.
+- 감정 실패가 오정보인지 실패 표시인지, 재시도 제한, 도구 손상 조건, 조리 실패의 최종 결과, 미급식 위산 불이익과 하루 급식 횟수.
+- 30일 이후 매일 탈출 기회를 판정할 정확한 시점과 확률, 탈출 난수의 소유와 소비 순서.
 - 네트워크 모델과 저장·복원 형식. 현재 스냅샷은 읽기 전용 값 전달이며 저장 파일·복원·네트워크 프로토콜은 아니다.
