@@ -179,11 +179,13 @@ std::vector<Goal> repair_goals(const GameView &view, Actor actor) {
   std::vector<Goal> goals;
   const auto &tools = state_of(view, actor).tools;
   for (const auto &object : view.world.objects) {
-    if (object.state == ObjectState::Destroyed && object.repair_with &&
-        std::ranges::find(tools, *object.repair_with) != tools.end()) {
-      goals.push_back(
-          {.area = object.area,
-           .action = Repair{.target = object.id, .tool = *object.repair_with}});
+    if (object.state != ObjectState::Destroyed || !object.repair_with) {
+      continue;
+    }
+    const auto tool = *object.repair_with;
+    if (std::ranges::find(tools, tool) != tools.end()) {
+      goals.push_back({.area = object.area,
+                       .action = Repair{.target = object.id, .tool = tool}});
     }
   }
   return goals;
@@ -444,9 +446,50 @@ ActorCommand decide(const CompanionConfig &config, Actor actor,
   std::abort();
 }
 
-template <typename... Handlers> struct Overloaded : Handlers... {
-  using Handlers::operator()...;
-};
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 Enter /*command*/) {
+  return exploration.enter(actor);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 ReturnToBase /*command*/) {
+  return exploration.return_to_base(actor);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 Collect command) {
+  return exploration.collect(actor, command.source);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 Repair command) {
+  return exploration.repair(actor, command.target, command.tool);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
+                 Appraise command) {
+  return workshop.appraise(actor, command.ingredient);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
+                 Cook command) {
+  return workshop.cook(actor, command.food);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop,
+                 Actor /*actor*/, ReplaceTool command) {
+  return workshop.replace_tool(command.tool);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop,
+                 Actor /*actor*/, Feed command) {
+  return workshop.feed(command.food);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop,
+                 Actor /*actor*/, EndDayUnfed command) {
+  return workshop.end_day_unfed(command.penalty);
+}
 
 } // namespace
 
@@ -490,32 +533,8 @@ std::optional<std::size_t> key_set(ControlMap control, Actor actor) {
 ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
                    const Action &action) {
   return std::visit(
-      Overloaded{
-          [&](Enter) -> ActionResult { return exploration.enter(actor); },
-          [&](ReturnToBase) -> ActionResult {
-            return exploration.return_to_base(actor);
-          },
-          [&](Collect command) -> ActionResult {
-            return exploration.collect(actor, command.source);
-          },
-          [&](Repair command) -> ActionResult {
-            return exploration.repair(actor, command.target, command.tool);
-          },
-          [&](Appraise command) -> ActionResult {
-            return workshop.appraise(actor, command.ingredient);
-          },
-          [&](Cook command) -> ActionResult {
-            return workshop.cook(actor, command.food);
-          },
-          [&](ReplaceTool command) -> ActionResult {
-            return workshop.replace_tool(command.tool);
-          },
-          [&](Feed command) -> ActionResult {
-            return workshop.feed(command.food);
-          },
-          [&](EndDayUnfed command) -> ActionResult {
-            return workshop.end_day_unfed(command.penalty);
-          },
+      [&](const auto &command) {
+        return run(exploration, workshop, actor, command);
       },
       action);
 }
