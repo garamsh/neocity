@@ -564,13 +564,12 @@ def main():
     if arguments.inside_namespace:
         measure(arguments.godot, arguments.out.resolve())
         return
-    # Replaces this process, so a signal reaches `unshare`, which passes it on.
+    # Replaces this process with `unshare`, which replaces itself with the inner
+    # run, so a signal sent to this pid reaches the inner handler.
     os.execvp(
         "unshare",
         [
             "unshare",
-            "--fork",
-            "--kill-child=SIGTERM",
             "-Urn",
             sys.executable,
             __file__,
