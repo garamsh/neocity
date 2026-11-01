@@ -73,6 +73,11 @@ std::uint32_t lucky_seed() {
   }
 }
 
+/// The default's day 0 and Unfed reaction match no outcome a test expects.
+DayOutcome last_day(const Workshop &workshop) {
+  return workshop.snapshot().last_day.value_or(DayOutcome{});
+}
+
 TEST(Workshop, IntactMagnifierSucceedsThroughRoll89AndFailsAtRoll90) {
   auto below = carrying(seed_for_roll(89), {RICE});
   Workshop succeeding(below, balance());
@@ -326,9 +331,8 @@ TEST(Workshop, ScoreEqualToTheThresholdSatisfiesAndOneBelowDoesNot) {
               WorkshopResult::Applied);
     ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
     ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
-    ASSERT_TRUE(workshop.snapshot().last_day.has_value());
-    EXPECT_EQ(workshop.snapshot().last_day->score, 13U);
-    EXPECT_EQ(workshop.snapshot().last_day->reaction, reaction);
+    EXPECT_EQ(last_day(workshop).score, 13U);
+    EXPECT_EQ(last_day(workshop).reaction, reaction);
   }
 }
 
@@ -341,10 +345,9 @@ TEST(Workshop, ANewFoodOfEatenIngredientsScoresOnlyItsUnseenParts) {
   ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, OMELET), WorkshopResult::Applied);
   ASSERT_EQ(workshop.feed(OMELET), WorkshopResult::Applied);
-  ASSERT_TRUE(workshop.snapshot().last_day.has_value());
   // New food 10, EGG 3; RICE was already eaten.
-  EXPECT_EQ(workshop.snapshot().last_day->score, 13U);
-  EXPECT_EQ(workshop.snapshot().last_day->reaction, MonsterReaction::Satisfied);
+  EXPECT_EQ(last_day(workshop).score, 13U);
+  EXPECT_EQ(last_day(workshop).reaction, MonsterReaction::Satisfied);
 }
 
 TEST(Workshop, RepeatedIngredientInOneRecipeCountsAsOneNewIngredient) {
@@ -356,8 +359,7 @@ TEST(Workshop, RepeatedIngredientInOneRecipeCountsAsOneNewIngredient) {
   ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, FoodId{13}), WorkshopResult::Applied);
   ASSERT_EQ(workshop.feed(FoodId{13}), WorkshopResult::Applied);
-  ASSERT_TRUE(workshop.snapshot().last_day.has_value());
-  EXPECT_EQ(workshop.snapshot().last_day->score, 13U);
+  EXPECT_EQ(last_day(workshop).score, 13U);
 }
 
 TEST(Workshop, DislikedFoodRaisesAcidEvenWhenItsScorePasses) {
@@ -418,8 +420,7 @@ TEST(Workshop, DayOutcomeReportsDayThirtyForTheEscapeRules) {
   Workshop workshop(simulation, balance());
   for (std::uint32_t day = 1; day <= 30; ++day) {
     ASSERT_EQ(workshop.end_day_unfed(1), WorkshopResult::Applied);
-    ASSERT_TRUE(workshop.snapshot().last_day.has_value());
-    EXPECT_EQ(workshop.snapshot().last_day->completed_day, day);
+    EXPECT_EQ(last_day(workshop).completed_day, day);
   }
   EXPECT_EQ(simulation.snapshot().day, 31U);
   EXPECT_EQ(simulation.snapshot().acid, 30U);
