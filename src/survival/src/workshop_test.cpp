@@ -10,6 +10,7 @@
 #include <random>
 #include <stdexcept>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace neocity::survival {
@@ -24,16 +25,15 @@ constexpr FoodId OMELET{11};
 constexpr FoodId CURRY{12};
 
 WorkshopConfig balance() {
-  return {.recipes = {{.food = PORRIDGE, .ingredients = {RICE}},
-                      {.food = OMELET, .ingredients = {RICE, EGG}},
-                      {.food = CURRY,
-                       .ingredients = {CHILI},
-                       .disliked = true}},
-          .new_food_score = 10,
-          .new_ingredient_score = 3,
-          .satisfying_score = 12,
-          .disliked_acid_rise = 7,
-          .unsatisfied_acid_rise = 2};
+  return {
+      .recipes = {{.food = PORRIDGE, .ingredients = {RICE}},
+                  {.food = OMELET, .ingredients = {RICE, EGG}},
+                  {.food = CURRY, .ingredients = {CHILI}, .disliked = true}},
+      .new_food_score = 10,
+      .new_ingredient_score = 3,
+      .satisfying_score = 12,
+      .disliked_acid_rise = 7,
+      .unsatisfied_acid_rise = 2};
 }
 
 /// Finds a seed whose first draw lands on the requested percentile.
@@ -313,6 +313,25 @@ TEST(Workshop, NewFoodsScoreAboveRepeatsAndRepeatsMissTheThreshold) {
   EXPECT_EQ(simulation.snapshot().day, 3U);
 }
 
+TEST(Workshop, ScoreEqualToTheThresholdSatisfiesAndOneBelowDoesNot) {
+  // PORRIDGE scores 13 as a new food with one new ingredient.
+  for (const auto &[threshold, reaction] :
+       {std::pair{13U, MonsterReaction::Satisfied},
+        std::pair{14U, MonsterReaction::Unsatisfied}}) {
+    auto config = balance();
+    config.satisfying_score = threshold;
+    auto simulation = carrying(lucky_seed(), {RICE});
+    Workshop workshop(simulation, config);
+    ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE),
+              WorkshopResult::Applied);
+    ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+    ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+    ASSERT_TRUE(workshop.snapshot().last_day.has_value());
+    EXPECT_EQ(workshop.snapshot().last_day->score, 13U);
+    EXPECT_EQ(workshop.snapshot().last_day->reaction, reaction);
+  }
+}
+
 TEST(Workshop, ANewFoodOfEatenIngredientsScoresOnlyItsUnseenParts) {
   auto simulation = carrying(lucky_seed(), {RICE, RICE, EGG});
   Workshop workshop(simulation, balance());
@@ -325,8 +344,7 @@ TEST(Workshop, ANewFoodOfEatenIngredientsScoresOnlyItsUnseenParts) {
   ASSERT_TRUE(workshop.snapshot().last_day.has_value());
   // New food 10, EGG 3; RICE was already eaten.
   EXPECT_EQ(workshop.snapshot().last_day->score, 13U);
-  EXPECT_EQ(workshop.snapshot().last_day->reaction,
-            MonsterReaction::Satisfied);
+  EXPECT_EQ(workshop.snapshot().last_day->reaction, MonsterReaction::Satisfied);
 }
 
 TEST(Workshop, RepeatedIngredientInOneRecipeCountsAsOneNewIngredient) {
@@ -345,7 +363,8 @@ TEST(Workshop, RepeatedIngredientInOneRecipeCountsAsOneNewIngredient) {
 TEST(Workshop, DislikedFoodRaisesAcidEvenWhenItsScorePasses) {
   auto simulation = carrying(lucky_seed(), {CHILI});
   Workshop workshop(simulation, balance());
-  ASSERT_EQ(workshop.appraise(Actor::Appraiser, CHILI), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, CHILI),
+            WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, CURRY), WorkshopResult::Applied);
   ASSERT_EQ(workshop.feed(CURRY), WorkshopResult::Applied);
   EXPECT_EQ(workshop.snapshot().last_day,
@@ -442,7 +461,7 @@ TEST(Workshop, SameSeedAndCommandsReplayTheSameRun) {
 TEST(Workshop, RejectsEmptyRecipesAndRepeatedFoods) {
   Simulation simulation({.exploration_budget = 10s, .seed = 1});
   auto empty = balance();
-  empty.recipes.push_back({.food = FoodId{20}});
+  empty.recipes.push_back({.food = FoodId{20}, .ingredients = {}});
   EXPECT_THROW(Workshop(simulation, empty), std::invalid_argument);
   auto repeated = balance();
   repeated.recipes.push_back({.food = OMELET, .ingredients = {EGG}});
@@ -454,8 +473,7 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
   constexpr ObjectId FLOOR{1};
   constexpr ObjectId SOURCE{2};
   constexpr ObjectId ACID_FLOOR{3};
-  Simulation simulation(
-      {.exploration_budget = 1s, .seed = lucky_seed()});
+  Simulation simulation({.exploration_budget = 1s, .seed = lucky_seed()});
   World world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 5, .height = 1}},
                {.id = SOURCE,
                 .kind = ObjectKind::MaterialSource,

@@ -105,8 +105,8 @@ Result Simulation::finish_day(std::uint32_t acid_rise) {
   if (world.phase != Phase::Workshop) {
     return Result::NotInWorkshop;
   }
-  world.acid += std::min(acid_rise,
-                         std::numeric_limits<std::uint32_t>::max() - world.acid);
+  world.acid += std::min(acid_rise, std::numeric_limits<std::uint32_t>::max() -
+                                        world.acid);
   ++world.day;
   world.remaining_exploration = daily_budget;
   return Result::Applied;

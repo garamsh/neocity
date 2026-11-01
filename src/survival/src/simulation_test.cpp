@@ -215,11 +215,12 @@ TEST(Survival, ConsumeTakesIngredientsFromBothInventoriesChefFirst) {
             Result::Applied);
   ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
   ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
-  const std::vector<IngredientId> request{{1}, {1}, {3}};
+  const std::vector<IngredientId> request{{1}, {3}};
   ASSERT_EQ(simulation.consume(request), Result::Applied);
   EXPECT_EQ(simulation.snapshot().chef.inventory,
             (std::vector<IngredientId>{{2}}));
-  EXPECT_TRUE(simulation.snapshot().appraiser.inventory.empty());
+  EXPECT_EQ(simulation.snapshot().appraiser.inventory,
+            (std::vector<IngredientId>{{1}}));
 }
 
 TEST(Survival, ConsumeRefusesAPartiallyCarriedRequestWithoutTakingAnything) {
