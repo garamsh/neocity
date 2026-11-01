@@ -10,7 +10,7 @@ On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, 
 
 The game opens on the main menu: **1** starts Monster Mouth Escape, **2** opens the developer page, and **3** plays the earlier ascent prototype below. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level. Release held keys after a menu choice before giving the next input.
 
-In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the appraiser and AI plays the other, or choose two local players. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. Food it wants holds the acid back; rising acid and time wreck the city. The escape and endings are not implemented yet, and the map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
+In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the appraiser and AI plays the other, or choose two local players. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. Food it wants holds the acid back; rising acid and time wreck the city. From day 30, each finished day has a 20% chance that the party escapes; the run then plays the ending and returns to the main menu, and the E key skips it. The opening and ending scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
 
 | Survival input | Player 1 | Player 2 |
 |---|---|---|
@@ -62,7 +62,13 @@ make ci
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
 - `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live checks of both menus and the `pan_dodge` experiment, three session integration checks for partial-tick time and input edges, the survival fixed-step checks at two frame rates, and live checks playing the survival game with real key events.
-- `make ci`: the complete set. Once `build/` is configured, rules-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test`, then `.tools/cpp/bin/ctest --test-dir build`.
+- `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed (see below), from the repository root:
+
+```sh
+.tools/cpp/bin/cmake -S . -B build -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$PWD/.tools/cpp/bin/python"
+.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test survival_test
+.tools/cpp/bin/ctest --test-dir build
+```
 
 Each experiment's rules library also configures from its own folder without fetching or building Godot; its record lists the commands. After the first Make entry point installs the pinned tools, run them for every experiment from the repository root:
 
