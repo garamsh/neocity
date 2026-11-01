@@ -344,7 +344,7 @@ def merged_lateness(reports):
 
 def load_step(model, rooms):
     """One rung of a room-count ladder, with the measured process isolated."""
-    drops_before = udp_receive_errors()
+    startup_drops_before = udp_receive_errors()
     load_average = os.getloadavg()[0]
     settle_seconds = 3 + rooms / 500
     with Processes() as processes:
@@ -368,9 +368,11 @@ def load_step(model, rooms):
             generators = start_load(processes, rooms, SERVER_PORT, "chef,appraiser")
             others = generators
         time.sleep(settle_seconds)
+        drops_before = udp_receive_errors()
         cpu_before = cpu_seconds(measured.pid)
         others_before = sum(cpu_seconds(p.pid) for p in others)
         time.sleep(LOAD_SECONDS)
+        drops = udp_receive_errors() - drops_before
         result = usage(measured, cpu_before, LOAD_SECONDS)
         others_cpu = sum(cpu_seconds(p.pid) for p in others) - others_before
         client_reports = [finish(g)[0] for g in generators]
@@ -379,7 +381,6 @@ def load_step(model, rooms):
     rate = sum(r["ticks"] for r in authority_reports) / rooms / (
         LOAD_SECONDS + settle_seconds
     )
-    drops = udp_receive_errors() - drops_before
     lateness = merged_lateness(authority_reports)
     skipped = sum(r["skipped_ticks"] for r in client_reports)
     counted = relay_report or authority_reports[0]
@@ -395,7 +396,8 @@ def load_step(model, rooms):
         "worst_client_state_latency_p99_us": max(
             r["state_latency_us"]["p99"] for r in client_reports
         ),
-        "udp_receive_buffer_drops": drops,
+        "udp_receive_buffer_drops_while_settled": drops,
+        "udp_receive_buffer_drops_at_startup": drops_before - startup_drops_before,
         "skipped_ticks": skipped,
         "state_max_bytes": max(r["state_max_bytes"] for r in authority_reports),
         "sent_bytes": counted["sent_bytes"],

@@ -136,7 +136,8 @@ private:
     }
     if (state.tick != player.tick + 1) {
       player.log_complete = false;
-      ++skipped_ticks;
+      // A room's first states can be lost to the burst of joins at start.
+      skipped_ticks += player.tick > 0 ? 1U : 0U;
     }
     if (player.tick > 0) {
       player.max_gap_ns = std::max(player.max_gap_ns, now - player.heard_ns);
