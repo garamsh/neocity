@@ -299,7 +299,7 @@ GridPosition position_of(const GameView &view, Actor actor) {
 /// names, something to do. A partner's errand does not count: the city line
 /// would send that human straight home.
 bool worth_setting_out(const SurvivalFrame &frame) {
-  const auto human = std::ranges::find_if(ACTORS, [&frame](Actor actor) {
+  const auto *human = std::ranges::find_if(ACTORS, [&frame](Actor actor) {
     return survival::key_set(frame.control, actor).has_value();
   });
   return human != ACTORS.end() &&
@@ -613,15 +613,41 @@ void paint_appraise_panel(godot::Node2D &canvas,
   }
 }
 
-/// Appends "`verb` a, b" to `text`, separated from what is there.
+/// What stands between a recipe and the pot, ingredient by ingredient.
+struct RecipeNeeds {
+  std::vector<IngredientId> missing;
+  std::vector<IngredientId> unidentified;
+};
+
+RecipeNeeds recipe_needs(const GameView &view, const survival::Recipe &recipe) {
+  auto pack = pack_of(view);
+  RecipeNeeds needs;
+  for (const auto ingredient : recipe.ingredients) {
+    auto &count = pack[ingredient.value];
+    if (count == 0) {
+      needs.missing.push_back(ingredient);
+    } else {
+      --count;
+      if (!identified(view, ingredient)) {
+        needs.unidentified.push_back(ingredient);
+      }
+    }
+  }
+  return needs;
+}
+
+/// Appends "`verb` a, b" to `text`, when there are any.
 void list_ingredients(String &text, const char *verb,
                       const std::vector<IngredientId> &ingredients) {
-  for (std::size_t index = 0; index < ingredients.size(); ++index) {
-    const String lead = index > 0         ? String(", ")
-                        : text.is_empty() ? String(verb) + " "
-                                          : ", " + String(verb) + " ";
-    text += lead + from(survival::ingredient_name(ingredients.at(index)));
+  if (ingredients.empty()) {
+    return;
   }
+  String names;
+  for (const auto ingredient : ingredients) {
+    names += (names.is_empty() ? "" : ", ") +
+             from(survival::ingredient_name(ingredient));
+  }
+  text += (text.is_empty() ? "" : ", ") + String(verb) + " " + names;
 }
 
 /// Names what a recipe still lacks; empty when it can be cooked now.
@@ -965,21 +991,9 @@ void paint_cinematic(godot::Node2D &canvas,
                tones.muted);
 }
 
-RecipeNeeds recipe_needs(const GameView &view, const survival::Recipe &recipe) {
-  auto pack = pack_of(view);
-  RecipeNeeds needs;
-  for (const auto ingredient : recipe.ingredients) {
-    auto &count = pack[ingredient.value];
-    if (count == 0) {
-      needs.missing.push_back(ingredient);
-    } else {
-      --count;
-      if (!identified(view, ingredient)) {
-        needs.unidentified.push_back(ingredient);
-      }
-    }
-  }
-  return needs;
+bool recipe_ready(const GameView &view, const survival::Recipe &recipe) {
+  const auto needs = recipe_needs(view, recipe);
+  return needs.missing.empty() && needs.unidentified.empty();
 }
 
 String next_step(const SurvivalFrame &frame) {

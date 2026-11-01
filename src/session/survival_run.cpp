@@ -81,7 +81,7 @@ std::vector<survival::FoodId> ready_dishes(const survival::Content &content,
                                            const GameView &view) {
   std::vector<survival::FoodId> ready;
   for (const auto &recipe : content.companion.workshop.recipes) {
-    if (hud::recipe_needs(view, recipe).ready()) {
+    if (hud::recipe_ready(view, recipe)) {
       ready.push_back(recipe.food);
     }
   }

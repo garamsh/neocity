@@ -81,19 +81,10 @@ void paint_cinematic(godot::Node2D &canvas,
                      const rendering::AscentDrawing &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
-/// What stands between a recipe and the pot, ingredient by ingredient.
-struct RecipeNeeds {
-  std::vector<survival::IngredientId> missing;
-  std::vector<survival::IngredientId> unidentified;
-  /// Whether the chef can cook it now.
-  [[nodiscard]] bool ready() const {
-    return missing.empty() && unidentified.empty();
-  }
-};
-
-/// Reads `recipe` against what the two actors carry and have identified.
-[[nodiscard]] RecipeNeeds recipe_needs(const survival::GameView &view,
-                                       const survival::Recipe &recipe);
+/// Whether the chef can cook `recipe` from what the two actors carry and have
+/// identified.
+[[nodiscard]] bool recipe_ready(const survival::GameView &view,
+                                const survival::Recipe &recipe);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The sentence the event log shows for `event`.
