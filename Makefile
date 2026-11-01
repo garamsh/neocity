@@ -53,10 +53,14 @@ format: $(TOOLS_STAMP)
 	$(CLANG_FORMAT) --style=LLVM --dry-run --Werror $$files; \
 	echo "clang-format checked $$count C++ files, selected by: $(CPP_FILES)"
 
+# Godot 4.7.2 crashes on exit when an import finds a new extension and regenerates
+# docs (godotengine/godot#111048); a listed extension loads at boot and is not new.
 build: $(TOOLS_STAMP)
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR)
 	@test "$$("$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
+	mkdir -p $(PROJECT_DIR)/.godot
+	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
 test: build

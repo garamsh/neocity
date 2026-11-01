@@ -19,3 +19,6 @@ jobs:
       - name: Set up verified Godot
         run: sh .github/scripts/setup-godot.sh
       - run: make ci
+      - name: Report Godot crash
+        if: failure()
+        run: sh .github/scripts/report-godot-crash.sh

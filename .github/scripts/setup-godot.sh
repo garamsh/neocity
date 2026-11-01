@@ -16,3 +16,7 @@ chmod +x godot
 rm "$archive"
 printf '%s\n' "$install_dir" >> "${GITHUB_PATH:?}"
 ./godot --version
+
+# A crash during Godot's shutdown can leave no text in the log, so the core is
+# what report-godot-crash.sh reads. A pipe handler ignores ulimit -c.
+sudo sysctl --write "kernel.core_pattern=|/usr/bin/tee ${RUNNER_TEMP:?}/core.%p"
