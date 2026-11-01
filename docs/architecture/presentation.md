@@ -8,7 +8,7 @@ How the GDExtension presents the main game and the menus through input, camera m
 - `src/register_types.cpp` is the extension entry point (`neocity_init`) and registers `AscentScene` and each experiment's node class.
 - `src/scene.cpp` (`AscentScene`) is the composition site and frame adapter: it constructs the ascent engine, camera, session, and drawing, forwards frame input and drawing to session, and mounts the experiment scene session selects as its child.
 - `src/session/` owns selection and run orchestration as described in [session](session.md).
-- `src/input/` translates Godot input actions into menu actions and the ascent command.
+- `src/input/` translates Godot input actions into menu actions, the ascent command, and the survival input of each human actor. The survival conversion is compiled, and no scene calls it until #28 connects it.
 - `src/camera/` follows the leading actor vertically.
 - `src/rendering/` loads the level textures and Godot's fallback font, and paints the city depth, course, obstacles, and actors. It owns the shared drawing primitives and color palette.
 - `src/hud/` paints the interface and the pause/completion overlays over the world, using the rendering primitives. It also draws the main menu and the developer page.

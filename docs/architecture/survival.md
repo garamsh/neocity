@@ -72,7 +72,7 @@ The following are temporary values that make the prototype playable and are not 
 - [`src/input/survival.cpp`](../../src/input/survival.cpp) samples Godot actions into `PlayerInput`. #28 binds the actions in `project.godot` and connects the scene. Until then the host links `survival` only to compile this conversion.
 - Two local key sets exist because two-player play has no other way to run until [#22](https://github.com/garamsh/neocity/issues/22) settles the network: the two input sets also let a local check drive both actors. A lone human holds the first set on either actor, so switching needs no rebinding. Two humans hold the first set on the chef and the second on the appraiser. The action names and every binding are temporary.
 - The caller reads a fresh view for each actor after applying the other's action, and advances at most one 100ms movement tick between commands, because a walking command is valid for one cell.
-- `Exploration` keeps its cell rule private, so route planning in `companion.cpp` repeats it, and the two must change together. Each command searches reachable cells, at a cost of cells times world objects, which suits the current temporary maps.
+- `Exploration` and route planning share the public cell rule and area distance in `exploration.hpp`, so a route cannot disagree with movement about a cell. Each command searches reachable cells, at a cost of cells times world objects, which suits the current temporary maps.
 
 #### Temporary AI policies
 

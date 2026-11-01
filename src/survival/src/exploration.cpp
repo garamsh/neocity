@@ -23,6 +23,30 @@ ActorSnapshot actor_state(const Snapshot &snapshot, Actor actor) {
   std::abort();
 }
 
+GridPosition direction_offset(Direction direction) {
+  switch (direction) {
+  case Direction::Idle:
+    return {};
+  case Direction::Left:
+    return {.x = -1};
+  case Direction::Right:
+    return {.x = 1};
+  case Direction::Up:
+    return {.y = -1};
+  case Direction::Down:
+    return {.y = 1};
+  }
+  std::abort();
+}
+
+void require_applied(Result result) {
+  if (result != Result::Applied) {
+    throw std::logic_error("exploration command lost its active actor");
+  }
+}
+
+} // namespace
+
 std::int64_t distance(GridPosition position, WorldArea area) {
   const auto right = std::int64_t{area.x} + area.width - 1;
   const auto bottom = std::int64_t{area.y} + area.height - 1;
@@ -31,8 +55,6 @@ std::int64_t distance(GridPosition position, WorldArea area) {
          std::max({std::int64_t{area.y} - position.y,
                    std::int64_t{position.y} - bottom, std::int64_t{0}});
 }
-
-enum class Cell : std::uint8_t { Supported, Blocked, Falling };
 
 Cell cell_at(const WorldSnapshot &snapshot, GridPosition position) {
   bool supported = false;
@@ -67,30 +89,6 @@ Cell cell_at(const WorldSnapshot &snapshot, GridPosition position) {
   }
   return supported ? Cell::Supported : Cell::Falling;
 }
-
-GridPosition direction_offset(Direction direction) {
-  switch (direction) {
-  case Direction::Idle:
-    return {};
-  case Direction::Left:
-    return {.x = -1};
-  case Direction::Right:
-    return {.x = 1};
-  case Direction::Up:
-    return {.y = -1};
-  case Direction::Down:
-    return {.y = 1};
-  }
-  std::abort();
-}
-
-void require_applied(Result result) {
-  if (result != Result::Applied) {
-    throw std::logic_error("exploration command lost its active actor");
-  }
-}
-
-} // namespace
 
 Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)

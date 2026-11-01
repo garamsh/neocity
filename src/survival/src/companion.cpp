@@ -115,47 +115,6 @@ std::optional<GridPosition> neighbour(GridPosition position,
                       .y = static_cast<std::int32_t>(y)};
 }
 
-std::int64_t distance(GridPosition position, WorldArea area) {
-  const auto right = std::int64_t{area.x} + area.width - 1;
-  const auto bottom = std::int64_t{area.y} + area.height - 1;
-  return std::max({std::int64_t{area.x} - position.x,
-                   std::int64_t{position.x} - right, std::int64_t{0}}) +
-         std::max({std::int64_t{area.y} - position.y,
-                   std::int64_t{position.y} - bottom, std::int64_t{0}});
-}
-
-// Exploration keeps its cell rule private, so planning repeats it here.
-bool walkable(const WorldSnapshot &world, GridPosition position) {
-  bool supported = false;
-  bool building = false;
-  bool open_passage = false;
-  bool broken_passage = false;
-  for (const auto &object : world.objects) {
-    if (object.state == ObjectState::Dormant ||
-        distance(position, object.area) != 0) {
-      continue;
-    }
-    switch (object.kind) {
-    case ObjectKind::Building:
-      building = building || object.state == ObjectState::Intact;
-      break;
-    case ObjectKind::Ladder:
-    case ObjectKind::Entrance:
-      broken_passage = broken_passage || !object.traversable;
-      open_passage = open_passage || object.traversable;
-      supported = supported || object.traversable;
-      break;
-    case ObjectKind::Terrain:
-      supported = supported || object.traversable;
-      break;
-    case ObjectKind::Npc:
-    case ObjectKind::MaterialSource:
-      break;
-    }
-  }
-  return supported && !broken_passage && (!building || open_passage);
-}
-
 /// An object to stand near and the action that works there.
 struct Goal {
   WorldArea area;
@@ -208,7 +167,7 @@ struct Frontier {
   Direction first_step = Direction::Idle;
 };
 
-/// Breadth-first over walkable cells, so a route never leaves support. Gives
+/// Breadth-first over supported cells, so a route never leaves support. Gives
 /// the goal's action once it works from `start`, otherwise the next step.
 std::optional<ActorCommand> route_to(const WorldSnapshot &world,
                                      GridPosition start,
@@ -230,7 +189,7 @@ std::optional<ActorCommand> route_to(const WorldSnapshot &world,
     }
     for (const auto step : STEPS) {
       const auto next = neighbour(cell.position, step);
-      if (next && walkable(world, *next) &&
+      if (next && cell_at(world, *next) == Cell::Supported &&
           seen.insert({next->x, next->y}).second) {
         frontier.push_back({.position = *next,
                             .first_step = cell.first_step == Direction::Idle
@@ -386,7 +345,7 @@ bool worth_entering(const CompanionConfig &config, Actor actor,
                     const GameView &view) {
   const auto entry = config.exploration.entry;
   return view.progression.remaining_exploration.count() > 0 &&
-         walkable(view.world, entry) &&
+         cell_at(view.world, entry) == Cell::Supported &&
          next_errand(view, actor, entry, config.exploration.collection_distance)
              .has_value();
 }
