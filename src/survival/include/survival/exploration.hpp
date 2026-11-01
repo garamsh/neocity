@@ -17,6 +17,16 @@ struct GridPosition {
   friend bool operator==(const GridPosition &, const GridPosition &) = default;
 };
 
+/// What one cell means to an actor: stand on it, stopped by it, or fall.
+enum class Cell : std::uint8_t { Supported, Blocked, Falling };
+
+/// Grid steps from a cell to the nearest cell of an area; zero inside it.
+[[nodiscard]] std::int64_t distance(GridPosition position, WorldArea area);
+
+/// The one cell rule behind movement, entry and route planning.
+[[nodiscard]] Cell cell_at(const WorldSnapshot &snapshot,
+                           GridPosition position);
+
 /// The same movement choices apply to both actors.
 enum class Direction : std::uint8_t { Idle, Left, Right, Up, Down };
 

@@ -4,13 +4,13 @@ The pure C++ progression state of the monster-mouth escape game and the ownershi
 
 ## Current decisions
 
-- The `survival` static library in `src/survival/` depends only on the C++ standard library. It does not link with the existing `gameplay`, the experiments, or Godot. Its public boundary is [`include/survival/simulation.hpp`](../../src/survival/include/survival/simulation.hpp), [`include/survival/world.hpp`](../../src/survival/include/survival/world.hpp), [`include/survival/exploration.hpp`](../../src/survival/include/survival/exploration.hpp), and [`include/survival/workshop.hpp`](../../src/survival/include/survival/workshop.hpp), and internal implementation and unit tests sit in the same library's `src/`.
+- The `survival` static library in `src/survival/` depends only on the C++ standard library. It does not link with the existing `gameplay`, the experiments, or Godot. Its public boundary is [`include/survival/simulation.hpp`](../../src/survival/include/survival/simulation.hpp), [`include/survival/world.hpp`](../../src/survival/include/survival/world.hpp), [`include/survival/exploration.hpp`](../../src/survival/include/survival/exploration.hpp), [`include/survival/workshop.hpp`](../../src/survival/include/survival/workshop.hpp), and [`include/survival/companion.hpp`](../../src/survival/include/survival/companion.hpp), and internal implementation and unit tests sit in the same library's `src/`.
 - [`Simulation`](../../src/survival/include/survival/simulation.hpp) owns the two actors' location, exploration health, inventory, carried tools, and exhaustion count, plus the day count, phase, shared remaining exploration time, acid, and run seed. It offers value snapshots and explicit commands for entering, returning, damage, collecting ingredients and tools, advancing time, consuming ingredients and tools, and finishing the day. The base is part of the untimed workshop phase.
 - Exploration time passes only while at least one actor is exploring. On expiry both return to base and the phase changes to the workshop phase. When one actor runs out of health, only that actor returns, preserving the day count, inventories, shared remaining time, and acid. Voluntary return, health exhaustion, and time expiry all restore the returning actor's health to 3 slots. Switching to the workshop phase and stopping time when both are at base is a temporary boundary of the current foundation and does not settle the final base time rule.
 - With time remaining, an actor can re-enter with recovered health. The 3-slot recovery on returning to base follows the [user decision record](https://github.com/garamsh/neocity/issues/23#issuecomment-6544525723).
 - The caller supplies a positive exploration budget and a seed. Progress is independent of frame partitioning when the same command order and total exploration time are passed directly to the shared `Simulation`. Time is passed as integer microseconds rather than wall-clock time, and negative time is refused with no state change. This guarantee does not extend to exploration return times that follow from world changes.
 - The seed is a run-identifying input preserved in the snapshot, and `Workshop` reads it to initialize its own random state. `Simulation` consumes no random values. The escaped phase is reserved in the public state but has no transition command. Escape checks, the final acid formula, the Godot host connection, and the screen are not implemented.
-- Tests are in [`src/simulation_test.cpp`](../../src/survival/src/simulation_test.cpp), [`src/world_test.cpp`](../../src/survival/src/world_test.cpp), [`src/exploration_test.cpp`](../../src/survival/src/exploration_test.cpp), and [`src/workshop_test.cpp`](../../src/survival/src/workshop_test.cpp), registered in the same `survival_test`. Checks that directly compose world, progression, exploration, and workshop together are library integration tests and do not verify the real screen connection. The Godot checks continue to verify the existing game.
+- Tests are in [`src/simulation_test.cpp`](../../src/survival/src/simulation_test.cpp), [`src/world_test.cpp`](../../src/survival/src/world_test.cpp), [`src/exploration_test.cpp`](../../src/survival/src/exploration_test.cpp), [`src/workshop_test.cpp`](../../src/survival/src/workshop_test.cpp), and [`src/companion_test.cpp`](../../src/survival/src/companion_test.cpp), registered in the same `survival_test`. Checks that directly compose world, progression, exploration, and workshop together are library integration tests and do not verify the real screen connection. The Godot checks continue to verify the existing game.
 
 ### World state
 
@@ -63,9 +63,32 @@ The following are temporary values that make the prototype playable and are not 
 - A repair uses a tool carried by the repairing actor, within the same interaction distance as collection.
 - At base the two actors' inventories and tools are used together, and the chef's are consumed first. In the workshop phase the day can end even with exploration time remaining, and the remaining time does not carry over.
 
+### Companion and control
+
+- `Companion` holds no game state and no random state. It reads `GameView`, a value copy of the four snapshots, and the `ControlMap`, and returns the same `ActorCommand` for the same input. A human's presses and AI's decisions leave as one command type: movement goes to `Exploration::advance`, and an action goes through `apply` to the owning feature, which keeps every refusal and rule. `Companion` updates nothing itself.
+- AI reads only what a player has: the snapshots and the recipes and tool identities of the caller's configuration. It does not read `Recipe::disliked`, since a dislike is learned by feeding, and it never observes `Workshop`'s random state.
+- `ControlMap` holds one `Controller` per actor. One-player play makes the chosen actor human and the other AI; two-player play makes both human.
+- Switching and leaving are separate local commands. Switching trades the two controllers, so a lone human takes the other actor and two humans stay as they are. Leaving hands only that actor to AI. Both keep the actor's position, health, inventory, and tools, because AI continues from the snapshots. The caller owns the `ControlMap`. Online host succession is out of scope.
+- [`src/input/survival.cpp`](../../src/input/survival.cpp) samples Godot actions into `PlayerInput`. #28 binds the actions in `project.godot` and connects the scene. Until then the host links `survival` only to compile this conversion.
+- Two local key sets exist because two-player play has no other way to run until [#22](https://github.com/garamsh/neocity/issues/22) settles the network: the two input sets also let a local check drive both actors. A lone human holds the first set on either actor, so switching needs no rebinding. Two humans hold the first set on the chef and the second on the appraiser. The action names and every binding are temporary.
+- The caller reads a fresh view for each actor after applying the other's action, and advances at most one 100ms movement tick between commands, because a walking command is valid for one cell.
+- `Exploration` and route planning share the public cell rule and area distance in `exploration.hpp`, so a route cannot disagree with movement about a cell. Each command searches reachable cells, at a cost of cells times world objects, which suits the current temporary maps.
+
+#### Temporary AI policies
+
+The following are the minimum that keeps a game from blocking, not final behavior or tactics.
+
+- AI walks and never runs, and collects from every available source with stock, nearest first, ingredients and tools alike.
+- AI repairs a destroyed passage with a tool it carries only when nothing is collectable from where it stands.
+- AI with a human partner follows that partner: it sets out only while the partner is in the city and returns when the partner is at base, because workshop commands need both actors at base. With an AI partner, each sets out while time remains and something is reachable from the entrance.
+- AI in the city with nothing reachable returns to base, and it enters only when something is reachable from the entrance. Expiry returns it otherwise. Waiting at base therefore never holds the day open.
+- The appraiser appraises every unidentified carried ingredient and retries a failed roll under the existing unlimited retry policy. The chef cooks one dish when none is stored, an uneaten recipe before a repeat, so a repeat can repeat a disliked food. Each replaces its own role's damaged base tool when either actor carries the replacement.
+- A human in the party owns setting out and ending the day, since AI acting first in an untimed workshop would take the day from them. In an AI-only party the chef ends the day after base work and exploration are done: it feeds an uneaten dish first, then any stored dish, and otherwise ends the day unfed at the caller's `unfed_penalty`. Ending the day belongs to one actor so that one step cannot end two days.
+- A human's `interact` picks the first eligible target by the same selection. Choosing another target is a screen feature for #28, which can build the `Action` directly. Two humans pressing end-day in one step end two days, which #28 guards if local two-player play ships.
+
 ### File ownership plan by feature
 
-The world, exploration, and workshop files in the following table are implemented, and the later AI-only files do not exist yet. This plan sets responsibilities and final target paths and does not replace Worker execution assignments for #24 through #29. Each assignment has one write owner per file.
+The world, exploration, workshop, and companion files in the following table are implemented. This plan sets responsibilities and final target paths and does not replace Worker execution assignments for #24 through #29. Each assignment has one write owner per file.
 
 | Owning work | Public boundary and internal implementation paths | Read and write direction |
 |---|---|---|
@@ -94,4 +117,5 @@ The world, exploration, and workshop files in the following table are implemente
 - The real exploration budget, acid units, the final rise formula and whether acid falls, world damage and arrival thresholds, final repair cost and tool consumption, next-day start conditions, final movement physics, and later feature-specific result types. Test inputs do not imply balance decisions.
 - Whether appraisal failure is misinformation or a failure indication, retry limits, tool damage conditions, the final result of cooking failure, and the unfed acid penalty and feedings per day.
 - The exact timing and probability of the daily escape chance check after day 30, and ownership and consumption order of escape randomness.
+- Whether AI should end the day or set out on its own when its human partner stays idle. Currently AI waits for the human.
 - The network model and the save and restore format. Current snapshots are read-only value passing and not a save file, restore, or network protocol.
