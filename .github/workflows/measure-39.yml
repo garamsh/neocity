@@ -1,0 +1,46 @@
+name: measure-39
+
+on:
+  push:
+    branches: [fix/39-godot-import-abort]
+
+permissions: read-all
+
+jobs:
+  prove-report:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up verified Godot
+        run: sh .github/scripts/setup-godot.sh
+      - name: Abort Godot during import on purpose
+        run: |
+          godot --headless --path project --import &
+          pid=$!
+          sleep 2
+          kill -ABRT "$pid"
+          wait "$pid"
+      - name: Report Godot crash
+        if: failure()
+        run: sh .github/scripts/report-godot-crash.sh
+  measure:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [1, 2, 3, 4]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Set up verified Godot
+        run: sh .github/scripts/setup-godot.sh
+      - run: make build
+      - name: Repeat first import
+        run: bash .github/scripts/measure-39.sh 100
+      - name: Report Godot crash
+        if: failure()
+        run: sh .github/scripts/report-godot-crash.sh
