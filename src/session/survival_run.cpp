@@ -249,10 +249,10 @@ void SurvivalRun::pick_dish(const GameView &current) {
   const auto offer = command_for(Actor::Chef, {.interact = true}, current);
   const auto *cook =
       offer.action ? std::get_if<survival::Cook>(&*offer.action) : nullptr;
-  if (cook == nullptr) {
+  const auto ready = ready_dishes(features.content.get(), current);
+  if (cook == nullptr || ready.empty()) {
     return;
   }
-  const auto ready = ready_dishes(features.content.get(), current);
   const auto from = static_cast<std::size_t>(
       std::ranges::find(ready, cook->food) - ready.begin());
   const std::size_t forward =
