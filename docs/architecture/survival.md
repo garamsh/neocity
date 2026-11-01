@@ -89,10 +89,10 @@ The following are the minimum that keeps a game from blocking, not final behavio
 ### Temporary content
 
 - [`content.hpp`](../../src/survival/include/survival/content.hpp) builds one run's map, ingredients, recipes, tools, stock, hazard cells, and tuning for a seed, with display names. Every value is temporary and is not final balance or a final map. A library integration test in `content_test.cpp` runs an AI-only party past day 30 on five seeds and checks that the days never block.
-- The budget is 45 seconds a day, stamina 20 slots, new food 40, new ingredient 20, satisfying score 60, disliked rise 20, unsatisfied rise 10, and unfed penalty 15. The acid gauge fills at 100, a screen value the rules do not know.
+- The budget is 45 seconds a day, stamina 20 slots, new food 40, new ingredient 20, satisfying score 60, disliked rise 20, unsatisfied rise 10, and unfed penalty 15. The acid gauge fills at 100, a value of [`src/hud/survival.cpp`](../../src/hud/survival.cpp) the rules do not know.
 - The 36 by 16 grid has every source kind, NPC, building, ladder, and entrance kind. The ladder and the door break with time or acid and take the found wrench; the vendor, a shop, a kiosk, and a bridge are destroyed; and a ferry drifts in with acid or time and reopens the east when the bridge falls.
-- AI collects everything it reaches, which would leave a human nothing after day one. Eight washed-up bags therefore arrive on a cumulative exploration schedule, so each day has something new to find.
-- Hazard cells are acid drips: stepping into one costs one health slot, and a run across it can jump it. Health has no other source in play, so this is how exhaustion and tool damage reach a player. The rule libraries know no hazard; the host calls `Exploration::damage`.
+- AI collects everything it reaches, which would leave a human nothing after day one. Eight washed-up bags therefore arrive as the run's cumulative exploration time passes each bag's threshold, from 50 to 365 seconds. Arrival follows exploration time and not the day, so a day that spends little exploring can bring no bag, and none arrives after the last threshold.
+- Hazard cells are acid drips: ending a step inside one after starting it outside costs one health slot, so a run that lands past it costs none. Nothing else in play costs health, so this is how exhaustion and tool damage reach a player. `Content` lists the cells, `Simulation`, `World`, and `Exploration` do not read them, and the host calls `Exploration::damage`.
 
 ### File ownership plan by feature
 

@@ -59,14 +59,15 @@ public:
           camera::AscentCamera &ascent_camera,
           std::function<void()> reset_ascent, StartSurvival start_survival,
           std::span<const experiment::Entry> experiments, Mount mount_scene);
-  /// Samples edges once and accumulates bounded frame time for the main game.
+  /// Samples edges once and advances the open game: ascent on bounded frame
+  /// time, survival on all of it.
   void advance(double delta, Command command);
-  /// Draws the menus or the main game; a mounted experiment draws itself.
+  /// Draws the menus or the open game; a mounted experiment draws itself.
   void paint(godot::Node2D &canvas,
              const rendering::AscentDrawing &drawing) const;
   /// Names the current screen, using the experiment id while one is open.
   [[nodiscard]] godot::String screen_name() const;
-  /// Exposes the main game's leader position for host integration checks.
+  /// Exposes the ascent game's leader position for host integration checks.
   [[nodiscard]] godot::Vector2 actor_position() const;
   /// Who drives each survival actor, or nothing with no run open.
   [[nodiscard]] std::optional<survival::ControlMap> survival_control() const;

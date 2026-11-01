@@ -20,7 +20,7 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the main game's rules, the `survival` library holds the rules of the monster-mouth escape game, and each experiment under `src/experiment/<id>/` holds its own rules library; none has Godot or mutual dependencies. The shared C++/Godot host opens on a main menu that starts the survival game, opens a developer page listing the experiments, each a self-contained scene, or plays the earlier ascent prototype.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the rules of the earlier ascent prototype, the `survival` library holds the rules of the monster-mouth escape game, and each experiment under `src/experiment/<id>/` holds its own rules library; none has Godot or mutual dependencies. The shared C++/Godot host opens on a main menu that starts the survival game, opens a developer page listing the experiments, each a self-contained scene, or plays the earlier ascent prototype.
 
 - [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
 - [`experiments.md`](experiments.md) — what an experiment is made of, registration, launch, verification, and promotion; each experiment's rules live in its own record `src/experiment/<id>/README.md`.

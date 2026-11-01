@@ -41,7 +41,7 @@ The developer page selects at most nine experiments, the digit keys `option_1` t
 
 ### Main game
 
-- The main menu's first entry is the main game, currently the [ascent](gameplay.md) course. An experiment becomes part of the main game only by an explicit direction decision from the issue's creative decision-maker and a separately scoped integration issue; registering or merging an experiment grants neither.
+- The main menu's first entry is the main game, currently the [survival](survival.md) game; its third is the earlier [ascent](gameplay.md) prototype. An experiment becomes part of the main game only by an explicit direction decision from the issue's creative decision-maker and a separately scoped integration issue; registering or merging an experiment grants neither.
 
 ## Rationale
 

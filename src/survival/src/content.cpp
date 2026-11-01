@@ -177,8 +177,8 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   return object;
 }
 
-/// A bag the tide brings in once the run has spent `arrival` exploring, so each
-/// day past the first has something new to find.
+/// A bag the tide brings in once the run has spent `arrival` exploring, however
+/// many days that takes.
 ObjectDefinition washed_up(ObjectId id, GridPosition cell,
                            IngredientId ingredient,
                            std::chrono::seconds arrival) {

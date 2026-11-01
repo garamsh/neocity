@@ -55,7 +55,7 @@ public:
   void _process(double delta) override;
   void _draw() override;
 
-  /// Exposes the main game's actor location for host integration assertions.
+  /// Exposes the ascent game's actor location for host integration assertions.
   [[nodiscard]] godot::Vector2 actor_position() const;
   /// Reports the open screen, or the id of the mounted experiment.
   [[nodiscard]] godot::String screen_name() const;
