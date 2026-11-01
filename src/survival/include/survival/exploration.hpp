@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 namespace neocity::survival {
@@ -79,7 +80,7 @@ enum class CollectionResult : std::uint8_t {
 class Exploration {
 public:
   /// Throws std::invalid_argument for invalid stock, tuning or an unsafe entry.
-  Exploration(Simulation &simulation, World &world, ExplorationConfig config);
+  Exploration(Simulation &progression, World &city, ExplorationConfig settings);
   /// Starts at the configured entry with fresh stamina and no partial movement.
   [[nodiscard]] Result enter(Actor actor);
   /// Synchronizes the detailed base position while preserving run state.
@@ -108,8 +109,8 @@ private:
   void tick(Actor actor, ExplorationInput input);
   void check_support();
 
-  Simulation &simulation;
-  World &world;
+  std::reference_wrapper<Simulation> simulation;
+  std::reference_wrapper<World> world;
   ExplorationConfig config;
   Explorer chef;
   Explorer appraiser;

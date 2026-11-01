@@ -95,7 +95,7 @@ void require_applied(Result result) {
 Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)
     : simulation(progression), world(city), config(std::move(settings)) {
-  const auto snapshot = world.snapshot();
+  const auto snapshot = world.get().snapshot();
   if (config.maximum_stamina == 0 ||
       cell_at(snapshot, config.entry) != Cell::Supported) {
     throw std::invalid_argument("exploration requires stamina and safe entry");
@@ -118,13 +118,14 @@ Exploration::Exploration(Simulation &progression, World &city,
 }
 
 Result Exploration::enter(Actor actor) {
-  if (actor_state(simulation.snapshot(), actor).location == Location::City) {
+  if (actor_state(simulation.get().snapshot(), actor).location ==
+      Location::City) {
     return Result::Applied;
   }
-  if (cell_at(world.snapshot(), config.entry) != Cell::Supported) {
+  if (cell_at(world.get().snapshot(), config.entry) != Cell::Supported) {
     return Result::NotExploring;
   }
-  const auto result = simulation.enter(actor);
+  const auto result = simulation.get().enter(actor);
   if (result == Result::Applied) {
     explorer(actor) = {
         .state = {.position = config.entry, .stamina = config.maximum_stamina}};
@@ -133,7 +134,7 @@ Result Exploration::enter(Actor actor) {
 }
 
 Result Exploration::return_to_base(Actor actor) {
-  const auto result = simulation.return_to_base(actor);
+  const auto result = simulation.get().return_to_base(actor);
   if (result == Result::Applied) {
     synchronize();
   }
@@ -141,7 +142,7 @@ Result Exploration::return_to_base(Actor actor) {
 }
 
 Result Exploration::damage(Actor actor) {
-  const auto result = simulation.damage(actor);
+  const auto result = simulation.get().damage(actor);
   if (result == Result::Applied) {
     synchronize();
   }
@@ -151,8 +152,8 @@ Result Exploration::damage(Actor actor) {
 Result Exploration::advance(std::chrono::microseconds elapsed,
                             const std::array<ExplorationInput, 2> &inputs,
                             AcidLevel acid) {
-  const auto progression = world.snapshot().progression;
-  const auto available = simulation.snapshot().remaining_exploration;
+  const auto progression = world.get().snapshot().progression;
+  const auto available = simulation.get().snapshot().remaining_exploration;
   if (elapsed < 0us ||
       std::min(elapsed, available) >
           std::chrono::microseconds::max() - progression.elapsed) {
@@ -161,24 +162,25 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
   synchronize();
   auto remaining = elapsed;
   // Apply acid even with no elapsed time, including while at base.
-  auto update_world = [&](std::chrono::microseconds consumed) {
-    const auto current = world.snapshot().progression.elapsed;
-    if (world.update({.elapsed = current + consumed, .acid = acid}) !=
+  const auto update_world = [&](std::chrono::microseconds consumed) {
+    const auto current = world.get().snapshot().progression.elapsed;
+    if (world.get().update({.elapsed = current + consumed, .acid = acid}) !=
         WorldUpdateResult::Applied) {
       throw std::logic_error("exploration world time regressed");
     }
   };
   update_world(0us);
   check_support();
-  while (remaining > 0us && simulation.snapshot().phase == Phase::Exploration) {
-    const auto before = simulation.snapshot();
+  while (remaining > 0us &&
+         simulation.get().snapshot().phase == Phase::Exploration) {
+    const auto before = simulation.get().snapshot();
     auto step = std::min(remaining, before.remaining_exploration);
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
         step = std::min(step, MOVEMENT_TICK - explorer(actor).remainder);
       }
     }
-    require_applied(simulation.advance(step));
+    require_applied(simulation.get().advance(step));
     update_world(step);
     remaining -= step;
     for (const auto actor : ACTORS) {
@@ -191,7 +193,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
     for (std::size_t index = 0; index < ACTORS.size(); ++index) {
       const auto actor = ACTORS.at(index);
       auto &state = explorer(actor);
-      if (actor_state(simulation.snapshot(), actor).location ==
+      if (actor_state(simulation.get().snapshot(), actor).location ==
               Location::City &&
           state.remainder == MOVEMENT_TICK) {
         state.remainder = 0us;
@@ -203,14 +205,15 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
 }
 
 CollectionResult Exploration::collect(Actor actor, ObjectId source) {
-  if (actor_state(simulation.snapshot(), actor).location != Location::City) {
+  if (actor_state(simulation.get().snapshot(), actor).location !=
+      Location::City) {
     return CollectionResult::NotExploring;
   }
   const auto stock =
       std::ranges::find_if(config.sources, [source](const SourceStock &entry) {
         return entry.id == source;
       });
-  const auto snapshot = world.snapshot();
+  const auto snapshot = world.get().snapshot();
   const auto object = std::ranges::find_if(
       snapshot.objects,
       [source](const ObjectSnapshot &entry) { return entry.id == source; });
@@ -228,7 +231,7 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (stock->remaining == 0) {
     return CollectionResult::Depleted;
   }
-  require_applied(simulation.collect(actor, *object->ingredient));
+  require_applied(simulation.get().collect(actor, *object->ingredient));
   --stock->remaining;
   return CollectionResult::Applied;
 }
@@ -250,7 +253,7 @@ Exploration::Explorer &Exploration::explorer(Actor actor) {
 }
 
 void Exploration::synchronize() {
-  const auto snapshot = simulation.snapshot();
+  const auto snapshot = simulation.get().snapshot();
   for (const auto actor : ACTORS) {
     if (actor_state(snapshot, actor).location == Location::Base) {
       explorer(actor) = {.state = {.position = config.base,
@@ -260,9 +263,10 @@ void Exploration::synchronize() {
 }
 
 void Exploration::check_support() {
-  const auto snapshot = world.snapshot();
+  const auto snapshot = world.get().snapshot();
   for (const auto actor : ACTORS) {
-    if (actor_state(simulation.snapshot(), actor).location == Location::City &&
+    if (actor_state(simulation.get().snapshot(), actor).location ==
+            Location::City &&
         cell_at(snapshot, explorer(actor).state.position) != Cell::Supported) {
       require_applied(return_to_base(actor));
     }
@@ -279,7 +283,7 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
     ++state.stamina;
   }
   const auto offset = direction_offset(input.direction);
-  const auto snapshot = world.snapshot();
+  const auto snapshot = world.get().snapshot();
   const int cells = running ? 2 : 1;
   for (int index = 0; index < cells; ++index) {
     const auto x = std::int64_t{state.position.x} + offset.x;
