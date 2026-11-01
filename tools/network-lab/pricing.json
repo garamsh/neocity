@@ -1,0 +1,31 @@
+{
+  "checked": "2026-11-02",
+  "servers": [
+    {
+      "name": "Hetzner CX23",
+      "source": "https://www.hetzner.com/cloud/cost-optimized/",
+      "currency": "EUR",
+      "monthly": 5.99,
+      "vcpus": 2,
+      "memory_gib": 4,
+      "included_gb": 20000,
+      "overage_per_gb": 0.001
+    },
+    {
+      "name": "AWS Lightsail 2 GB",
+      "source": "https://aws.amazon.com/lightsail/pricing/",
+      "currency": "USD",
+      "monthly": 12,
+      "vcpus": 2,
+      "memory_gib": 2,
+      "included_gb": 3000,
+      "overage_per_gb": 0.09
+    }
+  ],
+  "metered_relay": {
+    "name": "Cloudflare Realtime TURN",
+    "source": "https://developers.cloudflare.com/realtime/turn/",
+    "currency": "USD",
+    "outbound_per_gb": 0.05
+  }
+}
