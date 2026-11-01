@@ -24,7 +24,7 @@ TEST(Survival, StartsWithTwoHealthyActorsAtAnUntimedBase) {
   EXPECT_EQ(state.phase, Phase::Workshop);
   EXPECT_EQ(state.day, 1U);
   EXPECT_EQ(state.remaining_exploration, 12s);
-  EXPECT_EQ(state.acid, 0U);
+  EXPECT_EQ(state.acid, AcidLevel{});
   EXPECT_EQ(state.seed, 42U);
 }
 
@@ -112,6 +112,7 @@ TEST(Survival, ExhaustionRelocatesOnlyThatActorWithoutResettingTheRun) {
   auto expected = before;
   expected.chef.health = 3;
   expected.chef.location = Location::Base;
+  expected.chef.exhaustions = 1;
   EXPECT_EQ(simulation.snapshot(), expected);
   ASSERT_EQ(simulation.advance(1s), Result::Applied);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 6s);
@@ -248,24 +249,24 @@ TEST(Survival, FinishDayRaisesAcidAndRestoresTheBudgetKeepingInventory) {
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::NoExplorationTime);
   auto expected = simulation.snapshot();
   ASSERT_EQ(expected.remaining_exploration, 0us);
-  ASSERT_EQ(simulation.finish_day(5), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{5}), Result::Applied);
   expected.day = 2;
-  expected.acid = 5;
+  expected.acid = AcidLevel{5};
   expected.remaining_exploration = 10s;
   EXPECT_EQ(simulation.snapshot(), expected);
-  ASSERT_EQ(simulation.finish_day(0), Result::Applied);
+  ASSERT_EQ(simulation.finish_day({}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().day, 3U);
-  EXPECT_EQ(simulation.snapshot().acid, 5U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{5});
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
 }
 
 TEST(Survival, AcidSaturatesInsteadOfWrappingBackToSafety) {
   constexpr auto limit = std::numeric_limits<std::uint32_t>::max();
   Simulation simulation({.exploration_budget = 10s, .seed = 9});
-  ASSERT_EQ(simulation.finish_day(limit - 1), Result::Applied);
-  ASSERT_EQ(simulation.snapshot().acid, limit - 1);
-  ASSERT_EQ(simulation.finish_day(limit), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().acid, limit);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{limit - 1}), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().acid, AcidLevel{limit - 1});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{limit}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{limit});
 }
 
 TEST(Survival, WorkshopResultsAreRefusedWhileAnActorIsExploring) {
@@ -275,11 +276,93 @@ TEST(Survival, WorkshopResultsAreRefusedWhileAnActorIsExploring) {
   const auto before = simulation.snapshot();
   const std::vector<IngredientId> request{{1}};
   EXPECT_EQ(simulation.consume(request), Result::NotInWorkshop);
-  EXPECT_EQ(simulation.finish_day(1), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
   EXPECT_EQ(simulation.snapshot(), before);
   ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
   EXPECT_EQ(simulation.consume(request), Result::Applied);
-  EXPECT_EQ(simulation.finish_day(1), Result::Applied);
+  EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::Applied);
+}
+
+TEST(Survival, ToolsAreRecordedPerActorOnlyWhileInTheCity) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 11});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  const auto before = simulation.snapshot();
+  EXPECT_EQ(simulation.collect_tool(Actor::Appraiser, ToolId{7}),
+            Result::NotExploring);
+  EXPECT_EQ(simulation.snapshot(), before);
+  EXPECT_EQ(simulation.collect_tool(Actor::Chef, ToolId{7}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.tools, (std::vector<ToolId>{{7}}));
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+  EXPECT_TRUE(simulation.snapshot().appraiser.tools.empty());
+}
+
+TEST(Survival, ToolsSurviveEveryReturnAndRecoveryWithoutDuplicating) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 12});
+  const std::vector<ToolId> tools{{7}, {7}, {8}};
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  for (const auto tool : tools) {
+    ASSERT_EQ(simulation.collect_tool(Actor::Chef, tool), Result::Applied);
+  }
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.tools, tools);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(simulation.damage(Actor::Chef), Result::Applied);
+  }
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.tools, tools);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.advance(10s), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.tools, tools);
+  ASSERT_EQ(simulation.finish_day({}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.tools, tools);
+}
+
+TEST(Survival, ConsumeToolTakesExactlyOneFromTheChefFirst) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 13});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Chef, ToolId{7}), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Appraiser, ToolId{7}),
+            Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.consume_tool(ToolId{7}), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().chef.tools.empty());
+  EXPECT_EQ(simulation.snapshot().appraiser.tools, (std::vector<ToolId>{{7}}));
+  ASSERT_EQ(simulation.consume_tool(ToolId{7}), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().appraiser.tools.empty());
+  EXPECT_EQ(simulation.consume_tool(ToolId{7}), Result::MissingTool);
+}
+
+TEST(Survival, ConsumeToolIsRefusedWhileAnActorIsExploring) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 14});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Chef, ToolId{7}), Result::Applied);
+  const auto before = simulation.snapshot();
+  EXPECT_EQ(simulation.consume_tool(ToolId{7}), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), before);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.consume_tool(ToolId{7}), Result::Applied);
+}
+
+TEST(Survival, OnlyRunningOutOfHealthCountsAsAnExhaustion) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 15});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.damage(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.advance(10s), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.exhaustions, 0U);
+  ASSERT_EQ(simulation.finish_day({}), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(simulation.damage(Actor::Chef), Result::Applied);
+  }
+  EXPECT_EQ(simulation.snapshot().chef.exhaustions, 1U);
+  EXPECT_EQ(simulation.snapshot().appraiser.exhaustions, 0U);
 }
 
 } // namespace

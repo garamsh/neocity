@@ -9,8 +9,8 @@
 namespace neocity::survival {
 namespace {
 
-bool take(std::vector<IngredientId> &inventory, IngredientId ingredient) {
-  const auto found = std::ranges::find(inventory, ingredient);
+template <typename Item> bool take(std::vector<Item> &inventory, Item item) {
+  const auto found = std::ranges::find(inventory, item);
   if (found == inventory.end()) {
     return false;
   }
@@ -71,6 +71,7 @@ Result Simulation::damage(Actor actor) {
     --state.health;
   }
   if (state.health == 0) {
+    ++state.exhaustions;
     relocate(state);
   }
   return Result::Applied;
@@ -82,6 +83,15 @@ Result Simulation::collect(Actor actor, IngredientId ingredient) {
     return Result::NotExploring;
   }
   state.inventory.push_back(ingredient);
+  return Result::Applied;
+}
+
+Result Simulation::collect_tool(Actor actor, ToolId tool) {
+  auto &state = actor_state(actor);
+  if (state.location != Location::City) {
+    return Result::NotExploring;
+  }
+  state.tools.push_back(tool);
   return Result::Applied;
 }
 
@@ -101,12 +111,23 @@ Result Simulation::consume(std::span<const IngredientId> ingredients) {
   return Result::Applied;
 }
 
-Result Simulation::finish_day(std::uint32_t acid_rise) {
+Result Simulation::consume_tool(ToolId tool) {
   if (world.phase != Phase::Workshop) {
     return Result::NotInWorkshop;
   }
-  world.acid += std::min(acid_rise, std::numeric_limits<std::uint32_t>::max() -
-                                        world.acid);
+  if (!take(world.chef.tools, tool) && !take(world.appraiser.tools, tool)) {
+    return Result::MissingTool;
+  }
+  return Result::Applied;
+}
+
+Result Simulation::finish_day(AcidLevel acid_rise) {
+  if (world.phase != Phase::Workshop) {
+    return Result::NotInWorkshop;
+  }
+  world.acid.value +=
+      std::min(acid_rise.value,
+               std::numeric_limits<std::uint32_t>::max() - world.acid.value);
   ++world.day;
   world.remaining_exploration = daily_budget;
   return Result::Applied;

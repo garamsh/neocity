@@ -30,13 +30,17 @@ struct Recipe {
 };
 
 /// Temporary caller-supplied balance values, with no production default.
+/// `magnifier` and `spatula` name the carried tools that replace each base
+/// tool.
 struct WorkshopConfig {
   std::vector<Recipe> recipes;
+  ToolId magnifier;
+  ToolId spatula;
   std::uint32_t new_food_score;
   std::uint32_t new_ingredient_score;
   std::uint32_t satisfying_score;
-  std::uint32_t disliked_acid_rise;
-  std::uint32_t unsatisfied_acid_rise;
+  AcidLevel disliked_acid_rise;
+  AcidLevel unsatisfied_acid_rise;
 };
 
 /// Unfed marks a day ended without feeding.
@@ -52,7 +56,7 @@ struct DayOutcome {
   std::uint32_t completed_day = 0;
   MonsterReaction reaction = MonsterReaction::Unfed;
   std::uint64_t score = 0;
-  std::uint32_t acid_rise = 0;
+  AcidLevel acid_rise;
   friend bool operator==(const DayOutcome &, const DayOutcome &) = default;
 };
 
@@ -82,15 +86,18 @@ enum class WorkshopResult : std::uint8_t {
   NotCarried,
   NotIdentified,
   UnknownRecipe,
-  NoFood
+  NoFood,
+  ToolIntact
 };
 
 /// Untimed base roles; owns tools, appraisal facts, dishes, feeding history and
 /// its random state, seeded once from the run seed. Progression stays in the
-/// supplied Simulation, which must outlive this instance.
+/// supplied Simulation, which must outlive this instance. An exhausted
+/// appraiser damages the magnifier and an exhausted chef the spatula.
 class Workshop {
 public:
-  /// Throws std::invalid_argument for an empty recipe or a repeated food.
+  /// Throws std::invalid_argument for an empty recipe, a repeated food or one
+  /// tool identity shared by both base tools.
   Workshop(Simulation &progression, WorkshopConfig settings);
   /// The appraiser records a carried ingredient as identified on success.
   [[nodiscard]] WorkshopResult appraise(Actor actor, IngredientId ingredient);
@@ -99,16 +106,19 @@ public:
   /// Feeds one stored dish, then starts the next day.
   [[nodiscard]] WorkshopResult feed(FoodId food);
   /// Starts the next day with no dish at the caller's acid penalty.
-  [[nodiscard]] WorkshopResult end_day_unfed(std::uint32_t acid_penalty);
+  [[nodiscard]] WorkshopResult end_day_unfed(AcidLevel acid_penalty);
   /// Applies in any phase: damage events can arrive during exploration.
   void damage_tool(WorkshopTool tool);
-  /// Restores the tool; possession and cost are checked by the caller.
+  /// Spends one carried tool of the configured identity to restore a damaged
+  /// base tool, including exhaustion damage.
   [[nodiscard]] WorkshopResult replace_tool(WorkshopTool tool);
   /// Returns independent values.
   [[nodiscard]] WorkshopSnapshot snapshot() const;
 
 private:
   ToolState &tool_state(WorkshopTool tool);
+  std::uint32_t &settled_exhaustions(WorkshopTool tool);
+  [[nodiscard]] ToolState condition(WorkshopTool tool) const;
   [[nodiscard]] bool in_workshop() const;
   bool attempt(ToolState tool);
 
@@ -116,6 +126,8 @@ private:
   WorkshopConfig config;
   WorkshopSnapshot state;
   std::mt19937 generator;
+  std::uint32_t magnifier_exhaustions = 0;
+  std::uint32_t spatula_exhaustions = 0;
 };
 
 } // namespace neocity::survival

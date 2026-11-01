@@ -221,7 +221,7 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
       object->kind != ObjectKind::MaterialSource) {
     return CollectionResult::UnknownSource;
   }
-  if (!object->material_available || !object->ingredient) {
+  if (!object->material_available) {
     return CollectionResult::Unavailable;
   }
   if (distance(explorer(actor).state.position, object->area) >
@@ -231,9 +231,35 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (stock->remaining == 0) {
     return CollectionResult::Depleted;
   }
-  require_applied(simulation.get().collect(actor, *object->ingredient));
+  if (object->ingredient) {
+    require_applied(simulation.get().collect(actor, *object->ingredient));
+  } else if (object->tool) {
+    require_applied(simulation.get().collect_tool(actor, *object->tool));
+  }
   --stock->remaining;
   return CollectionResult::Applied;
+}
+
+RepairResult Exploration::repair(Actor actor, ObjectId target, ToolId tool) {
+  const auto state = actor_state(simulation.get().snapshot(), actor);
+  if (state.location != Location::City) {
+    return RepairResult::NotExploring;
+  }
+  const auto snapshot = world.get().snapshot();
+  const auto object = std::ranges::find_if(
+      snapshot.objects,
+      [target](const ObjectSnapshot &entry) { return entry.id == target; });
+  if (object == snapshot.objects.end()) {
+    return RepairResult::UnknownObject;
+  }
+  if (distance(explorer(actor).state.position, object->area) >
+      config.collection_distance) {
+    return RepairResult::OutOfRange;
+  }
+  if (std::ranges::find(state.tools, tool) == state.tools.end()) {
+    return RepairResult::ToolNotCarried;
+  }
+  return world.get().repair(target, tool);
 }
 
 ExplorationSnapshot Exploration::snapshot() const {

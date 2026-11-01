@@ -23,17 +23,21 @@ constexpr IngredientId CHILI{3};
 constexpr FoodId PORRIDGE{10};
 constexpr FoodId OMELET{11};
 constexpr FoodId CURRY{12};
+constexpr ToolId NEW_MAGNIFIER{20};
+constexpr ToolId NEW_SPATULA{21};
 
 WorkshopConfig balance() {
   return {
       .recipes = {{.food = PORRIDGE, .ingredients = {RICE}},
                   {.food = OMELET, .ingredients = {RICE, EGG}},
                   {.food = CURRY, .ingredients = {CHILI}, .disliked = true}},
+      .magnifier = NEW_MAGNIFIER,
+      .spatula = NEW_SPATULA,
       .new_food_score = 10,
       .new_ingredient_score = 3,
       .satisfying_score = 12,
-      .disliked_acid_rise = 7,
-      .unsatisfied_acid_rise = 2};
+      .disliked_acid_rise = AcidLevel{7},
+      .unsatisfied_acid_rise = AcidLevel{2}};
 }
 
 /// Finds a seed whose first draw lands on the requested percentile.
@@ -46,13 +50,17 @@ std::uint32_t seed_for_roll(std::uint32_t roll) {
   }
 }
 
-/// A run at base carrying the listed ingredients on the chef.
+/// A run at base carrying the listed ingredients and tools on the chef.
 Simulation carrying(std::uint32_t seed,
-                    const std::vector<IngredientId> &ingredients) {
+                    const std::vector<IngredientId> &ingredients,
+                    const std::vector<ToolId> &tools = {}) {
   Simulation simulation({.exploration_budget = 10s, .seed = seed});
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
   for (const auto ingredient : ingredients) {
     EXPECT_EQ(simulation.collect(Actor::Chef, ingredient), Result::Applied);
+  }
+  for (const auto tool : tools) {
+    EXPECT_EQ(simulation.collect_tool(Actor::Chef, tool), Result::Applied);
   }
   EXPECT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
   EXPECT_EQ(simulation.snapshot().chef.inventory, ingredients);
@@ -148,7 +156,8 @@ TEST(Workshop, DamagedSpatulaSucceedsThroughRoll39AndFailsAtRoll40) {
 }
 
 TEST(Workshop, EachToolDamagesAndReplacesIndependently) {
-  auto simulation = carrying(seed_for_roll(60), {RICE});
+  auto simulation =
+      carrying(seed_for_roll(60), {RICE}, {NEW_MAGNIFIER, NEW_SPATULA});
   Workshop workshop(simulation, balance());
   workshop.damage_tool(WorkshopTool::Magnifier);
   EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
@@ -156,6 +165,8 @@ TEST(Workshop, EachToolDamagesAndReplacesIndependently) {
   ASSERT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
             WorkshopResult::Applied);
   EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Intact);
+  EXPECT_EQ(simulation.snapshot().chef.tools,
+            (std::vector<ToolId>{NEW_SPATULA}));
   workshop.damage_tool(WorkshopTool::Spatula);
   EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Intact);
   EXPECT_EQ(workshop.snapshot().spatula, ToolState::Damaged);
@@ -166,6 +177,7 @@ TEST(Workshop, ToolsDamageDuringExplorationButAreReplacedOnlyAtBase) {
   Simulation simulation({.exploration_budget = 10s, .seed = 1});
   Workshop workshop(simulation, balance());
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Chef, NEW_SPATULA), Result::Applied);
   workshop.damage_tool(WorkshopTool::Spatula);
   EXPECT_EQ(workshop.snapshot().spatula, ToolState::Damaged);
   EXPECT_EQ(workshop.replace_tool(WorkshopTool::Spatula),
@@ -270,7 +282,8 @@ TEST(Workshop, CommandsAreRefusedWhileAnActorIsExploring) {
   EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.feed(PORRIDGE), WorkshopResult::NotInWorkshop);
-  EXPECT_EQ(workshop.end_day_unfed(1), WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.end_day_unfed(AcidLevel{1}),
+            WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.snapshot(), before);
   EXPECT_EQ(simulation.snapshot(), progress);
   ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
@@ -305,16 +318,16 @@ TEST(Workshop, NewFoodsScoreAboveRepeatsAndRepeatsMissTheThreshold) {
             (DayOutcome{.completed_day = 1,
                         .reaction = MonsterReaction::Satisfied,
                         .score = 13,
-                        .acid_rise = 0}));
-  EXPECT_EQ(simulation.snapshot().acid, 0U);
+                        .acid_rise = AcidLevel{0}}));
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{0});
 
   ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
   EXPECT_EQ(workshop.snapshot().last_day,
             (DayOutcome{.completed_day = 2,
                         .reaction = MonsterReaction::Unsatisfied,
                         .score = 0,
-                        .acid_rise = 2}));
-  EXPECT_EQ(simulation.snapshot().acid, 2U);
+                        .acid_rise = AcidLevel{2}}));
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{2});
   EXPECT_EQ(simulation.snapshot().day, 3U);
 }
 
@@ -373,8 +386,8 @@ TEST(Workshop, DislikedFoodRaisesAcidEvenWhenItsScorePasses) {
             (DayOutcome{.completed_day = 1,
                         .reaction = MonsterReaction::Disliked,
                         .score = 13,
-                        .acid_rise = 7}));
-  EXPECT_EQ(simulation.snapshot().acid, 7U);
+                        .acid_rise = AcidLevel{7}}));
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{7});
   EXPECT_EQ(simulation.snapshot().day, 2U);
 }
 
@@ -400,9 +413,9 @@ TEST(Workshop, DayEndsUnfedWithTheCallerPenaltyAndCreatesNothing) {
   ASSERT_EQ(simulation.advance(10s), Result::Applied);
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::NoExplorationTime);
   ASSERT_TRUE(simulation.snapshot().chef.inventory.empty());
-  EXPECT_EQ(workshop.end_day_unfed(5), WorkshopResult::Applied);
+  EXPECT_EQ(workshop.end_day_unfed(AcidLevel{5}), WorkshopResult::Applied);
   EXPECT_EQ(simulation.snapshot().day, 2U);
-  EXPECT_EQ(simulation.snapshot().acid, 5U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{5});
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 10s);
   EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
   EXPECT_TRUE(workshop.snapshot().foods.empty());
@@ -411,7 +424,7 @@ TEST(Workshop, DayEndsUnfedWithTheCallerPenaltyAndCreatesNothing) {
             (DayOutcome{.completed_day = 1,
                         .reaction = MonsterReaction::Unfed,
                         .score = 0,
-                        .acid_rise = 5}));
+                        .acid_rise = AcidLevel{5}}));
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
 }
 
@@ -419,17 +432,17 @@ TEST(Workshop, DayOutcomeReportsDayThirtyForTheEscapeRules) {
   Simulation simulation({.exploration_budget = 10s, .seed = 3});
   Workshop workshop(simulation, balance());
   for (std::uint32_t day = 1; day <= 30; ++day) {
-    ASSERT_EQ(workshop.end_day_unfed(1), WorkshopResult::Applied);
+    ASSERT_EQ(workshop.end_day_unfed(AcidLevel{1}), WorkshopResult::Applied);
     EXPECT_EQ(last_day(workshop).completed_day, day);
   }
   EXPECT_EQ(simulation.snapshot().day, 31U);
-  EXPECT_EQ(simulation.snapshot().acid, 30U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{30});
   EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
 }
 
 TEST(Workshop, SharesOneRandomSequenceAcrossAppraisalAndCooking) {
   // First draws of mt19937 seeded with 42: 1608637542, 3421126067, 4083286876.
-  auto simulation = carrying(42, {RICE, RICE, EGG});
+  auto simulation = carrying(42, {RICE, RICE, EGG}, {NEW_MAGNIFIER});
   Workshop workshop(simulation, balance());
   workshop.damage_tool(WorkshopTool::Magnifier);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Failed);
@@ -457,6 +470,125 @@ TEST(Workshop, SameSeedAndCommandsReplayTheSameRun) {
   };
   EXPECT_EQ(play(1234), play(1234));
   EXPECT_NE(std::get<0>(play(1234)), std::get<0>(play(4321)));
+}
+
+TEST(Workshop, ReplacementSpendsOneCarriedToolAndRestoresTheIntactRate) {
+  auto simulation =
+      carrying(seed_for_roll(60), {RICE}, {NEW_MAGNIFIER, NEW_MAGNIFIER});
+  Workshop workshop(simulation, balance());
+  workshop.damage_tool(WorkshopTool::Magnifier);
+  ASSERT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.tools,
+            (std::vector<ToolId>{NEW_MAGNIFIER}));
+  // Roll 60 succeeds only at the intact rate.
+  EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+}
+
+TEST(Workshop, ReplacementNeedsTheConfiguredToolForThatBaseTool) {
+  auto simulation = carrying(1, {}, {NEW_SPATULA});
+  Workshop workshop(simulation, balance());
+  workshop.damage_tool(WorkshopTool::Magnifier);
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::NotCarried);
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+  EXPECT_EQ(simulation.snapshot().chef.tools,
+            (std::vector<ToolId>{NEW_SPATULA}));
+  workshop.damage_tool(WorkshopTool::Spatula);
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Spatula),
+            WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().spatula, ToolState::Intact);
+}
+
+TEST(Workshop, ReplacingAnIntactToolIsRefusedAndKeepsTheCarriedTool) {
+  auto simulation = carrying(1, {}, {NEW_MAGNIFIER});
+  Workshop workshop(simulation, balance());
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::ToolIntact);
+  EXPECT_EQ(simulation.snapshot().chef.tools,
+            (std::vector<ToolId>{NEW_MAGNIFIER}));
+  workshop.damage_tool(WorkshopTool::Magnifier);
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::Applied);
+}
+
+TEST(Workshop, ExhaustionDamagesOnlyThatActorsBaseTool) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  const Workshop workshop(simulation, balance());
+  const auto exhaust = [&](Actor actor) {
+    ASSERT_EQ(simulation.enter(actor), Result::Applied);
+    for (int hit = 0; hit < 3; ++hit) {
+      ASSERT_EQ(simulation.damage(actor), Result::Applied);
+    }
+  };
+  exhaust(Actor::Appraiser);
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+  EXPECT_EQ(workshop.snapshot().spatula, ToolState::Intact);
+  exhaust(Actor::Chef);
+  EXPECT_EQ(workshop.snapshot().spatula, ToolState::Damaged);
+}
+
+TEST(Workshop, ExhaustionLowersTheNextAttemptToTheDamagedRate) {
+  auto simulation = carrying(seed_for_roll(60), {RICE});
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(simulation.damage(Actor::Appraiser), Result::Applied);
+  }
+  // Roll 60 succeeds at the intact rate and fails at the damaged rate.
+  EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Failed);
+}
+
+TEST(Workshop, HarmlessReturnsLeaveToolsIntact) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  const Workshop workshop(simulation, balance());
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.damage(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Intact);
+}
+
+TEST(Workshop, ReplacementSettlesExhaustionUntilTheNextOne) {
+  auto simulation = carrying(1, {}, {NEW_MAGNIFIER, NEW_MAGNIFIER});
+  Workshop workshop(simulation, balance());
+  const auto exhaust = [&] {
+    ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+    for (int hit = 0; hit < 3; ++hit) {
+      ASSERT_EQ(simulation.damage(Actor::Appraiser), Result::Applied);
+    }
+  };
+  exhaust();
+  ASSERT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+  ASSERT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Intact);
+  exhaust();
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+}
+
+TEST(Workshop, EatenIngredientsHoldEachKindOnce) {
+  auto config = balance();
+  config.recipes.push_back({.food = FoodId{13}, .ingredients = {RICE, RICE}});
+  auto simulation = carrying(lucky_seed(), {RICE, RICE, RICE, RICE});
+  Workshop workshop(simulation, config);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, FoodId{13}), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(FoodId{13}), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().eaten_ingredients,
+            (std::vector<IngredientId>{RICE}));
+  EXPECT_EQ(workshop.snapshot().eaten_foods,
+            (std::vector<FoodId>{FoodId{13}, PORRIDGE}));
+}
+
+TEST(Workshop, RejectsOneToolIdentityForBothBaseTools) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  auto shared = balance();
+  shared.spatula = shared.magnifier;
+  EXPECT_THROW(Workshop(simulation, shared), std::invalid_argument);
+  EXPECT_NO_THROW(Workshop(simulation, balance()));
 }
 
 TEST(Workshop, RejectsEmptyRecipesAndRepeatedFoods) {
@@ -504,10 +636,9 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
 
   const auto after = simulation.snapshot();
   EXPECT_EQ(after.day, 2U);
-  EXPECT_EQ(after.acid, 7U);
+  EXPECT_EQ(after.acid, AcidLevel{7});
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.advance(100ms, idle, AcidLevel{after.acid}),
-            Result::Applied);
+  ASSERT_EQ(exploration.advance(100ms, idle, after.acid), Result::Applied);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 900ms);
   EXPECT_EQ(world.snapshot().progression.acid, AcidLevel{7});
   const auto city = world.snapshot();
@@ -515,6 +646,39 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
       std::ranges::find(city.objects, ACID_FLOOR, &ObjectSnapshot::id);
   ASSERT_NE(floor, city.objects.end());
   EXPECT_EQ(floor->state, ObjectState::Destroyed);
+}
+
+TEST(WorkshopIntegration, FoundToolRestoresTheBaseToolAfterAnExhaustion) {
+  constexpr ObjectId FLOOR{1};
+  constexpr ObjectId CRATE{2};
+  Simulation simulation({.exploration_budget = 1s, .seed = seed_for_roll(60)});
+  World world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 5, .height = 1}},
+               {.id = CRATE,
+                .kind = ObjectKind::MaterialSource,
+                .area = {.x = 1},
+                .tool = NEW_MAGNIFIER}});
+  Exploration exploration(
+      simulation, world,
+      {.base = {.x = -5}, .entry = {}, .sources = {{.id = CRATE}}});
+  Workshop workshop(simulation, balance());
+
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Appraiser, CRATE),
+            CollectionResult::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(exploration.damage(Actor::Appraiser), Result::Applied);
+  }
+  ASSERT_EQ(simulation.snapshot().appraiser.location, Location::Base);
+  ASSERT_EQ(simulation.snapshot().appraiser.tools,
+            (std::vector<ToolId>{NEW_MAGNIFIER}));
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().magnifier, ToolState::Intact);
+  EXPECT_TRUE(simulation.snapshot().appraiser.tools.empty());
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Magnifier),
+            WorkshopResult::ToolIntact);
 }
 
 } // namespace

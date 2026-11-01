@@ -22,11 +22,26 @@ struct IngredientId {
   friend bool operator==(const IngredientId &, const IngredientId &) = default;
 };
 
-/// Exploration health and carried ingredients; workshop has no separate health.
+/// Tool identity, never an ingredient; what a tool does is set by its consumer.
+struct ToolId {
+  std::uint32_t value = 0;
+  friend bool operator==(const ToolId &, const ToolId &) = default;
+};
+
+/// Caller-defined acid units; no production rise or feeding formula is implied.
+struct AcidLevel {
+  std::uint32_t value = 0;
+  friend bool operator==(const AcidLevel &, const AcidLevel &) = default;
+};
+
+/// Exploration health and carried items; workshop has no separate health.
+/// `exhaustions` counts the times this actor's health ran out.
 struct ActorSnapshot {
   Location location = Location::Base;
   std::uint8_t health = 3;
   std::vector<IngredientId> inventory;
+  std::vector<ToolId> tools;
+  std::uint32_t exhaustions = 0;
   friend bool operator==(const ActorSnapshot &,
                          const ActorSnapshot &) = default;
 };
@@ -46,7 +61,7 @@ struct Snapshot {
   Phase phase = Phase::Workshop;
   std::uint32_t day = 1;
   std::chrono::microseconds remaining_exploration{};
-  std::uint32_t acid = 0;
+  AcidLevel acid;
   std::uint32_t seed = 0;
   friend bool operator==(const Snapshot &, const Snapshot &) = default;
 };
@@ -58,7 +73,8 @@ enum class Result : std::uint8_t {
   NoExplorationTime,
   InvalidElapsed,
   NotInWorkshop,
-  MissingIngredients
+  MissingIngredients,
+  MissingTool
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
@@ -80,12 +96,16 @@ public:
   /// Records collection authorized by exploration rules; no world lookup occurs
   /// here.
   [[nodiscard]] Result collect(Actor actor, IngredientId ingredient);
+  /// Records a tool pickup authorized by exploration rules.
+  [[nodiscard]] Result collect_tool(Actor actor, ToolId tool);
   /// Removes every listed ingredient from the two inventories, the chef's
   /// first, or removes none.
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
+  /// Removes one tool from the two inventories, the chef's first.
+  [[nodiscard]] Result consume_tool(ToolId tool);
   /// Raises acid, saturating at its limit, and starts the next day with a full
   /// exploration budget.
-  [[nodiscard]] Result finish_day(std::uint32_t acid_rise);
+  [[nodiscard]] Result finish_day(AcidLevel acid_rise);
   /// Returns the complete current state, including the supplied replay seed.
   [[nodiscard]] Snapshot snapshot() const;
 

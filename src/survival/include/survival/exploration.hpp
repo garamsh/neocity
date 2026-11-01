@@ -32,6 +32,7 @@ struct SourceStock {
 };
 
 /// Temporary tuning: walking/running move one/two cells per 100ms tick.
+/// `collection_distance` also bounds repairs.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
@@ -92,9 +93,12 @@ public:
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);
-  /// Checks identity, supply, distance and shared stock before recording
-  /// material.
+  /// Checks identity, supply, distance and shared stock before recording the
+  /// source's ingredient or tool.
   [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
+  /// Repairs from within interaction distance with a tool this actor carries;
+  /// the tool is kept.
+  [[nodiscard]] RepairResult repair(Actor actor, ObjectId target, ToolId tool);
   /// Returns independent values; requests are never retained in this snapshot.
   [[nodiscard]] ExplorationSnapshot snapshot() const;
 
