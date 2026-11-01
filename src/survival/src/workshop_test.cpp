@@ -681,5 +681,15 @@ TEST(WorkshopIntegration, FoundToolRestoresTheBaseToolAfterAnExhaustion) {
             WorkshopResult::ToolIntact);
 }
 
+TEST(Workshop, ToolDamageReachesEveryPhaseButTheEscapedOne) {
+  auto simulation = carrying(1, {});
+  Workshop workshop(simulation, balance());
+  workshop.damage_tool(WorkshopTool::Magnifier);
+  ASSERT_EQ(workshop.snapshot().magnifier, ToolState::Damaged);
+  ASSERT_EQ(simulation.escape(), Result::Applied);
+  workshop.damage_tool(WorkshopTool::Spatula);
+  EXPECT_EQ(workshop.snapshot().spatula, ToolState::Intact);
+}
+
 } // namespace
 } // namespace neocity::survival

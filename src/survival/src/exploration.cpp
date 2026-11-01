@@ -150,6 +150,9 @@ Result Exploration::damage(Actor actor) {
 Result Exploration::advance(std::chrono::microseconds elapsed,
                             const std::array<ExplorationInput, 2> &inputs,
                             AcidLevel acid) {
+  if (simulation.get().snapshot().phase == Phase::Escaped) {
+    return Result::Escaped;
+  }
   const auto progression = world.get().snapshot().progression;
   const auto available = simulation.get().snapshot().remaining_exploration;
   if (elapsed < 0us ||

@@ -203,6 +203,7 @@ func _start(option: int) -> void:
 	await _frames(4)
 	await _one_frame("option_" + str(option))
 	await _frames(4)
+	await _one_frame("survival_1_interact")
 
 func _one_frame(action: String) -> void:
 	Input.action_press(action)

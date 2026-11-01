@@ -50,6 +50,7 @@ func _menus() -> void:
 	await _tap(KEY_1)
 	if not _check(scene.screen_name() == "survival", "choosing the chef starts a run"):
 		return
+	await _tap(KEY_E)
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == -1, "the chosen actor is human and the other is AI"):
 		return
 	if not _check(_int("day") == 1 and _str("phase") == "workshop", "the run opens on day one at base"):
@@ -250,6 +251,7 @@ func _appraiser_run() -> void:
 		return
 	await _tap(KEY_1)
 	await _tap(KEY_2)
+	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "key_set") == 0 and _actor("chef", "key_set") == -1, "choosing the appraiser gives AI the chef"):
 		return
 	if not _check(_int("day") == 1 and _int("acid") == 0 and _object("Noodle Vendor") == "intact", "a new run starts fresh"):
@@ -314,6 +316,7 @@ func _two_players() -> void:
 	await _tap(KEY_M)
 	await _tap(KEY_1)
 	await _tap(KEY_3)
+	await _tap(KEY_E)
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
 	await _tap(KEY_U)

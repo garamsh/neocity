@@ -7,6 +7,7 @@
 #include <gameplay/engine.hpp>
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
+#include <survival/escape.hpp>
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -37,6 +38,7 @@ private:
   survival::World world;
   survival::Exploration exploration;
   survival::Workshop workshop;
+  survival::Escape escape;
   survival::Companion companion;
 };
 
@@ -69,6 +71,11 @@ protected:
 
 private:
   void mount(const std::optional<godot::String> &scene);
+  /// Starts a cinematic; false when it cannot load or breaks the scene
+  /// contract, so the session shows its fallback.
+  bool play_cinematic(const godot::String &scene);
+  [[nodiscard]] bool cinematic_playing() const;
+  void stop_cinematic();
   session::SurvivalFeatures start_survival();
 
   gameplay::AscentEngine engine;

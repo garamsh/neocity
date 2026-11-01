@@ -684,6 +684,7 @@ String refusal_text(survival::Result result) {
   case survival::Result::NotInWorkshop:
   case survival::Result::MissingIngredients:
   case survival::Result::MissingTool:
+  case survival::Result::Escaped:
     return "That cannot be done now.";
   }
   std::abort();
@@ -833,8 +834,47 @@ void paint_survival(godot::Node2D &canvas,
   paint_next_step(canvas, drawing, frame);
 }
 
+void paint_cinematic(godot::Node2D &canvas,
+                     const rendering::AscentDrawing &drawing,
+                     Cinematic cinematic, bool fallback,
+                     const SurvivalFrame &frame) {
+  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(8, 6, 16, 1.0F));
+  if (!fallback) {
+    return;
+  }
+  const auto tones = rendering::palette();
+  const auto &progression = frame.view.progression;
+  rendering::paint_mouth(canvas, static_cast<float>(progression.acid.value) /
+                                     static_cast<float>(FULL_ACID));
+  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
+  drawing.sprite(canvas, 0, rect(130.0F, 300.0F, 130.0F, 150.0F), false);
+  drawing.sprite(canvas, 2, rect(280.0F, 300.0F, 130.0F, 150.0F), false);
+  switch (cinematic) {
+  case Cinematic::Intro:
+    drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 46, tones.white);
+    drawing.text(canvas, 130.0F, 230.0F,
+                 "A monster ate the city. Keep it fed, and look for a way out.",
+                 24, tones.white);
+    break;
+  case Cinematic::Ending:
+    drawing.text(canvas, 130.0F, 170.0F, "ESCAPED", 46, tones.gold);
+    drawing.text(canvas, 130.0F, 230.0F,
+                 "The party got out of the monster after " +
+                     number(progression.day - 1) + String(" days."),
+                 24, tones.white);
+    break;
+  }
+  drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
+               20, tones.muted);
+  drawing.text(canvas, 130.0F, 640.0F, "E: skip   M: main menu", 22,
+               tones.muted);
+}
+
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
+  if (view.progression.phase == Phase::Escaped) {
+    return "The party has escaped.";
+  }
   if (view.progression.phase == Phase::Workshop) {
     return workshop_step(frame, KEY_LABELS.at(0));
   }
