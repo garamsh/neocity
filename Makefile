@@ -82,6 +82,18 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SessionTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Session: 3 integration checks passed (discard time, accumulate time, retain edge).' "$$log"
 
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 24 integration checks passed.' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 3 integration checks passed.' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 56 live checks passed (menus, days, return, appraisal, cooking, feeding, map, tools, roles).' "$$log"
+
 ci: lint format test
 
 run: build

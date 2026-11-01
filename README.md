@@ -1,6 +1,6 @@
 # neocity
 
-A neon-city ascent course and a developer page of playable experiments, in one Godot-hosted C++ application.
+Monster Mouth Escape, a neon-city ascent course, and a developer page of playable experiments, in one Godot-hosted C++ application.
 
 ## Play locally
 
@@ -8,7 +8,21 @@ On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, 
 
 `play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
 
-The game opens on the main menu: **1** plays the main game, currently the ascent course below, and **2** opens the developer page. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level. Release held keys after a menu choice before giving the next input.
+The game opens on the main menu: **1** starts Monster Mouth Escape, **2** opens the developer page, and **3** plays the earlier ascent prototype below. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level. Release held keys after a menu choice before giving the next input.
+
+In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the appraiser and AI plays the other, or choose two local players. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. Food it wants holds the acid back; rising acid and time wreck the city. The escape and endings are not implemented yet, and the map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
+
+| Survival input | Player 1 | Player 2 |
+|---|---|---|
+| Move | WASD or arrows | IJKL |
+| Run | Shift | H |
+| Set out or return to base | Q | U |
+| Collect or repair; appraise or cook at base | E | O |
+| Replace a damaged base tool | R | P |
+| Feed a stored dish | F | [ |
+| End the day unfed | G | ] |
+| Swap actor, playing alone | Tab | none |
+| Hand your actor to AI, playing together | X | N |
 
 | Experiment | Try it |
 |---|---|
@@ -32,8 +46,9 @@ Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, a
 
 - `src/gameplay` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
 - `src/experiment/<id>/` holds one experiment: a rules library with no Godot, ascent, or mutual dependencies, its Godot node in `view/`, and its record. `src/experiment/catalog.hpp` lists them for the developer page.
+- `src/survival` owns the rules of Monster Mouth Escape and its temporary content, with no Godot dependency.
 - `src/session` owns the main menu, the developer page, and run timing. `src/input`, `src/camera`, `src/rendering`, and `src/hud` own input translation, the camera, resources and canvas drawing, and the HUD; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rule libraries' public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window, input, canvas, and 3D services. No standalone GPU backend is claimed.
-- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, each experiment's scene in `experiment/<id>/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
+- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, which the survival screen's sprites also come from, each experiment's scene in `experiment/<id>/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains
@@ -45,7 +60,7 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
-- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live checks of both menus and the `pan_dodge` experiment, and three session integration checks for partial-tick time and input edges.
+- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live checks of both menus and the `pan_dodge` experiment, three session integration checks for partial-tick time and input edges, the survival fixed-step checks at two frame rates, and live checks playing the survival game with real key events.
 - `make ci`: the complete set. Once `build/` is configured, rules-only checks run without Godot: `.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test`, then `.tools/cpp/bin/ctest --test-dir build`.
 
 Each experiment's rules library also configures from its own folder without fetching or building Godot; its record lists the commands. After the first Make entry point installs the pinned tools, run them for every experiment from the repository root:
@@ -65,7 +80,7 @@ After `make build`, reproduce the real-input menu, experiment, and direct-launch
 godot --headless --path project --main-loop PanExperimentsCheck --fixed-fps 120
 ```
 
-Remove `--headless` to watch the same key-driven run in one window. The harness only presses keys: it steers toward the travelling gate, circles to dodge drops, and stands still to be hit; it does not set positions or outcomes. `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` saves real main-menu, developer-page, and `pan_dodge` frames as `user://main-menu.png`, `user://developer.png`, and `user://pan-dodge.png`; it requires a rendering display. The ascent capture uses `--main-loop AscentCapture` and selects the main game through the menu. Rendered examples: [main menu](docs/architecture/evidence/pan-experiments/main-menu.png), [developer page](docs/architecture/evidence/pan-experiments/developer.png), and [`pan_dodge`](docs/architecture/evidence/pan-experiments/pan-dodge.png).
+Remove `--headless` to watch the same key-driven run in one window. The harness only presses keys: it steers toward the travelling gate, circles to dodge drops, and stands still to be hit; it does not set positions or outcomes. `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` saves real main-menu, developer-page, and `pan_dodge` frames as `user://main-menu.png`, `user://developer.png`, and `user://pan-dodge.png`; it requires a rendering display. The ascent capture uses `--main-loop AscentCapture` and selects the ascent prototype through the menu. Rendered examples: [main menu](docs/architecture/evidence/pan-experiments/main-menu.png), [developer page](docs/architecture/evidence/pan-experiments/developer.png), and [`pan_dodge`](docs/architecture/evidence/pan-experiments/pan-dodge.png).
 
 C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 

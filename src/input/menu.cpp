@@ -1,6 +1,7 @@
 #include "menu.hpp"
 
 #include "input.hpp"
+#include "survival.hpp"
 
 #include <godot_cpp/classes/input.hpp>
 
@@ -21,7 +22,8 @@ static_assert(experiment::CATALOG.size() <= OPTIONS.size(),
 
 } // namespace
 
-session::Command sample_session_input() {
+session::Command
+sample_session_input(std::optional<survival::ControlMap> control) {
   const godot::Input *input = godot::Input::get_singleton();
   session::Command command;
   for (std::size_t i = 0; i < OPTIONS.size(); ++i) {
@@ -38,6 +40,10 @@ session::Command sample_session_input() {
         "switch_character", "pause", "retry", "menu"}) {
     command.controls_held =
         command.controls_held || input->is_action_pressed(action);
+  }
+  command.controls_held = command.controls_held || survival_controls_held();
+  if (control) {
+    command.survival = sample_survival_input(*control);
   }
   return command;
 }

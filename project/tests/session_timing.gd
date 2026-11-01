@@ -13,9 +13,9 @@ func _process(_delta: float) -> bool:
 			scene = current_scene as AscentScene
 			if scene == null:
 				return _fail("configured scene missing")
-			Input.action_press("option_1")
+			Input.action_press("option_3")
 		3:
-			Input.action_release("option_1")
+			Input.action_release("option_3")
 		5:
 			if scene.screen_name() != "ascent":
 				return _fail("ascent not selected")
@@ -27,9 +27,9 @@ func _process(_delta: float) -> bool:
 			Input.action_release("move_right")
 			Input.action_release("menu")
 		10:
-			Input.action_press("option_1")
+			Input.action_press("option_3")
 		11:
-			Input.action_release("option_1")
+			Input.action_release("option_3")
 		13:
 			if scene.screen_name() != "ascent" or scene.actor_position() != ascent_start:
 				return _fail("second ascent run not fresh")
