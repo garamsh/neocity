@@ -180,9 +180,11 @@ stock_in(const Content &content, const std::set<std::uint32_t> &sources) {
   for (const auto &stock : content.companion.exploration.sources) {
     const auto object =
         std::ranges::find(content.objects, stock.id, &ObjectDefinition::id);
-    if (object != content.objects.end() && object->ingredient &&
-        sources.contains(stock.id.value)) {
-      totals[object->ingredient->value] += stock.remaining;
+    if (object == content.objects.end() || !sources.contains(stock.id.value)) {
+      continue;
+    }
+    if (const auto ingredient = object->ingredient) {
+      totals[ingredient->value] += stock.remaining;
     }
   }
   return totals;
