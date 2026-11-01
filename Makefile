@@ -26,6 +26,7 @@ CONFIGURE := $(CMAKE) -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_MAKE_PROGRAM=$(TOOLS
 CPP_FILES := git ls-files --cached --others --exclude-standard -- 'src/*.cpp' 'src/*.hpp'
 CPP_UNITS := git ls-files --cached --others --exclude-standard -- 'src/*.cpp'
 CLANG_TIDY_CHECKS := -*,bugprone-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-bugprone-easily-swappable-parameters,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-union-access,-misc-include-cleaner,-modernize-use-trailing-return-type,-portability-avoid-pragma-once,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-trailing-comma
+CLANG_TIDY_JOBS := $(shell getconf _NPROCESSORS_ONLN)
 CLANG_TIDY_FLAGS := -p $(BUILD_DIR) --quiet --checks='$(CLANG_TIDY_CHECKS)' --warnings-as-errors='*' --header-filter='$(CURDIR)/src/'
 ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
@@ -44,7 +45,7 @@ lint: $(TOOLS_STAMP)
 	$(CMAKE) --build $(BUILD_DIR) --target generate_bindings
 	@set -e; files=$$($(CPP_UNITS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
 	test "$$count" -gt 0 || { echo "no C++ translation unit was read" >&2; exit 1; }; \
-	$(CLANG_TIDY) $(CLANG_TIDY_FLAGS) $$files; \
+	printf '%s\n' $$files | xargs -n 1 -P $(CLANG_TIDY_JOBS) sh -c 'out=$$("$$0" "$$@" 2>&1) || { printf "%s\n" "$$out"; exit 1; }' $(CLANG_TIDY) $(CLANG_TIDY_FLAGS); \
 	echo "clang-tidy checked $$count C++ translation units, selected by: $(CPP_UNITS)"
 
 format: $(TOOLS_STAMP)
