@@ -1,47 +1,47 @@
-# 괴물 입속 탈출
+# Monster Mouth Escape
 
-괴물에게 삼켜진 도시에서 탐색·요리·급식으로 생존하고 탈출하는 게임의 결정 기준을 기록한다.
+Records the decision baseline for the game of surviving and escaping a city swallowed by a monster through exploration, cooking, and feeding.
 
-## 사용자 결정
+## User decisions
 
-기준은 [부모 #21의 본문](https://github.com/garamsh/neocity/issues/21), [10월 30일 세부 구현](https://github.com/garamsh/neocity/issues/21#issuecomment-6526232827), 이를 보완한 [탐색·귀환·탈출 기록](https://github.com/garamsh/neocity/issues/21#issuecomment-6544165358)이다. 이후 [귀환 시 3칸 회복 결정](https://github.com/garamsh/neocity/issues/23#issuecomment-6544525723)을 적용한다. 이 귀환 규칙이 이전 영구 사망 구상을 대체한다.
+The baseline is the [body of parent #21](https://github.com/garamsh/neocity/issues/21), the [October 30 implementation details](https://github.com/garamsh/neocity/issues/21#issuecomment-6526232827), and the [exploration, return, and escape record](https://github.com/garamsh/neocity/issues/21#issuecomment-6544165358) that supplements them. The later [decision to recover 3 slots on return](https://github.com/garamsh/neocity/issues/23#issuecomment-6544525723) then applies. This return rule replaces the earlier permanent death concept.
 
-| 대상 | 결정 |
+| Subject | Decision |
 |---|---|
-| 배경과 인물 | 거대 괴물에게 도시가 삼켜진다. 요리사와 초록색 감정사가 재료를 구하고 매일 음식을 먹여 위산 상승을 막으며 탈출을 모색한다. |
-| 인원 | 2인 플레이. 1인 플레이는 조작 인물을 선택하고 나머지 인물을 AI가 맡는다. 네트워크 방식은 선택 전이다. |
-| 탐색 | 두 인물이 함께 탐색하며 탐색 중 역할은 같다. 돋보기와 뒤집개는 탐색 능력이 아닌 장식이다. 스태미나가 있으면 달리고 달릴 때 소모한다. |
-| 시간과 귀환 | 탐색에는 제한 시간이 있고 만료하면 거점으로 자동 귀환한다. 요리에는 우선 시간제한을 두지 않는다. |
-| 탐색 체력 | 기본 3칸. 모두 소진하거나 추락하여 귀환해도 소지품 손실·영구 사망은 없다. 위치만 거점으로 옮기며 일수·남은 탐색 시간·맵 상태를 초기화하지 않는다. 거점 귀환 시 3칸으로 회복하며 시간이 남으면 재진입한다. |
-| 재료와 맵 | 자판기·NPC·상점·가방 등에서 재료를 얻는다. 위산과 시간에 따라 NPC·지형·오브젝트가 파괴되어 이동과 공급이 바뀐다. 건물이 유입되거나 사라질 수 있으며 파손된 사다리·입구는 도구로 수리한다. |
-| 거점 역할 | 감정사는 감정하고 요리사는 조리한다. 이 화면에는 별도 체력·스태미나가 없다. |
-| 도구 | 정상 돋보기의 감정 정확도와 정상 뒤집개의 조리 성공률은 90%, 손상 시 40%다. 피해·이벤트로 손상될 수 있고 탐색으로 새 도구를 얻는다. |
-| 급식 | 괴물은 새로운 음식·재료를 원한다. 반복 제공은 점수가 낮아 기준에 미달할 수 있다. 싫어하는 음식은 위산 상승과 맵 손상을 일으킨다. |
-| 탈출 | 기본 30일 이후 매일 확률적으로 기회를 얻는다. 구토는 가능한 예시이고 확정 연출은 아니다. |
+| Setting and actors | A giant monster swallows a city. The chef and the green appraiser gather ingredients, feed the monster every day to hold back the rising acid, and look for an escape. |
+| Players | Two-player play. In one-player play the player chooses a controlled actor and AI takes the other. The network approach is not yet chosen. |
+| Exploration | Both actors explore together and have the same role while exploring. The magnifier and spatula are decoration, not exploration abilities. With stamina an actor can run, and running spends it. |
+| Time and return | Exploration has a time limit, and on expiry actors return to base automatically. Cooking has no time limit for now. |
+| Exploration health | 3 slots by default. Returning from exhausting them all or from a fall loses no inventory and causes no permanent death. Only position moves to base, and the day count, remaining exploration time, and map state are not reset. Returning to base recovers 3 slots, and actors re-enter if time remains. |
+| Ingredients and map | Ingredients come from vending machines, NPCs, shops, bags, and the like. Acid and time destroy NPCs, terrain, and objects, changing movement and supply. Buildings can drift in or disappear, and broken ladders and entrances are repaired with tools. |
+| Base roles | The appraiser appraises and the chef cooks. This screen has no separate health or stamina. |
+| Tools | An intact magnifier's appraisal accuracy and an intact spatula's cooking success rate are 90%, and 40% when damaged. Damage and events can damage them, and exploration finds new tools. |
+| Feeding | The monster wants new foods and ingredients. Repeats score low and can fall below the threshold. A disliked food causes rising acid and map damage. |
+| Escape | After 30 days by default, a chance arises each day with some probability. Vomiting is a possible example, not a settled presentation. |
 
-## 기반에서 구현한 범위
+## Scope implemented on the foundation
 
-- [기반 #23](https://github.com/garamsh/neocity/issues/23)은 두 인물·첫날·거점/탐색 단계·소지품·3칸 체력·공용 잔여 시간·초기 위산·실행 시드의 상태와 명령을 제공한다. 시간 만료·피해 귀환·재입장·소지품 보존을 실행할 수 있다.
-- [탐색 #24](https://github.com/garamsh/neocity/issues/24)는 두 인물의 동일한 상세 이동·충돌·달리기·스태미나와 추락 귀환, 재료원 접근·공급·공유 재고 검증을 순수 C++로 제공한다. 도구 소지와 소모·AI·탈출·새 화면은 구현하지 않았다. 기존 상승 게임과 팬 실험은 그대로 실행된다.
-- 요리 시간제한이 없다는 결정은 작업 단계에서 탐색 시간을 소비하지 않는 경계로 반영한다.
-- 자발적 귀환·체력 소진·시간 만료 모두 거점 귀환 시 체력을 3칸으로 회복한다. 회복은 소지품·일수·남은 탐색 시간·위산을 초기화하지 않는다.
-- 두 인물이 모두 거점에 있으면 작업 단계로 전환해 탐색 시계를 멈추는 것도 현재 기반의 임시 경계다. 요리 시간제한이 없다는 결정이 모든 거점 체류의 최종 시간 규칙을 확정하지는 않는다.
-- 탐색 시간은 호출자가 제공한다. 테스트의 짧은 예산·재료 ID·시드는 검증용 입력이고 제품 조정값이 아니다. 월드는 별도 입력으로 주어진 위산에 반응한다.
-- 탈출 단계는 상태 이름만 예약한다. 30일 판정·확률·탈출 난수 소비는 #28에서 연결한다.
-- [월드 #25](https://github.com/garamsh/neocity/issues/25)는 NPC·지형·건물·통로·재료원의 안정된 ID와 영역, 파괴 뒤 통행·공급 가능 여부, 도구가 맞는 통로 수리, 미노출 건물·경로·재료원 등장을 읽기 전용 값 스냅샷으로 제공한다. 실제 Godot 화면은 후속 #28에서 연결한다.
-- 월드 손상·노출 임계는 호출자가 제공한다. 테스트의 임계와 배치는 최종 밸런스·맵이 아니다. 손상은 누적 탐색 시간 또는 역사상 최고 위산 증가를 사용하며, 위산 하락이나 귀환·체력 회복으로 파괴·노출·수리 이력이 초기화되지 않는다. 수리한 통로는 같은 입력에 즉시 재파손되지 않고 수리 이후 추가 시간이나 최고 위산 증가가 다시 임계에 도달하면 손상된다.
-- 탐색의 네 방향 정수 격자·100ms 이동 단위·걷기 한 셀/달리기 두 셀·단위당 스태미나 한 칸 소모/회복은 임시 실행 표현이다. 최대 스태미나·입구·상호작용 거리·재고는 호출자가 제공한다. 최종 물리·속도·밸런스를 확정하지 않는다. 짧은 프레임도 탐색 시간은 즉시 소비하고 이동 잔여량만 보존한다.
-- 자판기·NPC·상점·가방은 같은 재료 수집 검증을 사용한다. 두 인물이 같은 재고를 중복 소비할 수 없으며 귀환·재출발로 재고나 월드가 복구되지 않는다. 도구는 재료로 위장하지 않으며 획득·소지·교체·수리 연결은 #32다.
-- 탐색이 두 인물의 시간을 한 번만 소비하고 월드 누적 시간을 갱신한다. 외부 위산 입력은 월드에 반영한다. 실제 Godot 화면 조립·입력 전달·새 게임 플레이 검증은 #28이다. 이번 검사는 라이브러리 통합 검사다.
-- [거점 #26](https://github.com/garamsh/neocity/issues/26)은 감정·조리·급식, 돋보기·뒤집개의 90%/40% 판정과 손상·교체 상태, 새 음식·재료와 반복 음식의 점수 차이, 싫어하는 음식과 기준 미달의 위산 상승, 다음 날 전환과 탐색 예산 복구를 순수 C++로 제공한다. 진행의 위산이 실제 값이 되었고 `Exploration`의 위산 입력에 전달하는 일은 #28이 연결한다. 일수와 하루 결과는 30일 이후 탈출 판정 연결에 쓴다.
-- 레시피·점수·기준·위산 상승량은 호출자가 제공하는 임시값이다. 조리 재료 식별 요구, 조리 실패 시 재료 소비, 음식 보관, 감정 재시도 허용, 위산 하락 없음, 하루 한 번 급식은 임시 정책이며 최종 규칙이 아니다. 급식 없이 하루 종료도 [PM 임시 결정](https://github.com/garamsh/neocity/issues/26#issuecomment-6553559757)이고 위산 불이익은 호출자가 정하며 화면 안내는 #28이다. 감정 실패가 오정보인지 실패 표시인지는 정하지 않았다.
-- 공개 계약과 기능별 파일 소유 계획은 [생존 아키텍처](../architecture/survival.md)에 둔다. 컨셉 그림의 UI·키·수치는 확정 요구사항이 아니다. 부모 이슈가 인용한 원본은 [컨셉 보관본](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape)이다.
+- [Foundation #23](https://github.com/garamsh/neocity/issues/23) provides state and commands for the two actors, the first day, the base and exploration phases, inventories, 3-slot health, shared remaining time, initial acid, and the run seed. Time expiry, damage return, re-entry, and inventory preservation can be executed.
+- [Exploration #24](https://github.com/garamsh/neocity/issues/24) provides, in pure C++, the two actors' identical detailed movement, collision, running, and stamina, fall returns, and material source access, supply, and shared stock validation. Tool possession and consumption, AI, escape, and a new screen are not implemented. The existing ascent game and pan experiment run unchanged.
+- The decision that cooking has no time limit is reflected as a boundary where the workshop phase consumes no exploration time.
+- Voluntary return, health exhaustion, and time expiry all recover health to 3 slots on returning to base. Recovery does not reset inventories, the day count, remaining exploration time, or acid.
+- Switching to the workshop phase and stopping the exploration clock when both actors are at base is also a temporary boundary of the current foundation. The decision that cooking has no time limit does not settle the final time rule for every base stay.
+- The caller supplies exploration time. The short budgets, ingredient IDs, and seeds in tests are verification inputs, not product tuning values. The world reacts to acid given as a separate input.
+- The escaped phase reserves only a state name. The day 30 check, probability, and escape random consumption are connected in #28.
+- [World #25](https://github.com/garamsh/neocity/issues/25) provides, as read-only value snapshots, stable IDs and areas for NPCs, terrain, buildings, passages, and material sources, traversal and supply availability after destruction, passage repair with the matching tool, and the appearance of unexposed buildings, routes, and material sources. The real Godot screen is connected later in #28.
+- The caller supplies world damage and exposure thresholds. Test thresholds and layouts are not final balance or maps. Damage uses cumulative exploration time or an increase in historical peak acid, and an acid drop, a return, or health recovery does not reset the destruction, exposure, or repair history. A repaired passage does not break again at once on the same input and is damaged when added time or a peak acid increase after the repair reaches the threshold again.
+- Exploration's four-direction integer grid, 100ms movement unit, one cell walking and two cells running, and one stamina slot spent or recovered per unit are a temporary runtime representation. The caller supplies maximum stamina, the entrance, interaction distance, and stock. Final physics, speed, and balance are not settled. Short frames also consume exploration time immediately and preserve only the movement remainder.
+- Vending machines, NPCs, shops, and bags use the same ingredient collection validation. The two actors cannot consume the same stock twice, and returning or setting out again restores neither stock nor the world. Tools are not disguised as ingredients, and acquisition, possession, replacement, and the repair connection are #32.
+- Exploration consumes the two actors' time once and updates the world's cumulative time. External acid input applies to the world. Real Godot screen assembly, input delivery, and new gameplay verification are #28. This check is a library integration check.
+- [Workshop #26](https://github.com/garamsh/neocity/issues/26) provides, in pure C++, appraisal, cooking, and feeding, the magnifier and spatula 90%/40% rolls and damage and replacement state, the score difference between new foods and ingredients and repeated foods, acid rises from disliked food and from falling below the threshold, and the next-day transition with exploration budget restoration. Progression's acid is now a real value, and #28 connects passing it to `Exploration`'s acid input. The day count and day result serve the connection of the escape check after day 30.
+- Recipes, scores, thresholds, and acid rises are temporary values the caller supplies. Requiring identified cooking ingredients, spending ingredients on a failed cook, food storage, allowing appraisal retries, no acid fall, and one feeding per day are temporary policies, not final rules. Ending the day without feeding is also a [temporary PM decision](https://github.com/garamsh/neocity/issues/26#issuecomment-6553559757); the caller sets the acid penalty and the on-screen notice is #28. Whether appraisal failure is misinformation or a failure indication is not decided.
+- The public contract and per-feature file ownership plan are in the [survival architecture](../architecture/survival.md). The UI, keys, and numbers in the concept images are not settled requirements. The originals the parent issue cites are in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape).
 
-## 미정 사항
+## Open questions
 
-- 거점 체류와 실제 조리의 구분 및 탐색 시계, 두 인물 중 한 명만 거점에 있을 때의 상세 상호작용.
-- 탐색 시간 길이, 스태미나·속도·피해량 조정, 소지품 한도, 재료·레시피·도구 정의.
-- 위산 단위·최종 상승식·억제식, 시간에 따른 맵 변화 속도와 수리 비용.
-- 최종 점수 기준, 반복 음식 판정 범위, 도구 손상 조건, 다음 날 시작 조건, 미급식 불이익, 감정 실패의 표현과 재시도 제한, 조리 실패의 최종 결과.
-- 30일 이후 탈출 확률·증가 여부·판정 시점·기회 수락 방식과 실제 엔딩.
-- [네트워크 비교 #22](https://github.com/garamsh/neocity/issues/22)의 측정 이후 연결 방식, 저장·복원, 배포 대상과 출시 조건.
+- The distinction between a base stay and actual cooking and the exploration clock, and detailed interaction when only one of the two actors is at base.
+- Exploration time length, stamina, speed, and damage tuning, inventory limits, and ingredient, recipe, and tool definitions.
+- Acid units, the final rise and suppression formulas, the pace of map change over time, and repair cost.
+- The final score threshold, the scope of repeated-food checks, tool damage conditions, next-day start conditions, the unfed penalty, how appraisal failure is expressed and its retry limits, and the final result of cooking failure.
+- Escape probability after 30 days, whether it increases, check timing, how the chance is accepted, and the actual ending.
+- The connection approach after the measurements of [network comparison #22](https://github.com/garamsh/neocity/issues/22), save and restore, distribution targets, and release conditions.
