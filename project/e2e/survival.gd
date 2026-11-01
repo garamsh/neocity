@@ -32,6 +32,8 @@ func _run() -> void:
 		await _acid_changes_the_city()
 	if not failed:
 		await _appraiser_run()
+	if not failed:
+		await _two_players()
 	if failed:
 		return
 	print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, feeding, map, tools, roles).")
@@ -244,7 +246,7 @@ func _acid_changes_the_city() -> void:
 
 func _appraiser_run() -> void:
 	await _tap(KEY_M)
-	if not _check(scene.screen_name() == "main", "M ends the run"):
+	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "M ends the run"):
 		return
 	await _tap(KEY_1)
 	await _tap(KEY_2)
@@ -306,6 +308,30 @@ func _human_repairs_the_ladder() -> void:
 	_key(KEY_W, true)
 	await _until("the repaired ladder carries the human up", func() -> bool: return _actor("appraiser", "y") <= 3, 60)
 	_key(KEY_W, false)
+
+## The second key set's own keys, which the timing checks inject past.
+func _two_players() -> void:
+	await _tap(KEY_M)
+	await _tap(KEY_1)
+	await _tap(KEY_3)
+	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
+		return
+	await _tap(KEY_U)
+	if not await _until("player two sets out alone", func() -> bool: return _where("appraiser") == "city", 30):
+		return
+	if not _check(_where("chef") == "base", "a human partner stays until told"):
+		return
+	var x: int = _actor("appraiser", "x")
+	_key(KEY_L, true)
+	var walked: bool = await _until("player two walks", func() -> bool: return _actor("appraiser", "x") > x, 30)
+	_key(KEY_L, false)
+	if not walked:
+		return
+	await _tap(KEY_U)
+	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 30):
+		return
+	await _tap(KEY_BRACKETRIGHT)
+	await _until("player two ends the day", func() -> bool: return _int("day") == 2, 30)
 
 func _next() -> String:
 	return _str("next")

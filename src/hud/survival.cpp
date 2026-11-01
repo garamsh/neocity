@@ -398,13 +398,13 @@ void paint_actor_card(godot::Node2D &canvas,
   for (const auto spare : state.tools) {
     ++spares[spare.value];
   }
-  String tools = "Tools:";
+  String tools;
   for (const auto &[value, count] : spares) {
-    tools += " " + from(survival::tool_name(survival::ToolId{value})) + " x" +
-             number(count);
+    tools += from(survival::tool_name(survival::ToolId{value})) +
+             (count > 1 ? " x" + number(count) + "  " : String("  "));
   }
   drawing.text(canvas, x + 72.0F, CARD_Y + 77.0F,
-               spares.empty() ? String("No spare tools") : tools, 13,
+               spares.empty() ? String("No spare tools") : tools, 12,
                tones.muted);
 }
 
