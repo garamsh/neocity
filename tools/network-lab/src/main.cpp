@@ -1,3 +1,4 @@
+#include "bot.hpp"
 #include "net.hpp"
 #include "roles.hpp"
 #include "wire.hpp"
@@ -72,13 +73,8 @@ Actor actor_named(const std::string &name) {
   throw std::invalid_argument("unknown actor " + name);
 }
 
-RunOptions run_options(const Arguments &arguments) {
-  return {.seed = arguments.number("--seed", 7),
-          .start_day = arguments.number("--start-day", 1)};
-}
-
 AuthorityOptions authority_options(const Arguments &arguments) {
-  AuthorityOptions options{.run = run_options(arguments),
+  AuthorityOptions options{.seed = arguments.number("--seed", 7),
                            .port = arguments.port("--port"),
                            .first_room = arguments.number("--first-room", 0),
                            .rooms = arguments.number("--rooms", 1),
@@ -96,7 +92,7 @@ AuthorityOptions authority_options(const Arguments &arguments) {
 }
 
 ClientOptions client_options(const Arguments &arguments) {
-  ClientOptions options{.run = run_options(arguments),
+  ClientOptions options{.seed = arguments.number("--seed", 7),
                         .port = arguments.port("--port"),
                         .first_room = arguments.number("--first-room", 0),
                         .rooms = arguments.number("--rooms", 1),
@@ -115,31 +111,58 @@ ClientOptions client_options(const Arguments &arguments) {
   return options;
 }
 
-/// Plays an AI-only run without sockets and reports the state packet's size by
-/// day, the rule step's cost and how long the run takes to replay.
+/// A step limit for runs a bot party cannot end; no seed in use reaches it.
+constexpr std::uint64_t STEP_LIMIT = 200'000;
+
+bool escaped(const Room &room) {
+  return room.view().progression.phase == survival::Phase::Escaped;
+}
+
+std::int64_t mean_us(std::int64_t total_ns, std::uint64_t steps) {
+  return total_ns / NS_PER_US / static_cast<std::int64_t>(steps);
+}
+
+/// Plays one seed's runs without sockets and reports the state packet's size
+/// by day and the rule step's cost with AI seats and with key seats.
 void run_sizes(const Arguments &arguments) {
-  const auto run = run_options(arguments);
-  const auto last_day = arguments.number("--last-day", 30);
-  Room room(run.seed, 1);
+  const auto seed = arguments.number("--seed", 7);
+  Room ai_room(seed, 1);
   const StepInput ai_only{.inputs = {},
                           .control = {.chef = survival::Controller::Ai,
                                       .appraiser = survival::Controller::Ai}};
   std::map<std::uint32_t, std::size_t> largest;
-  std::uint64_t ticks = 0;
-  std::size_t last_size = 0;
-  std::int64_t stepping_ns = 0;
-  for (; room.view().progression.day < last_day; ++ticks) {
+  std::uint64_t ai_steps = 0;
+  std::int64_t ai_ns = 0;
+  for (; !escaped(ai_room) && ai_steps < STEP_LIMIT; ++ai_steps) {
     const auto started = now_ns();
-    room.step(ai_only);
-    stepping_ns += now_ns() - started;
-    const auto view = room.view();
-    last_size =
-        encode(
-            State{.room = 0, .tick = ticks, .applied = ai_only, .view = view})
-            .size();
+    ai_room.step(ai_only);
+    ai_ns += now_ns() - started;
+    const auto view = ai_room.view();
+    const auto size = encode(State{.tick = ai_steps,
+                                   .applied = ai_only,
+                                   .escape = ai_room.escape(),
+                                   .view = view})
+                          .size();
     auto &day = largest[view.progression.day];
-    day = std::max(day, last_size);
+    day = std::max(day, size);
   }
+
+  Room key_room(seed, 1);
+  const survival::Companion brain(key_room.companion_config());
+  StepLog log;
+  for (std::uint64_t tick = 1; !escaped(key_room) && tick < STEP_LIMIT;
+       ++tick) {
+    const auto view = key_room.view();
+    const StepInput next{.inputs = {bot_input(brain, Actor::Chef, view),
+                                    bot_input(brain, Actor::Appraiser, view)},
+                         .control = survival::two_players()};
+    key_room.step(next);
+    log.record(tick, next);
+  }
+  const auto started = now_ns();
+  const auto replayed = replay(log, seed);
+  const auto key_ns = now_ns() - started;
+
   std::string days = "[";
   for (const auto &[day, bytes] : largest) {
     days += (days.size() > 1 ? ",[" : "[") + std::to_string(day) + "," +
@@ -147,11 +170,18 @@ void run_sizes(const Arguments &arguments) {
   }
   Report out;
   out.text("role", "sizes");
-  out.number("ticks_to_last_day", ticks);
-  out.number("last_state_bytes", last_size);
-  out.number("input_bytes", encode(Input{}).size());
-  out.signed_number("mean_step_us",
-                    stepping_ns / NS_PER_US / static_cast<std::int64_t>(ticks));
+  out.number("ai_steps_to_end", ai_steps);
+  out.number("ai_end_day", ai_room.view().progression.day);
+  out.flag("ai_run_escaped", escaped(ai_room));
+  out.signed_number("mean_ai_seats_step_us", mean_us(ai_ns, ai_steps));
+  out.number("key_steps_to_end", log.steps().size());
+  out.number("key_end_day", key_room.view().progression.day);
+  out.flag("key_run_escaped", escaped(key_room));
+  out.signed_number("mean_key_seats_replay_step_us",
+                    mean_us(key_ns, log.steps().size()));
+  out.flag("key_replay_matches", same_view(replayed->view(), key_room.view()) &&
+                                     replayed->escape() == key_room.escape());
+  out.number("input_bytes_at_low_seq", encode(Input{}).size());
   out.object("largest_state_bytes_by_day", days + "]");
   out.print();
 }

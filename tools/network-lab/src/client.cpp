@@ -56,8 +56,8 @@ struct Player {
   std::uint32_t room;
   Actor actor;
   std::optional<survival::GameView> latest;
-  std::vector<StepInput> log;
-  bool log_complete = true;
+  survival::EscapeSnapshot latest_escape{};
+  StepLog log;
   std::uint64_t tick = 0;
   std::uint64_t seq = 0;
   std::uint64_t acked = 0;
@@ -73,7 +73,7 @@ class Client {
 public:
   explicit Client(const ClientOptions &settings)
       : options(settings), target(loopback(settings.port)),
-        blank_room(settings.run.seed, 1), blank(blank_room.view()),
+        blank_room(settings.seed, 1), blank(blank_room.view()),
         brain(blank_room.companion_config()) {
     for (std::uint32_t index = 0; index < options.rooms; ++index) {
       for (const auto actor : options.actors) {
@@ -135,7 +135,6 @@ private:
       return;
     }
     if (state.tick != player.tick + 1) {
-      player.log_complete = false;
       // A room's first states can be lost to the burst of joins at start.
       skipped_ticks += player.tick > 0 ? 1U : 0U;
     }
@@ -144,7 +143,7 @@ private:
     }
     player.heard_ns = now;
     player.tick = state.tick;
-    player.log.push_back(state.applied);
+    player.log.record(state.tick, state.applied);
     state_latency.add((now - state.sent_ns) / NS_PER_US);
     const auto acked = state.acked.at(seat_index(player.actor));
     if (acked > player.acked) {
@@ -153,6 +152,7 @@ private:
                            NS_PER_US);
     }
     player.latest = state.view;
+    player.latest_escape = state.escape;
     ++player.seq;
     player.sent_ns.at(player.seq % SENT_WINDOW) = now_ns();
     player.socket.send(
@@ -176,46 +176,44 @@ private:
   void succeed(const Player &player) {
     Report out;
     out.text("role", "succession");
-    if (!player.log_complete || !player.latest) {
+    const auto started = now_ns();
+    const auto room = replay(player.log, options.seed);
+    if (!room || !player.latest) {
       out.flag("replayed", false);
       out.print();
       return;
     }
-    const auto started = now_ns();
-    Room room(options.run.seed, options.run.start_day);
-    for (const auto &step : player.log) {
-      room.step(step);
-    }
     const auto replayed = now_ns();
-    const bool same = same_view(room.view(), *player.latest);
+    const bool same = same_view(room->view(), *player.latest) &&
+                      room->escape() == player.latest_escape;
     const auto control =
-        survival::leave(player.log.back().control, other(player.actor));
-    auto before = room.view();
-    std::uint32_t changed = 0;
+        survival::leave(player.log.steps().back().control, other(player.actor));
+    auto before = room->view();
+    std::uint32_t progress = 0;
     std::int64_t first_step_ns = 0;
     for (std::uint32_t step = 0; step < *options.succeed_steps; ++step) {
       StepInput next{.inputs = {}, .control = control};
       next.inputs.at(seat_index(player.actor)) =
           bot_input(brain, player.actor, before);
-      room.step(next);
+      room->step(next);
       if (step == 0) {
         first_step_ns = now_ns();
       }
-      auto after = room.view();
-      changed += same_view(before, after) ? 0U : 1U;
+      auto after = room->view();
+      progress += actor_progressed(before, after, player.actor) ? 1U : 0U;
       before = std::move(after);
       (void)usleep(STEP_US);
     }
     out.flag("replayed", true);
     out.flag("state_matches_last_received", same);
-    out.number("log_steps", player.log.size());
+    out.number("log_steps", player.log.steps().size());
     out.signed_number("replay_us", (replayed - started) / NS_PER_US);
     out.signed_number("detect_us",
                       (player.ended_ns - player.heard_ns) / NS_PER_US);
     out.signed_number("interruption_us",
                       (first_step_ns - player.heard_ns) / NS_PER_US);
     out.number("steps_after", *options.succeed_steps);
-    out.number("steps_that_changed_state", changed);
+    out.number("steps_where_the_player_progressed", progress);
     out.number("day_after", before.progression.day);
     out.print();
   }
@@ -247,6 +245,9 @@ private:
     out.text("ending", ending_name(players.front().ending));
     out.number("players", players.size());
     out.number("last_tick", last_tick);
+    const auto &first = players.front();
+    out.number("last_digest",
+               first.latest ? digest(*first.latest, first.latest_escape) : 0);
     out.number("skipped_ticks", skipped_ticks);
     out.number("refused_packets", refused_packets);
     out.signed_number("max_gap_us", max_gap / NS_PER_US);

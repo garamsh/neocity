@@ -338,6 +338,8 @@ void write_body(Writer &writer, const State &state) {
   const auto appraiser = static_cast<unsigned>(state.applied.control.appraiser);
   writer.byte(static_cast<std::uint8_t>(chef | (appraiser << 1U)));
   WritePort port(writer);
+  port.scalar(state.escape.checked_day);
+  port.scalar(state.escape.rolls);
   visit_view(port, state.view);
 }
 
@@ -364,6 +366,8 @@ State read_state(Reader &reader, std::uint32_t room, const GameView &blank) {
                            .appraiser =
                                static_cast<Controller>((control >> 1U) & 1U)};
   ReadPort port(reader);
+  port.scalar(state.escape.checked_day);
+  port.scalar(state.escape.rolls);
   visit_view(port, state.view);
   return state;
 }
@@ -413,6 +417,16 @@ std::optional<Message> parse(std::span<const std::uint8_t> packet,
     return std::nullopt;
   }
   return message;
+}
+
+std::uint64_t digest(const GameView &view, EscapeSnapshot escape) {
+  constexpr std::uint64_t FNV_OFFSET = 14695981039346656037U;
+  constexpr std::uint64_t FNV_PRIME = 1099511628211U;
+  auto hash = FNV_OFFSET;
+  for (const auto byte : encode(State{.escape = escape, .view = view})) {
+    hash = (hash ^ byte) * FNV_PRIME;
+  }
+  return hash;
 }
 
 std::optional<std::uint32_t> room_of(std::span<const std::uint8_t> packet) {

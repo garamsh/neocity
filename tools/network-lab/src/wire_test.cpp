@@ -27,6 +27,7 @@ State late_state() {
                              survival::PlayerInput{.end_day = true}},
                   .control = {.chef = survival::Controller::Human,
                               .appraiser = survival::Controller::Ai}},
+      .escape = {.checked_day = 31, .rolls = 2},
       .view = room.view()};
 }
 
@@ -60,6 +61,7 @@ TEST(Wire, StateRoundTripRestoresThePlayedView) {
   EXPECT_EQ(read.tick, state.tick);
   EXPECT_EQ(read.sent_ns, state.sent_ns);
   EXPECT_EQ(read.acked, state.acked);
+  EXPECT_EQ(read.escape, state.escape);
   EXPECT_EQ(read.applied.control, state.applied.control);
   EXPECT_TRUE(read.applied.inputs.at(0).interact);
   EXPECT_TRUE(read.applied.inputs.at(0).movement.running);
@@ -130,9 +132,9 @@ TEST(Wire, ListCountBeyondThePacketIsRefused) {
   const auto blank = Room(SEED, 1).view();
   auto packet = encode(State{.view = blank});
   ASSERT_TRUE(parse(packet, blank).has_value());
-  // Header, tick, time, two acks, two key pairs, control, location and health
-  // come before the chef's inventory count.
-  constexpr std::size_t INVENTORY_COUNT = 5 + 1 + 8 + 2 + 4 + 1 + 1 + 1;
+  // Header, tick, time, two acks, two key pairs, control, two escape values,
+  // location and health come before the chef's inventory count.
+  constexpr std::size_t INVENTORY_COUNT = 5 + 1 + 8 + 2 + 4 + 1 + 2 + 1 + 1;
 
   // Claims 2^63 ids; building that list would throw, not refuse.
   const std::vector<std::uint8_t> huge{0x80, 0x80, 0x80, 0x80, 0x80,
@@ -141,6 +143,17 @@ TEST(Wire, ListCountBeyondThePacketIsRefused) {
   packet.insert(packet.begin() + INVENTORY_COUNT, huge.begin(), huge.end());
 
   EXPECT_FALSE(parse(packet, blank).has_value());
+}
+
+TEST(Wire, DigestFollowsTheViewAndTheEscapeWhileEqualStatesAgree) {
+  const auto view = Room(SEED, 1).view();
+  auto moved = view;
+  ++moved.exploration.chef.position.x;
+  const survival::EscapeSnapshot rolled{.checked_day = 30, .rolls = 1};
+
+  EXPECT_EQ(digest(view, {}), digest(view, {}));
+  EXPECT_NE(digest(view, {}), digest(moved, {}));
+  EXPECT_NE(digest(view, {}), digest(view, rolled));
 }
 
 TEST(Wire, RelayReadsTheRoomFromTheHeader) {

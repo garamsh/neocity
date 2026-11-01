@@ -39,6 +39,7 @@ struct State {
   std::int64_t sent_ns = 0;
   std::array<std::uint64_t, 2> acked{};
   StepInput applied{};
+  survival::EscapeSnapshot escape{};
   survival::GameView view{};
 };
 
@@ -61,6 +62,11 @@ inline constexpr std::size_t HEADER_SIZE = 5;
 /// nothing for anything malformed.
 [[nodiscard]] std::optional<Message> parse(std::span<const std::uint8_t> packet,
                                            const survival::GameView &blank);
+
+/// A hash of everything a state carries about the game, for comparing what two
+/// processes hold.
+[[nodiscard]] std::uint64_t digest(const survival::GameView &view,
+                                   survival::EscapeSnapshot escape);
 
 /// The room of a packet long enough to carry one.
 [[nodiscard]] std::optional<std::uint32_t>

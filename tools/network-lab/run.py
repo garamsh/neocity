@@ -24,7 +24,6 @@ REPOSITORY = LAB_DIR.parent.parent
 SERVER_PORT = 41000
 RELAY_PORT = 41001
 SEED = "7"
-LATE_DAY = "30"
 SESSION_SECONDS = 30
 AFTER_DEPARTURE_SECONDS = 6
 LOAD_SECONDS = 15
@@ -121,16 +120,14 @@ def usage(process, cpu_before, seconds):
     }
 
 
-def run_args(day=LATE_DAY):
-    return ("--seed", SEED, "--start-day", day)
+def run_args():
+    return ("--seed", SEED)
 
 
-def start_authority(processes, model, *extra, local="chef", day=LATE_DAY):
+def start_authority(processes, model, *extra, local="chef"):
     if model == "dedicated":
-        return processes.start(
-            "server", "--port", SERVER_PORT, *run_args(day), *extra
-        )
-    arguments = ["--port", SERVER_PORT, "--local", local, *run_args(day), *extra]
+        return processes.start("server", "--port", SERVER_PORT, *run_args(), *extra)
+    arguments = ["--port", SERVER_PORT, "--local", local, *run_args(), *extra]
     if model == "host-relay":
         arguments += ["--relay", RELAY_PORT]
     return processes.start("host", *arguments)
@@ -158,14 +155,16 @@ def seats(model, local="chef"):
     return ["appraiser" if local == "chef" else "chef"]
 
 
+def start_relay(processes, model):
+    if model == "host-relay":
+        return processes.start("relay", "--port", RELAY_PORT)
+    return None
+
+
 def normal_play(model):
     """Two players for a fixed time, with every process measured."""
     with Processes() as processes:
-        relay = (
-            processes.start("relay", "--port", RELAY_PORT)
-            if model == "host-relay"
-            else None
-        )
+        relay = start_relay(processes, model)
         before = loopback_counters()
         authority = start_authority(processes, model)
         clients = [start_client(processes, model, seat) for seat in seats(model)]
@@ -199,6 +198,8 @@ def normal_play(model):
         fail(f"{model}: a client lost ticks: {client_reports}")
     if authority_report["ticks"] < SESSION_SECONDS * TICKS_PER_SECOND:
         fail(f"{model}: only {authority_report['ticks']} ticks ran")
+    if authority_report["final_escaped"]:
+        fail(f"{model}: the run ended during the session")
     return {
         "seconds": SESSION_SECONDS,
         "usage": measured,
@@ -214,35 +215,47 @@ def normal_play(model):
 
 
 def participant_leaves(model, stop_signal):
-    """One remote player goes; the other side must keep receiving or ticking."""
+    """One remote player goes; the result is read from the room, not assumed."""
     with Processes() as processes:
-        relay = (
-            processes.start("relay", "--port", RELAY_PORT)
-            if model == "host-relay"
-            else None
-        )
+        relay = start_relay(processes, model)
         authority = start_authority(processes, model)
         clients = [start_client(processes, model, seat) for seat in seats(model)]
         time.sleep(3)
-        leaver = clients[-1]
-        finish(leaver, stop_signal)
+        finish(clients[-1], stop_signal)
         time.sleep(AFTER_DEPARTURE_SECONDS)
-        authority_report = finish(authority)[0]
+        room = finish(authority)[0]
         remaining = finish(clients[0], None)[0] if len(clients) > 1 else None
         if relay:
             finish(relay)
-    if authority_report["departures"] != 1:
-        fail(f"{model}: departure not seen: {authority_report}")
-    expected_ticks = (3 + AFTER_DEPARTURE_SECONDS) * TICKS_PER_SECOND
-    if authority_report["ticks"] < expected_ticks - 10:
-        fail(f"{model}: room stopped: {authority_report}")
+    if room["departures"] != 1:
+        fail(f"{model}: departure not seen: {room}")
+    if room["final_escaped"]:
+        fail(f"{model}: the run ended during the scenario")
+    client_matches_room = remaining is None or (
+        remaining["last_tick"] == room["final_tick"]
+        and remaining["last_digest"] == room["final_digest"]
+    )
+    items_lost = max(room["carried_at_departure"] - room["carried_next_step"], 0)
+    time_rewound = room["elapsed_next_step_us"] < room["elapsed_at_departure_us"]
+    continues = (
+        room["ticks"] >= (3 + AFTER_DEPARTURE_SECONDS - 1) * TICKS_PER_SECOND
+        and room["remaining_progress_steps"] > 0
+        and client_matches_room
+    )
+    if not continues or items_lost or time_rewound:
+        fail(f"{model}: the remaining player did not continue intact: {room}")
     return {
-        "remaining_player_continues": True,
-        "room_ticks": authority_report["ticks"],
-        "departure_tick": authority_report["departure_tick"],
+        "remaining_player_continues": continues,
+        "room_ticks": room["ticks"],
+        "departure_tick": room["departure_tick"],
+        "steps_where_the_remaining_player_progressed": room[
+            "remaining_progress_steps"
+        ],
+        "client_matches_room_at_tick": remaining and room["final_tick"],
         "max_gap_seen_by_remaining_client_us": remaining and remaining["max_gap_us"],
-        "tick_lateness_us": authority_report["tick_lateness_us"],
-        "lost_state": "none: the actor stays in the room under AI",
+        "tick_lateness_us": room["tick_lateness_us"],
+        "items_lost_by_the_departed_actor": items_lost,
+        "exploration_time_rewound": time_rewound,
     }
 
 
@@ -251,6 +264,7 @@ def authority_goes(model, stop_signal, succeed):
     progress = LAB_DIR / "build" / "progress.bin"
     extra = ("--succeed-steps", SUCCESSION_STEPS) if succeed else ()
     with Processes() as processes:
+        relay = start_relay(processes, model)
         authority = start_authority(
             processes, model, "--progress", progress, local="appraiser"
         )
@@ -261,12 +275,15 @@ def authority_goes(model, stop_signal, succeed):
         time.sleep(4)
         authority_report = finish(authority, stop_signal)
         reports = [finish(client, None) for client in clients]
+        if relay:
+            finish(relay)
     computed_tick = int.from_bytes(progress.read_bytes(), "little")
     client_reports = [r for lines in reports for r in lines if r["role"] == "client"]
     successions = [r for lines in reports for r in lines if r["role"] == "succession"]
     last_tick = max(r["last_tick"] for r in client_reports)
     if succeed and not all(
-        r.get("state_matches_last_received") and r["steps_that_changed_state"] > 0
+        r.get("state_matches_last_received")
+        and r["steps_where_the_player_progressed"] > 0
         for r in successions
     ):
         fail(f"{model}: succession failed: {successions}")
@@ -306,7 +323,7 @@ def start_load(processes, rooms, port, actors):
             actors,
             "--timeout-ms",
             "5000",
-            *run_args("1"),
+            *run_args(),
         )
         for first, count in shares(rooms, LOAD_PROCESSES)
     ]
@@ -329,7 +346,7 @@ def start_relayed_hosts(processes, rooms):
             count,
             "--timeout-ms",
             "5000",
-            *run_args("1"),
+            *run_args(),
         )
         for index, (first, count) in enumerate(shares(rooms, HOST_PROCESSES))
     ]
@@ -362,7 +379,7 @@ def load_step(model, rooms):
                 rooms,
                 "--timeout-ms",
                 "5000",
-                *run_args("1"),
+                *run_args(),
             )
             authorities = [measured]
             generators = start_load(processes, rooms, SERVER_PORT, "chef,appraiser")
@@ -451,6 +468,12 @@ def environment():
         text=True,
         check=True,
     )
+    changes = subprocess.run(
+        ["git", "-C", REPOSITORY, "status", "--porcelain", "--", "src", "tools"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     cpu = re.search(r"model name\s+: (.+)", Path("/proc/cpuinfo").read_text())
     return {
         "date": time.strftime("%Y-%m-%d"),
@@ -463,18 +486,26 @@ def environment():
         "compiler": compiler.stdout.splitlines()[0],
         "build": "CMake Release (-O3 -DNDEBUG)",
         "commit": head.stdout.strip(),
+        "tree_differs_from_commit": bool(changes.stdout.strip()),
         "network": "loopback in a private network namespace; one machine",
         "tick_and_send_rate_hz": TICKS_PER_SECOND,
     }
 
 
+def stop_on_signal(number, _frame):
+    """Unwinds through `Processes`, which stops everything a scenario started."""
+    sys.exit(128 + number)
+
+
 def measure(godot, out):
+    signal.signal(signal.SIGTERM, stop_on_signal)
+    signal.signal(signal.SIGINT, stop_on_signal)
     resource.setrlimit(
         resource.RLIMIT_NOFILE, (resource.getrlimit(resource.RLIMIT_NOFILE)[1],) * 2
     )
     subprocess.run(["ip", "link", "set", "lo", "up"], check=True)
     sizes = subprocess.run(
-        [LAB, "sizes", "--seed", SEED, "--last-day", LATE_DAY],
+        [LAB, "sizes", "--seed", SEED],
         capture_output=True,
         text=True,
         check=True,
@@ -504,6 +535,10 @@ def measure(godot, out):
             "graceful": authority_goes("host-direct", signal.SIGTERM, True),
             "forced": authority_goes("host-direct", signal.SIGKILL, True),
         },
+        "host-relay-succession": {
+            "graceful": authority_goes("host-relay", signal.SIGTERM, True),
+            "forced": authority_goes("host-relay", signal.SIGKILL, True),
+        },
     }
     print("authority departures done", flush=True)
     results["load"] = {
@@ -529,10 +564,19 @@ def main():
     if arguments.inside_namespace:
         measure(arguments.godot, arguments.out.resolve())
         return
-    sys.exit(
-        subprocess.run(
-            ["unshare", "-Urn", sys.executable, __file__, "--inside-namespace", *sys.argv[1:]]
-        ).returncode
+    # Replaces this process, so a signal reaches `unshare`, which passes it on.
+    os.execvp(
+        "unshare",
+        [
+            "unshare",
+            "--fork",
+            "--kill-child=SIGTERM",
+            "-Urn",
+            sys.executable,
+            __file__,
+            "--inside-namespace",
+            *sys.argv[1:],
+        ],
     )
 
 

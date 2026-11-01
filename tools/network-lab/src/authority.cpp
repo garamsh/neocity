@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <span>
 #include <utility>
@@ -61,12 +62,11 @@ class Authority {
 public:
   explicit Authority(const AuthorityOptions &settings)
       : options(settings), socket(settings.port),
-        blank(Room(settings.run.seed, 1).view()) {
+        blank(Room(settings.seed, 1).view()) {
     rooms.reserve(options.rooms);
     for (std::uint32_t index = 0; index < options.rooms; ++index) {
       HostedRoom room;
-      room.rules =
-          std::make_unique<Room>(options.run.seed, options.run.start_day);
+      room.rules = std::make_unique<Room>(options.seed, 1);
       if (options.local) {
         room.seats.at(seat_index(*options.local)).local = true;
       }
@@ -177,6 +177,10 @@ private:
     seat.gone = true;
     ++departures;
     departure_tick = room.tick;
+    const auto view = room.rules->view();
+    departed_actor = actor;
+    carried_at_departure = carried(view, actor);
+    elapsed_at_departure = view.world.progression.elapsed.count();
     if (survival::leave(room.control, actor) == AI_ONLY) {
       room.running = false;
       return;
@@ -221,9 +225,15 @@ private:
     const StepInput applied{
         .inputs = {room.seats.at(0).keys, room.seats.at(1).keys},
         .control = room.control};
+    const auto before = room.rules->view();
     room.rules->step(applied);
     ++room.tick;
     ++ticks;
+    const auto after = room.rules->view();
+    note_departure_effects(before, after);
+    final_tick = room.tick;
+    final_digest = digest(after, room.rules->escape());
+    final_escaped = after.progression.phase == survival::Phase::Escaped;
     room.seats.at(0).keys = {};
     room.seats.at(1).keys = {};
     const auto packet =
@@ -232,7 +242,8 @@ private:
                      .sent_ns = now_ns(),
                      .acked = {room.seats.at(0).seq, room.seats.at(1).seq},
                      .applied = applied,
-                     .view = room.rules->view()});
+                     .escape = room.rules->escape(),
+                     .view = after});
     state_min = std::min(state_min, packet.size());
     state_max = std::max(state_max, packet.size());
     if (progress >= 0 && index == 0) {
@@ -243,6 +254,22 @@ private:
         socket.send(seat.peer, packet);
       }
     }
+  }
+
+  /// Records, for a one-room scenario, what the remaining side did next and
+  /// whether the step after a departure kept what the departed actor held.
+  void note_departure_effects(const survival::GameView &before,
+                              const survival::GameView &after) {
+    if (!departed_actor) {
+      return;
+    }
+    if (!carried_next_step) {
+      carried_next_step = carried(after, *departed_actor);
+      elapsed_next_step = after.world.progression.elapsed.count();
+    }
+    const auto remaining =
+        *departed_actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+    remaining_progress_steps += actor_progressed(before, after, remaining);
   }
 
   void say_hello() {
@@ -277,6 +304,14 @@ private:
     out.number("ticks", ticks);
     out.number("departures", departures);
     out.number("departure_tick", departure_tick);
+    out.number("carried_at_departure", carried_at_departure);
+    out.number("carried_next_step", carried_next_step.value_or(0));
+    out.signed_number("elapsed_at_departure_us", elapsed_at_departure);
+    out.signed_number("elapsed_next_step_us", elapsed_next_step);
+    out.number("remaining_progress_steps", remaining_progress_steps);
+    out.number("final_tick", final_tick);
+    out.number("final_digest", final_digest);
+    out.flag("final_escaped", final_escaped);
     out.number("refused_packets", refused_packets);
     out.number("state_min_bytes", state_min == SIZE_MAX ? 0 : state_min);
     out.number("state_max_bytes", state_max);
@@ -298,6 +333,15 @@ private:
   std::uint64_t ticks = 0;
   std::uint64_t departures = 0;
   std::uint64_t departure_tick = 0;
+  std::optional<Actor> departed_actor;
+  std::size_t carried_at_departure = 0;
+  std::optional<std::size_t> carried_next_step;
+  std::int64_t elapsed_at_departure = 0;
+  std::int64_t elapsed_next_step = 0;
+  std::uint64_t remaining_progress_steps = 0;
+  std::uint64_t final_tick = 0;
+  std::uint64_t final_digest = 0;
+  bool final_escaped = false;
   std::uint64_t refused_packets = 0;
   std::size_t state_min = SIZE_MAX;
   std::size_t state_max = 0;

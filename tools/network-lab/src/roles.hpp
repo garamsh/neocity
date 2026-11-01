@@ -9,16 +9,10 @@
 
 namespace neocity::lab {
 
-/// One run's identity, the same on every process of a room.
-struct RunOptions {
-  std::uint32_t seed = 7;
-  std::uint32_t start_day = 1;
-};
-
 /// A dedicated server when `local` is empty; a player host of that actor
 /// otherwise.
 struct AuthorityOptions {
-  RunOptions run;
+  std::uint32_t seed = 7;
   std::uint16_t port = 0;
   std::uint32_t first_room = 0;
   std::uint32_t rooms = 1;
@@ -32,7 +26,7 @@ struct AuthorityOptions {
 
 /// Plays one seat per room in `actors`, starting at `first_room`.
 struct ClientOptions {
-  RunOptions run;
+  std::uint32_t seed = 7;
   std::uint16_t port = 0;
   std::uint32_t first_room = 0;
   std::uint32_t rooms = 1;

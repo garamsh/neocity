@@ -23,10 +23,17 @@ AVERAGE_TO_PEAK_ROOMS = 0.1
 COMPUTE_SHARE_OF_SERVER_PRICE = 0.5
 USABLE_SHARE_OF_LAST_HELD_RUNG = [1.0, 0.25]
 
+# 30 days of a full 45-second budget at the 100ms step.
+FULL_RUN_STEPS = 30 * 450
+STEP_INPUT_BYTES = 5
 
-def wire_rate(report, seconds):
-    """Bytes per second sent by one process, IP and UDP headers included."""
-    return (report["sent_bytes"] + report["sent_packets"] * IP_UDP_HEADER_BYTES) / seconds
+
+def wire_rate(report, seconds, direction="sent"):
+    """Bytes per second through one process, IP and UDP headers included."""
+    return (
+        report[f"{direction}_bytes"]
+        + report[f"{direction}_packets"] * IP_UDP_HEADER_BYTES
+    ) / seconds
 
 
 def session_seconds(authority):
@@ -47,7 +54,7 @@ def per_room(ladder):
     }
 
 
-def server_bill(room_hours, gb_per_room_hour, resources, server, usable_share):
+def server_bill(room_hours, gb_out, gb_in, resources, server, usable_share):
     """Splits one month's bill into compute, memory, transfer and idle fixed."""
     usable_rooms = resources["rooms_held_on_one_process"] * usable_share
     average_rooms = room_hours / HOURS_PER_MONTH
@@ -71,8 +78,11 @@ def server_bill(room_hours, gb_per_room_hour, resources, server, usable_share):
         * hourly
         * (1 - COMPUTE_SHARE_OF_SERVER_PRICE)
     )
-    gigabytes = room_hours * gb_per_room_hour
-    overage = max(gigabytes - servers * server["included_gb"], 0)
+    gigabytes = room_hours * gb_out
+    counted = gigabytes
+    if server["inbound_counts_toward_included"]:
+        counted += room_hours * gb_in
+    overage = min(max(counted - servers * server["included_gb"], 0), gigabytes)
     return {
         "room_hours": room_hours,
         "peak_rooms": round(peak_rooms, 1),
@@ -108,9 +118,14 @@ def calculate(measured, pricing):
             direct["clients"][0], direct_seconds
         ),
     }
-    gb_per_hour = {
-        key: rate * 3600 / BYTES_PER_GB
-        for key, rate in rates.items()
+    gb_per_hour = {key: rate * 3600 / BYTES_PER_GB for key, rate in rates.items()}
+    gb_in_per_hour = {
+        "dedicated": wire_rate(dedicated["authority"], dedicated_seconds, "received")
+        * 3600
+        / BYTES_PER_GB,
+        "relay": wire_rate(relayed["relay"], relay_seconds, "received")
+        * 3600
+        / BYTES_PER_GB,
     }
     resources = {
         "dedicated": per_room(measured["load"]["dedicated"]),
@@ -127,7 +142,12 @@ def calculate(measured, pricing):
                     "currency": server["currency"],
                     "rows": [
                         server_bill(
-                            hours, gb_per_hour[gb_key], resources[model], server, usable_share
+                            hours,
+                            gb_per_hour[gb_key],
+                            gb_in_per_hour[model],
+                            resources[model],
+                            server,
+                            usable_share,
                         )
                         for hours in ROOM_HOURS_PER_MONTH
                     ],
@@ -148,9 +168,34 @@ def calculate(measured, pricing):
         }
         for hours in ROOM_HOURS_PER_MONTH
     ]
+    sizes = measured["sizes"]
+    ai_step_us = sizes["mean_ai_seats_step_us"]
+    key_step_us = sizes["mean_key_seats_replay_step_us"]
+    # The AI-only step has two AI seats, so half the difference is one seat.
+    ai_seat_core_share = (ai_step_us - key_step_us) / 2 * TICKS_PER_SECOND / 1e6
+    godot = measured["godot_headless_menu"]
     return {
-        "measured_inputs": {"rates": rates, "resources": resources},
+        "measured_inputs": {
+            "rates": rates,
+            "resources": resources,
+            "ai_seats_step_us": ai_step_us,
+            "key_seats_step_us": key_step_us,
+        },
         "gb_per_room_hour": gb_per_hour,
+        "gb_in_per_room_hour": gb_in_per_hour,
+        "core_share_of_one_ai_seat": ai_seat_core_share,
+        "rooms_on_a_full_core_if_every_room_has_one_ai_seat": round(
+            1 / (resources["dedicated"]["core_share_per_room"] + ai_seat_core_share)
+        ),
+        "full_run": {
+            "steps": FULL_RUN_STEPS,
+            "log_kb": FULL_RUN_STEPS * STEP_INPUT_BYTES / 1000,
+            "replay_seconds_key_seats": FULL_RUN_STEPS * key_step_us / 1e6,
+            "replay_seconds_ai_seats": FULL_RUN_STEPS * ai_step_us / 1e6,
+        },
+        "rooms_per_4_gib_with_one_godot_menu_process_each": math.floor(
+            4 * KIB_PER_GIB / godot["VmHWM"]
+        ),
         "bills": bills,
         "metered_relay": {
             "name": metered["name"],
