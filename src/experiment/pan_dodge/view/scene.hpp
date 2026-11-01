@@ -54,6 +54,7 @@ private:
   void show_hazards(const pan_dodge::Snapshot &world);
 
   pan_dodge::Engine engine;
+  int ticks_this_frame = 0;
   // Scene-tree children owned by Godot; null until _ready builds them.
   godot::Node3D *pan = nullptr;
   godot::MeshInstance3D *player = nullptr;
