@@ -239,7 +239,8 @@ void SurvivalRun::step() {
   if (features.exploration.get().advance(STEP, movement,
                                          simulation.snapshot().acid) !=
       survival::Result::Applied) {
-    std::abort(); // unreachable: a 100ms step cannot overflow world time
+    // unreachable: no step runs after escape, and 100ms cannot overflow time
+    std::abort();
   }
   hurt_in_hazards(positions);
   report_returns(progression, walked_home);

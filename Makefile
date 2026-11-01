@@ -99,6 +99,10 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 23 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu).' "$$log"
 
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape slow frames: 4 live checks passed.' "$$log"
+
 ci: lint format test
 
 run: build

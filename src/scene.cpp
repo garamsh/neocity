@@ -3,6 +3,7 @@
 #include "experiment/catalog.hpp"
 #include "input/menu.hpp"
 
+#include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -149,8 +150,9 @@ bool AscentScene::play_cinematic(const godot::String &scene) {
     godot::UtilityFunctions::push_warning("Cinematic did not load: ", scene);
     return false;
   }
-  if (!cinematic->has_signal(CINEMATIC_FINISHED)) {
-    godot::UtilityFunctions::push_warning("Cinematic has no finished signal: ",
+  if (godot::Object::cast_to<godot::CanvasItem>(cinematic) == nullptr ||
+      !cinematic->has_signal(CINEMATIC_FINISHED)) {
+    godot::UtilityFunctions::push_warning("Cinematic breaks the contract: ",
                                           scene);
     cinematic->queue_free();
     return false;

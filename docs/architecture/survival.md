@@ -67,7 +67,7 @@ The following are temporary values that make the prototype playable and are not 
 
 - `Escape` does not own the `Simulation` it receives. It owns the daily check and its own `std::mt19937`, seeded once at construction from the run seed and a fixed stream constant through `std::seed_seq`, whose output the standard fixes. Building an engine from the run seed alone would repeat the workshop rolls, so that form is not used.
 - A check applies in the workshop phase, rolls once for the latest finished day, and consumes one value. A repeat call on the same day draws nothing, so the host checks after every command. A roll waits while the party is in the city.
-- A hit calls `Simulation::escape`, which applies only in the workshop phase. Afterwards no command of `Simulation`, `Exploration`, `Workshop`, or `Escape` changes any state: `enter` answers `Escaped`, tool damage is ignored, and the other commands keep their existing refusals. `SurvivalRun` runs no further step.
+- A hit calls `Simulation::escape`, which applies only in the workshop phase. Afterwards no command of `Simulation`, `Exploration`, `Workshop`, or `Escape` changes any state: `enter` and `Exploration::advance` answer `Escaped`, tool damage is ignored, and the other commands keep their existing refusals. `SurvivalRun` runs no further step. `World` has no phase: a caller holding it directly can still call `update` and `repair`, and play reaches them only through `Exploration`.
 
 #### Temporary escape values
 

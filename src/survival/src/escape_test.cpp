@@ -20,6 +20,8 @@ constexpr IngredientId RICE{1};
 constexpr FoodId PORRIDGE{10};
 constexpr ObjectId FLOOR{1};
 constexpr ObjectId SOURCE{2};
+constexpr ObjectId WEAK{3};
+constexpr AcidLevel ACID{10};
 constexpr std::array<ExplorationInput, 2> IDLE{};
 
 void finish_days(Simulation &simulation, std::uint32_t days) {
@@ -176,7 +178,7 @@ TEST(Escape, WorkshopRollsDoNotMoveTheEscapeDay) {
 }
 
 TEST(Escape, AStoredDishCannotBeFedAfterEscape) {
-  for (std::uint32_t seed = 0;; ++seed) {
+  for (std::uint32_t seed = 0; seed < 64; ++seed) {
     auto simulation = carrying_rice(seed);
     Workshop workshop(simulation, balance());
     if (workshop.appraise(Actor::Appraiser, RICE) != WorkshopResult::Applied ||
@@ -192,15 +194,21 @@ TEST(Escape, AStoredDishCannotBeFedAfterEscape) {
     EXPECT_EQ(workshop.snapshot(), base);
     return;
   }
+  ADD_FAILURE() << "no seed in range cooks a dish";
 }
 
-TEST(Escape, NoFeatureCommandChangesAnyStateAfterEscape) {
+// World has no phase; its update and repair are reached only through these.
+TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   Simulation simulation({.exploration_budget = 10s, .seed = 2});
   World world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 8, .height = 1}},
                {.id = SOURCE,
                 .kind = ObjectKind::MaterialSource,
                 .area = {.x = 1},
-                .ingredient = RICE}});
+                .ingredient = RICE},
+               {.id = WEAK,
+                .kind = ObjectKind::Npc,
+                .area = {.x = 6},
+                .destroyed_after = WorldThreshold{.acid = ACID}}});
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
@@ -214,7 +222,7 @@ TEST(Escape, NoFeatureCommandChangesAnyStateAfterEscape) {
   ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
   Workshop workshop(simulation, balance());
   Escape escape(simulation, {.first_day = 1, .chance_percent = 100});
-  ASSERT_EQ(simulation.finish_day(AcidLevel{}), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(ACID), Result::Applied);
   ASSERT_EQ(escape.check(), EscapeResult::Escaped);
 
   const auto progression = simulation.snapshot();
@@ -222,6 +230,8 @@ TEST(Escape, NoFeatureCommandChangesAnyStateAfterEscape) {
   const auto explored = exploration.snapshot();
   const auto base = workshop.snapshot();
   const auto rolls = escape.snapshot();
+  ASSERT_EQ(progression.acid, ACID);
+  ASSERT_EQ(city.peak_acid, AcidLevel{});
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::Escaped);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::Escaped);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
@@ -230,7 +240,7 @@ TEST(Escape, NoFeatureCommandChangesAnyStateAfterEscape) {
             CollectionResult::NotExploring);
   EXPECT_NE(exploration.repair(Actor::Chef, FLOOR, ToolId{20}),
             RepairResult::Applied);
-  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::Applied);
+  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::Escaped);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),

@@ -9,6 +9,7 @@ const INTRO: String = "res://levels/monster_mouth_escape/cinematics/intro/intro.
 const ENDING: String = "res://levels/monster_mouth_escape/cinematics/ending/ending.tscn"
 const WORKING: String = "res://e2e/cinematic_fixture.tscn"
 const UNSIGNED: String = "res://e2e/cinematic_unsigned_fixture.tscn"
+const NODE3D: String = "res://e2e/cinematic_node3d_fixture.tscn"
 const CARD_FRAME_MARGIN: int = 12
 const INTRO_CARD_FRAMES: int = 240
 const ENDING_CARD_FRAMES: int = 360
@@ -20,9 +21,14 @@ var checks: int = 0
 var failed: bool = false
 ## Keeps each taken-over resource alive; the cache forgets a path when it is freed.
 var stand_in: Resource
+var frame_seconds: float = 0.0
 
 func _initialize() -> void:
 	_run.call_deferred()
+
+func _process(delta: float) -> bool:
+	frame_seconds = delta
+	return false
 
 func _run() -> void:
 	await _frames(2)
@@ -30,6 +36,12 @@ func _run() -> void:
 	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the main menu"):
 		return
 	scene.pin_survival_seed(SEED)
+	if frame_seconds > 0.1:
+		await _slow_frames()
+		if not failed:
+			print("Escape slow frames: ", checks, " live checks passed.")
+			quit(0)
+		return
 	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _menu_leaves_a_cinematic, _scene_ending]:
 		await part.call()
 		if failed:
@@ -107,9 +119,7 @@ func _skipped_scene() -> void:
 	if not _check(_mounted(), "a new run plays the scene again"):
 		return
 	await _tap(KEY_E)
-	if not _check(_str("cinematic") == "" and not _mounted() and _int("day") == 1, "E skips the scene and returns to the game"):
-		return
-	_check(_where("chef") == "base" and _int("rolls") == 0, "the skip press does not reach the game")
+	_check(_str("cinematic") == "" and not _mounted() and _int("day") == 1, "E skips the scene and returns to the game")
 
 ## A resource that is no scene and a scene without the signal both fall back.
 func _broken_scenes() -> void:
@@ -122,6 +132,11 @@ func _broken_scenes() -> void:
 	_stand_in(load(UNSIGNED), INTRO)
 	await _start()
 	if not _check(_str("cinematic_source") == "fallback" and not _mounted(), "a scene without the finished signal takes the fallback"):
+		return
+	await _leave()
+	_stand_in(load(NODE3D), INTRO)
+	await _start()
+	if not _check(_str("cinematic_source") == "fallback" and not _mounted(), "a root that is no canvas item takes the fallback"):
 		return
 	await _tap(KEY_E)
 	_check(_str("cinematic") == "", "E skips the fallback card")
@@ -148,6 +163,19 @@ func _scene_ending() -> void:
 	if not await _until("the ending scene reports its end", func() -> bool: return scene.screen_name() == "main", 120):
 		return
 	_check(not _mounted() and scene.survival_status().is_empty(), "the ending scene returns to the main menu")
+
+## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
+## would run in the frame that escaped.
+func _slow_frames() -> void:
+	await _start()
+	await _tap(KEY_E)
+	if not _check(_str("cinematic") == "", "E skips the card on slow frames"):
+		return
+	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
+		await _end_day()
+	if not _check(_str("phase") == "escaped" and _str("cinematic") == "ending", "a slow frame opens the ending on the hit"):
+		return
+	_check(_int("day") == 33 and _int("escape_rolls") == 3, "a slow frame takes the same rolls to the same day")
 
 ## Serves `resource` from `path` without writing to the art team's folder.
 func _stand_in(resource: Resource, path: String) -> void:

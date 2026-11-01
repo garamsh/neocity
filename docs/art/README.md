@@ -13,11 +13,11 @@ ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the de
 | Actor | Sheet and temporary sprite agree | Differs on screen |
 |---|---|---|
 | Chef, ART-CHAR-001 | Yellow skin, dark green hair, tall white hat, white coat with magenta buttons, magenta earrings, dark trousers | The sprite always holds a frying pan, while the game's base tool is the spatula, which the sheet draws only in a pose and as a prop. The sheet's expressions and pose row are not used |
-| Appraiser, ART-CHAR-002 | Green skin, two metal bolts, red X eye mark, large magnifying glass, dark suit with a magenta tie | The sprite's hair is a dark-rimmed flat crown, where the sheet has a spiked one in the skin's green. The sheet's expressions and pose row are not used |
+| Appraiser, ART-CHAR-002 | Green skin, spiked crown in the skin's green with a black outline, two metal bolts, X eye mark, large magnifying glass, dark suit with a magenta tie | The sprite's head is a flatter, lighter green without the sheet's darker shading, and its X mark is a brighter red. The sheet's expressions and pose row are not used |
 
-The sections below down to the reference gallery, and the gallery's jump-map entries, are the record of the earlier ascent prototype, which remains playable from the main menu. They do not direct the monster-mouth escape game.
+The next section and those after it down to the reference gallery, and the gallery's jump-map entries, are the record of the earlier ascent prototype, which remains playable from the main menu. They do not direct the monster-mouth escape game.
 
-### Earlier jump-map prototype record
+## Earlier jump-map prototype record
 
 The art designer selected the first-release concept on 2026-10-27: a small single-player 2D jump-map adventure in neocity. The [creative decision record on issue #1](https://github.com/garamsh/neocity/issues/1#issuecomment-6437503751) records the requested update to [PR #5](https://github.com/garamsh/neocity/pull/5). This document was reconciled with the Godot bootstrap at commit `815f50d3d4aca35e3da3f328bc718684c8e51cba`. Art selection approves only the interpreted visual elements; it does not approve an exact collision layout or establish runtime behavior.
 
