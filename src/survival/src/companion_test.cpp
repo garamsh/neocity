@@ -194,6 +194,17 @@ std::optional<Action> ai_action(const GameView &view, Actor actor,
   return companion_with().command(actor, control, NO_INPUT, view).action;
 }
 
+TEST(Grid, DistanceCountsFromTheNearestCellOfAnAreaOnEverySide) {
+  constexpr WorldArea AREA{.x = 2, .y = 2, .width = 3, .height = 3};
+  EXPECT_EQ(distance({.x = 3, .y = 3}, AREA), 0);
+  EXPECT_EQ(distance({.x = 4, .y = 4}, AREA), 0);
+  EXPECT_EQ(distance({.x = 0, .y = 3}, AREA), 2);
+  EXPECT_EQ(distance({.x = 6, .y = 3}, AREA), 2);
+  EXPECT_EQ(distance({.x = 3, .y = 0}, AREA), 2);
+  EXPECT_EQ(distance({.x = 3, .y = 6}, AREA), 2);
+  EXPECT_EQ(distance({.x = 6, .y = 6}, AREA), 4);
+}
+
 TEST(Control, SinglePlayerMakesTheChosenActorHumanAndTheOtherAi) {
   EXPECT_EQ(
       single_player(Actor::Chef),
