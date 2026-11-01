@@ -49,27 +49,43 @@ constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
                                      .switch_actor = "survival_2_switch",
                                      .leave = "survival_2_leave"}};
 
-survival::Direction held_direction(const godot::Input &input,
-                                   const KeySet &keys) {
-  if (input.is_action_pressed(keys.left)) {
+template <typename Test>
+survival::Direction first_direction(const KeySet &keys, Test test) {
+  if (test(keys.left)) {
     return survival::Direction::Left;
   }
-  if (input.is_action_pressed(keys.right)) {
+  if (test(keys.right)) {
     return survival::Direction::Right;
   }
-  if (input.is_action_pressed(keys.up)) {
+  if (test(keys.up)) {
     return survival::Direction::Up;
   }
-  if (input.is_action_pressed(keys.down)) {
+  if (test(keys.down)) {
     return survival::Direction::Down;
   }
   return survival::Direction::Idle;
 }
 
+/// A key pressed and released inside one frame is never seen as held, so it
+/// reads from the press edge and wins that frame over a key still held.
+survival::Direction sampled_direction(const godot::Input &input,
+                                      const KeySet &keys) {
+  const auto tapped = first_direction(keys, [&input](const char *action) {
+    return input.is_action_just_pressed(action) &&
+           !input.is_action_pressed(action);
+  });
+  if (tapped != survival::Direction::Idle) {
+    return tapped;
+  }
+  return first_direction(keys, [&input](const char *action) {
+    return input.is_action_pressed(action);
+  });
+}
+
 survival::PlayerInput sample_keys(const godot::Input &input,
                                   const KeySet &keys) {
   return {
-      .movement = {.direction = held_direction(input, keys),
+      .movement = {.direction = sampled_direction(input, keys),
                    .running = input.is_action_pressed(keys.run)},
       .travel = input.is_action_just_pressed(keys.travel),
       .interact = input.is_action_just_pressed(keys.interact),

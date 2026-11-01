@@ -190,13 +190,15 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   if (std::isfinite(delta) && delta > 0.0) {
     accumulated += delta;
   }
+  std::array<bool, 2> first_seen{};
   for (std::size_t index = 0; index < input.size(); ++index) {
     const auto &movement = input.at(index).movement;
     retain_edges(pending.at(index), input.at(index));
     // A press shorter than a step still walks one cell; a key held across a
     // step stops walking when released.
-    if (movement.direction != survival::Direction::Idle &&
-        movement.direction != held.at(index).direction) {
+    first_seen.at(index) = movement.direction != survival::Direction::Idle &&
+                           movement.direction != held.at(index).direction;
+    if (first_seen.at(index)) {
       pending.at(index).movement = movement;
     }
     held.at(index) = movement;
@@ -207,7 +209,10 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   while (accumulated >= STEP_SECONDS && !escaped()) {
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
-      if (held.at(index).direction != survival::Direction::Idle) {
+      // A tap and a press look alike in their first frame, and a tap inside a
+      // frame of several steps walks once, so only a later frame repeats it.
+      if (held.at(index).direction != survival::Direction::Idle &&
+          !first_seen.at(index)) {
         pending.at(index).movement = held.at(index);
       }
     }
