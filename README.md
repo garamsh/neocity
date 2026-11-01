@@ -18,6 +18,7 @@ In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the
 | Run | Shift | H |
 | Set out or return to base | Q | U |
 | Collect or repair; appraise or cook at base | E | O |
+| Choose the dish to cook, as the chef at base | W/S or up/down arrows | none |
 | Replace a damaged base tool | R | P |
 | Feed a stored dish | F | [ |
 | End the day unfed | G | ] |

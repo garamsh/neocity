@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <deque>
 #include <functional>
+#include <optional>
 
 namespace neocity::session {
 
@@ -46,6 +47,11 @@ public:
 
 private:
   [[nodiscard]] survival::GameView view() const;
+  /// `Companion`'s command, with a human chef's cooking set to the chosen dish.
+  [[nodiscard]] survival::ActorCommand
+  command_for(survival::Actor actor, const survival::PlayerInput &input,
+              const survival::GameView &current) const;
+  void pick_dish(const survival::GameView &current);
   void step();
   void run_action(survival::Actor actor, const survival::Action &action,
                   std::uint32_t day);
@@ -60,6 +66,10 @@ private:
   double accumulated = 0.0;
   std::array<survival::PlayerInput, 2> pending{};
   std::array<survival::ExplorationInput, 2> held{};
+  /// The chef's direction press since the last step; a held key is one press.
+  survival::Direction dish_step = survival::Direction::Idle;
+  /// Lasts until another is chosen and applies while it can be cooked.
+  std::optional<survival::FoodId> chosen_dish;
   std::deque<hud::Event> events;
 };
 

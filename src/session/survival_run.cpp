@@ -12,6 +12,7 @@
 #include <ranges>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace neocity::session {
 namespace {
@@ -73,6 +74,18 @@ bool in_hazard(const survival::Content &content, GridPosition position) {
 bool finishes_day(const survival::Action &action) {
   return std::holds_alternative<survival::Feed>(action) ||
          std::holds_alternative<survival::EndDayUnfed>(action);
+}
+
+/// The dishes that can be cooked now, in the cook panel's order.
+std::vector<survival::FoodId> ready_dishes(const survival::Content &content,
+                                           const GameView &view) {
+  std::vector<survival::FoodId> ready;
+  for (const auto &recipe : content.companion.workshop.recipes) {
+    if (hud::recipe_status(view, recipe).is_empty()) {
+      ready.push_back(recipe.food);
+    }
+  }
+  return ready;
 }
 
 /// Keeps every edge until a step consumes it.
@@ -185,6 +198,9 @@ void SurvivalRun::advance(double delta,
     if (movement.direction != survival::Direction::Idle &&
         movement.direction != held.at(index).direction) {
       pending.at(index).movement = movement;
+      if (ACTORS.at(index) == Actor::Chef) {
+        dish_step = movement.direction;
+      }
     }
     held.at(index) = movement;
   }
@@ -197,6 +213,7 @@ void SurvivalRun::advance(double delta,
     }
     step();
     pending = {};
+    dish_step = survival::Direction::Idle;
   }
 }
 
@@ -213,6 +230,36 @@ GameView SurvivalRun::view() const {
           .workshop = features.workshop.get().snapshot()};
 }
 
+survival::ActorCommand SurvivalRun::command_for(Actor actor,
+                                                const PlayerInput &input,
+                                                const GameView &current) const {
+  auto command =
+      features.companion.get().command(actor, controllers, input, current);
+  if (chosen_dish && survival::key_set(controllers, actor) && command.action &&
+      std::holds_alternative<survival::Cook>(*command.action)) {
+    const auto ready = ready_dishes(features.content.get(), current);
+    if (std::ranges::find(ready, *chosen_dish) != ready.end()) {
+      command.action = survival::Cook{*chosen_dish};
+    }
+  }
+  return command;
+}
+
+void SurvivalRun::pick_dish(const GameView &current) {
+  const auto offer = command_for(Actor::Chef, {.interact = true}, current);
+  const auto *cook =
+      offer.action ? std::get_if<survival::Cook>(&*offer.action) : nullptr;
+  if (cook == nullptr) {
+    return;
+  }
+  const auto ready = ready_dishes(features.content.get(), current);
+  const auto from = static_cast<std::size_t>(
+      std::ranges::find(ready, cook->food) - ready.begin());
+  const std::size_t forward =
+      dish_step == survival::Direction::Down ? 1 : ready.size() - 1;
+  chosen_dish = ready.at((from + forward) % ready.size());
+}
+
 void SurvivalRun::step() {
   const auto &simulation = features.simulation.get();
   const auto progression = simulation.snapshot();
@@ -220,10 +267,15 @@ void SurvivalRun::step() {
   const auto positions = features.exploration.get().snapshot();
   std::array<survival::ExplorationInput, 2> movement;
   std::array<bool, 2> walked_home{};
+  const bool picks_dish = dish_step == survival::Direction::Up ||
+                          dish_step == survival::Direction::Down;
+  if (picks_dish && progression.phase == survival::Phase::Workshop &&
+      survival::key_set(controllers, Actor::Chef)) {
+    pick_dish(view());
+  }
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
-    const auto command = features.companion.get().command(
-        actor, controllers, pending.at(index), view());
+    const auto command = command_for(actor, pending.at(index), view());
     movement.at(index) = command.movement;
     if (command.action) {
       walked_home.at(index) =
@@ -343,15 +395,10 @@ hud::SurvivalFrame SurvivalRun::frame() const {
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
     if (survival::key_set(controllers, actor)) {
-      const auto &companion = features.companion.get();
       result.offers.at(index) = {
           .interact =
-              companion
-                  .command(actor, controllers, {.interact = true}, result.view)
-                  .action,
-          .feed =
-              companion.command(actor, controllers, {.feed = true}, result.view)
-                  .action};
+              command_for(actor, {.interact = true}, result.view).action,
+          .feed = command_for(actor, {.feed = true}, result.view).action};
     }
   }
   return result;
@@ -379,6 +426,17 @@ godot::Dictionary SurvivalRun::status() const {
   status.set("identified",
              static_cast<std::int64_t>(view.workshop.identified.size()));
   status.set("foods", static_cast<std::int64_t>(view.workshop.foods.size()));
+  godot::Array stored;
+  for (const auto food : view.workshop.foods) {
+    stored.push_back(from(survival::food_name(food)));
+  }
+  status.set("stored_foods", stored);
+  const auto &chef_offer = current.offers.at(0).interact;
+  const auto *cook =
+      chef_offer ? std::get_if<survival::Cook>(&*chef_offer) : nullptr;
+  status.set("dish_offered", cook != nullptr
+                                 ? from(survival::food_name(cook->food))
+                                 : godot::String());
   status.set("eaten",
              static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
   status.set("rolls", view.workshop.rolls);

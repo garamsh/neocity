@@ -10,10 +10,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <deque>
 #include <map>
+#include <set>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
+#include <vector>
 
 namespace neocity::hud {
 namespace {
@@ -24,6 +28,7 @@ using rendering::color;
 using rendering::rect;
 using survival::Actor;
 using survival::GameView;
+using survival::GridPosition;
 using survival::IngredientId;
 using survival::Location;
 using survival::Phase;
@@ -38,6 +43,9 @@ constexpr float NEXT_Y = 674.0F;
 constexpr float PANEL_Y = 318.0F;
 constexpr float PANEL_HEIGHT = 348.0F;
 constexpr float PANEL_WIDTH = 414.0F;
+/// The workshop's event log, kept above the monster's bowl at y 157.
+constexpr float EVENT_Y = 64.0F;
+constexpr float EVENT_HEIGHT = 90.0F;
 
 /// The key each action is bound to in project.godot, one entry per key set.
 struct KeyLabels {
@@ -70,6 +78,9 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .end_day = "]",
                                           .switch_actor = "B",
                                           .leave = "N"}};
+
+/// A human chef always holds the first key set's up and down.
+constexpr const char *CHOOSE_DISH_KEYS = "W/S";
 
 String from(std::string_view text) {
   return String::utf8(text.data(), static_cast<std::int64_t>(text.size()));
@@ -219,15 +230,78 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
       action);
 }
 
-bool anything_to_collect(const GameView &view) {
-  return std::ranges::any_of(
-      view.exploration.sources, [&view](const survival::SourceStock &stock) {
-        const auto &objects = view.world.objects;
-        const auto object =
-            std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
-        return stock.remaining > 0 && object != objects.end() &&
-               object->material_available;
-      });
+/// Where `actor` has something to do: a stocked source that is supplying, or a
+/// broken passage it carries the tool for.
+std::vector<survival::WorldArea> errand_areas(const GameView &view,
+                                              Actor actor) {
+  std::vector<survival::WorldArea> areas;
+  const auto &objects = view.world.objects;
+  for (const auto &stock : view.exploration.sources) {
+    const auto object =
+        std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
+    if (stock.remaining > 0 && object != objects.end() &&
+        object->material_available) {
+      areas.push_back(object->area);
+    }
+  }
+  const auto &tools = state_of(view, actor).tools;
+  for (const auto &object : objects) {
+    if (object.state == survival::ObjectState::Destroyed &&
+        object.repair_with &&
+        std::ranges::find(tools, *object.repair_with) != tools.end()) {
+      areas.push_back(object.area);
+    }
+  }
+  return areas;
+}
+
+/// Searches outward from `from` over the cells movement allows.
+bool errand_in_reach(const SurvivalFrame &frame, Actor actor,
+                     GridPosition from) {
+  const auto areas = errand_areas(frame.view, actor);
+  const auto range =
+      frame.content.get().companion.exploration.collection_distance;
+  std::set<std::pair<std::int32_t, std::int32_t>> seen{{from.x, from.y}};
+  std::deque<GridPosition> frontier{from};
+  while (!frontier.empty()) {
+    const auto cell = frontier.front();
+    frontier.pop_front();
+    if (std::ranges::any_of(areas, [cell, range](const auto &area) {
+          return survival::distance(cell, area) <= range;
+        })) {
+      return true;
+    }
+    for (const auto next : {GridPosition{.x = cell.x - 1, .y = cell.y},
+                            GridPosition{.x = cell.x + 1, .y = cell.y},
+                            GridPosition{.x = cell.x, .y = cell.y - 1},
+                            GridPosition{.x = cell.x, .y = cell.y + 1}}) {
+      if (survival::cell_at(frame.view.world, next) ==
+              survival::Cell::Supported &&
+          seen.insert({next.x, next.y}).second) {
+        frontier.push_back(next);
+      }
+    }
+  }
+  return false;
+}
+
+GridPosition position_of(const GameView &view, Actor actor) {
+  switch (actor) {
+  case Actor::Chef:
+    return view.exploration.chef.position;
+  case Actor::Appraiser:
+    return view.exploration.appraiser.position;
+  }
+  std::abort();
+}
+
+/// Whether setting out today would find anything to do.
+bool worth_setting_out(const SurvivalFrame &frame) {
+  const auto entry = frame.content.get().companion.exploration.entry;
+  return frame.view.progression.remaining_exploration.count() > 0 &&
+         std::ranges::any_of(ACTORS, [&frame, entry](Actor actor) {
+           return errand_in_reach(frame, actor, entry);
+         });
 }
 
 String city_step(const SurvivalFrame &frame, Actor actor,
@@ -236,8 +310,8 @@ String city_step(const SurvivalFrame &frame, Actor actor,
   if (offer) {
     return offered_step(*offer, keys);
   }
-  if (!anything_to_collect(frame.view)) {
-    return "Nothing is left to collect for now. " + from(keys.travel) +
+  if (!errand_in_reach(frame, actor, position_of(frame.view, actor))) {
+    return "Nothing is within reach for now. " + from(keys.travel) +
            " returns to base.";
   }
   return "Walk to a gold-framed marker and press " + from(keys.interact) +
@@ -289,18 +363,22 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
   if (const auto step = replacement_step(frame)) {
     return step;
   }
+  const auto chef_keys = survival::key_set(frame.control, Actor::Chef);
+  if (chef_keys && frame.view.workshop.foods.empty()) {
+    const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
+    if (offer) {
+      return offered_step(*offer, KEY_LABELS.at(*chef_keys));
+    }
+  }
+  // Feeding ends the day, and a stored dish keeps while the city still gives.
+  if (worth_setting_out(frame)) {
+    return std::nullopt;
+  }
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
     const auto &offer = frame.offers.at(index_of(actor)).feed;
     if (keys && offer) {
       return offered_step(*offer, KEY_LABELS.at(*keys));
-    }
-  }
-  const auto chef_keys = survival::key_set(frame.control, Actor::Chef);
-  if (chef_keys) {
-    const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
-    if (offer) {
-      return offered_step(*offer, KEY_LABELS.at(*chef_keys));
     }
   }
   return std::nullopt;
@@ -453,13 +531,14 @@ void paint_events(godot::Node2D &canvas,
 
 String key_legend(const SurvivalFrame &frame) {
   const bool city = frame.view.progression.phase == Phase::Exploration;
-  const auto legend = [city](const KeyLabels &keys) {
+  const auto legend = [city](const KeyLabels &keys, bool chef) {
     if (city) {
       return from(keys.move) + " move  " + from(keys.run) + " run  " +
              from(keys.interact) + " use  " + from(keys.travel) +
              " return to base";
     }
-    return from(keys.interact) + " appraise/cook  " + from(keys.feed) +
+    return (chef ? from(CHOOSE_DISH_KEYS) + " choose dish  " : String()) +
+           from(keys.interact) + " appraise/cook  " + from(keys.feed) +
            " feed  " + from(keys.replace_tool) + " replace tool  " +
            from(keys.travel) + " set out  " + from(keys.end_day) +
            " end day unfed";
@@ -467,11 +546,12 @@ String key_legend(const SurvivalFrame &frame) {
   const auto chef = survival::key_set(frame.control, Actor::Chef);
   const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
   if (chef && appraiser) {
-    return "P1  " + legend(KEY_LABELS.at(0)) + "    P2  " +
-           legend(KEY_LABELS.at(1));
+    return "P1  " + legend(KEY_LABELS.at(0), true) + "    P2  " +
+           legend(KEY_LABELS.at(1), false);
   }
   const auto &keys = KEY_LABELS.at(0);
-  return legend(keys) + "   " + from(keys.switch_actor) + " swap actor";
+  return legend(keys, chef.has_value()) + "   " + from(keys.switch_actor) +
+         " swap actor";
 }
 
 void paint_next_step(godot::Node2D &canvas,
@@ -530,26 +610,6 @@ void paint_appraise_panel(godot::Node2D &canvas,
   }
 }
 
-/// Names what a recipe still lacks.
-String recipe_status(const GameView &view, const survival::Recipe &recipe) {
-  auto pack = pack_of(view);
-  String missing;
-  for (const auto ingredient : recipe.ingredients) {
-    auto &count = pack[ingredient.value];
-    if (count == 0) {
-      missing += (missing.is_empty() ? "need " : ", ") +
-                 from(survival::ingredient_name(ingredient));
-    } else {
-      --count;
-      if (!identified(view, ingredient)) {
-        missing += (missing.is_empty() ? "identify " : ", ") +
-                   from(survival::ingredient_name(ingredient));
-      }
-    }
-  }
-  return missing;
-}
-
 /// The cook panel's last line: what the chef's key would really cook.
 String cook_job(const SurvivalFrame &frame) {
   const auto keys = survival::key_set(frame.control, Actor::Chef);
@@ -557,8 +617,16 @@ String cook_job(const SurvivalFrame &frame) {
     return "The AI chef works here.";
   }
   const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
-  return offer ? offered_step(*offer, KEY_LABELS.at(*keys))
+  return offer ? offered_step(*offer, KEY_LABELS.at(*keys)) + "   " +
+                     key(CHOOSE_DISH_KEYS) + "Choose"
                : String("No dish can be cooked yet.");
+}
+
+/// The dish the chef's key would cook, if any.
+std::optional<survival::FoodId> offered_dish(const SurvivalFrame &frame) {
+  const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
+  const auto *cook = offer ? std::get_if<survival::Cook>(&*offer) : nullptr;
+  return cook != nullptr ? std::optional{cook->food} : std::nullopt;
 }
 
 void paint_cook_panel(godot::Node2D &canvas,
@@ -574,8 +642,12 @@ void paint_cook_panel(godot::Node2D &canvas,
                    tool_condition(role_tool_state(view, Actor::Chef)),
                16, tones.muted);
   float y = PANEL_Y + 60.0F;
+  const auto offered = offered_dish(frame);
   for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
     const auto missing = recipe_status(view, recipe);
+    if (offered == recipe.food) {
+      drawing.text(canvas, x + 3.0F, y, ">", 18, tones.gold);
+    }
     const auto &eaten = view.workshop.eaten_foods;
     const bool repeat = std::ranges::find(eaten, recipe.food) != eaten.end();
     drawing.text(canvas, x + 14.0F, y, from(survival::food_name(recipe.food)),
@@ -658,7 +730,7 @@ void paint_workshop_screen(godot::Node2D &canvas,
   paint_appraise_panel(canvas, drawing, frame, 10.0F);
   paint_cook_panel(canvas, drawing, frame, 433.0F);
   paint_feed_panel(canvas, drawing, frame, 856.0F);
-  paint_events(canvas, drawing, frame, 840.0F, 72.0F, 96.0F);
+  paint_events(canvas, drawing, frame, 840.0F, EVENT_Y, EVENT_HEIGHT);
 }
 
 void paint_city_screen(godot::Node2D &canvas,
@@ -868,6 +940,25 @@ void paint_cinematic(godot::Node2D &canvas,
                20, tones.muted);
   drawing.text(canvas, 130.0F, 640.0F, "E: skip   M: main menu", 22,
                tones.muted);
+}
+
+String recipe_status(const GameView &view, const survival::Recipe &recipe) {
+  auto pack = pack_of(view);
+  String missing;
+  for (const auto ingredient : recipe.ingredients) {
+    auto &count = pack[ingredient.value];
+    if (count == 0) {
+      missing += (missing.is_empty() ? "need " : ", ") +
+                 from(survival::ingredient_name(ingredient));
+    } else {
+      --count;
+      if (!identified(view, ingredient)) {
+        missing += (missing.is_empty() ? "identify " : ", ") +
+                   from(survival::ingredient_name(ingredient));
+      }
+    }
+  }
+  return missing;
 }
 
 String next_step(const SurvivalFrame &frame) {

@@ -81,6 +81,9 @@ void paint_cinematic(godot::Node2D &canvas,
                      const rendering::AscentDrawing &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
+/// Names what `recipe` still lacks; empty when it can be cooked now.
+[[nodiscard]] godot::String recipe_status(const survival::GameView &view,
+                                          const survival::Recipe &recipe);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The sentence the event log shows for `event`.

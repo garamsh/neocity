@@ -100,6 +100,7 @@ public:
   [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// World time is advanced here only; acid is explicit until feeding is wired.
+  /// Answers `Result::Escaped` with no change once the party has escaped.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);
