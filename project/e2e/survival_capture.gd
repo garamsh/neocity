@@ -17,6 +17,8 @@ func _run() -> void:
 	await _tap(KEY_1)
 	await _save("2-choose-players")
 	await _tap(KEY_1)
+	await _save("12-intro-card")
+	await _tap(KEY_E)
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 6)
@@ -57,6 +59,12 @@ func _run() -> void:
 	await _walk(KEY_D, 8)
 	await _frames(240)
 	await _save("11-city-damaged")
+	await _tap(KEY_Q)
+	await _until_phase("workshop")
+	while scene.survival_status()["phase"] != "escaped":
+		await _tap(KEY_G)
+	await _frames(2)
+	await _save("13-ending-card")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 

@@ -4,6 +4,7 @@
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
+#include <survival/escape.hpp>
 
 #include <godot_cpp/variant/dictionary.hpp>
 
@@ -21,18 +22,21 @@ struct SurvivalFeatures {
   std::reference_wrapper<survival::World> world;
   std::reference_wrapper<survival::Exploration> exploration;
   std::reference_wrapper<survival::Workshop> workshop;
+  std::reference_wrapper<survival::Escape> escape;
   std::reference_wrapper<const survival::Companion> companion;
 };
 
 /// Drives one survival run: accumulates frame time into fixed 100ms steps,
 /// retains input between them, and runs both actors' commands through the
 /// rules. The step clock runs in every phase; `Exploration` spends only
-/// exploration time from it.
+/// exploration time from it. No step runs once the party has escaped.
 class SurvivalRun {
 public:
   SurvivalRun(SurvivalFeatures rules, survival::ControlMap players);
   /// Retains this frame's input and runs every step the frame time completes.
   void advance(double delta, const std::array<survival::PlayerInput, 2> &input);
+  /// Whether the run has ended in the escaped phase.
+  [[nodiscard]] bool escaped() const;
   /// Who drives each actor, for sampling their keys.
   [[nodiscard]] survival::ControlMap control() const;
   /// Reads one frame's values for the screen.

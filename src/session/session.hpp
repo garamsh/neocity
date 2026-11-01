@@ -45,8 +45,27 @@ struct Command {
 /// Mounts the given experiment scene, or removes the mounted one when empty.
 using Mount = std::function<void(std::optional<godot::String> scene)>;
 
+/// Plays one cinematic scene at a time for the session, without ever failing
+/// the host.
+struct CinematicStage {
+  /// Loads and starts a scene; false when it cannot play, leaving nothing
+  /// open.
+  std::function<bool(const godot::String &scene)> play;
+  /// Whether the started scene is still running.
+  std::function<bool()> playing;
+  /// Closes the started scene, if any.
+  std::function<void()> stop;
+};
+
 /// Builds a fresh run's rule objects and hands back references to them.
 using StartSurvival = std::function<SurvivalFeatures()>;
+
+/// The open cinematic. `card_left` is the fallback card's remaining seconds,
+/// and empty while a scene plays on the stage.
+struct Playback {
+  hud::Cinematic cinematic = hud::Cinematic::Intro;
+  std::optional<double> card_left;
+};
 
 /// Owns menu navigation, run lifetime, and fixed-step delivery to both games,
 /// using implementations supplied by the scene composition root.
@@ -54,11 +73,12 @@ class Session {
 public:
   /// Receives the ascent game, its camera and fresh-run reset, the survival
   /// run factory, the registered experiments, and the operation that mounts
-  /// their scenes.
+  /// their scenes, and the stage that plays cinematics.
   Session(gameplay::AscentEngine &ascent_engine,
           camera::AscentCamera &ascent_camera,
           std::function<void()> reset_ascent, StartSurvival start_survival,
-          std::span<const experiment::Entry> experiments, Mount mount_scene);
+          std::span<const experiment::Entry> experiments, Mount mount_scene,
+          CinematicStage cinematic_stage);
   /// Samples edges once and advances the open game: ascent on bounded frame
   /// time, survival on all of it.
   void advance(double delta, Command command);
@@ -71,7 +91,8 @@ public:
   [[nodiscard]] godot::Vector2 actor_position() const;
   /// Who drives each survival actor, or nothing with no run open.
   [[nodiscard]] std::optional<survival::ControlMap> survival_control() const;
-  /// Reports the open survival run; empty with no run open.
+  /// Reports the open survival run and any cinematic over it; empty with no
+  /// run open.
   [[nodiscard]] godot::Dictionary survival_status() const;
 
 private:
@@ -79,6 +100,9 @@ private:
   void choose(std::size_t option);
   void start_run(survival::ControlMap control);
   void tick_ascent(double delta);
+  void play(hud::Cinematic cinematic);
+  void advance_cinematic(Playback &open, double delta, const Command &command);
+  void finish_cinematic(hud::Cinematic cinematic);
 
   std::reference_wrapper<gameplay::AscentEngine> ascent;
   std::reference_wrapper<camera::AscentCamera> camera;
@@ -87,6 +111,8 @@ private:
   std::optional<SurvivalRun> run;
   std::span<const experiment::Entry> catalog;
   Mount mount;
+  CinematicStage stage;
+  std::optional<Playback> playback;
   Screen screen = Screen::Main;
   experiment::Entry active;
   bool waiting_for_release = true;

@@ -1,0 +1,227 @@
+class_name SurvivalEscapeCheck
+extends SceneTree
+## Plays the survival game from the main menu to the ending with real key events,
+## and drives the cinematic contract with no asset, a working scene, and broken ones.
+
+## This seed misses on days 30 and 31 and hits on day 32.
+const SEED: int = 7
+const INTRO: String = "res://levels/monster_mouth_escape/cinematics/intro/intro.tscn"
+const ENDING: String = "res://levels/monster_mouth_escape/cinematics/ending/ending.tscn"
+const WORKING: String = "res://e2e/cinematic_fixture.tscn"
+const UNSIGNED: String = "res://e2e/cinematic_unsigned_fixture.tscn"
+const CARD_FRAME_MARGIN: int = 12
+const INTRO_CARD_FRAMES: int = 240
+const ENDING_CARD_FRAMES: int = 360
+const DAY_LIMIT: int = 120
+
+var scene: AscentScene
+var held: Dictionary[Key, bool] = {}
+var checks: int = 0
+var failed: bool = false
+## Keeps each taken-over resource alive; the cache forgets a path when it is freed.
+var stand_in: Resource
+
+func _initialize() -> void:
+	_run.call_deferred()
+
+func _run() -> void:
+	await _frames(2)
+	scene = current_scene as AscentScene
+	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the main menu"):
+		return
+	scene.pin_survival_seed(SEED)
+	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _menu_leaves_a_cinematic, _scene_ending]:
+		await part.call()
+		if failed:
+			return
+	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu).")
+	quit(0)
+
+## No intro asset exists, so a real run opens on the card, blocked, until it times out.
+func _fallback_intro() -> void:
+	if not _check(not ResourceLoader.exists(INTRO) and not ResourceLoader.exists(ENDING), "no cinematic asset exists at the contract paths"):
+		return
+	await _start()
+	if not _check(_str("cinematic") == "intro" and _str("cinematic_source") == "fallback", "a missing intro takes the fallback card"):
+		return
+	await _tap(KEY_Q)
+	await _tap(KEY_G)
+	if not _check(_where("chef") == "base" and _int("day") == 1, "the card blocks setting out and ending the day"):
+		return
+	if not await _until("the card times out", func() -> bool: return _str("cinematic") == "", INTRO_CARD_FRAMES + CARD_FRAME_MARGIN):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the game takes input after the card", func() -> bool: return _where("chef") == "city", 30):
+		return
+	await _tap(KEY_Q)
+	await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", 60)
+
+func _play_to_the_ending() -> void:
+	while _int("day") < 30:
+		await _end_day()
+	if not _check(_str("phase") == "workshop" and _int("escape_rolls") == 0, "no escape roll before day thirty finishes"):
+		return
+	await _end_day()
+	if not _check(_int("escape_rolls") == 1, "finishing day thirty rolls once"):
+		return
+	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
+		await _end_day()
+	if not _check(_str("phase") == "escaped", "a later day escapes"):
+		return
+	_check(_int("day") > 31 and _int("escape_rolls") == _int("day") - 30, "each finished day from thirty rolled once, with a miss before the hit")
+
+func _fallback_ending() -> void:
+	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the fallback card"):
+		return
+	var before: Dictionary = scene.survival_status()
+	await _tap(KEY_Q)
+	await _tap(KEY_G)
+	await _tap(KEY_F)
+	await _tap(KEY_R)
+	await _frames(30)
+	if not _check(_same_state(before), "no key changes an escaped run"):
+		return
+	if not await _until("the ending card times out", func() -> bool: return scene.screen_name() == "main", ENDING_CARD_FRAMES + CARD_FRAME_MARGIN):
+		return
+	_check(scene.survival_status().is_empty(), "the ending closes the run")
+
+func _scene_intro() -> void:
+	_stand_in(load(WORKING), INTRO)
+	await _start()
+	if not _check(_str("cinematic") == "intro" and _str("cinematic_source") == "scene" and _mounted(), "an intro asset plays as a scene"):
+		return
+	await _tap(KEY_Q)
+	await _tap(KEY_G)
+	if not _check(_where("chef") == "base" and _int("day") == 1, "a playing scene blocks the game's keys"):
+		return
+	if not await _until("the scene reports its end", func() -> bool: return _str("cinematic") == "", 120):
+		return
+	if not _check(not _mounted(), "the host closes a finished scene"):
+		return
+	await _tap(KEY_Q)
+	await _until("the game takes input after the scene", func() -> bool: return _where("chef") == "city", 30)
+
+func _skipped_scene() -> void:
+	await _leave()
+	await _start()
+	if not _check(_mounted(), "a new run plays the scene again"):
+		return
+	await _tap(KEY_E)
+	if not _check(_str("cinematic") == "" and not _mounted() and _int("day") == 1, "E skips the scene and returns to the game"):
+		return
+	_check(_where("chef") == "base" and _int("rolls") == 0, "the skip press does not reach the game")
+
+## A resource that is no scene and a scene without the signal both fall back.
+func _broken_scenes() -> void:
+	await _leave()
+	_stand_in(Resource.new(), INTRO)
+	await _start()
+	if not _check(_str("cinematic_source") == "fallback" and not _mounted(), "a load that yields no scene takes the fallback"):
+		return
+	await _leave()
+	_stand_in(load(UNSIGNED), INTRO)
+	await _start()
+	if not _check(_str("cinematic_source") == "fallback" and not _mounted(), "a scene without the finished signal takes the fallback"):
+		return
+	await _tap(KEY_E)
+	_check(_str("cinematic") == "", "E skips the fallback card")
+
+func _menu_leaves_a_cinematic() -> void:
+	await _leave()
+	_stand_in(load(WORKING), INTRO)
+	await _start()
+	await _tap(KEY_M)
+	_check(scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "M leaves a playing scene and ends the run")
+
+## The working scene's end returns from the ending to the main menu.
+func _scene_ending() -> void:
+	stand_in = null
+	var ending: Resource = load(WORKING)
+	stand_in = ending
+	ending.take_over_path(ENDING)
+	await _start()
+	await _tap(KEY_E)
+	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
+		await _end_day()
+	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "scene", "an ending asset plays as a scene"):
+		return
+	if not await _until("the ending scene reports its end", func() -> bool: return scene.screen_name() == "main", 120):
+		return
+	_check(not _mounted() and scene.survival_status().is_empty(), "the ending scene returns to the main menu")
+
+## Serves `resource` from `path` without writing to the art team's folder.
+func _stand_in(resource: Resource, path: String) -> void:
+	stand_in = resource
+	resource.take_over_path(path)
+
+func _start() -> void:
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+
+func _leave() -> void:
+	await _tap(KEY_M)
+
+func _end_day() -> void:
+	var day: int = _int("day")
+	await _tap(KEY_G)
+	await _until("the day ends", func() -> bool: return _int("day") == day + 1, 30)
+
+func _mounted() -> bool:
+	return scene.get_node_or_null("Cinematic") != null
+
+## Compares the run's state, leaving out the event log's order of arrival.
+func _same_state(before: Dictionary) -> bool:
+	var now: Dictionary = scene.survival_status()
+	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "escape_rolls", "foods", "chef", "appraiser", "stock", "objects"]:
+		if now[field] != before[field]:
+			return false
+	return true
+
+func _str(field: String) -> String:
+	var value: String = scene.survival_status().get(field, "")
+	return value
+
+func _int(field: String) -> int:
+	var value: int = scene.survival_status().get(field, 0)
+	return value
+
+func _where(who: String) -> String:
+	var actor: Dictionary = scene.survival_status()[who]
+	var location: String = actor["location"]
+	return location
+
+func _until(name: String, condition: Callable, limit: int) -> bool:
+	for frame: int in range(limit):
+		var done: bool = condition.call()
+		if done:
+			return true
+		await process_frame
+	return _check(false, name)
+
+func _tap(code: Key) -> void:
+	_key(code, true)
+	await _frames(2)
+	_key(code, false)
+	await _frames(8)
+
+func _frames(count: int) -> void:
+	for frame: int in range(count):
+		await process_frame
+
+func _key(code: Key, pressed: bool) -> void:
+	if held.get(code, false) == pressed:
+		return
+	held[code] = pressed
+	var event: InputEventKey = InputEventKey.new()
+	event.physical_keycode = code
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+func _check(condition: bool, name: String) -> bool:
+	if condition:
+		checks += 1
+		return true
+	push_error("Escape check failed: ", name, " ", scene.survival_status() if scene != null else {})
+	failed = true
+	quit(1)
+	return false

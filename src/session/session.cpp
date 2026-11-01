@@ -15,6 +15,43 @@ namespace neocity::session {
 namespace {
 
 constexpr double TICK = 1.0 / 120.0;
+/// How long each fallback card stands without a skip; temporary values.
+constexpr double INTRO_CARD_SECONDS = 4.0;
+constexpr double ENDING_CARD_SECONDS = 6.0;
+constexpr const char *INTRO_SCENE =
+    "res://levels/monster_mouth_escape/cinematics/intro/intro.tscn";
+constexpr const char *ENDING_SCENE =
+    "res://levels/monster_mouth_escape/cinematics/ending/ending.tscn";
+
+const char *cinematic_scene(hud::Cinematic cinematic) {
+  switch (cinematic) {
+  case hud::Cinematic::Intro:
+    return INTRO_SCENE;
+  case hud::Cinematic::Ending:
+    return ENDING_SCENE;
+  }
+  std::abort();
+}
+
+double card_seconds(hud::Cinematic cinematic) {
+  switch (cinematic) {
+  case hud::Cinematic::Intro:
+    return INTRO_CARD_SECONDS;
+  case hud::Cinematic::Ending:
+    return ENDING_CARD_SECONDS;
+  }
+  std::abort();
+}
+
+const char *cinematic_name(hud::Cinematic cinematic) {
+  switch (cinematic) {
+  case hud::Cinematic::Intro:
+    return "intro";
+  case hud::Cinematic::Ending:
+    return "ending";
+  }
+  std::abort();
+}
 
 } // namespace
 
@@ -23,14 +60,19 @@ Session::Session(gameplay::AscentEngine &ascent_engine,
                  std::function<void()> reset_ascent,
                  StartSurvival start_survival,
                  std::span<const experiment::Entry> experiments,
-                 Mount mount_scene)
+                 Mount mount_scene, CinematicStage cinematic_stage)
     : ascent(ascent_engine), camera(ascent_camera),
       reset(std::move(reset_ascent)), start(std::move(start_survival)),
-      catalog(experiments), mount(std::move(mount_scene)) {}
+      catalog(experiments), mount(std::move(mount_scene)),
+      stage(std::move(cinematic_stage)) {}
 
 void Session::enter(Screen destination) {
   if (screen == Screen::Experiment && !waiting_for_release) {
     mount(std::nullopt);
+  }
+  if (playback) {
+    stage.stop();
+    playback.reset();
   }
   screen = destination;
   reset();
@@ -78,6 +120,45 @@ void Session::choose(std::size_t option) {
 void Session::start_run(survival::ControlMap control) {
   enter(Screen::Survival);
   run.emplace(start(), control);
+  play(hud::Cinematic::Intro);
+}
+
+void Session::play(hud::Cinematic cinematic) {
+  playback = Playback{.cinematic = cinematic, .card_left = std::nullopt};
+  if (!stage.play(cinematic_scene(cinematic))) {
+    playback->card_left = card_seconds(cinematic);
+  }
+}
+
+// Only the skip reaches a cinematic; the run takes no key or time meanwhile.
+void Session::advance_cinematic(Playback &open, double delta,
+                                const Command &command) {
+  const bool skipped = std::ranges::any_of(
+      command.survival,
+      [](const survival::PlayerInput &keys) { return keys.interact; });
+  if (open.card_left) {
+    if (std::isfinite(delta) && delta > 0.0) {
+      *open.card_left -= delta;
+    }
+    if (skipped || *open.card_left <= 0.0) {
+      finish_cinematic(open.cinematic);
+    }
+    return;
+  }
+  if (skipped) {
+    stage.stop();
+  }
+  if (!stage.playing()) {
+    finish_cinematic(open.cinematic);
+  }
+}
+
+// The intro hands the run its first frame; the ending closes the run.
+void Session::finish_cinematic(hud::Cinematic cinematic) {
+  playback.reset();
+  if (cinematic == hud::Cinematic::Ending) {
+    enter(Screen::Main);
+  }
 }
 
 void Session::advance(double delta, Command command) {
@@ -111,8 +192,15 @@ void Session::advance(double delta, Command command) {
     choose(*command.option);
     return;
   }
+  if (playback) {
+    advance_cinematic(*playback, delta, command);
+    return;
+  }
   if (run) {
     run->advance(delta, command.survival);
+    if (run->escaped()) {
+      play(hud::Cinematic::Ending);
+    }
   }
   if (screen == Screen::Ascent) {
     pending.horizontal = command.ascent.horizontal;
@@ -157,7 +245,10 @@ void Session::paint(godot::Node2D &canvas,
     hud::paint_survival_setup(canvas, drawing);
     return;
   case Screen::Survival:
-    if (run) {
+    if (playback && run) {
+      hud::paint_cinematic(canvas, drawing, playback->cinematic,
+                           playback->card_left.has_value(), run->frame());
+    } else if (run) {
       hud::paint_survival(canvas, drawing, run->frame());
     }
     return;
@@ -204,7 +295,15 @@ std::optional<survival::ControlMap> Session::survival_control() const {
 }
 
 godot::Dictionary Session::survival_status() const {
-  return run ? run->status() : godot::Dictionary{};
+  if (!run) {
+    return {};
+  }
+  auto status = run->status();
+  if (playback) {
+    status.set("cinematic", cinematic_name(playback->cinematic));
+    status.set("cinematic_source", playback->card_left ? "fallback" : "scene");
+  }
+  return status;
 }
 
 } // namespace neocity::session

@@ -1,8 +1,23 @@
 # Art direction
 
-The selected first-release visual direction, source images, and interpretation of neocity's art references.
+The current visual direction of the monster-mouth escape game, source images, and interpretation of neocity's art references.
 
 ## Current direction
+
+The current game is the monster-mouth escape game of [parent #21](https://github.com/garamsh/neocity/issues/21): a monster swallows a city, and a yellow chef and a green appraiser gather ingredients, feed it, and look for a way out. The [game baseline](../design/monster-mouth-escape.md) holds its decisions. The concept images #21 cites, kept in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape), are its visual target, and #21 states that their drawn UI, numbers, keys, and layout are not requirements. No final art for this game is approved. What the screen shows now is temporary and awaits the creative decision-maker.
+
+The opening and ending art belongs to [#29](https://github.com/garamsh/neocity/issues/29), in `project/levels/monster_mouth_escape/cinematics/`, under the [cinematic contract](../architecture/session.md#cinematic-contract). Until it exists the game shows a placeholder card.
+
+ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. The screen draws both with the ascent prototype's atlas, [`project/levels/ascent/ascent_atlas.png`](../../project/levels/ascent/ascent_atlas.png), which is a temporary representation and not a production sheet:
+
+| Actor | Sheet and temporary sprite agree | Differs on screen |
+|---|---|---|
+| Chef, ART-CHAR-001 | Yellow skin, dark green hair, tall white hat, white coat with magenta buttons, magenta earrings, dark trousers | The sprite always holds a frying pan, while the game's base tool is the spatula, which the sheet draws only in a pose and as a prop. The sheet's expressions and pose row are not used |
+| Appraiser, ART-CHAR-002 | Green skin, two metal bolts, red X eye mark, large magnifying glass, dark suit with a magenta tie | The sprite's hair is a dark-rimmed flat crown, where the sheet has a spiked one in the skin's green. The sheet's expressions and pose row are not used |
+
+The sections below down to the reference gallery, and the gallery's jump-map entries, are the record of the earlier ascent prototype, which remains playable from the main menu. They do not direct the monster-mouth escape game.
+
+### Earlier jump-map prototype record
 
 The art designer selected the first-release concept on 2026-10-27: a small single-player 2D jump-map adventure in neocity. The [creative decision record on issue #1](https://github.com/garamsh/neocity/issues/1#issuecomment-6437503751) records the requested update to [PR #5](https://github.com/garamsh/neocity/pull/5). This document was reconciled with the Godot bootstrap at commit `815f50d3d4aca35e3da3f328bc718684c8e51cba`. Art selection approves only the interpreted visual elements; it does not approve an exact collision layout or establish runtime behavior.
 
