@@ -2,6 +2,7 @@
 
 #include "../hud/hud.hpp"
 #include "../hud/menus.hpp"
+#include "../hud/survival.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -20,11 +21,12 @@ constexpr double TICK = 1.0 / 120.0;
 Session::Session(gameplay::AscentEngine &ascent_engine,
                  camera::AscentCamera &ascent_camera,
                  std::function<void()> reset_ascent,
+                 StartSurvival start_survival,
                  std::span<const experiment::Entry> experiments,
                  Mount mount_scene)
     : ascent(ascent_engine), camera(ascent_camera),
-      reset(std::move(reset_ascent)), catalog(experiments),
-      mount(std::move(mount_scene)) {}
+      reset(std::move(reset_ascent)), start(std::move(start_survival)),
+      catalog(experiments), mount(std::move(mount_scene)) {}
 
 void Session::enter(Screen destination) {
   if (screen == Screen::Experiment && !waiting_for_release) {
@@ -32,6 +34,7 @@ void Session::enter(Screen destination) {
   }
   screen = destination;
   reset();
+  run.reset();
   accumulator = 0.0;
   pending = {};
   waiting_for_release = true;
@@ -41,9 +44,20 @@ void Session::choose(std::size_t option) {
   switch (screen) {
   case Screen::Main:
     if (option == 1) {
-      enter(Screen::Ascent);
+      enter(Screen::SurvivalSetup);
     } else if (option == 2) {
       enter(Screen::Developer);
+    } else if (option == 3) {
+      enter(Screen::Ascent);
+    }
+    return;
+  case Screen::SurvivalSetup:
+    if (option == 1) {
+      start_run(survival::single_player(survival::Actor::Chef));
+    } else if (option == 2) {
+      start_run(survival::single_player(survival::Actor::Appraiser));
+    } else if (option == 3) {
+      start_run(survival::two_players());
     }
     return;
   case Screen::Developer:
@@ -53,11 +67,17 @@ void Session::choose(std::size_t option) {
       enter(Screen::Experiment);
     }
     return;
+  case Screen::Survival:
   case Screen::Ascent:
   case Screen::Experiment:
     return;
   }
   std::abort();
+}
+
+void Session::start_run(survival::ControlMap control) {
+  enter(Screen::Survival);
+  run.emplace(start(), control);
 }
 
 void Session::advance(double delta, Command command) {
@@ -66,6 +86,8 @@ void Session::advance(double delta, Command command) {
     case Screen::Main:
       break;
     case Screen::Developer:
+    case Screen::SurvivalSetup:
+    case Screen::Survival:
     case Screen::Ascent:
       enter(Screen::Main);
       return;
@@ -84,9 +106,13 @@ void Session::advance(double delta, Command command) {
     return;
   }
   if (command.option &&
-      (screen == Screen::Main || screen == Screen::Developer)) {
+      (screen == Screen::Main || screen == Screen::Developer ||
+       screen == Screen::SurvivalSetup)) {
     choose(*command.option);
     return;
+  }
+  if (run) {
+    run->advance(delta, command.survival);
   }
   if (screen == Screen::Ascent) {
     pending.horizontal = command.ascent.horizontal;
@@ -127,6 +153,14 @@ void Session::paint(godot::Node2D &canvas,
   case Screen::Developer:
     hud::paint_developer_menu(canvas, drawing, catalog);
     return;
+  case Screen::SurvivalSetup:
+    hud::paint_survival_setup(canvas, drawing);
+    return;
+  case Screen::Survival:
+    if (run) {
+      hud::paint_survival(canvas, drawing, run->frame());
+    }
+    return;
   case Screen::Ascent:
     drawing.paint(canvas, ascent.get().snapshot(), camera.get().y());
     hud::paint(canvas, drawing, ascent.get().snapshot());
@@ -145,6 +179,10 @@ godot::String Session::screen_name() const {
     return "main";
   case Screen::Developer:
     return "developer";
+  case Screen::SurvivalSetup:
+    return "survival_setup";
+  case Screen::Survival:
+    return "survival";
   case Screen::Ascent:
     return "ascent";
   case Screen::Experiment:
@@ -159,6 +197,14 @@ godot::Vector2 Session::actor_position() const {
   }
   const auto p = ascent.get().snapshot().leader.feet;
   return {p.x, p.y};
+}
+
+std::optional<survival::ControlMap> Session::survival_control() const {
+  return run ? std::optional{run->control()} : std::nullopt;
+}
+
+godot::Dictionary Session::survival_status() const {
+  return run ? run->status() : godot::Dictionary{};
 }
 
 } // namespace neocity::session

@@ -43,13 +43,16 @@ add_library(
     src/experiment/pan_dodge/view/scene.cpp
     src/hud/hud.cpp
     src/hud/menus.cpp
+    src/hud/survival.cpp
     src/input/input.cpp
     src/input/menu.cpp
     src/input/survival.cpp
     src/register_types.cpp
     src/rendering/drawing.cpp
+    src/rendering/survival.cpp
     src/scene.cpp
     src/session/session.cpp
+    src/session/survival_run.cpp
 )
 target_link_libraries(neocity PRIVATE gameplay pan_dodge survival godot-cpp)
 target_compile_options(neocity PRIVATE ${NEOCITY_WARNINGS})

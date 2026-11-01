@@ -67,7 +67,7 @@ func _run() -> void:
 	if not _check(scene.screen_name() == "developer" and not is_instance_valid(dodge) and _dodge() == null, "M unmounts the experiment back to the developer page"):
 		return
 	await _tap(KEY_M)
-	await _tap(KEY_1)
+	await _tap(KEY_3)
 	if not _check(scene.screen_name() == "ascent", "main menu still plays the city climb"):
 		return
 	await _tap(KEY_M)

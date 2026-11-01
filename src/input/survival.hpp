@@ -11,4 +11,7 @@ namespace neocity::input {
 std::array<survival::PlayerInput, 2>
 sample_survival_input(survival::ControlMap control);
 
+/// Reports whether any key of either survival key set is held.
+bool survival_controls_held();
+
 } // namespace neocity::input

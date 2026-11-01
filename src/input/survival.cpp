@@ -2,6 +2,7 @@
 
 #include <godot_cpp/classes/input.hpp>
 
+#include <algorithm>
 #include <cstddef>
 
 namespace neocity::input {
@@ -94,6 +95,19 @@ sample_survival_input(survival::ControlMap control) {
     }
   }
   return inputs;
+}
+
+bool survival_controls_held() {
+  const godot::Input *input = godot::Input::get_singleton();
+  return std::ranges::any_of(KEY_SETS, [input](const KeySet &keys) {
+    return std::ranges::any_of(
+        std::array{keys.left, keys.right, keys.up, keys.down, keys.run,
+                   keys.travel, keys.interact, keys.replace_tool, keys.feed,
+                   keys.end_day, keys.switch_actor, keys.leave},
+        [input](const char *action) {
+          return input->is_action_pressed(action);
+        });
+  });
 }
 
 } // namespace neocity::input

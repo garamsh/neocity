@@ -57,6 +57,14 @@ constexpr ObjectId SUPPLY_CRATE{28};
 constexpr ObjectId COLD_LOCKER{29};
 constexpr ObjectId ROOF_BAG{30};
 constexpr ObjectId FERRY_BAG{31};
+constexpr ObjectId WASHED_BAG_1{41};
+constexpr ObjectId WASHED_BAG_2{42};
+constexpr ObjectId WASHED_BAG_3{43};
+constexpr ObjectId WASHED_BAG_4{44};
+constexpr ObjectId WASHED_BAG_5{45};
+constexpr ObjectId WASHED_BAG_6{46};
+constexpr ObjectId WASHED_BAG_7{47};
+constexpr ObjectId WASHED_BAG_8{48};
 
 template <typename Id> struct Named {
   Id id;
@@ -116,6 +124,14 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = COLD_LOCKER, .name = "Cold Locker"},
     Named<ObjectId>{.id = ROOF_BAG, .name = "Roof Bag"},
     Named<ObjectId>{.id = FERRY_BAG, .name = "Ferry Bag"},
+    Named<ObjectId>{.id = WASHED_BAG_1, .name = "Washed-up Bag 1"},
+    Named<ObjectId>{.id = WASHED_BAG_2, .name = "Washed-up Bag 2"},
+    Named<ObjectId>{.id = WASHED_BAG_3, .name = "Washed-up Bag 3"},
+    Named<ObjectId>{.id = WASHED_BAG_4, .name = "Washed-up Bag 4"},
+    Named<ObjectId>{.id = WASHED_BAG_5, .name = "Washed-up Bag 5"},
+    Named<ObjectId>{.id = WASHED_BAG_6, .name = "Washed-up Bag 6"},
+    Named<ObjectId>{.id = WASHED_BAG_7, .name = "Washed-up Bag 7"},
+    Named<ObjectId>{.id = WASHED_BAG_8, .name = "Washed-up Bag 8"},
 };
 
 template <typename Id, std::size_t Size>
@@ -159,6 +175,14 @@ ObjectDefinition exposed(ObjectDefinition object, WorldThreshold threshold) {
 ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   object.destroyed_after = threshold;
   return object;
+}
+
+/// A bag the tide brings in once the run has spent `arrival` exploring, so each
+/// day past the first has something new to find.
+ObjectDefinition washed_up(ObjectId id, GridPosition cell,
+                           IngredientId ingredient,
+                           std::chrono::seconds arrival) {
+  return exposed(ingredient_source(id, cell, ingredient), {.elapsed = arrival});
 }
 
 ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
@@ -217,6 +241,14 @@ std::vector<ObjectDefinition> city() {
       exposed(owned(ingredient_source(FERRY_BAG, {.x = 23, .y = 12}, KELP),
                     DRIFTED_FERRY),
               ferry_arrives),
+      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 50s),
+      washed_up(WASHED_BAG_2, {.x = 10, .y = 14}, MUSHROOM, 95s),
+      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 140s),
+      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 185s),
+      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 230s),
+      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 275s),
+      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, MUSHROOM, 320s),
+      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 365s),
   };
 }
 
@@ -237,6 +269,14 @@ std::vector<SourceStock> stock() {
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = 3},
   };
 }
 
