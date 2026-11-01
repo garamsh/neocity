@@ -469,7 +469,17 @@ def environment():
         check=True,
     )
     changes = subprocess.run(
-        ["git", "-C", REPOSITORY, "status", "--porcelain", "--", "src", "tools"],
+        [
+            "git",
+            "-C",
+            REPOSITORY,
+            "status",
+            "--porcelain",
+            "--",
+            "src",
+            "tools",
+            ":!tools/network-lab/results",
+        ],
         capture_output=True,
         text=True,
         check=True,
