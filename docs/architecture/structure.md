@@ -6,11 +6,11 @@ The purpose-folder shape selected for the C++ sources and the Godot project, and
 
 The C++ sources are partitioned by purpose: each folder directly under `src/` holds one thing the game does. Godot and C++ are implementation technologies within this shape, not folder names.
 
-- **A purpose is the unit.** One shallow folder per purpose directly under `src/`, named for what it does: `gameplay`, `experiment`, `session`, `camera`, `input`, `rendering`, `hud`.
+- **A purpose is the unit.** One shallow folder per purpose directly under `src/`, named for what it does: `gameplay`, `survival`, `experiment`, `session`, `camera`, `input`, `rendering`, `hud`.
 - **An experiment is the unit inside `experiment`.** `src/experiment/<id>/` holds everything one experiment owns: its rules library, its Godot node in `view/`, and its record. `src/experiment/catalog.hpp` registers them. This is the one purpose with a second level; no other purpose nests by kind.
 - **A new purpose earns a new folder, and a folder that mixes two purposes is split.** Folders are created when the purpose is named, not when its code outgrows a file.
 - **No generic container.** No `common`, `shared`, `util`, or similar folder that no single purpose owns.
-- **Each rule library is a build-enforced boundary.** `gameplay` and every experiment's library own their simulation and depend only on the C++ standard library at runtime. Each target exposes only its own `include/<library>/` directory; its `src/` is internal. Consumers include only `<library/...>`, never internal headers. No rule library may include or link another rule library or Godot.
+- **Each rule library is a build-enforced boundary.** `gameplay`, `survival`, and every experiment's library own their simulation and depend only on the C++ standard library at runtime. Each target exposes only its own `include/<library>/` directory; its `src/` is internal. Consumers include only `<library/...>`, never internal headers. No rule library may include or link another rule library or Godot.
 - **Presentation depends on rules, never the reverse.** `session`, `camera`, `input`, `rendering`, `hud`, and each experiment's `view/` consume commands and snapshots without reimplementing collision or progression. Renderer-specific values do not cross into rule libraries.
 - **An experiment depends only on its own library and Godot.** Its `view/` does not include the host purposes, the main game, or another experiment; the host reaches an experiment only through its catalog entry and scene.
 - **Each new rules boundary earns its place through independent behavior.** Similar value shapes do not authorize a shared engine or plugin framework.
@@ -25,7 +25,7 @@ This rule governs over `docs/convention/simplicity.md` §Rules, "A division is a
 ## Repository layout
 
 - `src/` holds the C++ sources, one folder per purpose, with `register_types.cpp` and `scene.*` at its root.
-- `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit in `project/levels/<level>/`; the first level is `project/levels/ascent/`. An experiment's scene and its own resources sit in `project/experiment/<id>/`, mirroring its source folder. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
+- `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit under `project/levels/<level>/`; the first level is `project/levels/ascent/`. An experiment's scene and its own resources sit in `project/experiment/<id>/`, mirroring its source folder. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
 - The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
 
 ## Rationale
