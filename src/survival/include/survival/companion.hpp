@@ -98,9 +98,12 @@ struct ActorCommand {
                                  Actor actor, const Action &action);
 
 /// What one human pressed this step, free of device detail. `switch_actor` and
-/// `leave` are for the caller's ControlMap, not for `Companion`.
+/// `leave` are for the caller's ControlMap, not for `Companion`. `tap` is for
+/// the caller too, which turns it into `movement` for one step.
 struct PlayerInput {
   ExplorationInput movement{};
+  /// A direction pressed and released between two samples, so never held.
+  Direction tap = Direction::Idle;
   bool travel = false;
   bool interact = false;
   bool replace_tool = false;

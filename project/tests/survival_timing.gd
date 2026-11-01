@@ -9,6 +9,9 @@ const BUDGET_MS: int = 45000
 const STEP_MS: int = 100
 ## Above this frame time Godot's default of 8 steps at 120 Hz cuts `delta`.
 const DEFAULT_CAP_MS: int = 67
+const RULE_TICKS_PER_FRAME: int = 8
+## The rule tick that hits an idle player in pan_dodge.
+const FIRST_HIT_TICK: int = 300
 
 var scene: AscentScene
 var checks: int = 0
@@ -69,6 +72,14 @@ func _fine_frames() -> void:
 	_same_frame_tap(KEY_D)
 	await _frames(60)
 	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one frame walks exactly one cell"):
+		return
+	await _align_to_step()
+	x = _actor("chef", "x")
+	Input.action_press("survival_1_run")
+	_same_frame_tap(KEY_D)
+	await _frames(60)
+	Input.action_release("survival_1_run")
+	if not _check(_actor("chef", "x") == x + 2, "a tap with the run key held runs one step"):
 		return
 	await _align_to_step()
 	x = _actor("chef", "x")
@@ -205,10 +216,7 @@ func _coarse_frames() -> void:
 	await _frames(1)
 	if not _check(_int("remaining_ms") == before - 2 * STEP_MS, "a 200ms frame spends two 100ms steps"):
 		return
-	if not _check(_actor("chef", "x") == x + 1, "a direction first seen in a slow frame walks one cell, as a tap would"):
-		return
-	await _frames(1)
-	if not _check(_actor("chef", "x") == x + 3, "a held key walks both steps of a slow frame"):
+	if not _check(_actor("chef", "x") == x + 2, "a held key walks both steps of a slow frame"):
 		return
 	Input.action_release("survival_1_right")
 	await _frames(1)
@@ -217,14 +225,27 @@ func _coarse_frames() -> void:
 	await _frames(3)
 	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one slow frame walks one cell, not one per step"):
 		return
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _frames(1)
+	_same_frame_tap(KEY_D)
+	await _frames(3)
+	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive slow frames walk one cell each"):
+		return
 	Input.action_press("survival_1_left")
 	await _frames(2)
 	x = _actor("chef", "x")
 	Input.action_press("survival_1_right")
 	await _frames(1)
-	_check(_actor("chef", "x") == x - 2, "a second key pressed and kept down leaves the held direction walking")
-	Input.action_release("survival_1_left")
+	if not _check(_actor("chef", "x") == x - 2, "a second key pressed and kept down leaves the held direction walking"):
+		return
 	Input.action_release("survival_1_right")
+	_same_frame_tap(KEY_D)
+	await _frames(1)
+	x = _actor("chef", "x")
+	await _frames(1)
+	_check(_actor("chef", "x") == x, "a tap beside a held key walks one step of its frame and the held key the rest")
+	Input.action_release("survival_1_left")
 
 ## `--fixed-fps` bypasses the engine's cap on `delta`, so this run must not use it.
 func _real_frames() -> void:
@@ -241,7 +262,44 @@ func _real_frames() -> void:
 	var x: int = _actor("chef", "x")
 	_same_frame_tap(KEY_D)
 	await _delayed_frames(3, 250)
-	_check(_actor("chef", "x") == x + 1, "a press and release inside one 250ms frame walks one cell")
+	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one 250ms frame walks one cell"):
+		return
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _delayed_frames(1, 250)
+	_same_frame_tap(KEY_D)
+	await _delayed_frames(3, 250)
+	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive 250ms frames walk one cell each"):
+		return
+	await _experiment_keeps_its_delivery()
+
+## The cap raised for survival's clock must not reach an experiment's rule ticks.
+func _experiment_keeps_its_delivery() -> void:
+	await _one_frame("menu")
+	await _frames(4)
+	await _one_frame("option_2")
+	await _frames(4)
+	await _one_frame("option_1")
+	await _frames(4)
+	var dodge: PanDodgeScene = scene.get_node_or_null("Experiment") as PanDodgeScene
+	if not _check(dodge != null, "the developer page mounts pan_dodge on the real clock"):
+		return
+	await _delayed_frames(1, 16)
+	var ticks: int = dodge.run_tick()
+	var physics: int = Engine.get_physics_frames()
+	await _delayed_frames(30, 16)
+	if not _check(dodge.run_tick() - ticks == Engine.get_physics_frames() - physics, "a frame under the limit loses no rule tick"):
+		return
+	await _delayed_frames(1, 200)
+	ticks = dodge.run_tick()
+	physics = Engine.get_physics_frames()
+	await _delayed_frames(5, 200)
+	if not _check(Engine.get_physics_frames() - physics > 5 * RULE_TICKS_PER_FRAME, "slow frames run more physics ticks than the limit"):
+		return
+	if not _check(dodge.run_tick() - ticks == 5 * RULE_TICKS_PER_FRAME, "pan_dodge runs its limit of rule ticks in each slow frame"):
+		return
+	await _delayed_frames(2, FIRST_HIT_TICK * 1000 / 120 + 500)
+	_check(dodge.outcome() == "playing", "a stall longer than the first hit leaves the idle player playing")
 
 ## Exploration time matches the wall clock to within two steps over `count` frames.
 func _spends_real_time(count: int, delay_ms: int) -> bool:

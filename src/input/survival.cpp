@@ -66,27 +66,27 @@ survival::Direction first_direction(const KeySet &keys, Test test) {
   return survival::Direction::Idle;
 }
 
-/// A key pressed and released inside one frame is never seen as held, so it
-/// reads from the press edge and wins that frame over a key still held.
-survival::Direction sampled_direction(const godot::Input &input,
-                                      const KeySet &keys) {
-  const auto tapped = first_direction(keys, [&input](const char *action) {
-    return input.is_action_just_pressed(action) &&
-           !input.is_action_pressed(action);
-  });
-  if (tapped != survival::Direction::Idle) {
-    return tapped;
-  }
+survival::Direction held_direction(const godot::Input &input,
+                                   const KeySet &keys) {
   return first_direction(keys, [&input](const char *action) {
     return input.is_action_pressed(action);
+  });
+}
+
+survival::Direction tapped_direction(const godot::Input &input,
+                                     const KeySet &keys) {
+  return first_direction(keys, [&input](const char *action) {
+    return input.is_action_just_pressed(action) &&
+           !input.is_action_pressed(action);
   });
 }
 
 survival::PlayerInput sample_keys(const godot::Input &input,
                                   const KeySet &keys) {
   return {
-      .movement = {.direction = sampled_direction(input, keys),
+      .movement = {.direction = held_direction(input, keys),
                    .running = input.is_action_pressed(keys.run)},
+      .tap = tapped_direction(input, keys),
       .travel = input.is_action_just_pressed(keys.travel),
       .interact = input.is_action_just_pressed(keys.interact),
       .replace_tool = input.is_action_just_pressed(keys.replace_tool),

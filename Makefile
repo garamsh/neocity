@@ -85,15 +85,15 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 25 integration checks passed.' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 26 integration checks passed.' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 6 integration checks passed.' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 7 integration checks passed.' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck -- real-clock > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 10 integration checks passed.' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 16 integration checks passed.' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
