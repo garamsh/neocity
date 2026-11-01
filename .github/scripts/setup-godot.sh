@@ -16,3 +16,7 @@ chmod +x godot
 rm "$archive"
 printf '%s\n' "$install_dir" >> "${GITHUB_PATH:?}"
 ./godot --version
+
+# Godot installs no SIGABRT handler, so an abort prints nothing of its own; the
+# core is what report-godot-crash.sh reads. A pipe handler ignores ulimit -c.
+sudo sysctl --write "kernel.core_pattern=|/usr/bin/tee ${RUNNER_TEMP:?}/core.%p"
