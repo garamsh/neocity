@@ -315,7 +315,6 @@ Content temporary_content(std::uint32_t seed) {
                     .unfed_penalty = AcidLevel{15}},
       .hazards = {{.x = 18, .y = 6, .width = 1, .height = 3}},
       .map = {.width = 36, .height = 16},
-      .full_acid = AcidLevel{100},
   };
 }
 

@@ -29,6 +29,8 @@ using survival::Location;
 using survival::Phase;
 
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
+/// The acid level drawn as a full gauge; the rules have no such cap.
+constexpr std::uint32_t FULL_ACID = 100;
 constexpr float CARD_Y = 588.0F;
 constexpr float CARD_WIDTH = 276.0F;
 constexpr float CARD_HEIGHT = 84.0F;
@@ -336,16 +338,16 @@ void paint_top_bar(godot::Node2D &canvas,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  const auto full = frame.content.get().full_acid.value;
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 62.0F), color(14, 12, 26, 1.0F));
   drawing.text(canvas, 24.0F, 42.0F, "DAY " + number(progression.day), 30,
                tones.gold);
   drawing.text(canvas, 190.0F, 40.0F, "ACID", 24, color(150, 255, 120, 1.0F));
   bar(canvas, 262.0F, 20.0F, 440.0F, 24.0F,
-      static_cast<float>(progression.acid.value) / static_cast<float>(full),
+      static_cast<float>(progression.acid.value) /
+          static_cast<float>(FULL_ACID),
       color(90, 226, 80, 1.0F));
   drawing.text(canvas, 716.0F, 40.0F,
-               number(progression.acid.value) + " / " + number(full), 22,
+               number(progression.acid.value) + " / " + number(FULL_ACID), 22,
                tones.white);
   drawing.text(canvas, 880.0F, 40.0F, "TIME LEFT", 20, tones.muted);
   drawing.text(canvas, 990.0F, 44.0F, clock(progression.remaining_exploration),
@@ -821,9 +823,8 @@ void paint_survival(godot::Node2D &canvas,
                     const rendering::AscentDrawing &drawing,
                     const SurvivalFrame &frame) {
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(
-      canvas, static_cast<float>(progression.acid.value) /
-                  static_cast<float>(frame.content.get().full_acid.value));
+  rendering::paint_mouth(canvas, static_cast<float>(progression.acid.value) /
+                                     static_cast<float>(FULL_ACID));
   if (progression.phase == Phase::Exploration) {
     paint_city_screen(canvas, drawing, frame);
   } else {

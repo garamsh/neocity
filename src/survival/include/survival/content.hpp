@@ -24,8 +24,6 @@ struct Content {
   /// Cells that cost one health slot to step into.
   std::vector<WorldArea> hazards;
   MapSize map;
-  /// The acid level the screen shows as a full gauge; rules have no such cap.
-  AcidLevel full_acid;
 };
 
 /// Builds the temporary game for one run seed.
