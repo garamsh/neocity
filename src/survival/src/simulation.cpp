@@ -2,11 +2,26 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace neocity::survival {
+namespace {
 
-Simulation::Simulation(Config config) {
+bool take(std::vector<IngredientId> &inventory, IngredientId ingredient) {
+  const auto found = std::ranges::find(inventory, ingredient);
+  if (found == inventory.end()) {
+    return false;
+  }
+  inventory.erase(found);
+  return true;
+}
+
+} // namespace
+
+Simulation::Simulation(Config config)
+    : daily_budget(config.exploration_budget) {
   if (config.exploration_budget <= std::chrono::microseconds::zero()) {
     throw std::invalid_argument("exploration budget must be positive");
   }
@@ -67,6 +82,33 @@ Result Simulation::collect(Actor actor, IngredientId ingredient) {
     return Result::NotExploring;
   }
   state.inventory.push_back(ingredient);
+  return Result::Applied;
+}
+
+Result Simulation::consume(std::span<const IngredientId> ingredients) {
+  if (world.phase != Phase::Workshop) {
+    return Result::NotInWorkshop;
+  }
+  auto chef = world.chef.inventory;
+  auto appraiser = world.appraiser.inventory;
+  for (const auto ingredient : ingredients) {
+    if (!take(chef, ingredient) && !take(appraiser, ingredient)) {
+      return Result::MissingIngredients;
+    }
+  }
+  world.chef.inventory = std::move(chef);
+  world.appraiser.inventory = std::move(appraiser);
+  return Result::Applied;
+}
+
+Result Simulation::finish_day(std::uint32_t acid_rise) {
+  if (world.phase != Phase::Workshop) {
+    return Result::NotInWorkshop;
+  }
+  world.acid += std::min(acid_rise,
+                         std::numeric_limits<std::uint32_t>::max() - world.acid);
+  ++world.day;
+  world.remaining_exploration = daily_budget;
   return Result::Applied;
 }
 

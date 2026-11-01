@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <cstdint>
+#include <limits>
 #include <stdexcept>
 
 namespace neocity::survival {
@@ -199,6 +201,84 @@ TEST(Survival, FramePartitionsAndSeededCommandReplayProduceTheSameSnapshot) {
   ASSERT_EQ(partitioned.advance(2s), Result::Applied);
   EXPECT_EQ(whole.snapshot(), partitioned.snapshot());
   EXPECT_EQ(whole.snapshot().phase, Phase::Workshop);
+}
+
+TEST(Survival, ConsumeTakesIngredientsFromBothInventoriesChefFirst) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 8});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{1}), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{2}), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Appraiser, IngredientId{1}),
+            Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Appraiser, IngredientId{3}),
+            Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
+  const std::vector<IngredientId> request{{1}, {1}, {3}};
+  ASSERT_EQ(simulation.consume(request), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.inventory,
+            (std::vector<IngredientId>{{2}}));
+  EXPECT_TRUE(simulation.snapshot().appraiser.inventory.empty());
+}
+
+TEST(Survival, ConsumeRefusesAPartiallyCarriedRequestWithoutTakingAnything) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 8});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{1}), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{2}), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  const auto before = simulation.snapshot();
+  const std::vector<IngredientId> repeated{{1}, {1}};
+  const std::vector<IngredientId> absent{{2}, {3}};
+  EXPECT_EQ(simulation.consume(repeated), Result::MissingIngredients);
+  EXPECT_EQ(simulation.consume(absent), Result::MissingIngredients);
+  EXPECT_EQ(simulation.snapshot(), before);
+  const std::vector<IngredientId> available{{1}, {2}};
+  EXPECT_EQ(simulation.consume(available), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+}
+
+TEST(Survival, FinishDayRaisesAcidAndRestoresTheBudgetKeepingInventory) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 9});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{4}), Result::Applied);
+  ASSERT_EQ(simulation.advance(10s), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::NoExplorationTime);
+  auto expected = simulation.snapshot();
+  ASSERT_EQ(expected.remaining_exploration, 0us);
+  ASSERT_EQ(simulation.finish_day(5), Result::Applied);
+  expected.day = 2;
+  expected.acid = 5;
+  expected.remaining_exploration = 10s;
+  EXPECT_EQ(simulation.snapshot(), expected);
+  ASSERT_EQ(simulation.finish_day(0), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().day, 3U);
+  EXPECT_EQ(simulation.snapshot().acid, 5U);
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+}
+
+TEST(Survival, AcidSaturatesInsteadOfWrappingBackToSafety) {
+  constexpr auto limit = std::numeric_limits<std::uint32_t>::max();
+  Simulation simulation({.exploration_budget = 10s, .seed = 9});
+  ASSERT_EQ(simulation.finish_day(limit - 1), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().acid, limit - 1);
+  ASSERT_EQ(simulation.finish_day(limit), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, limit);
+}
+
+TEST(Survival, WorkshopResultsAreRefusedWhileAnActorIsExploring) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 10});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{1}), Result::Applied);
+  const auto before = simulation.snapshot();
+  const std::vector<IngredientId> request{{1}};
+  EXPECT_EQ(simulation.consume(request), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.finish_day(1), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), before);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.consume(request), Result::Applied);
+  EXPECT_EQ(simulation.finish_day(1), Result::Applied);
 }
 
 } // namespace
