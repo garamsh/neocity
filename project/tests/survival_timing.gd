@@ -140,7 +140,7 @@ func _one_end_of_day_per_step() -> void:
 	await _switch_and_leave()
 
 ## Two humans keep both actors through a swap, then one leaves to AI, and the
-## human left drives either actor with the first key set.
+## human left drives either actor with the first key set but cannot leave.
 func _switch_and_leave() -> void:
 	await _one_frame("survival_1_switch")
 	await _frames(96)
@@ -157,7 +157,30 @@ func _switch_and_leave() -> void:
 	var day: int = _int("day")
 	await _one_frame("survival_1_end_day")
 	await _frames(96)
-	_check(_int("day") == day + 1, "the first key set drives the swapped actor")
+	if not _check(_int("day") == day + 1, "the first key set drives the swapped actor"):
+		return
+	await _one_frame("survival_1_leave")
+	await _frames(96)
+	if not _check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "the last human stays when leaving"):
+		return
+	await _both_leave()
+
+## Two humans leaving in one step still leave one human.
+func _both_leave() -> void:
+	Input.action_press("menu")
+	await _frames(2)
+	Input.action_release("menu")
+	await _frames(4)
+	await _start(3)
+	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "a new run has two humans"):
+		return
+	Input.action_press("survival_1_leave")
+	Input.action_press("survival_2_leave")
+	await _frames(1)
+	Input.action_release("survival_1_leave")
+	Input.action_release("survival_2_leave")
+	await _frames(96)
+	_check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "both leaving in one step keeps one human")
 
 func _coarse_frames() -> void:
 	await _start(1)

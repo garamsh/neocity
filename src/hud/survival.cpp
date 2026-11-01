@@ -470,12 +470,8 @@ String key_legend(const SurvivalFrame &frame) {
     return "P1  " + legend(KEY_LABELS.at(0)) + "    P2  " +
            legend(KEY_LABELS.at(1));
   }
-  if (!chef && !appraiser) {
-    return "AI plays both actors. M: main menu";
-  }
   const auto &keys = KEY_LABELS.at(0);
-  return legend(keys) + "   " + from(keys.switch_actor) + " swap actor  " +
-         from(keys.leave) + " hand to AI";
+  return legend(keys) + "   " + from(keys.switch_actor) + " swap actor";
 }
 
 void paint_next_step(godot::Node2D &canvas,
@@ -607,17 +603,13 @@ void paint_feed_panel(godot::Node2D &canvas,
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
-  const auto chef = survival::key_set(frame.control, Actor::Chef);
-  const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
+  const auto &keys = KEY_LABELS.front();
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
-  if (chef || appraiser) {
-    const auto &keys = KEY_LABELS.at(chef ? *chef : *appraiser);
-    paint_panel_job(
-        canvas, drawing, x,
-        key(keys.feed) + "Feed   " + key(keys.end_day) +
-            "End the day unfed: acid +" +
-            number(frame.content.get().companion.unfed_penalty.value));
-  }
+  paint_panel_job(
+      canvas, drawing, x,
+      key(keys.feed) + "Feed   " + key(keys.end_day) +
+          "End the day unfed: acid +" +
+          number(frame.content.get().companion.unfed_penalty.value));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "FEED", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                "Needs a score of " + number(tuning.satisfying_score), 16,
@@ -836,13 +828,8 @@ void paint_survival(godot::Node2D &canvas,
 
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
-  const auto chef = survival::key_set(frame.control, Actor::Chef);
-  const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
-  if (!chef && !appraiser) {
-    return "AI plays this run. Watch, or press M for the main menu.";
-  }
   if (view.progression.phase == Phase::Workshop) {
-    return workshop_step(frame, KEY_LABELS.at(chef ? *chef : *appraiser));
+    return workshop_step(frame, KEY_LABELS.front());
   }
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);

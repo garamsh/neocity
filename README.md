@@ -21,8 +21,8 @@ In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the
 | Replace a damaged base tool | R | P |
 | Feed a stored dish | F | [ |
 | End the day unfed | G | ] |
-| Swap actor | Tab | B |
-| Hand your actor to AI | X | N |
+| Swap actor, playing alone | Tab | none |
+| Hand your actor to AI, playing together | X | N |
 
 | Experiment | Try it |
 |---|---|

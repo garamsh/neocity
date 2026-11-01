@@ -26,6 +26,8 @@ constexpr auto STEP = 100ms;
 constexpr double STEP_SECONDS = 0.1;
 constexpr std::size_t EVENT_LIMIT = 4;
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
+constexpr survival::ControlMap AI_ONLY{.chef = survival::Controller::Ai,
+                                       .appraiser = survival::Controller::Ai};
 
 const survival::ActorSnapshot &state_of(const survival::Snapshot &snapshot,
                                         Actor actor) {
@@ -237,8 +239,10 @@ void SurvivalRun::step() {
     if (pending.at(index).switch_actor) {
       controllers = survival::switch_control(controllers);
     }
-    if (pending.at(index).leave) {
-      controllers = survival::leave(controllers, ACTORS.at(index));
+    // A party of AI alone has no key left to take an actor back.
+    const auto after_leaving = survival::leave(controllers, ACTORS.at(index));
+    if (pending.at(index).leave && after_leaving != AI_ONLY) {
+      controllers = after_leaving;
     }
   }
 }
