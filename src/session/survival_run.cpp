@@ -81,7 +81,7 @@ std::vector<survival::FoodId> ready_dishes(const survival::Content &content,
                                            const GameView &view) {
   std::vector<survival::FoodId> ready;
   for (const auto &recipe : content.companion.workshop.recipes) {
-    if (hud::recipe_status(view, recipe).is_empty()) {
+    if (hud::recipe_needs(view, recipe).ready()) {
       ready.push_back(recipe.food);
     }
   }
@@ -185,8 +185,8 @@ godot::Dictionary actor_status(const GameView &view,
 SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players)
     : features(rules), controllers(players) {}
 
-void SurvivalRun::advance(double delta,
-                          const std::array<PlayerInput, 2> &input) {
+void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
+                          survival::Direction dish_press) {
   if (std::isfinite(delta) && delta > 0.0) {
     accumulated += delta;
   }
@@ -198,11 +198,11 @@ void SurvivalRun::advance(double delta,
     if (movement.direction != survival::Direction::Idle &&
         movement.direction != held.at(index).direction) {
       pending.at(index).movement = movement;
-      if (ACTORS.at(index) == Actor::Chef) {
-        dish_step = movement.direction;
-      }
     }
     held.at(index) = movement;
+  }
+  if (dish_press != survival::Direction::Idle) {
+    dish_step = dish_press;
   }
   while (accumulated >= STEP_SECONDS && !escaped()) {
     accumulated -= STEP_SECONDS;
@@ -267,9 +267,8 @@ void SurvivalRun::step() {
   const auto positions = features.exploration.get().snapshot();
   std::array<survival::ExplorationInput, 2> movement;
   std::array<bool, 2> walked_home{};
-  const bool picks_dish = dish_step == survival::Direction::Up ||
-                          dish_step == survival::Direction::Down;
-  if (picks_dish && progression.phase == survival::Phase::Workshop &&
+  if (dish_step != survival::Direction::Idle &&
+      progression.phase == survival::Phase::Workshop &&
       survival::key_set(controllers, Actor::Chef)) {
     pick_dish(view());
   }
@@ -317,6 +316,9 @@ void SurvivalRun::run_action(Actor actor, const survival::Action &action,
   }
   const auto result = survival::apply(features.exploration.get(),
                                       features.workshop.get(), actor, action);
+  if (features.simulation.get().snapshot().day != day) {
+    chosen_dish.reset();
+  }
   // AI's collecting would crowd damage and map changes out of the log.
   if (survival::key_set(controllers, actor) ||
       !std::holds_alternative<survival::Collect>(action)) {
@@ -394,7 +396,7 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .events = {events.begin(), events.end()}};
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
-    if (survival::key_set(controllers, actor)) {
+    if (survival::key_set(controllers, actor) && !escaped()) {
       result.offers.at(index) = {
           .interact =
               command_for(actor, {.interact = true}, result.view).action,

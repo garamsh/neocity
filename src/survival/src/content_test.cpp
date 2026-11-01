@@ -32,6 +32,8 @@ constexpr auto STEP = 100ms;
 constexpr std::int64_t STEP_LIMIT = 400'000;
 constexpr auto ARRIVAL_SCAN_STEP = 5s;
 constexpr auto ARRIVAL_SCAN_END = 400s;
+constexpr std::uint32_t ACID_SCAN_STEP = 5;
+constexpr std::uint32_t ACID_SCAN_END = 100;
 /// The share of attempts an intact spatula turns into a dish.
 constexpr std::uint32_t INTACT_SPATULA_PERCENT = 90;
 
@@ -152,14 +154,34 @@ ObjectSnapshot object_of(const WorldSnapshot &world, ObjectId id) {
   return *found;
 }
 
-/// The sources a party can stand in reach of while they supply, found by
-/// passing exploration time with no acid and no repair.
-std::set<std::uint32_t> sources_ever_reached(const Content &content) {
-  std::set<std::uint32_t> found;
-  World world(content.objects);
+/// A run in which only exploration time passes.
+std::vector<WorldProgression> time_passing() {
+  std::vector<WorldProgression> moments;
   for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
        elapsed += ARRIVAL_SCAN_STEP) {
-    if (world.update({.elapsed = elapsed}) != WorldUpdateResult::Applied) {
+    moments.push_back({.elapsed = elapsed});
+  }
+  return moments;
+}
+
+/// A run in which only acid rises, as when no one sets out.
+std::vector<WorldProgression> acid_rising() {
+  std::vector<WorldProgression> moments;
+  for (std::uint32_t acid = 0; acid <= ACID_SCAN_END; acid += ACID_SCAN_STEP) {
+    moments.push_back({.acid = AcidLevel{acid}});
+  }
+  return moments;
+}
+
+/// The sources a party can stand in reach of while they supply along `moments`,
+/// with no repair.
+std::set<std::uint32_t>
+sources_reached_along(const Content &content,
+                      const std::vector<WorldProgression> &moments) {
+  std::set<std::uint32_t> found;
+  World world(content.objects);
+  for (const auto &moment : moments) {
+    if (world.update(moment) != WorldUpdateResult::Applied) {
       throw std::logic_error("time went backwards");
     }
     const auto now = world.snapshot();
@@ -170,6 +192,13 @@ std::set<std::uint32_t> sources_ever_reached(const Content &content) {
       }
     }
   }
+  return found;
+}
+
+/// The sources reached by either way a run can go.
+std::set<std::uint32_t> sources_ever_reached(const Content &content) {
+  auto found = sources_reached_along(content, time_passing());
+  found.merge(sources_reached_along(content, acid_rising()));
   return found;
 }
 
@@ -295,6 +324,22 @@ TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
   }
 }
 
+TEST(TemporaryContent, EverySourceAcidBringsCanBeReachedWithNoTimeSpent) {
+  const auto content = temporary_content(1);
+  const auto reached = sources_reached_along(content, acid_rising());
+  std::size_t arrivals = 0;
+  for (const auto &stock : content.companion.exploration.sources) {
+    const auto object =
+        std::ranges::find(content.objects, stock.id, &ObjectDefinition::id);
+    ASSERT_NE(object, content.objects.end());
+    if (object->exposed_at && object->exposed_at->acid) {
+      ++arrivals;
+      EXPECT_TRUE(reached.contains(stock.id.value)) << object_name(stock.id);
+    }
+  }
+  EXPECT_EQ(arrivals, 9U);
+}
+
 TEST(TemporaryContent, EveryBreakablePassageCanBeReachedForRepair) {
   const auto content = temporary_content(1);
   World world(content.objects);
@@ -362,7 +407,7 @@ TEST(TemporaryContent, AnAiPartyKeepsTheDaysMovingPastDayThirty) {
   }
 }
 
-TEST(TemporaryContent, AnAiPartyFeedsTheMonsterEveryDayToTheFirstEscapeCheck) {
+TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToTheFirstEscapeCheck) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
     Game game(temporary_content(seed));
     EXPECT_EQ(unfed_days(game, TEMPORARY_ESCAPE.first_day + 1), 0U)

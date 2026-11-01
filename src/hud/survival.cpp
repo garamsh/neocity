@@ -295,13 +295,17 @@ GridPosition position_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
-/// Whether setting out today would find anything to do.
+/// Whether setting out today gives the first human, whose keys the base line
+/// names, something to do. A partner's errand does not count: the city line
+/// would send that human straight home.
 bool worth_setting_out(const SurvivalFrame &frame) {
-  const auto entry = frame.content.get().companion.exploration.entry;
-  return frame.view.progression.remaining_exploration.count() > 0 &&
-         std::ranges::any_of(ACTORS, [&frame, entry](Actor actor) {
-           return errand_in_reach(frame, actor, entry);
-         });
+  const auto human = std::ranges::find_if(ACTORS, [&frame](Actor actor) {
+    return survival::key_set(frame.control, actor).has_value();
+  });
+  return human != ACTORS.end() &&
+         frame.view.progression.remaining_exploration.count() > 0 &&
+         errand_in_reach(frame, *human,
+                         frame.content.get().companion.exploration.entry);
 }
 
 String city_step(const SurvivalFrame &frame, Actor actor,
@@ -388,10 +392,9 @@ String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
   if (auto step = workshop_craft_step(frame)) {
     return *step;
   }
-  const auto &progression = frame.view.progression;
-  if (progression.remaining_exploration.count() > 0) {
+  if (worth_setting_out(frame)) {
     return key(keys.travel) + "Set out into the city: " +
-           clock(progression.remaining_exploration) + " left today.";
+           clock(frame.view.progression.remaining_exploration) + " left today.";
   }
   return key(keys.end_day) + "End the day unfed: acid rises by " +
          number(frame.content.get().companion.unfed_penalty.value) + ".";
@@ -608,6 +611,26 @@ void paint_appraise_panel(godot::Node2D &canvas,
                  known ? tones.cyan : tones.gold);
     y += 25.0F;
   }
+}
+
+/// Appends "`verb` a, b" to `text`, separated from what is there.
+void list_ingredients(String &text, const char *verb,
+                      const std::vector<IngredientId> &ingredients) {
+  for (std::size_t index = 0; index < ingredients.size(); ++index) {
+    const String lead = index > 0         ? String(", ")
+                        : text.is_empty() ? String(verb) + " "
+                                          : ", " + String(verb) + " ";
+    text += lead + from(survival::ingredient_name(ingredients.at(index)));
+  }
+}
+
+/// Names what a recipe still lacks; empty when it can be cooked now.
+String recipe_status(const GameView &view, const survival::Recipe &recipe) {
+  const auto needs = recipe_needs(view, recipe);
+  String status;
+  list_ingredients(status, "need", needs.missing);
+  list_ingredients(status, "identify", needs.unidentified);
+  return status;
 }
 
 /// The cook panel's last line: what the chef's key would really cook.
@@ -942,23 +965,21 @@ void paint_cinematic(godot::Node2D &canvas,
                tones.muted);
 }
 
-String recipe_status(const GameView &view, const survival::Recipe &recipe) {
+RecipeNeeds recipe_needs(const GameView &view, const survival::Recipe &recipe) {
   auto pack = pack_of(view);
-  String missing;
+  RecipeNeeds needs;
   for (const auto ingredient : recipe.ingredients) {
     auto &count = pack[ingredient.value];
     if (count == 0) {
-      missing += (missing.is_empty() ? "need " : ", ") +
-                 from(survival::ingredient_name(ingredient));
+      needs.missing.push_back(ingredient);
     } else {
       --count;
       if (!identified(view, ingredient)) {
-        missing += (missing.is_empty() ? "identify " : ", ") +
-                   from(survival::ingredient_name(ingredient));
+        needs.unidentified.push_back(ingredient);
       }
     }
   }
-  return missing;
+  return needs;
 }
 
 String next_step(const SurvivalFrame &frame) {

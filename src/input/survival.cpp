@@ -97,6 +97,22 @@ sample_survival_input(survival::ControlMap control) {
   return inputs;
 }
 
+survival::Direction sample_dish_step(survival::ControlMap control) {
+  const auto keys = survival::key_set(control, survival::Actor::Chef);
+  if (!keys) {
+    return survival::Direction::Idle;
+  }
+  const godot::Input *input = godot::Input::get_singleton();
+  const auto &actions = KEY_SETS.at(*keys);
+  if (input->is_action_just_pressed(actions.up)) {
+    return survival::Direction::Up;
+  }
+  if (input->is_action_just_pressed(actions.down)) {
+    return survival::Direction::Down;
+  }
+  return survival::Direction::Idle;
+}
+
 bool survival_controls_held() {
   const godot::Input *input = godot::Input::get_singleton();
   return std::ranges::any_of(KEY_SETS, [input](const KeySet &keys) {

@@ -197,7 +197,7 @@ void Session::advance(double delta, Command command) {
     return;
   }
   if (run) {
-    run->advance(delta, command.survival);
+    run->advance(delta, command.survival, command.dish_step);
     if (run->escaped()) {
       play(hud::Cinematic::Ending);
     }

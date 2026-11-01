@@ -44,6 +44,7 @@ sample_session_input(std::optional<survival::ControlMap> control) {
   command.controls_held = command.controls_held || survival_controls_held();
   if (control) {
     command.survival = sample_survival_input(*control);
+    command.dish_step = sample_dish_step(*control);
   }
   return command;
 }

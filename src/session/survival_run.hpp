@@ -35,7 +35,8 @@ class SurvivalRun {
 public:
   SurvivalRun(SurvivalFeatures rules, survival::ControlMap players);
   /// Retains this frame's input and runs every step the frame time completes.
-  void advance(double delta, const std::array<survival::PlayerInput, 2> &input);
+  void advance(double delta, const std::array<survival::PlayerInput, 2> &input,
+               survival::Direction dish_press);
   /// Whether the run has ended in the escaped phase.
   [[nodiscard]] bool escaped() const;
   /// Who drives each actor, for sampling their keys.
@@ -66,9 +67,9 @@ private:
   double accumulated = 0.0;
   std::array<survival::PlayerInput, 2> pending{};
   std::array<survival::ExplorationInput, 2> held{};
-  /// The chef's direction press since the last step; a held key is one press.
+  /// The chef's up or down press since the last step.
   survival::Direction dish_step = survival::Direction::Idle;
-  /// Lasts until another is chosen and applies while it can be cooked.
+  /// Lasts for the day and applies while it can be cooked.
   std::optional<survival::FoodId> chosen_dish;
   std::deque<hud::Event> events;
 };
