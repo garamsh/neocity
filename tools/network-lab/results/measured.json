@@ -1,0 +1,974 @@
+{
+ "environment": {
+  "date": "2026-11-02",
+  "kernel": "6.12.113+deb13-amd64",
+  "cpu": "11th Gen Intel(R) Core(TM) i5-11500 @ 2.70GHz",
+  "logical_cpus": 12,
+  "memory_kib": 24482244,
+  "compiler": "c++ (Debian 14.2.0-19) 14.2.0",
+  "build": "CMake Release (-O3 -DNDEBUG)",
+  "commit": "28322995356e19fc3738f6035065bf0fc6529fd8",
+  "network": "loopback in a private network namespace; one machine",
+  "tick_and_send_rate_hz": 10
+ },
+ "sizes": {
+  "role": "sizes",
+  "ticks_to_last_day": 770,
+  "last_state_bytes": 153,
+  "input_bytes": 9,
+  "mean_step_us": 162,
+  "largest_state_bytes_by_day": [
+   [
+    1,
+    146
+   ],
+   [
+    2,
+    152
+   ],
+   [
+    3,
+    152
+   ],
+   [
+    4,
+    152
+   ],
+   [
+    5,
+    153
+   ],
+   [
+    6,
+    153
+   ],
+   [
+    7,
+    153
+   ],
+   [
+    8,
+    154
+   ],
+   [
+    9,
+    154
+   ],
+   [
+    10,
+    153
+   ],
+   [
+    11,
+    152
+   ],
+   [
+    12,
+    151
+   ],
+   [
+    13,
+    151
+   ],
+   [
+    14,
+    151
+   ],
+   [
+    15,
+    151
+   ],
+   [
+    16,
+    154
+   ],
+   [
+    17,
+    154
+   ],
+   [
+    18,
+    154
+   ],
+   [
+    19,
+    154
+   ],
+   [
+    20,
+    154
+   ],
+   [
+    21,
+    157
+   ],
+   [
+    22,
+    156
+   ],
+   [
+    23,
+    153
+   ],
+   [
+    24,
+    153
+   ],
+   [
+    25,
+    153
+   ],
+   [
+    26,
+    153
+   ],
+   [
+    27,
+    153
+   ],
+   [
+    28,
+    153
+   ],
+   [
+    29,
+    153
+   ],
+   [
+    30,
+    153
+   ]
+  ]
+ },
+ "normal_play": {
+  "dedicated": {
+   "seconds": 30,
+   "usage": {
+    "authority": {
+     "cpu_percent_of_one_core": 0.33,
+     "VmRSS": 3652,
+     "VmHWM": 3652
+    },
+    "client_0": {
+     "cpu_percent_of_one_core": 0.5,
+     "VmRSS": 3640,
+     "VmHWM": 3640
+    }
+   },
+   "authority": {
+    "role": "server",
+    "rooms": 1,
+    "ticks": 319,
+    "departures": 2,
+    "departure_tick": 319,
+    "refused_packets": 0,
+    "state_min_bytes": 152,
+    "state_max_bytes": 160,
+    "sent_packets": 638,
+    "sent_bytes": 98996,
+    "received_packets": 642,
+    "received_bytes": 6150,
+    "send_failures": 0,
+    "tick_lateness_us": {
+     "count": 319,
+     "p50": 139,
+     "p95": 147,
+     "p99": 150,
+     "max": 220
+    },
+    "tick_work_us": {
+     "count": 319,
+     "p50": 113,
+     "p95": 131,
+     "p99": 152,
+     "max": 173
+    }
+   },
+   "clients": [
+    {
+     "role": "client",
+     "ending": "playing",
+     "players": 1,
+     "last_tick": 319,
+     "skipped_ticks": 0,
+     "refused_packets": 0,
+     "max_gap_us": 100286,
+     "detect_us": 0,
+     "sent_packets": 321,
+     "sent_bytes": 3075,
+     "received_packets": 319,
+     "received_bytes": 49498,
+     "send_failures": 0,
+     "state_latency_us": {
+      "count": 319,
+      "p50": 149,
+      "p95": 173,
+      "p99": 188,
+      "max": 281
+     },
+     "input_round_trip_us": {
+      "count": 318,
+      "p50": 99996,
+      "p95": 100137,
+      "p99": 100207,
+      "max": 100285
+     }
+    },
+    {
+     "role": "client",
+     "ending": "playing",
+     "players": 1,
+     "last_tick": 319,
+     "skipped_ticks": 0,
+     "refused_packets": 0,
+     "max_gap_us": 100294,
+     "detect_us": 0,
+     "sent_packets": 321,
+     "sent_bytes": 3075,
+     "received_packets": 319,
+     "received_bytes": 49498,
+     "send_failures": 0,
+     "state_latency_us": {
+      "count": 319,
+      "p50": 161,
+      "p95": 183,
+      "p99": 203,
+      "max": 281
+     },
+     "input_round_trip_us": {
+      "count": 318,
+      "p50": 99996,
+      "p95": 100114,
+      "p99": 100224,
+      "max": 100293
+     }
+    }
+   ],
+   "relay": null,
+   "kernel_lo": {
+    "packets": 1280,
+    "bytes": 140986,
+    "lab_counted_bytes_with_headers": 140986
+   }
+  },
+  "host-direct": {
+   "seconds": 30,
+   "usage": {
+    "authority": {
+     "cpu_percent_of_one_core": 0.63,
+     "VmRSS": 3652,
+     "VmHWM": 3652
+    },
+    "client_0": {
+     "cpu_percent_of_one_core": 0.7,
+     "VmRSS": 3660,
+     "VmHWM": 3660
+    }
+   },
+   "authority": {
+    "role": "host",
+    "rooms": 1,
+    "ticks": 319,
+    "departures": 1,
+    "departure_tick": 319,
+    "refused_packets": 0,
+    "state_min_bytes": 152,
+    "state_max_bytes": 159,
+    "sent_packets": 319,
+    "sent_bytes": 49307,
+    "received_packets": 321,
+    "received_bytes": 3075,
+    "send_failures": 0,
+    "tick_lateness_us": {
+     "count": 319,
+     "p50": 87,
+     "p95": 144,
+     "p99": 148,
+     "max": 212
+    },
+    "tick_work_us": {
+     "count": 319,
+     "p50": 602,
+     "p95": 638,
+     "p99": 653,
+     "max": 713
+    }
+   },
+   "clients": [
+    {
+     "role": "client",
+     "ending": "playing",
+     "players": 1,
+     "last_tick": 319,
+     "skipped_ticks": 0,
+     "refused_packets": 0,
+     "max_gap_us": 100667,
+     "detect_us": 0,
+     "sent_packets": 321,
+     "sent_bytes": 3075,
+     "received_packets": 319,
+     "received_bytes": 49307,
+     "send_failures": 0,
+     "state_latency_us": {
+      "count": 319,
+      "p50": 151,
+      "p95": 171,
+      "p99": 176,
+      "max": 211
+     },
+     "input_round_trip_us": {
+      "count": 318,
+      "p50": 99994,
+      "p95": 100202,
+      "p99": 100582,
+      "max": 100666
+     }
+    }
+   ],
+   "relay": null,
+   "kernel_lo": {
+    "packets": 640,
+    "bytes": 70302,
+    "lab_counted_bytes_with_headers": 70302
+   }
+  },
+  "host-relay": {
+   "seconds": 30,
+   "usage": {
+    "authority": {
+     "cpu_percent_of_one_core": 0.67,
+     "VmRSS": 3652,
+     "VmHWM": 3652
+    },
+    "client_0": {
+     "cpu_percent_of_one_core": 0.7,
+     "VmRSS": 3656,
+     "VmHWM": 3656
+    },
+    "relay": {
+     "cpu_percent_of_one_core": 0.3,
+     "VmRSS": 3524,
+     "VmHWM": 3524
+    }
+   },
+   "authority": {
+    "role": "host",
+    "rooms": 1,
+    "ticks": 318,
+    "departures": 1,
+    "departure_tick": 318,
+    "refused_packets": 0,
+    "state_min_bytes": 152,
+    "state_max_bytes": 159,
+    "sent_packets": 319,
+    "sent_bytes": 49153,
+    "received_packets": 320,
+    "received_bytes": 3065,
+    "send_failures": 0,
+    "tick_lateness_us": {
+     "count": 318,
+     "p50": 140,
+     "p95": 147,
+     "p99": 151,
+     "max": 186
+    },
+    "tick_work_us": {
+     "count": 318,
+     "p50": 594,
+     "p95": 624,
+     "p99": 650,
+     "max": 738
+    }
+   },
+   "clients": [
+    {
+     "role": "client",
+     "ending": "playing",
+     "players": 1,
+     "last_tick": 318,
+     "skipped_ticks": 0,
+     "refused_packets": 0,
+     "max_gap_us": 100724,
+     "detect_us": 0,
+     "sent_packets": 321,
+     "sent_bytes": 3071,
+     "received_packets": 318,
+     "received_bytes": 49148,
+     "send_failures": 0,
+     "state_latency_us": {
+      "count": 318,
+      "p50": 258,
+      "p95": 282,
+      "p99": 294,
+      "max": 307
+     },
+     "input_round_trip_us": {
+      "count": 317,
+      "p50": 99996,
+      "p95": 100277,
+      "p99": 100668,
+      "max": 100721
+     }
+    }
+   ],
+   "relay": {
+    "role": "relay",
+    "rooms": 1,
+    "sent_packets": 638,
+    "sent_bytes": 52213,
+    "received_packets": 640,
+    "received_bytes": 52224,
+    "send_failures": 0
+   },
+   "kernel_lo": {
+    "packets": 1278,
+    "bytes": 140221,
+    "lab_counted_bytes_with_headers": 140221
+   }
+  }
+ },
+ "participant_leaves": {
+  "dedicated": {
+   "graceful": {
+    "remaining_player_continues": true,
+    "room_ticks": 89,
+    "departure_tick": 29,
+    "max_gap_seen_by_remaining_client_us": 100310,
+    "tick_lateness_us": {
+     "count": 89,
+     "p50": 137,
+     "p95": 143,
+     "p99": 151,
+     "max": 153
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   },
+   "forced": {
+    "remaining_player_continues": true,
+    "room_ticks": 89,
+    "departure_tick": 39,
+    "max_gap_seen_by_remaining_client_us": 100305,
+    "tick_lateness_us": {
+     "count": 89,
+     "p50": 92,
+     "p95": 147,
+     "p99": 151,
+     "max": 184
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   }
+  },
+  "host-direct": {
+   "graceful": {
+    "remaining_player_continues": true,
+    "room_ticks": 89,
+    "departure_tick": 29,
+    "max_gap_seen_by_remaining_client_us": null,
+    "tick_lateness_us": {
+     "count": 89,
+     "p50": 82,
+     "p95": 152,
+     "p99": 2069,
+     "max": 2175
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   },
+   "forced": {
+    "remaining_player_continues": true,
+    "room_ticks": 88,
+    "departure_tick": 38,
+    "max_gap_seen_by_remaining_client_us": null,
+    "tick_lateness_us": {
+     "count": 88,
+     "p50": 88,
+     "p95": 123,
+     "p99": 134,
+     "max": 208
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   }
+  },
+  "host-relay": {
+   "graceful": {
+    "remaining_player_continues": true,
+    "room_ticks": 88,
+    "departure_tick": 28,
+    "max_gap_seen_by_remaining_client_us": null,
+    "tick_lateness_us": {
+     "count": 88,
+     "p50": 139,
+     "p95": 147,
+     "p99": 166,
+     "max": 181
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   },
+   "forced": {
+    "remaining_player_continues": true,
+    "room_ticks": 88,
+    "departure_tick": 38,
+    "max_gap_seen_by_remaining_client_us": null,
+    "tick_lateness_us": {
+     "count": 88,
+     "p50": 141,
+     "p95": 148,
+     "p99": 185,
+     "max": 197
+    },
+    "lost_state": "none: the actor stays in the room under AI"
+   }
+  }
+ },
+ "authority_goes": {
+  "dedicated": {
+   "graceful": {
+    "authority_reported": true,
+    "computed_tick": 39,
+    "last_tick_a_client_received": 39,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "bye",
+     "bye"
+    ],
+    "detect_us": [
+     76514,
+     76082
+    ],
+    "succession": []
+   },
+   "forced": {
+    "authority_reported": false,
+    "computed_tick": 36,
+    "last_tick_a_client_received": 36,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "silence",
+     "silence"
+    ],
+    "detect_us": [
+     1010279,
+     1008144
+    ],
+    "succession": []
+   }
+  },
+  "host-direct-no-succession": {
+   "graceful": {
+    "authority_reported": true,
+    "computed_tick": 38,
+    "last_tick_a_client_received": 38,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "bye"
+    ],
+    "detect_us": [
+     2949
+    ],
+    "succession": []
+   },
+   "forced": {
+    "authority_reported": false,
+    "computed_tick": 39,
+    "last_tick_a_client_received": 39,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "silence"
+    ],
+    "detect_us": [
+     1006922
+    ],
+    "succession": []
+   }
+  },
+  "host-direct-succession": {
+   "graceful": {
+    "authority_reported": true,
+    "computed_tick": 39,
+    "last_tick_a_client_received": 39,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "bye"
+    ],
+    "detect_us": [
+     70581
+    ],
+    "succession": [
+     {
+      "role": "succession",
+      "replayed": true,
+      "state_matches_last_received": true,
+      "log_steps": 39,
+      "replay_us": 129973,
+      "detect_us": 70581,
+      "interruption_us": 200639,
+      "steps_after": 40,
+      "steps_that_changed_state": 40,
+      "day_after": 69
+     }
+    ]
+   },
+   "forced": {
+    "authority_reported": false,
+    "computed_tick": 39,
+    "last_tick_a_client_received": 39,
+    "ticks_computed_but_undelivered": 0,
+    "client_endings": [
+     "silence"
+    ],
+    "detect_us": [
+     1007098
+    ],
+    "succession": [
+     {
+      "role": "succession",
+      "replayed": true,
+      "state_matches_last_received": true,
+      "log_steps": 39,
+      "replay_us": 138079,
+      "detect_us": 1007098,
+      "interruption_us": 1145284,
+      "steps_after": 40,
+      "steps_that_changed_state": 40,
+      "day_after": 69
+     }
+    ]
+   }
+  }
+ },
+ "load": {
+  "dedicated": [
+   {
+    "rooms": 1,
+    "machine_load_average_before": 2.98,
+    "cpu_percent_of_one_core": 0.27,
+    "VmRSS": 3636,
+    "VmHWM": 3636,
+    "other_lab_processes_cpu_percent_of_one_core": 0.5,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 140,
+     "p95": 146,
+     "p99": 152,
+     "max": 214
+    },
+    "worst_client_state_latency_p99_us": 913,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 49500,
+    "sent_packets": 360,
+    "received_bytes": 3370,
+    "received_packets": 364,
+    "held": true
+   },
+   {
+    "rooms": 10,
+    "machine_load_average_before": 2.3,
+    "cpu_percent_of_one_core": 0.8,
+    "VmRSS": 3868,
+    "VmHWM": 3868,
+    "other_lab_processes_cpu_percent_of_one_core": 2.0,
+    "ticks_per_room_second": 9.99,
+    "worst_tick_lateness_us": {
+     "p50": 71,
+     "p95": 95,
+     "p99": 118,
+     "max": 4320
+    },
+    "worst_client_state_latency_p99_us": 828,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 495306,
+    "sent_packets": 3602,
+    "received_bytes": 33720,
+    "received_packets": 3642,
+    "held": true
+   },
+   {
+    "rooms": 100,
+    "machine_load_average_before": 3.59,
+    "cpu_percent_of_one_core": 4.2,
+    "VmRSS": 6228,
+    "VmHWM": 6228,
+    "other_lab_processes_cpu_percent_of_one_core": 15.5,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 55,
+     "p95": 78,
+     "p99": 1247,
+     "max": 5083
+    },
+    "worst_client_state_latency_p99_us": 607,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 5009670,
+    "sent_packets": 36390,
+    "received_bytes": 340900,
+    "received_packets": 36790,
+    "held": true
+   },
+   {
+    "rooms": 500,
+    "machine_load_average_before": 4.13,
+    "cpu_percent_of_one_core": 9.4,
+    "VmRSS": 15832,
+    "VmHWM": 15832,
+    "other_lab_processes_cpu_percent_of_one_core": 60.5,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 52,
+     "p95": 53,
+     "p99": 57,
+     "max": 5926
+    },
+    "worst_client_state_latency_p99_us": 4258,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 26269290,
+    "sent_packets": 189930,
+    "received_bytes": 1784300,
+    "received_packets": 191930,
+    "held": true
+   },
+   {
+    "rooms": 1000,
+    "machine_load_average_before": 3.67,
+    "cpu_percent_of_one_core": 18.07,
+    "VmRSS": 27984,
+    "VmHWM": 27984,
+    "other_lab_processes_cpu_percent_of_one_core": 119.3,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 30,
+     "p95": 53,
+     "p99": 56,
+     "max": 699
+    },
+    "worst_client_state_latency_p99_us": 15653,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 55642000,
+    "sent_packets": 400000,
+    "received_bytes": 3770000,
+    "received_packets": 404000,
+    "held": true
+   },
+   {
+    "rooms": 2000,
+    "machine_load_average_before": 3.26,
+    "cpu_percent_of_one_core": 34.13,
+    "VmRSS": 53080,
+    "VmHWM": 53676,
+    "other_lab_processes_cpu_percent_of_one_core": 250.3,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 14,
+     "p95": 52,
+     "p99": 55,
+     "max": 4232
+    },
+    "worst_client_state_latency_p99_us": 51293,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 9,
+    "skipped_ticks": 0,
+    "state_max_bytes": 156,
+    "sent_bytes": 123752280,
+    "sent_packets": 879976,
+    "received_bytes": 8339778,
+    "received_packets": 887979,
+    "held": true
+   },
+   {
+    "rooms": 4000,
+    "machine_load_average_before": 3.32,
+    "cpu_percent_of_one_core": 84.2,
+    "VmRSS": 103448,
+    "VmHWM": 103448,
+    "other_lab_processes_cpu_percent_of_one_core": 700.1,
+    "ticks_per_room_second": 9.43,
+    "worst_tick_lateness_us": {
+     "p50": 589,
+     "p95": 22949,
+     "p99": 34556,
+     "max": 44365
+    },
+    "worst_client_state_latency_p99_us": 8479759,
+    "udp_receive_buffer_drops_while_settled": 121742,
+    "udp_receive_buffer_drops_at_startup": 26358,
+    "skipped_ticks": 0,
+    "state_max_bytes": 157,
+    "sent_bytes": 274499137,
+    "sent_packets": 1940964,
+    "received_bytes": 16708028,
+    "received_packets": 1775579,
+    "held": false
+   }
+  ],
+  "relay": [
+   {
+    "rooms": 1,
+    "machine_load_average_before": 4.81,
+    "cpu_percent_of_one_core": 0.07,
+    "VmRSS": 3520,
+    "VmHWM": 3520,
+    "other_lab_processes_cpu_percent_of_one_core": 0.5,
+    "ticks_per_room_second": 10.0,
+    "worst_tick_lateness_us": {
+     "p50": 73,
+     "p95": 78,
+     "p99": 749,
+     "max": 3960
+    },
+    "worst_client_state_latency_p99_us": 3880,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 155,
+    "sent_bytes": 26389,
+    "sent_packets": 362,
+    "received_bytes": 26394,
+    "received_packets": 363,
+    "held": true
+   },
+   {
+    "rooms": 10,
+    "machine_load_average_before": 7.01,
+    "cpu_percent_of_one_core": 0.33,
+    "VmRSS": 3516,
+    "VmHWM": 3516,
+    "other_lab_processes_cpu_percent_of_one_core": 3.6,
+    "ticks_per_room_second": 10.01,
+    "worst_tick_lateness_us": {
+     "p50": 72,
+     "p95": 218,
+     "p99": 2011,
+     "max": 4263
+    },
+    "worst_client_state_latency_p99_us": 2291,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 155,
+    "sent_bytes": 264538,
+    "sent_packets": 3628,
+    "received_bytes": 264588,
+    "received_packets": 3638,
+    "held": true
+   },
+   {
+    "rooms": 100,
+    "machine_load_average_before": 7.65,
+    "cpu_percent_of_one_core": 3.27,
+    "VmRSS": 3528,
+    "VmHWM": 3528,
+    "other_lab_processes_cpu_percent_of_one_core": 26.0,
+    "ticks_per_room_second": 9.99,
+    "worst_tick_lateness_us": {
+     "p50": 68,
+     "p95": 83,
+     "p99": 99,
+     "max": 3867
+    },
+    "worst_client_state_latency_p99_us": 117,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 155,
+    "sent_bytes": 2669032,
+    "sent_packets": 36572,
+    "received_bytes": 2669532,
+    "received_packets": 36672,
+    "held": true
+   },
+   {
+    "rooms": 500,
+    "machine_load_average_before": 7.44,
+    "cpu_percent_of_one_core": 8.93,
+    "VmRSS": 3552,
+    "VmHWM": 3552,
+    "other_lab_processes_cpu_percent_of_one_core": 100.9,
+    "ticks_per_room_second": 9.94,
+    "worst_tick_lateness_us": {
+     "p50": 57,
+     "p95": 61,
+     "p99": 64,
+     "max": 8261
+    },
+    "worst_client_state_latency_p99_us": 80,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 0,
+    "skipped_ticks": 0,
+    "state_max_bytes": 155,
+    "sent_bytes": 13912140,
+    "sent_packets": 189858,
+    "received_bytes": 13917367,
+    "received_packets": 190853,
+    "held": true
+   },
+   {
+    "rooms": 1000,
+    "machine_load_average_before": 6.73,
+    "cpu_percent_of_one_core": 12.4,
+    "VmRSS": 3568,
+    "VmHWM": 3568,
+    "other_lab_processes_cpu_percent_of_one_core": 186.7,
+    "ticks_per_room_second": 9.94,
+    "worst_tick_lateness_us": {
+     "p50": 53,
+     "p95": 59,
+     "p99": 73,
+     "max": 3792
+    },
+    "worst_client_state_latency_p99_us": 72,
+    "udp_receive_buffer_drops_while_settled": 0,
+    "udp_receive_buffer_drops_at_startup": 5,
+    "skipped_ticks": 0,
+    "state_max_bytes": 155,
+    "sent_bytes": 29416715,
+    "sent_packets": 399290,
+    "received_bytes": 29428495,
+    "received_packets": 401521,
+    "held": true
+   },
+   {
+    "rooms": 2000,
+    "machine_load_average_before": 6.09,
+    "cpu_percent_of_one_core": 20.53,
+    "VmRSS": 3640,
+    "VmHWM": 3640,
+    "other_lab_processes_cpu_percent_of_one_core": 527.0,
+    "ticks_per_room_second": 9.91,
+    "worst_tick_lateness_us": {
+     "p50": 54,
+     "p95": 152213,
+     "p99": 253698,
+     "max": 272210
+    },
+    "worst_client_state_latency_p99_us": 5543,
+    "udp_receive_buffer_drops_while_settled": 5182,
+    "udp_receive_buffer_drops_at_startup": 926,
+    "skipped_ticks": 1,
+    "state_max_bytes": 155,
+    "sent_bytes": 65141565,
+    "sent_packets": 875142,
+    "received_bytes": 65166570,
+    "received_packets": 879793,
+    "held": false
+   }
+  ]
+ },
+ "godot_headless_menu": {
+  "cpu_percent_of_one_core": 3.1,
+  "VmRSS": 120268,
+  "VmHWM": 120292
+ }
+}
