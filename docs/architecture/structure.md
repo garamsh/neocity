@@ -25,7 +25,7 @@ This rule governs over `docs/convention/simplicity.md` §Rules, "A division is a
 ## Repository layout
 
 - `src/` holds the C++ sources, one folder per purpose, with `register_types.cpp` and `scene.*` at its root.
-- `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit under `project/levels/<level>/`; the first level is `project/levels/ascent/`, and [`survival.md`](survival.md) plans `project/levels/monster-mouth-escape/`, which does not exist yet. An experiment's scene and its own resources sit in `project/experiment/<id>/`, mirroring its source folder. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
+- `project/` is the Godot project and holds every Godot resource. A level's scene and resources sit under `project/levels/<level>/`; the first level is `project/levels/ascent/`. An experiment's scene and its own resources sit in `project/experiment/<id>/`, mirroring its source folder. `project.godot` and the extension's `bin/neocity.gdextension` sit in `project/` itself.
 - The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
 
 ## Rationale
