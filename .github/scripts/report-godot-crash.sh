@@ -15,8 +15,8 @@ fi
 
 echo "report-godot-crash: $found core dump(s) in $RUNNER_TEMP."
 if ! command -v gdb >/dev/null; then
-	sudo apt-get update --quiet --quiet
-	sudo apt-get install --quiet --quiet --yes --no-install-recommends gdb
+	sudo apt-get update --quiet --quiet > /dev/null
+	sudo apt-get install --quiet --quiet --yes --no-install-recommends gdb > /dev/null
 fi
 gdb --version | head -n 1
 
