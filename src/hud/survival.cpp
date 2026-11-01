@@ -610,7 +610,7 @@ void paint_feed_panel(godot::Node2D &canvas,
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
-  const auto &keys = KEY_LABELS.front();
+  const auto &keys = KEY_LABELS.at(0);
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
   paint_panel_job(
       canvas, drawing, x,
@@ -836,7 +836,7 @@ void paint_survival(godot::Node2D &canvas,
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   if (view.progression.phase == Phase::Workshop) {
-    return workshop_step(frame, KEY_LABELS.front());
+    return workshop_step(frame, KEY_LABELS.at(0));
   }
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
