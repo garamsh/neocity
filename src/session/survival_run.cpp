@@ -11,7 +11,6 @@
 #include <optional>
 #include <ranges>
 #include <string_view>
-#include <utility>
 #include <variant>
 
 namespace neocity::session {
@@ -154,15 +153,15 @@ godot::Dictionary actor_status(const GameView &view,
   const auto position = position_of(view.exploration, actor);
   const auto keys = survival::key_set(control, actor);
   godot::Dictionary status;
-  status["location"] = location_name(state.location);
-  status["x"] = position.x;
-  status["y"] = position.y;
-  status["health"] = state.health;
-  status["stamina"] = stamina_of(view.exploration, actor);
-  status["ingredients"] = static_cast<std::int64_t>(state.inventory.size());
-  status["tools"] = static_cast<std::int64_t>(state.tools.size());
-  status["exhaustions"] = state.exhaustions;
-  status["key_set"] = keys ? static_cast<std::int64_t>(*keys) : -1;
+  status.set("location", location_name(state.location));
+  status.set("x", position.x);
+  status.set("y", position.y);
+  status.set("health", state.health);
+  status.set("stamina", stamina_of(view.exploration, actor));
+  status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
+  status.set("tools", static_cast<std::int64_t>(state.tools.size()));
+  status.set("exhaustions", state.exhaustions);
+  status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
 }
 
@@ -209,7 +208,7 @@ GameView SurvivalRun::view() const {
 }
 
 void SurvivalRun::step() {
-  auto &simulation = features.simulation.get();
+  const auto &simulation = features.simulation.get();
   const auto progression = simulation.snapshot();
   const auto city = features.world.get().snapshot();
   const auto positions = features.exploration.get().snapshot();
@@ -250,10 +249,14 @@ void SurvivalRun::run_action(Actor actor, const survival::Action &action,
   if (finishes_day(action) && features.simulation.get().snapshot().day != day) {
     return;
   }
-  auto result = survival::apply(features.exploration.get(),
-                                features.workshop.get(), actor, action);
-  record(hud::ActionEvent{
-      .actor = actor, .action = action, .result = std::move(result)});
+  const auto result = survival::apply(features.exploration.get(),
+                                      features.workshop.get(), actor, action);
+  // AI's collecting would crowd damage and map changes out of the log.
+  if (survival::key_set(controllers, actor) ||
+      !std::holds_alternative<survival::Collect>(action)) {
+    record(
+        hud::ActionEvent{.actor = actor, .action = action, .result = result});
+  }
 }
 
 void SurvivalRun::hurt_in_hazards(const survival::ExplorationSnapshot &before) {
@@ -310,8 +313,8 @@ void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
   }
 }
 
-void SurvivalRun::record(hud::Event event) {
-  events.push_back(std::move(event));
+void SurvivalRun::record(const hud::Event &event) {
+  events.push_back(event);
   while (events.size() > EVENT_LIMIT) {
     events.pop_front();
   }
@@ -344,45 +347,48 @@ godot::Dictionary SurvivalRun::status() const {
   const auto current = frame();
   const auto &view = current.view;
   godot::Dictionary status;
-  status["day"] = view.progression.day;
-  status["phase"] = phase_name(view.progression.phase);
-  status["remaining_ms"] =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          view.progression.remaining_exploration)
-          .count();
-  status["elapsed_ms"] = std::chrono::duration_cast<std::chrono::milliseconds>(
-                             view.world.progression.elapsed)
-                             .count();
-  status["acid"] = view.progression.acid.value;
-  status["chef"] = actor_status(view, controllers, Actor::Chef);
-  status["appraiser"] = actor_status(view, controllers, Actor::Appraiser);
-  status["magnifier"] = tool_state_name(view.workshop.magnifier);
-  status["spatula"] = tool_state_name(view.workshop.spatula);
-  status["identified"] =
-      static_cast<std::int64_t>(view.workshop.identified.size());
-  status["foods"] = static_cast<std::int64_t>(view.workshop.foods.size());
-  status["eaten"] = static_cast<std::int64_t>(view.workshop.eaten_foods.size());
-  status["rolls"] = view.workshop.rolls;
+  status.set("day", view.progression.day);
+  status.set("phase", phase_name(view.progression.phase));
+  status.set("remaining_ms",
+             std::chrono::duration_cast<std::chrono::milliseconds>(
+                 view.progression.remaining_exploration)
+                 .count());
+  status.set("elapsed_ms",
+             std::chrono::duration_cast<std::chrono::milliseconds>(
+                 view.world.progression.elapsed)
+                 .count());
+  status.set("acid", view.progression.acid.value);
+  status.set("chef", actor_status(view, controllers, Actor::Chef));
+  status.set("appraiser", actor_status(view, controllers, Actor::Appraiser));
+  status.set("magnifier", tool_state_name(view.workshop.magnifier));
+  status.set("spatula", tool_state_name(view.workshop.spatula));
+  status.set("identified",
+             static_cast<std::int64_t>(view.workshop.identified.size()));
+  status.set("foods", static_cast<std::int64_t>(view.workshop.foods.size()));
+  status.set("eaten",
+             static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
+  status.set("rolls", view.workshop.rolls);
   if (view.workshop.last_day) {
-    status["reaction"] = reaction_name(view.workshop.last_day->reaction);
-    status["score"] = view.workshop.last_day->score;
+    status.set("reaction", reaction_name(view.workshop.last_day->reaction));
+    status.set("score", view.workshop.last_day->score);
   }
   godot::Dictionary objects;
   for (const auto &object : view.world.objects) {
-    objects[from(survival::object_name(object.id))] = state_name(object.state);
+    objects.set(from(survival::object_name(object.id)),
+                state_name(object.state));
   }
-  status["objects"] = objects;
+  status.set("objects", objects);
   godot::Dictionary stock;
   for (const auto &source : view.exploration.sources) {
-    stock[from(survival::object_name(source.id))] = source.remaining;
+    stock.set(from(survival::object_name(source.id)), source.remaining);
   }
-  status["stock"] = stock;
-  status["next"] = hud::next_step(current);
+  status.set("stock", stock);
+  status.set("next", hud::next_step(current));
   godot::Array log;
   for (const auto &event : current.events) {
     log.push_back(hud::describe(event));
   }
-  status["events"] = log;
+  status.set("events", log);
   return status;
 }
 

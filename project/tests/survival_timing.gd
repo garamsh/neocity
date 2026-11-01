@@ -135,7 +135,29 @@ func _one_end_of_day_per_step() -> void:
 	await _frames(96)
 	await _one_frame("survival_2_end_day")
 	await _frames(96)
-	_check(_int("day") == 4, "each player can end a day in its own step")
+	if not _check(_int("day") == 4, "each player can end a day in its own step"):
+		return
+	await _switch_and_leave()
+
+## Two humans keep both actors through a swap, then one leaves to AI, and the
+## human left drives either actor with the first key set.
+func _switch_and_leave() -> void:
+	await _one_frame("survival_1_switch")
+	await _frames(96)
+	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "a swap leaves two humans on their actors"):
+		return
+	await _one_frame("survival_2_leave")
+	await _frames(96)
+	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == -1, "leaving hands only that actor to AI"):
+		return
+	await _one_frame("survival_1_switch")
+	await _frames(96)
+	if not _check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "a lone human takes the other actor on the first key set"):
+		return
+	var day: int = _int("day")
+	await _one_frame("survival_1_end_day")
+	await _frames(96)
+	_check(_int("day") == day + 1, "the first key set drives the swapped actor")
 
 func _coarse_frames() -> void:
 	await _start(1)

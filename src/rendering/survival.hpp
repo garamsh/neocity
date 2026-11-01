@@ -17,7 +17,9 @@ void paint_mouth(godot::Node2D &canvas, float acid_ratio);
 void paint_city(godot::Node2D &canvas, const AscentDrawing &drawing,
                 const survival::Content &content,
                 const survival::GameView &view, survival::ControlMap control);
-/// Draws the base with the chef and the appraiser at their stations.
-void paint_workshop(godot::Node2D &canvas, const AscentDrawing &drawing);
+/// Draws the base with the chef and the appraiser at their stations, and the
+/// monster's feeding bowl, steaming once `dish_ready`.
+void paint_workshop(godot::Node2D &canvas, const AscentDrawing &drawing,
+                    bool dish_ready);
 
 } // namespace neocity::rendering

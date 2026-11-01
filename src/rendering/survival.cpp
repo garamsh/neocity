@@ -25,6 +25,7 @@ constexpr float MAP_X = 64.0F;
 constexpr float MAP_Y = 70.0F;
 constexpr float MAP_BOTTOM = 582.0F;
 constexpr float TOOTH_WIDTH = 88.0F;
+constexpr int TEETH = 15;
 constexpr std::size_t CHEF_SPRITE = 0;
 constexpr std::size_t APPRAISER_SPRITE = 2;
 
@@ -72,7 +73,9 @@ void paint_towers(godot::Node2D &canvas) {
   for (const auto &[x, width, height] : towers) {
     const float top = 620.0F - height;
     canvas.draw_rect(rect(x, top, width, height), color(44, 20, 74, 1.0F));
-    for (float y = top + 14.0F; y < 600.0F; y += 26.0F) {
+    const int floors = static_cast<int>((586.0F - top) / 26.0F);
+    for (int floor = 0; floor < floors; ++floor) {
+      const float y = top + 14.0F + static_cast<float>(floor) * 26.0F;
       canvas.draw_rect(rect(x + 10.0F, y, 8.0F, 10.0F),
                        color(255, 176, 88, 0.45F));
       canvas.draw_rect(rect(x + width - 20.0F, y, 8.0F, 10.0F),
@@ -84,10 +87,14 @@ void paint_towers(godot::Node2D &canvas) {
 void paint_tile(godot::Node2D &canvas, const godot::Rect2 &box,
                 godot::Color fill, godot::Color seam) {
   canvas.draw_rect(box, fill);
-  for (float x = box.position.x; x < box.position.x + box.size.x; x += CELL) {
+  const int columns = static_cast<int>(box.size.x / CELL);
+  for (int column = 0; column < columns; ++column) {
+    const float x = box.position.x + static_cast<float>(column) * CELL;
     canvas.draw_rect(rect(x, box.position.y, 1.0F, box.size.y), seam);
   }
-  for (float y = box.position.y; y < box.position.y + box.size.y; y += CELL) {
+  const int rows = static_cast<int>(box.size.y / CELL);
+  for (int row = 0; row < rows; ++row) {
+    const float y = box.position.y + static_cast<float>(row) * CELL;
     canvas.draw_rect(rect(box.position.x, y, box.size.x, 1.0F), seam);
   }
 }
@@ -146,7 +153,7 @@ void paint_passage(godot::Node2D &canvas, const AscentDrawing &drawing,
   canvas.draw_rect(box,
                    ladder ? color(120, 84, 44, 1.0F) : color(82, 72, 58, 1.0F));
   if (ladder) {
-    for (float y = 6.0F; y < CELL; y += 8.0F) {
+    for (const float y : {6.0F, 14.0F, 22.0F, 30.0F}) {
       canvas.draw_rect(rect(box.position.x + 4.0F, box.position.y + y,
                             box.size.x - 8.0F, 3.0F),
                        color(226, 178, 104, 1.0F));
@@ -167,7 +174,7 @@ void paint_npc(godot::Node2D &canvas, const AscentDrawing &drawing,
   canvas.draw_rect(rect(head.x - 7.0F, head.y + 6.0F, 14.0F, 15.0F),
                    color(212, 104, 148, 1.0F));
   canvas.draw_circle(head, 7.0F, color(244, 208, 170, 1.0F));
-  drawing.text(canvas, box.position.x - 26.0F, box.position.y - 3.0F,
+  drawing.text(canvas, box.position.x - 62.0F, box.position.y - 3.0F,
                from(survival::object_name(object.id)), 13, palette().white);
 }
 
@@ -242,8 +249,8 @@ void paint_hazards(godot::Node2D &canvas, const AscentDrawing &drawing,
   for (const auto &area : content.hazards) {
     const auto box = area_rect(area);
     canvas.draw_rect(box, color(120, 255, 90, 0.35F));
-    for (float y = box.position.y + 8.0F; y < box.position.y + box.size.y;
-         y += CELL) {
+    for (std::int32_t row = 0; row < area.height; ++row) {
+      const float y = box.position.y + 8.0F + static_cast<float>(row) * CELL;
       canvas.draw_circle(Vector2(box.position.x + CELL / 2.0F, y + 8.0F), 6.0F,
                          color(160, 255, 120, 1.0F));
       triangle(canvas, Vector2(box.position.x + CELL / 2.0F - 6.0F, y + 6.0F),
@@ -251,8 +258,9 @@ void paint_hazards(godot::Node2D &canvas, const AscentDrawing &drawing,
                Vector2(box.position.x + CELL / 2.0F, y - 8.0F),
                color(160, 255, 120, 1.0F));
     }
-    drawing.text(canvas, box.position.x - 20.0F, box.position.y - 5.0F,
-                 "ACID DRIP -1", 13, color(180, 255, 140, 1.0F));
+    drawing.text(canvas, box.position.x - 30.0F,
+                 box.position.y + box.size.y + 14.0F, "ACID DRIP: -1 health",
+                 13, color(180, 255, 140, 1.0F));
   }
 }
 
@@ -294,7 +302,8 @@ void paint_mouth(godot::Node2D &canvas, float acid_ratio) {
                    color(62, 214, 76, 0.42F));
   canvas.draw_rect(rect(0.0F, surface, 1280.0F, 3.0F),
                    color(170, 255, 130, 0.9F));
-  for (float x = 0.0F; x < 1280.0F; x += TOOTH_WIDTH) {
+  for (int tooth = 0; tooth < TEETH; ++tooth) {
+    const float x = static_cast<float>(tooth) * TOOTH_WIDTH;
     triangle(canvas, Vector2(x, 62.0F), Vector2(x + TOOTH_WIDTH, 62.0F),
              Vector2(x + TOOTH_WIDTH / 2.0F, 112.0F),
              color(238, 214, 180, 1.0F));
@@ -353,7 +362,8 @@ void paint_city(godot::Node2D &canvas, const AscentDrawing &drawing,
   }
 }
 
-void paint_workshop(godot::Node2D &canvas, const AscentDrawing &drawing) {
+void paint_workshop(godot::Node2D &canvas, const AscentDrawing &drawing,
+                    bool dish_ready) {
   canvas.draw_rect(rect(30.0F, 110.0F, 760.0F, 200.0F),
                    color(58, 34, 28, 1.0F));
   canvas.draw_rect(rect(30.0F, 104.0F, 760.0F, 8.0F), color(36, 22, 22, 1.0F));
@@ -372,11 +382,21 @@ void paint_workshop(godot::Node2D &canvas, const AscentDrawing &drawing) {
                  false);
   drawing.sprite(canvas, CHEF_SPRITE, rect(350.0F, 172.0F, 108.0F, 124.0F),
                  false);
-  canvas.draw_line(Vector2(960.0F, 70.0F), Vector2(960.0F, 196.0F),
+  const auto ivory = color(232, 224, 214, 1.0F);
+  canvas.draw_circle(Vector2(960.0F, 212.0F), 50.0F, ivory, true);
+  canvas.draw_rect(rect(900.0F, 160.0F, 120.0F, 52.0F),
+                   color(96, 20, 78, 1.0F));
+  canvas.draw_rect(rect(906.0F, 206.0F, 108.0F, 8.0F), ivory);
+  canvas.draw_line(Vector2(960.0F, 70.0F), Vector2(960.0F, 206.0F),
                    color(48, 34, 30, 1.0F), 4.0F);
-  canvas.draw_circle(Vector2(960.0F, 214.0F), 46.0F,
-                     color(232, 224, 214, 1.0F));
-  canvas.draw_rect(rect(900.0F, 170.0F, 120.0F, 44.0F), color(0, 0, 0, 0.0F));
+  if (dish_ready) {
+    canvas.draw_circle(Vector2(960.0F, 204.0F), 26.0F,
+                       color(255, 142, 72, 1.0F));
+    canvas.draw_circle(Vector2(936.0F, 176.0F), 7.0F,
+                       color(240, 240, 240, 0.5F));
+    canvas.draw_circle(Vector2(980.0F, 166.0F), 9.0F,
+                       color(240, 240, 240, 0.4F));
+  }
   drawing.text(canvas, 908.0F, 288.0F, "MONSTER FEED", 18, palette().gold);
 }
 

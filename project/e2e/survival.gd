@@ -216,7 +216,7 @@ func _second_day() -> void:
 		return
 	if not await _until("day two expires", func() -> bool: return _str("phase") == "workshop", DAY_FRAMES):
 		return
-	if not _check(_object("Kiosk Wreck") == "destroyed", "exploration time collapsed the kiosk"):
+	if not _check(_object("Old Kiosk") == "destroyed", "exploration time collapsed the kiosk"):
 		return
 	await _until("AI appraises day two's finds", func() -> bool: return not _next().contains("identifying"), 300)
 	await _cook()

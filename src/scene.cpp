@@ -28,6 +28,15 @@ SurvivalRules::SurvivalRules(survival::Content game)
       workshop(simulation, content.companion.workshop),
       companion(content.companion) {}
 
+session::SurvivalFeatures SurvivalRules::features() {
+  return {.content = content,
+          .simulation = simulation,
+          .world = world,
+          .exploration = exploration,
+          .workshop = workshop,
+          .companion = companion};
+}
+
 AscentScene::AscentScene()
     : camera(engine.snapshot()),
       session(
@@ -91,13 +100,7 @@ void AscentScene::pin_survival_seed(std::int64_t seed) {
 session::SurvivalFeatures AscentScene::start_survival() {
   const auto seed = pinned_seed.value_or(
       static_cast<std::uint32_t>(godot::UtilityFunctions::randi()));
-  auto &rules = survival_rules.emplace(survival::temporary_content(seed));
-  return {.content = rules.content,
-          .simulation = rules.simulation,
-          .world = rules.world,
-          .exploration = rules.exploration,
-          .workshop = rules.workshop,
-          .companion = rules.companion};
+  return survival_rules.emplace(survival::temporary_content(seed)).features();
 }
 
 void AscentScene::mount(const std::optional<godot::String> &scene) {

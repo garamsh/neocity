@@ -208,7 +208,8 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
                  from(survival::food_name(offer.food));
         } else if constexpr (std::is_same_v<Offer, survival::Feed>) {
           return key(keys.feed) + "Feed " +
-                 from(survival::food_name(offer.food)) + " to the monster";
+                 from(survival::food_name(offer.food)) +
+                 " to the monster: this ends the day";
         } else {
           return "";
         }
@@ -216,17 +217,29 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
       action);
 }
 
+bool anything_to_collect(const GameView &view) {
+  return std::ranges::any_of(
+      view.exploration.sources, [&view](const survival::SourceStock &stock) {
+        const auto &objects = view.world.objects;
+        const auto object =
+            std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
+        return stock.remaining > 0 && object != objects.end() &&
+               object->material_available;
+      });
+}
+
 String city_step(const SurvivalFrame &frame, Actor actor,
                  const KeyLabels &keys) {
   const auto &offer = frame.offers.at(index_of(actor)).interact;
-  if (offer && std::holds_alternative<survival::Repair>(*offer)) {
+  if (offer) {
     return offered_step(*offer, keys);
   }
-  if (offer && !std::holds_alternative<survival::ReturnToBase>(*offer)) {
-    return offered_step(*offer, keys);
+  if (!anything_to_collect(frame.view)) {
+    return "Nothing is left to collect for now. " + from(keys.travel) +
+           " returns to base.";
   }
   return "Walk to a gold-framed marker and press " + from(keys.interact) +
-         ". Green holds are acid: falling sends you to base. " +
+         ". Stay on the paved ground: a fall sends you to base. " +
          from(keys.travel) + " returns.";
 }
 
@@ -306,7 +319,7 @@ String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
 
 void bar(godot::Node2D &canvas, float x, float y, float width, float height,
          float fill, godot::Color tint) {
-  canvas.draw_rect(rect(x, y, width, height), color(14, 12, 26, 1.0F));
+  canvas.draw_rect(rect(x, y, width, height), color(44, 40, 66, 1.0F));
   canvas.draw_rect(rect(x, y, width * std::clamp(fill, 0.0F, 1.0F), height),
                    tint);
 }
@@ -381,12 +394,17 @@ void paint_actor_card(godot::Node2D &canvas,
                tool == survival::ToolState::Intact
                    ? tones.muted
                    : color(255, 120, 110, 1.0F));
-  String tools = "Carrying:";
-  for (const auto carried_tool : state.tools) {
-    tools += " " + from(survival::tool_name(carried_tool));
+  std::map<std::uint32_t, std::uint32_t> spares;
+  for (const auto spare : state.tools) {
+    ++spares[spare.value];
+  }
+  String tools = "Tools:";
+  for (const auto &[value, count] : spares) {
+    tools += " " + from(survival::tool_name(survival::ToolId{value})) + " x" +
+             number(count);
   }
   drawing.text(canvas, x + 72.0F, CARD_Y + 77.0F,
-               state.tools.empty() ? String("No spare tools") : tools, 13,
+               spares.empty() ? String("No spare tools") : tools, 13,
                tones.muted);
 }
 
@@ -405,12 +423,13 @@ void paint_pack(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
   for (const auto &[value, count] : pack) {
     const auto ingredient = IngredientId{value};
     const float column = static_cast<float>(index % 3) * 90.0F;
-    const float row = static_cast<float>(index / 3) * 22.0F;
+    const std::size_t rows_above = index / 3;
+    const float row = static_cast<float>(rows_above) * 19.0F;
     const bool known = identified(view, ingredient);
-    drawing.text(canvas, x + 10.0F + column, CARD_Y + 42.0F + row,
+    drawing.text(canvas, x + 10.0F + column, CARD_Y + 38.0F + row,
                  from(survival::ingredient_name(ingredient)) + " " +
                      number(count) + (known ? "" : "?"),
-                 15, known ? tones.white : tones.gold);
+                 13, known ? tones.white : tones.gold);
     ++index;
   }
 }
@@ -419,6 +438,9 @@ void paint_events(godot::Node2D &canvas,
                   const rendering::AscentDrawing &drawing,
                   const SurvivalFrame &frame, float x, float y, float height) {
   const auto tones = rendering::palette();
+  if (frame.events.empty()) {
+    return;
+  }
   frame_box(canvas, x, y, 1280.0F - x - 8.0F, height);
   float line = y + 19.0F;
   for (const auto &event : frame.events) {
@@ -467,11 +489,25 @@ void paint_next_step(godot::Node2D &canvas,
                tones.muted);
 }
 
+/// The panel's last line: whose job it is, in the keys of the player doing it.
+void paint_panel_job(godot::Node2D &canvas,
+                     const rendering::AscentDrawing &drawing, float x,
+                     const String &job) {
+  drawing.text(canvas, x + 14.0F, PANEL_Y + PANEL_HEIGHT - 16.0F, job, 17,
+               rendering::palette().cyan);
+}
+
 void paint_appraise_panel(godot::Node2D &canvas,
                           const rendering::AscentDrawing &drawing,
-                          const GameView &view, float x) {
+                          const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
+  const auto &view = frame.view;
+  const auto keys = survival::key_set(frame.control, Actor::Appraiser);
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
+  paint_panel_job(canvas, drawing, x,
+                  keys ? key(KEY_LABELS.at(*keys).interact) +
+                             "Appraise the next unknown ingredient"
+                       : String("The AI appraiser works here."));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "APPRAISE", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                String("Magnifier ") +
@@ -521,7 +557,12 @@ void paint_cook_panel(godot::Node2D &canvas,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
+  const auto keys = survival::key_set(frame.control, Actor::Chef);
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
+  paint_panel_job(canvas, drawing, x,
+                  keys ? key(KEY_LABELS.at(*keys).interact) +
+                             "Cook the first dish marked ready"
+                       : String("The AI chef works here."));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "COOK", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                String("Spatula ") +
@@ -564,7 +605,17 @@ void paint_feed_panel(godot::Node2D &canvas,
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
+  const auto chef = survival::key_set(frame.control, Actor::Chef);
+  const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
+  if (chef || appraiser) {
+    const auto &keys = KEY_LABELS.at(chef ? *chef : *appraiser);
+    paint_panel_job(
+        canvas, drawing, x,
+        key(keys.feed) + "Feed   " + key(keys.end_day) +
+            "End the day unfed: acid +" +
+            number(frame.content.get().companion.unfed_penalty.value));
+  }
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "FEED", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                "Needs a score of " + number(tuning.satisfying_score), 16,
@@ -601,8 +652,9 @@ void paint_feed_panel(godot::Node2D &canvas,
 void paint_workshop_screen(godot::Node2D &canvas,
                            const rendering::AscentDrawing &drawing,
                            const SurvivalFrame &frame) {
-  rendering::paint_workshop(canvas, drawing);
-  paint_appraise_panel(canvas, drawing, frame.view, 10.0F);
+  rendering::paint_workshop(canvas, drawing,
+                            !frame.view.workshop.foods.empty());
+  paint_appraise_panel(canvas, drawing, frame, 10.0F);
   paint_cook_panel(canvas, drawing, frame, 433.0F);
   paint_feed_panel(canvas, drawing, frame, 856.0F);
   paint_events(canvas, drawing, frame, 840.0F, 72.0F, 96.0F);

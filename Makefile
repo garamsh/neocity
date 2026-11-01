@@ -84,7 +84,7 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 16 integration checks passed.' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 21 integration checks passed.' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
@@ -92,7 +92,7 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 44 live checks passed (menus, days, return, appraisal, cooking, feeding, map, tools, roles).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 54 live checks passed (menus, days, return, appraisal, cooking, feeding, map, tools, roles).' "$$log"
 
 ci: lint format test
 

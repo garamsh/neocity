@@ -28,41 +28,48 @@ constexpr auto STEP = 100ms;
 constexpr std::int64_t STEP_LIMIT = 400'000;
 
 /// The temporary game's features, advanced with a fresh view per actor.
-struct Game {
+class Game {
+public:
   explicit Game(Content settings)
-      : content(std::move(settings)), simulation(content.run),
-        world(content.objects),
-        exploration(simulation, world, content.companion.exploration),
-        workshop(simulation, content.companion.workshop),
-        companion(content.companion) {}
+      : data(std::move(settings)), shared(data.run), map(data.objects),
+        explorers(shared, map, data.companion.exploration),
+        kitchen_work(shared, data.companion.workshop),
+        controllers(data.companion) {}
+
+  [[nodiscard]] const Content &content() const { return data; }
+  [[nodiscard]] Simulation &simulation() { return shared; }
+  [[nodiscard]] World &world() { return map; }
+  [[nodiscard]] Exploration &exploration() { return explorers; }
+  [[nodiscard]] Workshop &workshop() { return kitchen_work; }
 
   [[nodiscard]] GameView view() const {
-    return {.progression = simulation.snapshot(),
-            .world = world.snapshot(),
-            .exploration = exploration.snapshot(),
-            .workshop = workshop.snapshot()};
+    return {.progression = shared.snapshot(),
+            .world = map.snapshot(),
+            .exploration = explorers.snapshot(),
+            .workshop = kitchen_work.snapshot()};
   }
 
   void step(ControlMap control) {
     std::array<ExplorationInput, 2> movement;
     for (std::size_t index = 0; index < ACTORS.size(); ++index) {
       const auto command =
-          companion.command(ACTORS.at(index), control, {}, view());
+          controllers.command(ACTORS.at(index), control, {}, view());
       movement.at(index) = command.movement;
       if (command.action) {
-        (void)apply(exploration, workshop, ACTORS.at(index), *command.action);
+        (void)apply(explorers, kitchen_work, ACTORS.at(index), *command.action);
       }
     }
-    ASSERT_EQ(exploration.advance(STEP, movement, simulation.snapshot().acid),
+    ASSERT_EQ(explorers.advance(STEP, movement, shared.snapshot().acid),
               Result::Applied);
   }
 
-  Content content;
-  Simulation simulation;
-  World world;
-  Exploration exploration;
-  Workshop workshop;
-  Companion companion;
+private:
+  Content data;
+  Simulation shared;
+  World map;
+  Exploration explorers;
+  Workshop kitchen_work;
+  Companion controllers;
 };
 
 ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
@@ -79,10 +86,11 @@ ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
 /// Runs AI-only days until `last_day` begins, or gives up at the step limit.
 std::uint32_t play_days(Game &game, std::uint32_t last_day) {
   for (std::int64_t step = 0;
-       step < STEP_LIMIT && game.simulation.snapshot().day < last_day; ++step) {
+       step < STEP_LIMIT && game.simulation().snapshot().day < last_day;
+       ++step) {
     game.step(ALL_AI);
   }
-  return game.simulation.snapshot().day;
+  return game.simulation().snapshot().day;
 }
 
 bool reachable(const Content &content, const WorldSnapshot &world,
@@ -111,13 +119,13 @@ bool reachable(const Content &content, const WorldSnapshot &world,
 }
 
 TEST(TemporaryContent, ConstructsEveryFeatureWithinTheMap) {
-  const Game game(temporary_content(7));
-  EXPECT_EQ(game.simulation.snapshot().seed, 7U);
-  for (const auto &object : game.content.objects) {
+  Game game(temporary_content(7));
+  EXPECT_EQ(game.simulation().snapshot().seed, 7U);
+  for (const auto &object : game.content().objects) {
     EXPECT_GE(object.area.x, 0);
     EXPECT_GE(object.area.y, 0);
-    EXPECT_LE(object.area.x + object.area.width, game.content.map.width);
-    EXPECT_LE(object.area.y + object.area.height, game.content.map.height);
+    EXPECT_LE(object.area.x + object.area.width, game.content().map.width);
+    EXPECT_LE(object.area.y + object.area.height, game.content().map.height);
     EXPECT_FALSE(object_name(object.id).empty());
   }
 }
@@ -150,15 +158,15 @@ TEST(TemporaryContent, EveryRecipeIngredientAndBaseToolHasASource) {
 }
 
 TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
-  const Game game(temporary_content(1));
-  const auto world = game.world.snapshot();
+  Game game(temporary_content(1));
+  const auto world = game.world().snapshot();
   std::set<SourceKind> kinds;
-  for (const auto &stock : game.exploration.snapshot().sources) {
+  for (const auto &stock : game.exploration().snapshot().sources) {
     const auto object =
         std::ranges::find(world.objects, stock.id, &ObjectSnapshot::id);
     ASSERT_NE(object, world.objects.end());
     if (object->material_available &&
-        reachable(game.content, world, object->area)) {
+        reachable(game.content(), world, object->area)) {
       kinds.insert(stock.kind);
     }
   }
@@ -169,7 +177,7 @@ TEST(TemporaryContent, AnAiPartyKeepsTheDaysMovingPastDayThirty) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
     Game game(temporary_content(seed));
     EXPECT_EQ(play_days(game, 35), 35U) << "seed " << seed;
-    EXPECT_GT(game.simulation.snapshot().acid.value, 0U) << "seed " << seed;
+    EXPECT_GT(game.simulation().snapshot().acid.value, 0U) << "seed " << seed;
   }
 }
 
@@ -177,35 +185,35 @@ TEST(TemporaryContent, AnAiPartyFeedsTheMonsterAndSatisfiesIt) {
   Game game(temporary_content(1));
   bool satisfied = false;
   for (std::int64_t step = 0;
-       step < STEP_LIMIT && game.simulation.snapshot().day < 6; ++step) {
+       step < STEP_LIMIT && game.simulation().snapshot().day < 6; ++step) {
     game.step(ALL_AI);
-    const auto last = game.workshop.snapshot().last_day;
+    const auto last = game.workshop().snapshot().last_day;
     satisfied =
         satisfied || (last && last->reaction == MonsterReaction::Satisfied);
   }
   EXPECT_TRUE(satisfied);
-  EXPECT_GE(game.workshop.snapshot().eaten_foods.size(), 2U);
+  EXPECT_GE(game.workshop().snapshot().eaten_foods.size(), 2U);
 }
 
 TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
   Game game(temporary_content(1));
-  const auto start = game.world.snapshot();
+  const auto start = game.world().snapshot();
   ASSERT_EQ(object_named(start, "Noodle Vendor").state, ObjectState::Intact);
   ASSERT_EQ(object_named(start, "Roof Ladder").state, ObjectState::Intact);
   ASSERT_EQ(object_named(start, "Drifted Ferry").state, ObjectState::Dormant);
   ASSERT_TRUE(object_named(start, "Vendor Cart").material_available);
 
   const std::array<ExplorationInput, 2> idle{};
-  ASSERT_EQ(game.exploration.enter(Actor::Chef), Result::Applied);
-  while (game.world.snapshot().progression.elapsed < 280s) {
-    ASSERT_EQ(game.exploration.advance(STEP, idle, AcidLevel{}),
+  ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
+  while (game.world().snapshot().progression.elapsed < 280s) {
+    ASSERT_EQ(game.exploration().advance(STEP, idle, AcidLevel{}),
               Result::Applied);
-    if (game.simulation.snapshot().phase == Phase::Workshop) {
-      ASSERT_EQ(game.simulation.finish_day(AcidLevel{}), Result::Applied);
-      ASSERT_EQ(game.exploration.enter(Actor::Chef), Result::Applied);
+    if (game.simulation().snapshot().phase == Phase::Workshop) {
+      ASSERT_EQ(game.simulation().finish_day(AcidLevel{}), Result::Applied);
+      ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
     }
   }
-  const auto later = game.world.snapshot();
+  const auto later = game.world().snapshot();
   EXPECT_EQ(object_named(later, "Noodle Vendor").state, ObjectState::Destroyed);
   EXPECT_FALSE(object_named(later, "Vendor Cart").material_available);
   EXPECT_EQ(object_named(later, "Roof Ladder").state, ObjectState::Destroyed);
@@ -216,37 +224,38 @@ TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
 
 TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
   Game game(temporary_content(1));
-  const auto plaza = object_named(game.world.snapshot(), "Supply Crate").area;
-  ASSERT_TRUE(reachable(game.content, game.world.snapshot(), plaza));
+  const auto plaza = object_named(game.world().snapshot(), "Supply Crate").area;
+  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), plaza));
 
-  ASSERT_EQ(game.world.update({.elapsed = 0s, .acid = AcidLevel{40}}),
+  ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{40}}),
             WorldUpdateResult::Applied);
-  const auto after = game.world.snapshot();
+  const auto after = game.world().snapshot();
   ASSERT_EQ(object_named(after, "Rotten Bridge").state, ObjectState::Destroyed);
-  EXPECT_TRUE(reachable(game.content, after, plaza));
+  EXPECT_TRUE(reachable(game.content(), after, plaza));
 
   auto without_ferry = after;
   std::erase_if(without_ferry.objects, [](const ObjectSnapshot &object) {
     return object_name(object.id) == "Drifted Ferry";
   });
-  EXPECT_FALSE(reachable(game.content, without_ferry, plaza));
+  EXPECT_FALSE(reachable(game.content(), without_ferry, plaza));
 }
 
 TEST(TemporaryContent, TheBrokenLadderBlocksTheRooftopUntilRepaired) {
   Game game(temporary_content(1));
-  const auto roof = object_named(game.world.snapshot(), "Roof Bag").area;
-  ASSERT_TRUE(reachable(game.content, game.world.snapshot(), roof));
+  const auto roof = object_named(game.world().snapshot(), "Roof Bag").area;
+  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), roof));
 
-  ASSERT_EQ(game.world.update({.elapsed = 0s, .acid = AcidLevel{10}}),
+  ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{10}}),
             WorldUpdateResult::Applied);
-  const auto ladder = object_named(game.world.snapshot(), "Roof Ladder");
+  const auto ladder = object_named(game.world().snapshot(), "Roof Ladder");
   ASSERT_EQ(ladder.state, ObjectState::Destroyed);
-  EXPECT_FALSE(reachable(game.content, game.world.snapshot(), roof));
+  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), roof));
 
   ASSERT_TRUE(ladder.repair_with.has_value());
-  ASSERT_EQ(game.world.repair(ladder.id, ladder.repair_with.value_or(ToolId{})),
-            RepairResult::Applied);
-  EXPECT_TRUE(reachable(game.content, game.world.snapshot(), roof));
+  ASSERT_EQ(
+      game.world().repair(ladder.id, ladder.repair_with.value_or(ToolId{})),
+      RepairResult::Applied);
+  EXPECT_TRUE(reachable(game.content(), game.world().snapshot(), roof));
 }
 
 } // namespace

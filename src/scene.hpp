@@ -19,7 +19,8 @@ namespace neocity {
 
 /// One survival run's rule objects. Members hold references to one another, so
 /// a value stays where it was built.
-struct SurvivalRules {
+class SurvivalRules {
+public:
   explicit SurvivalRules(survival::Content game);
   SurvivalRules(const SurvivalRules &) = delete;
   SurvivalRules &operator=(const SurvivalRules &) = delete;
@@ -27,6 +28,10 @@ struct SurvivalRules {
   SurvivalRules &operator=(SurvivalRules &&) = delete;
   ~SurvivalRules() = default;
 
+  /// Hands the session references to this run's rule objects.
+  [[nodiscard]] session::SurvivalFeatures features();
+
+private:
   survival::Content content;
   survival::Simulation simulation;
   survival::World world;

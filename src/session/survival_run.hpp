@@ -49,7 +49,7 @@ private:
   void report_returns(const survival::Snapshot &before,
                       const std::array<bool, 2> &walked_home);
   void report_world_changes(const survival::WorldSnapshot &before);
-  void record(hud::Event event);
+  void record(const hud::Event &event);
 
   SurvivalFeatures features;
   survival::ControlMap controllers;
