@@ -13,7 +13,7 @@ jobs:
       matrix:
         runner: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -22,8 +22,6 @@ jobs:
       - name: Set up verified Godot
         run: sh .github/scripts/setup-godot.sh
       - run: make ci
-      - name: Repeat first import
-        run: bash .github/scripts/measure-39.sh 25 ${{ matrix.runner > 10 && 4 || 0 }}
       - name: Report Godot crash
         if: failure()
         run: sh .github/scripts/report-godot-crash.sh
