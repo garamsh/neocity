@@ -81,6 +81,10 @@ void paint_cinematic(godot::Node2D &canvas,
                      const rendering::AscentDrawing &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
+/// Whether the chef can cook `recipe` from what the two actors carry and have
+/// identified.
+[[nodiscard]] bool recipe_ready(const survival::GameView &view,
+                                const survival::Recipe &recipe);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The sentence the event log shows for `event`.

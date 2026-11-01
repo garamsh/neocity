@@ -177,12 +177,13 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   return object;
 }
 
-/// A bag the tide brings in once the run has spent `arrival` exploring, however
-/// many days that takes.
+/// A bag the tide brings in once the run has spent `arrival` exploring or acid
+/// reaches `flood`, so a party with nothing left to walk to still gets one.
 ObjectDefinition washed_up(ObjectId id, GridPosition cell,
                            IngredientId ingredient,
-                           std::chrono::seconds arrival) {
-  return exposed(ingredient_source(id, cell, ingredient), {.elapsed = arrival});
+                           std::chrono::seconds arrival, std::uint32_t flood) {
+  return exposed(ingredient_source(id, cell, ingredient),
+                 {.elapsed = arrival, .acid = AcidLevel{flood}});
 }
 
 ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
@@ -216,7 +217,7 @@ std::vector<ObjectDefinition> city() {
                 {.elapsed = 150s, .acid = AcidLevel{25}}),
       {.id = COLD_STORE,
        .kind = ObjectKind::Building,
-       .area = {.x = 27, .y = 6, .width = 5, .height = 4}},
+       .area = {.x = 27, .y = 6, .width = 6, .height = 4}},
       destroyed({.id = KIOSK_WRECK,
                  .kind = ObjectKind::Building,
                  .area = {.x = 12, .y = 1, .width = 2, .height = 2}},
@@ -241,14 +242,14 @@ std::vector<ObjectDefinition> city() {
       exposed(owned(ingredient_source(FERRY_BAG, {.x = 23, .y = 12}, KELP),
                     DRIFTED_FERRY),
               ferry_arrives),
-      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 50s),
-      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 95s),
-      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 140s),
-      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 185s),
-      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 230s),
-      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 275s),
-      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, MUSHROOM, 320s),
-      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 365s),
+      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 50s, 10),
+      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 95s, 20),
+      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 140s, 30),
+      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 185s, 40),
+      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 230s, 50),
+      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 275s, 60),
+      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, MUSHROOM, 320s, 70),
+      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 365s, 80),
   };
 }
 
@@ -269,14 +270,14 @@ std::vector<SourceStock> stock() {
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = 6},
   };
 }
 

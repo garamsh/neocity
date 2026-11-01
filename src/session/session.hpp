@@ -40,6 +40,8 @@ struct Command {
   gameplay::PlayerCommand ascent;
   /// Each actor's sampled keys, chef first, while a survival run is open.
   std::array<survival::PlayerInput, 2> survival;
+  /// A human chef's up or down press this frame.
+  survival::Direction dish_step = survival::Direction::Idle;
 };
 
 /// Mounts the given experiment scene, or removes the mounted one when empty.
