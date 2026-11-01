@@ -530,7 +530,7 @@ void paint_appraise_panel(godot::Node2D &canvas,
   }
 }
 
-/// Names what a recipe still lacks; the chef's key offers the first dish ready.
+/// Names what a recipe still lacks.
 String recipe_status(const GameView &view, const survival::Recipe &recipe) {
   auto pack = pack_of(view);
   String missing;
@@ -550,17 +550,24 @@ String recipe_status(const GameView &view, const survival::Recipe &recipe) {
   return missing;
 }
 
+/// The cook panel's last line: what the chef's key would really cook.
+String cook_job(const SurvivalFrame &frame) {
+  const auto keys = survival::key_set(frame.control, Actor::Chef);
+  if (!keys) {
+    return "The AI chef works here.";
+  }
+  const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
+  return offer ? offered_step(*offer, KEY_LABELS.at(*keys))
+               : String("No dish can be cooked yet.");
+}
+
 void paint_cook_panel(godot::Node2D &canvas,
                       const rendering::AscentDrawing &drawing,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
-  const auto keys = survival::key_set(frame.control, Actor::Chef);
   frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(canvas, drawing, x,
-                  keys ? key(KEY_LABELS.at(*keys).interact) +
-                             "Cook the first dish marked ready"
-                       : String("The AI chef works here."));
+  paint_panel_job(canvas, drawing, x, cook_job(frame));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "COOK", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                String("Spatula ") +
