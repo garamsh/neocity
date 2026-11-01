@@ -1,4 +1,4 @@
-add_library(survival STATIC src/simulation.cpp src/world.cpp src/exploration.cpp src/workshop.cpp)
+add_library(survival STATIC src/simulation.cpp src/world.cpp src/exploration.cpp src/workshop.cpp src/companion.cpp)
 target_include_directories(survival PUBLIC include)
 target_compile_options(survival PRIVATE ${NEOCITY_WARNINGS})
 set_target_properties(
@@ -6,7 +6,7 @@ set_target_properties(
     PROPERTIES POSITION_INDEPENDENT_CODE ON COMPILE_WARNING_AS_ERROR ON
 )
 
-add_executable(survival_test src/simulation_test.cpp src/world_test.cpp src/exploration_test.cpp src/workshop_test.cpp)
+add_executable(survival_test src/simulation_test.cpp src/world_test.cpp src/exploration_test.cpp src/workshop_test.cpp src/companion_test.cpp)
 target_link_libraries(survival_test PRIVATE survival GTest::gtest_main)
 target_compile_options(survival_test PRIVATE ${NEOCITY_WARNINGS})
 set_target_properties(survival_test PROPERTIES COMPILE_WARNING_AS_ERROR ON)
