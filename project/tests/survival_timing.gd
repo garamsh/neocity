@@ -14,6 +14,8 @@ const RULE_TICKS_PER_FRAME: int = 8
 const TWO_PLAYERS: int = 3
 ## The rule tick that hits an idle player in pan_dodge.
 const FIRST_HIT_TICK: int = 300
+## Frames in one 100ms step at the 480 frames a second this part runs at.
+const STEP_FRAMES: int = 48
 
 var scene: AscentScene
 var checks: int = 0
@@ -306,7 +308,85 @@ func _both_leave() -> void:
 	Input.action_release("survival_1_leave")
 	Input.action_release("survival_2_leave")
 	await _frames(96)
-	_check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "both leaving in one step keeps one human")
+	if not _check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "both leaving in one step keeps one human"):
+		return
+	await _arriving_holds_interact()
+
+## A press aimed at the city must not cook at base: after an actor arrives, its
+## interact key waits three steps of game time, then acts again. Travel is not
+## held.
+func _arriving_holds_interact() -> void:
+	await _leave_run()
+	await _frames(4)
+	await _start(1)
+	if not await _set_out_until_time_runs_out():
+		return
+	if not await _until_cook_offered():
+		return
+	await _one_frame("survival_1_end_day")
+	await _frames(2 * STEP_FRAMES)
+	if not _check(_int("day") == 2, "the chef ends day one"):
+		return
+	if not await _set_out_until_time_runs_out():
+		return
+	if not _check(_int("remaining_ms") == 0 and _str("dish_offered") != "", "time runs out with a dish the chef can cook"):
+		return
+	# The return's step ran on the frame just read, so each press below lands
+	# half a step before the step that reads it: the first, third, and fourth
+	# after the return.
+	await _one_frame("survival_1_interact")
+	await _frames(2 * STEP_FRAMES - 2)
+	if not _check(_int("foods") == 0, "E pressed just after the time-out return does not cook"):
+		return
+	await _frames(STEP_FRAMES / 2)
+	await _one_frame("survival_1_interact")
+	await _frames(STEP_FRAMES - 2)
+	if not _check(_int("foods") == 0, "E read in the hold's last step does not cook"):
+		return
+	await _one_frame("survival_1_interact")
+	await _frames(STEP_FRAMES - 2)
+	if not _check(_int("foods") == 1, "E read in the step after the hold cooks"):
+		return
+	await _leave_run()
+	await _frames(4)
+	await _start(3)
+	await _one_frame("survival_1_travel")
+	if not await _until_location("chef", "city"):
+		return
+	await _one_frame("survival_1_travel")
+	await _frames(2 * STEP_FRAMES)
+	if not _check(_location("chef") == "base", "Q pressed just after arriving in the city still returns"):
+		return
+	Input.action_press("survival_1_travel")
+	Input.action_press("survival_2_travel")
+	await _frames(1)
+	Input.action_release("survival_1_travel")
+	Input.action_release("survival_2_travel")
+	await _frames(2 * STEP_FRAMES)
+	_check(_location("chef") == "city" and _location("appraiser") == "city", "two players pressing travel in one step set out together")
+
+## Waits for the step that sets out, then for the one that brings everyone home.
+func _set_out_until_time_runs_out() -> bool:
+	await _one_frame("survival_1_travel")
+	await _frames(2 * STEP_FRAMES)
+	if not _check(_location("chef") == "city", "the chef sets out on day %d" % _int("day")):
+		return false
+	await _until_workshop()
+	return true
+
+func _until_location(who: String, where: String) -> bool:
+	for frame: int in range(2 * STEP_FRAMES):
+		if _location(who) == where:
+			return true
+		await process_frame
+	return _check(false, "%s reaches the %s" % [who, where])
+
+func _until_cook_offered() -> bool:
+	for frame: int in range(600 * STEP_FRAMES):
+		if _str("dish_offered") != "":
+			return true
+		await process_frame
+	return _check(false, "AI appraises a dish's worth on day one")
 
 func _coarse_frames() -> void:
 	await _start(TWO_PLAYERS)
@@ -511,6 +591,10 @@ func _location(who: String) -> String:
 func _actor(who: String, field: String) -> int:
 	var actor: Dictionary = scene.survival_status()[who]
 	var value: int = actor[field]
+	return value
+
+func _str(field: String) -> String:
+	var value: String = scene.survival_status().get(field, "")
 	return value
 
 func _int(field: String) -> int:

@@ -24,6 +24,9 @@ using survival::GridPosition;
 using survival::PlayerInput;
 
 constexpr auto STEP = 100ms;
+/// Temporary: how long a human's interact key waits after that actor arrives
+/// in the city or at base, so a press aimed at the old place does not act here.
+constexpr std::chrono::milliseconds INTERACT_HOLD = 300ms;
 constexpr double STEP_SECONDS = 0.1;
 constexpr std::size_t EVENT_LIMIT = 4;
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
@@ -297,8 +300,18 @@ void SurvivalRun::step() {
       survival::key_set(controllers, Actor::Chef)) {
     pick_dish(view());
   }
+  const auto moved = [&simulation, &progression](Actor actor) {
+    return state_of(simulation.snapshot(), actor).location !=
+           state_of(progression, actor).location;
+  };
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
+    if (moved(actor)) {
+      interact_hold.at(index) = INTERACT_HOLD;
+    }
+    if (interact_hold.at(index) > 0ms) {
+      pending.at(index).interact = false;
+    }
     const auto command = command_for(actor, pending.at(index), view());
     movement.at(index) = command.movement;
     if (command.action) {
@@ -330,6 +343,10 @@ void SurvivalRun::step() {
     map_changes = 0;
   }
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
+    interact_hold.at(index) = moved(ACTORS.at(index))
+                                  ? INTERACT_HOLD
+                                  : std::max(interact_hold.at(index) - STEP,
+                                             std::chrono::milliseconds{0});
     if (pending.at(index).switch_actor) {
       controllers = survival::switch_control(controllers);
     }
