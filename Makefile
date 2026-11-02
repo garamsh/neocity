@@ -107,11 +107,11 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 80 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 82 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 27 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 29 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
@@ -120,6 +120,14 @@ test: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape real frames: 4 live checks passed.' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss: 27 live checks passed (acid, loss, input block, card, skip, scene, broken asset, menu, instant finish).' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss slow frames: 2 live checks passed.' "$$log"
 
 ci: lint format test
 

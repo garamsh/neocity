@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -21,17 +20,20 @@ template <typename Item> bool take(std::vector<Item> &inventory, Item item) {
 } // namespace
 
 Simulation::Simulation(Config config)
-    : daily_budget(config.exploration_budget) {
+    : daily_budget(config.exploration_budget), full_acid(config.full_acid) {
   if (config.exploration_budget <= std::chrono::microseconds::zero()) {
     throw std::invalid_argument("exploration budget must be positive");
+  }
+  if (config.full_acid.value == 0) {
+    throw std::invalid_argument("full acid must be positive");
   }
   world.remaining_exploration = config.exploration_budget;
   world.seed = config.seed;
 }
 
 Result Simulation::enter(Actor actor) {
-  if (world.phase == Phase::Escaped) {
-    return Result::Escaped;
+  if (run_over(world.phase)) {
+    return Result::RunOver;
   }
   if (world.remaining_exploration == std::chrono::microseconds::zero()) {
     return Result::NoExplorationTime;
@@ -86,6 +88,7 @@ Result Simulation::collect(Actor actor, IngredientId ingredient) {
     return Result::NotExploring;
   }
   state.inventory.push_back(ingredient);
+  ++state.load;
   return Result::Applied;
 }
 
@@ -129,10 +132,14 @@ Result Simulation::finish_day(AcidLevel acid_rise) {
     return Result::NotInWorkshop;
   }
   world.acid.value +=
-      std::min(acid_rise.value,
-               std::numeric_limits<std::uint32_t>::max() - world.acid.value);
+      std::min(acid_rise.value, full_acid.value - world.acid.value);
   ++world.day;
   world.remaining_exploration = daily_budget;
+  world.chef.load = 0;
+  world.appraiser.load = 0;
+  if (world.acid == full_acid) {
+    world.phase = Phase::Lost;
+  }
   return Result::Applied;
 }
 

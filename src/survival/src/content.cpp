@@ -29,6 +29,11 @@ constexpr FoodId KELP_WRAP{3};
 constexpr FoodId MEAT_SKEWER{4};
 constexpr FoodId TRUFFLE_ROAST{5};
 constexpr FoodId PICKLE_SURPRISE{6};
+constexpr FoodId SEA_SALAD{7};
+constexpr FoodId FISH_PIE{8};
+constexpr FoodId MEAT_STEW{9};
+constexpr FoodId TRUFFLE_SOUP{10};
+constexpr FoodId SURF_AND_TURF{11};
 
 constexpr ObjectId BASE_DOCK{1};
 constexpr ObjectId MAIN_STREET{2};
@@ -66,6 +71,9 @@ constexpr ObjectId WASHED_BAG_6{46};
 constexpr ObjectId WASHED_BAG_7{47};
 constexpr ObjectId WASHED_BAG_8{48};
 
+constexpr std::uint32_t BAG_SURVIVES = 30;
+constexpr std::uint32_t BAG_STOCK = 8;
+
 template <typename Id> struct Named {
   Id id;
   std::string_view name;
@@ -94,6 +102,11 @@ constexpr std::array FOOD_NAMES{
     Named<FoodId>{.id = MEAT_SKEWER, .name = "Meat Skewer"},
     Named<FoodId>{.id = TRUFFLE_ROAST, .name = "Truffle Roast"},
     Named<FoodId>{.id = PICKLE_SURPRISE, .name = "Pickle Surprise"},
+    Named<FoodId>{.id = SEA_SALAD, .name = "Sea Salad"},
+    Named<FoodId>{.id = FISH_PIE, .name = "Fish Pie"},
+    Named<FoodId>{.id = MEAT_STEW, .name = "Meat Stew"},
+    Named<FoodId>{.id = TRUFFLE_SOUP, .name = "Truffle Soup"},
+    Named<FoodId>{.id = SURF_AND_TURF, .name = "Surf and Turf"},
 };
 
 constexpr std::array OBJECT_NAMES{
@@ -178,12 +191,14 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
 }
 
 /// A bag the tide brings in once the run has spent `arrival` exploring or acid
-/// reaches `flood`, so a party with nothing left to walk to still gets one.
+/// reaches `flood`, so a party with nothing left to walk to still gets one. The
+/// acid carries it off again once it stands `BAG_SURVIVES` above `flood`.
 ObjectDefinition washed_up(ObjectId id, GridPosition cell,
                            IngredientId ingredient,
                            std::chrono::seconds arrival, std::uint32_t flood) {
-  return exposed(ingredient_source(id, cell, ingredient),
-                 {.elapsed = arrival, .acid = AcidLevel{flood}});
+  return destroyed(exposed(ingredient_source(id, cell, ingredient),
+                           {.elapsed = arrival, .acid = AcidLevel{flood}}),
+                   {.acid = AcidLevel{flood + BAG_SURVIVES}});
 }
 
 ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
@@ -226,14 +241,17 @@ std::vector<ObjectDefinition> city() {
                  .kind = ObjectKind::Npc,
                  .area = {.x = 10, .y = 6}},
                 {.elapsed = 120s, .acid = AcidLevel{20}}),
-      ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 6}, TOMATO),
+      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 6}, TOMATO),
+                {.acid = AcidLevel{50}}),
       owned(ingredient_source(VENDOR_CART, {.x = 12, .y = 6}, FISH),
             NOODLE_VENDOR),
       owned(ingredient_source(SHOP_SHELF, {.x = 15, .y = 5}, KELP),
             CORNER_SHOP),
-      ingredient_source(LOST_BASKET, {.x = 9, .y = 13}, MUSHROOM),
+      destroyed(ingredient_source(LOST_BASKET, {.x = 9, .y = 13}, MUSHROOM),
+                {.acid = AcidLevel{40}}),
       tool_source(TOOL_BAG, {.x = 16, .y = 13}, WRENCH),
-      ingredient_source(PICKLE_MACHINE, {.x = 6, .y = 2}, PICKLES),
+      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 6, .y = 2}, PICKLES),
+                {.acid = AcidLevel{35}}),
       tool_source(ARCADE_BAG, {.x = 17, .y = 1}, MAGNIFIER),
       tool_source(SUPPLY_CRATE, {.x = 33, .y = 5}, SPATULA),
       owned(ingredient_source(COLD_LOCKER, {.x = 31, .y = 7}, MEAT),
@@ -248,7 +266,7 @@ std::vector<ObjectDefinition> city() {
       washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 185s, 40),
       washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 230s, 50),
       washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 275s, 60),
-      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, MUSHROOM, 320s, 70),
+      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 320s, 70),
       washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 365s, 80),
   };
 }
@@ -270,14 +288,14 @@ std::vector<SourceStock> stock() {
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = 6},
-      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = 6},
+      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
+      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
   };
 }
 
@@ -291,29 +309,49 @@ std::vector<Recipe> recipes() {
       {.food = PICKLE_SURPRISE,
        .ingredients = {PICKLES, MUSHROOM},
        .disliked = true},
+      {.food = SEA_SALAD, .ingredients = {KELP, TOMATO}},
+      {.food = FISH_PIE, .ingredients = {FISH, MUSHROOM}},
+      {.food = MEAT_STEW, .ingredients = {MEAT, TOMATO}},
+      {.food = TRUFFLE_SOUP, .ingredients = {TRUFFLE, MUSHROOM}},
+      {.food = SURF_AND_TURF, .ingredients = {MEAT, FISH}},
   };
+}
+
+std::vector<Flavor> flavors() {
+  return {{.ingredient = TOMATO, .taste = 10},
+          {.ingredient = FISH, .taste = 20},
+          {.ingredient = KELP, .taste = 15},
+          {.ingredient = MUSHROOM, .taste = 15},
+          {.ingredient = PICKLES, .taste = 5},
+          {.ingredient = MEAT, .taste = 25},
+          {.ingredient = TRUFFLE, .taste = 35}};
 }
 
 } // namespace
 
 Content temporary_content(std::uint32_t seed) {
   return {
-      .run = {.exploration_budget = 45s, .seed = seed},
+      .run = {.exploration_budget = 45s,
+              .seed = seed,
+              .full_acid = AcidLevel{100}},
       .objects = city(),
       .companion = {.exploration = {.base = {.x = 1, .y = 7},
                                     .entry = {.x = 3, .y = 7},
                                     .maximum_stamina = 20,
                                     .collection_distance = 1,
-                                    .sources = stock()},
+                                    .sources = stock(),
+                                    .daily_load = 2},
                     .workshop = {.recipes = recipes(),
                                  .magnifier = MAGNIFIER,
                                  .spatula = SPATULA,
-                                 .new_food_score = 40,
-                                 .new_ingredient_score = 20,
-                                 .satisfying_score = 60,
-                                 .disliked_acid_rise = AcidLevel{20},
-                                 .unsatisfied_acid_rise = AcidLevel{10}},
-                    .unfed_penalty = AcidLevel{15}},
+                                 .new_food_score = 70,
+                                 .new_ingredient_score = 5,
+                                 .satisfying_score = 100,
+                                 .disliked_acid_rise = AcidLevel{15},
+                                 .unsatisfied_acid_rise = AcidLevel{6},
+                                 .flavors = flavors(),
+                                 .fine_dish_score = 15},
+                    .unfed_penalty = AcidLevel{12}},
       .hazards = {{.x = 18, .y = 6, .width = 1, .height = 3}},
       .map = {.width = 36, .height = 16},
   };

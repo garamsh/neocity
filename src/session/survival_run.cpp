@@ -115,6 +115,8 @@ const char *phase_name(survival::Phase phase) {
     return "exploration";
   case survival::Phase::Escaped:
     return "escaped";
+  case survival::Phase::Lost:
+    return "lost";
   }
   std::abort();
 }
@@ -155,6 +157,22 @@ const char *reaction_name(survival::MonsterReaction reaction) {
   std::abort();
 }
 
+const char *direction_name(survival::Direction direction) {
+  switch (direction) {
+  case survival::Direction::Idle:
+    return "";
+  case survival::Direction::Left:
+    return "left";
+  case survival::Direction::Right:
+    return "right";
+  case survival::Direction::Up:
+    return "up";
+  case survival::Direction::Down:
+    return "down";
+  }
+  std::abort();
+}
+
 const char *location_name(survival::Location location) {
   switch (location) {
   case survival::Location::Base:
@@ -179,6 +197,7 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
   status.set("tools", static_cast<std::int64_t>(state.tools.size()));
   status.set("exhaustions", state.exhaustions);
+  status.set("load", state.load);
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
 }
@@ -207,7 +226,7 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   if (dish_press != survival::Direction::Idle) {
     dish_step = dish_press;
   }
-  while (accumulated >= STEP_SECONDS && !escaped()) {
+  while (accumulated >= STEP_SECONDS && !over()) {
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
       auto &next = pending.at(index);
@@ -226,6 +245,14 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
 
 bool SurvivalRun::escaped() const {
   return features.simulation.get().snapshot().phase == survival::Phase::Escaped;
+}
+
+bool SurvivalRun::lost() const {
+  return features.simulation.get().snapshot().phase == survival::Phase::Lost;
+}
+
+bool SurvivalRun::over() const {
+  return survival::run_over(features.simulation.get().snapshot().phase);
 }
 
 survival::ControlMap SurvivalRun::control() const { return controllers; }
@@ -289,7 +316,8 @@ void SurvivalRun::step() {
       run_action(actor, *command.action, progression.day);
       // The roll follows the finishing command at once, before the partner's
       // command can set out and take the party out of the workshop.
-      if (features.escape.get().check() == survival::EscapeResult::Escaped) {
+      (void)features.escape.get().check();
+      if (over()) {
         return;
       }
     }
@@ -297,7 +325,8 @@ void SurvivalRun::step() {
   if (features.exploration.get().advance(STEP, movement,
                                          simulation.snapshot().acid) !=
       survival::Result::Applied) {
-    // unreachable: no step runs after escape, and 100ms cannot overflow time
+    // unreachable: no step runs once the run is over, and 100ms cannot overflow
+    // time
     std::abort();
   }
   hurt_in_hazards(positions);
@@ -403,11 +432,17 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .events = {events.begin(), events.end()}};
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
-    if (survival::key_set(controllers, actor) && !escaped()) {
+    if (survival::key_set(controllers, actor) && !over()) {
       result.offers.at(index) = {
           .interact =
               command_for(actor, {.interact = true}, result.view).action,
-          .feed = command_for(actor, {.feed = true}, result.view).action};
+          .feed = command_for(actor, {.feed = true}, result.view).action,
+          .route = state_of(result.view.progression, actor).location ==
+                           survival::Location::City
+                       ? features.companion.get()
+                             .command(actor, AI_ONLY, {}, result.view)
+                             .movement.direction
+                       : survival::Direction::Idle};
     }
   }
   return result;
@@ -428,6 +463,7 @@ godot::Dictionary SurvivalRun::status() const {
                  view.world.progression.elapsed)
                  .count());
   status.set("acid", view.progression.acid.value);
+  status.set("full_acid", features.content.get().run.full_acid.value);
   status.set("chef", actor_status(view, controllers, Actor::Chef));
   status.set("appraiser", actor_status(view, controllers, Actor::Appraiser));
   status.set("magnifier", tool_state_name(view.workshop.magnifier));
@@ -436,8 +472,8 @@ godot::Dictionary SurvivalRun::status() const {
              static_cast<std::int64_t>(view.workshop.identified.size()));
   status.set("foods", static_cast<std::int64_t>(view.workshop.foods.size()));
   godot::Array stored;
-  for (const auto food : view.workshop.foods) {
-    stored.push_back(from(survival::food_name(food)));
+  for (const auto &dish : view.workshop.foods) {
+    stored.push_back(from(survival::food_name(dish.food)));
   }
   status.set("stored_foods", stored);
   const auto &chef_offer = current.offers.at(0).interact;
@@ -466,6 +502,8 @@ godot::Dictionary SurvivalRun::status() const {
   }
   status.set("stock", stock);
   status.set("next", hud::next_step(current));
+  status.set("route", direction_name(std::max(current.offers.at(0).route,
+                                              current.offers.at(1).route)));
   godot::Array log;
   for (const auto &event : current.events) {
     log.push_back(hud::describe(event));

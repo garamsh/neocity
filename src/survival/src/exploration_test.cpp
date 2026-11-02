@@ -599,9 +599,62 @@ TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
   ASSERT_EQ(escaped.finish_day(ACID), Result::Applied);
   ASSERT_EQ(escaped.escape(), Result::Applied);
   const auto before = escaped_world.snapshot();
-  EXPECT_EQ(escaped_exploration.advance(1s, IDLE, ACID), Result::Escaped);
+  EXPECT_EQ(escaped_exploration.advance(1s, IDLE, ACID), Result::RunOver);
   EXPECT_EQ(escaped_world.snapshot(), before);
   EXPECT_EQ(state_of_weak(escaped_world), ObjectState::Intact);
+}
+
+TEST(Exploration, AFullLoadStopsIngredientsForTheDayButNotToolsOrThePartner) {
+  constexpr ObjectId TOOLBOX{30};
+  auto objects = city();
+  objects.push_back({.id = TOOLBOX,
+                     .kind = ObjectKind::MaterialSource,
+                     .area = {.x = 1},
+                     .tool = ToolId{5}});
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 5},
+                      {.id = TOOLBOX, .remaining = 1}};
+  settings.daily_load = 1;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(objects);
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::LoadFull);
+  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 1U);
+  EXPECT_EQ(exploration.snapshot().sources.at(0).remaining, 4U);
+  EXPECT_EQ(exploration.collect(Actor::Chef, TOOLBOX),
+            CollectionResult::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
+            CollectionResult::Applied);
+
+  ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.return_to_base(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.finish_day({}), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+}
+
+TEST(Exploration, ADestroyedSourceKeepsItsStockOutOfReach) {
+  auto objects = city();
+  objects.at(1).destroyed_after = WorldThreshold{.acid = AcidLevel{5}};
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 3}};
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(objects);
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.advance(100ms, IDLE, AcidLevel{5}), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Unavailable);
+  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 1U);
+  EXPECT_EQ(exploration.snapshot().sources.at(0).remaining, 2U);
 }
 
 } // namespace

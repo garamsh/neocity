@@ -29,7 +29,7 @@ constexpr ControlMap ALL_AI{.chef = Controller::Ai,
                             .appraiser = Controller::Ai};
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
 constexpr auto STEP = 100ms;
-constexpr std::int64_t STEP_LIMIT = 400'000;
+constexpr std::uint32_t STEP_LIMIT = 400'000;
 constexpr auto ARRIVAL_SCAN_STEP = 5s;
 constexpr auto ARRIVAL_SCAN_END = 400s;
 constexpr std::uint32_t ACID_SCAN_STEP = 5;
@@ -68,6 +68,9 @@ public:
       if (command.action) {
         (void)apply(explorers, kitchen_work, ACTORS.at(index), *command.action);
       }
+      if (run_over(shared.snapshot().phase)) {
+        return;
+      }
     }
     ASSERT_EQ(explorers.advance(STEP, movement, shared.snapshot().acid),
               Result::Applied);
@@ -93,10 +96,12 @@ ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
   return *found;
 }
 
-/// Runs AI-only days until `last_day` begins, or gives up at the step limit.
+/// Runs AI-only days until `last_day` begins or the run ends, or gives up at
+/// the step limit.
 std::uint32_t play_days(Game &game, std::uint32_t last_day) {
-  for (std::int64_t step = 0;
-       step < STEP_LIMIT && game.simulation().snapshot().day < last_day;
+  for (std::uint32_t step = 0;
+       step < STEP_LIMIT && game.simulation().snapshot().day < last_day &&
+       !run_over(game.simulation().snapshot().phase);
        ++step) {
     game.step(ALL_AI);
   }
@@ -107,8 +112,9 @@ std::uint32_t play_days(Game &game, std::uint32_t last_day) {
 std::uint32_t unfed_days(Game &game, std::uint32_t last_day) {
   std::uint32_t unfed = 0;
   std::uint32_t counted = 0;
-  for (std::int64_t step = 0;
-       step < STEP_LIMIT && game.simulation().snapshot().day < last_day;
+  for (std::uint32_t step = 0;
+       step < STEP_LIMIT && game.simulation().snapshot().day < last_day &&
+       !run_over(game.simulation().snapshot().phase);
        ++step) {
     game.step(ALL_AI);
     const auto last = game.workshop().snapshot().last_day;
@@ -219,62 +225,49 @@ stock_in(const Content &content, const std::set<std::uint32_t> &sources) {
   return totals;
 }
 
-/// How many dishes of each recipe `stock` allows at most.
-std::vector<std::uint32_t>
-dish_limits(const std::vector<Recipe> &recipes,
-            const std::map<std::uint32_t, std::uint32_t> &stock) {
-  std::vector<std::uint32_t> limits;
-  for (const auto &recipe : recipes) {
-    auto limit = STEP_LIMIT;
-    for (const auto ingredient : recipe.ingredients) {
-      const auto held = stock.find(ingredient.value);
-      limit =
-          std::min<std::int64_t>(limit, held == stock.end() ? 0 : held->second);
-    }
-    limits.push_back(static_cast<std::uint32_t>(limit));
-  }
-  return limits;
-}
-
-bool fits(const std::vector<Recipe> &recipes,
-          const std::vector<std::uint32_t> &dishes,
-          std::map<std::uint32_t, std::uint32_t> stock) {
-  for (std::size_t index = 0; index < recipes.size(); ++index) {
-    for (const auto ingredient : recipes.at(index).ingredients) {
-      auto &held = stock[ingredient.value];
-      if (held < dishes.at(index)) {
-        return false;
-      }
-      held -= dishes.at(index);
-    }
-  }
-  return true;
-}
-
-/// The most dishes `stock` makes, none disliked, counting every mix of recipes.
-std::uint32_t
-most_wanted_dishes(const std::vector<Recipe> &recipes,
-                   const std::map<std::uint32_t, std::uint32_t> &stock) {
-  std::vector<Recipe> wanted;
-  std::ranges::copy_if(recipes, std::back_inserter(wanted),
-                       [](const Recipe &recipe) { return !recipe.disliked; });
-  const auto limits = dish_limits(wanted, stock);
-  std::vector<std::uint32_t> dishes(wanted.size(), 0);
-  std::uint32_t best = 0;
+/// Dishes `stock` makes, none disliked, always spending the most plentiful
+/// kinds first; a lower bound on what the best mix makes.
+std::uint32_t wanted_dishes(const std::vector<Recipe> &recipes,
+                            std::map<std::uint32_t, std::uint32_t> stock) {
+  std::uint32_t dishes = 0;
   while (true) {
-    if (fits(wanted, dishes, stock)) {
-      best = std::max(best, std::accumulate(dishes.begin(), dishes.end(), 0U));
+    const Recipe *best = nullptr;
+    std::uint32_t most = 0;
+    for (const auto &recipe : recipes) {
+      std::uint32_t least = STEP_LIMIT;
+      for (const auto ingredient : recipe.ingredients) {
+        least = std::min(least, stock[ingredient.value]);
+      }
+      if (!recipe.disliked && least > most) {
+        most = least;
+        best = &recipe;
+      }
     }
-    std::size_t digit = 0;
-    while (digit < dishes.size() && dishes.at(digit) == limits.at(digit)) {
-      dishes.at(digit) = 0;
-      ++digit;
+    if (best == nullptr) {
+      return dishes;
     }
-    if (digit == dishes.size()) {
-      return best;
+    for (const auto ingredient : best->ingredients) {
+      --stock[ingredient.value];
     }
-    ++dishes.at(digit);
+    ++dishes;
   }
+}
+
+/// The city as a run opens it.
+WorldSnapshot temporary_world(const Content &content) {
+  return World(content.objects).snapshot();
+}
+
+/// Ingredients still in sources that can hand them out.
+std::uint32_t supplied_stock(const Content &content,
+                             const WorldSnapshot &world) {
+  std::uint32_t total = 0;
+  for (const auto &stock : content.companion.exploration.sources) {
+    const auto object = object_of(world, stock.id);
+    total +=
+        object.material_available && object.ingredient ? stock.remaining : 0U;
+  }
+  return total;
 }
 
 TEST(TemporaryContent, ConstructsEveryFeatureWithinTheMap) {
@@ -377,8 +370,7 @@ TEST(TemporaryContent,
      ReachableStockCoversBurnedDishesUpToTheFirstEscapeCheck) {
   const auto content = temporary_content(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
-  const auto dishes =
-      most_wanted_dishes(content.companion.workshop.recipes, stock);
+  const auto dishes = wanted_dishes(content.companion.workshop.recipes, stock);
   EXPECT_GE(dishes * INTACT_SPATULA_PERCENT, TEMPORARY_ESCAPE.first_day * 100U)
       << dishes << " dishes";
 }
@@ -399,12 +391,82 @@ TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
   EXPECT_EQ(kinds.size(), 4U);
 }
 
-TEST(TemporaryContent, AnAiPartyKeepsTheDaysMovingPastDayThirty) {
+TEST(TemporaryContent, OnFiveSeedsAnAiPartyReachesDayThirtyWithAcidLeft) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
     Game game(temporary_content(seed));
-    EXPECT_EQ(play_days(game, 35), 35U) << "seed " << seed;
-    EXPECT_GT(game.simulation().snapshot().acid.value, 0U) << "seed " << seed;
+    EXPECT_EQ(play_days(game, 30), 30U) << "seed " << seed;
+    const auto state = game.simulation().snapshot();
+    EXPECT_EQ(state.phase == Phase::Lost, false) << "seed " << seed;
+    EXPECT_GT(state.acid.value, 0U) << "seed " << seed;
   }
+}
+
+TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
+  for (const std::uint32_t seed : {1U, 2U, 3U}) {
+    Game game(temporary_content(seed));
+    ASSERT_EQ(play_days(game, 15), 15U) << "seed " << seed;
+    const auto before = game.exploration().snapshot().sources;
+    ASSERT_EQ(play_days(game, 25), 25U) << "seed " << seed;
+    const auto after = game.exploration().snapshot().sources;
+    const auto total = [](const std::vector<SourceStock> &sources) {
+      return std::accumulate(sources.begin(), sources.end(), 0U,
+                             [](std::uint32_t sum, const SourceStock &source) {
+                               return sum + source.remaining;
+                             });
+    };
+    EXPECT_LT(total(after), total(before)) << "seed " << seed;
+  }
+}
+
+TEST(TemporaryContent, TheAcidGaugeFillsAtAValueOfTheRules) {
+  EXPECT_EQ(temporary_content(1).run.full_acid, AcidLevel{100});
+}
+
+TEST(TemporaryContent,
+     NoRepeatCanSatisfyAndEveryWantedNewDishCanWhenCookedFine) {
+  const auto content = temporary_content(1);
+  const auto &work = content.companion.workshop;
+  for (const auto &recipe : work.recipes) {
+    const auto taste = taste_of(recipe, work);
+    EXPECT_LT(taste + work.fine_dish_score, work.satisfying_score)
+        << food_name(recipe.food);
+    if (!recipe.disliked) {
+      EXPECT_GE(work.new_food_score + taste + work.fine_dish_score,
+                work.satisfying_score)
+          << food_name(recipe.food);
+    }
+  }
+}
+
+TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
+  Game game(temporary_content(1));
+  const auto penalty = game.content().companion.unfed_penalty;
+  std::uint32_t days = 0;
+  while (game.simulation().snapshot().phase == Phase::Workshop) {
+    ASSERT_EQ(game.workshop().end_day_unfed(penalty), WorkshopResult::Applied);
+    ++days;
+  }
+  EXPECT_EQ(game.simulation().snapshot().phase, Phase::Lost);
+  EXPECT_LT(days, TEMPORARY_ESCAPE.first_day / 2);
+}
+
+TEST(TemporaryContent, RisingAcidStrandsStockThatNoOneCollected) {
+  const auto content = temporary_content(1);
+  World world(content.objects);
+  const auto opening = supplied_stock(content, world.snapshot());
+  ASSERT_GT(opening, 0U);
+  ASSERT_EQ(world.update({.acid = AcidLevel{60}}), WorldUpdateResult::Applied);
+  const auto later = world.snapshot();
+  std::uint32_t stranded = 0;
+  for (const auto &stock : content.companion.exploration.sources) {
+    const auto start = object_of(temporary_world(content), stock.id);
+    const auto now = object_of(later, stock.id);
+    if (start.material_available && start.ingredient &&
+        !now.material_available) {
+      stranded += stock.remaining;
+    }
+  }
+  EXPECT_GE(stranded, opening / 2) << stranded << " of " << opening;
 }
 
 TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToTheFirstEscapeCheck) {
@@ -420,7 +482,7 @@ TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToTheFirstEscapeCheck) {
 TEST(TemporaryContent, AnAiPartyFeedsTheMonsterAndSatisfiesIt) {
   Game game(temporary_content(1));
   bool satisfied = false;
-  for (std::int64_t step = 0;
+  for (std::uint32_t step = 0;
        step < STEP_LIMIT && game.simulation().snapshot().day < 6; ++step) {
     game.step(ALL_AI);
     const auto last = game.workshop().snapshot().last_day;

@@ -150,8 +150,8 @@ Result Exploration::damage(Actor actor) {
 Result Exploration::advance(std::chrono::microseconds elapsed,
                             const std::array<ExplorationInput, 2> &inputs,
                             AcidLevel acid) {
-  if (simulation.get().snapshot().phase == Phase::Escaped) {
-    return Result::Escaped;
+  if (run_over(simulation.get().snapshot().phase)) {
+    return Result::RunOver;
   }
   const auto progression = world.get().snapshot().progression;
   const auto available = simulation.get().snapshot().remaining_exploration;
@@ -231,6 +231,11 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   }
   if (stock->remaining == 0) {
     return CollectionResult::Depleted;
+  }
+  if (object->ingredient &&
+      actor_state(simulation.get().snapshot(), actor).load >=
+          config.daily_load) {
+    return CollectionResult::LoadFull;
   }
   if (object->ingredient) {
     require_applied(simulation.get().collect(actor, *object->ingredient));

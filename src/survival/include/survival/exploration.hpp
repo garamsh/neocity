@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <vector>
 
 namespace neocity::survival {
@@ -42,13 +43,15 @@ struct SourceStock {
 };
 
 /// Temporary tuning: walking/running move one/two cells per 100ms tick.
-/// `collection_distance` also bounds repairs.
+/// `collection_distance` also bounds repairs. `daily_load` is how many
+/// ingredients one actor can collect in a day; tools do not count.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
   std::uint32_t maximum_stamina = 10;
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
+  std::uint32_t daily_load = std::numeric_limits<std::uint32_t>::max();
 };
 
 /// Current input only; no movement or collection requests are queued.
@@ -82,7 +85,8 @@ enum class CollectionResult : std::uint8_t {
   UnknownSource,
   Unavailable,
   OutOfRange,
-  Depleted
+  Depleted,
+  LoadFull
 };
 
 /// Coordinates existing progression/world commands; owns neither dependency.
@@ -100,7 +104,7 @@ public:
   [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// World time is advanced here only; acid is explicit until feeding is wired.
-  /// Answers `Result::Escaped` with no change once the party has escaped.
+  /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);

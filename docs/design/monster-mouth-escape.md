@@ -16,7 +16,9 @@ The baseline is the [body of parent #21](https://github.com/garamsh/neocity/issu
 | Ingredients and map | Ingredients come from vending machines, NPCs, shops, bags, and the like. Acid and time destroy NPCs, terrain, and objects, changing movement and supply. Buildings can drift in or disappear, and broken ladders and entrances are repaired with tools. |
 | Base roles | The appraiser appraises and the chef cooks. This screen has no separate health or stamina. |
 | Tools | An intact magnifier's appraisal accuracy and an intact spatula's cooking success rate are 90%, and 40% when damaged. Damage and events can damage them, and exploration finds new tools. |
-| Feeding | The monster wants new foods and ingredients. Repeats score low and can fall below the threshold. A disliked food causes rising acid and map damage. |
+| Feeding | The monster wants new foods and ingredients. Repeats score low and can fall below the threshold. A disliked food causes rising acid and map damage. New and delicious food holds the acid back, by stopping the rise and not by lowering it, and how delicious a dish is depends on its ingredients and the cooking result. |
+| Loss | [Acid reaching full loses the run](https://github.com/garamsh/neocity/issues/21#issuecomment-6566136667). Health exhaustion is not a loss, and no inventory is lost. |
+| AI partner | AI does the same work as a human under the same rules, and its share is not limited. |
 | Escape | After 30 days by default, a chance arises each day with some probability. Vomiting is a possible example, not a settled presentation. |
 
 ## Scope implemented on the foundation
@@ -42,13 +44,15 @@ The baseline is the [body of parent #21](https://github.com/garamsh/neocity/issu
 - Temporary, not settled: the screen is a `_draw` grid over a primitive monster mouth with the ascent sprites, and the concept images remain the art target. The map, recipes, stock, 45-second day, scores, acid rises, and key bindings are temporary content, and acid drips are a temporary hazard that makes health and tool damage reachable. [Survival](../architecture/survival.md#temporary-content) lists the values.
 - [Escape and endings #43](https://github.com/garamsh/neocity/issues/43) lets a game run from the main menu to an ending. After day 30 a daily check can end the run, an escaped run takes no further command, and the opening and ending have a playback contract for [#29](https://github.com/garamsh/neocity/issues/29) with a placeholder card while no art exists.
 - Temporary, not settled: the first check after day 30 finishes, the flat 20% chance, a hit being taken at once, the card text, and the card lengths. [Survival](../architecture/survival.md#temporary-escape-values) lists the values. The cause of the escape and the ending itself are undecided; vomiting stays an example.
+- [Acid loss #62](https://github.com/garamsh/neocity/issues/62) ends a run when acid reaches full, with a loss card under the same cinematic contract. On a day that both fills the acid and would roll an escape, the loss comes first. The score adds novelty, ingredient taste, and a fine dish's bonus; a satisfying meal stops the rise, and a meal below the threshold raises acid by its shortfall. Rising acid strands stock left in the sources it destroys.
+- Temporary, not settled: the formula and all its values, that half of a cook's success range is fine, a daily load of 2 ingredients per actor, the 11 recipes, which sources acid destroys, bags being carried away, the loss card's text and length, and the cook ranking and lacking-first collection that AI and the NEXT line share. [Survival](../architecture/survival.md#temporary-content) lists the values.
 - The public contract and per-feature file ownership plan are in the [survival architecture](../architecture/survival.md). The UI, keys, and numbers in the concept images are not settled requirements. The originals the parent issue cites are in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape).
 
 ## Open questions
 
 - The distinction between a base stay and actual cooking and the exploration clock, and detailed interaction when only one of the two actors is at base.
 - Exploration time length, stamina, speed, and damage tuning, inventory limits, and ingredient, recipe, and tool definitions.
-- Acid units, the final rise and suppression formulas, the pace of map change over time, and repair cost.
+- Acid units, the final rise and hold formulas, the pace of map change over time, and repair cost.
 - The final score threshold, the scope of repeated-food checks, tool damage conditions, next-day start conditions, the unfed penalty, how appraisal failure is expressed and its retry limits, and the final result of cooking failure.
 - The final escape probability after 30 days, whether it increases, check timing, how the chance is accepted, and the actual ending.
 - Save and restore, distribution targets, and release conditions.

@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>
 
@@ -11,7 +12,13 @@ namespace neocity::survival {
 enum class Actor : std::uint8_t { Chef, Appraiser };
 
 /// Workshop includes the base and untimed appraisal, cooking and feeding.
-enum class Phase : std::uint8_t { Workshop, Exploration, Escaped };
+/// Escaped and Lost each end the run.
+enum class Phase : std::uint8_t { Workshop, Exploration, Escaped, Lost };
+
+/// Whether `phase` has ended the run, so that no command changes state.
+[[nodiscard]] constexpr bool run_over(Phase phase) {
+  return phase == Phase::Escaped || phase == Phase::Lost;
+}
 
 /// Exhaustion relocates one actor without ending the other actor's exploration.
 enum class Location : std::uint8_t { Base, City };
@@ -35,22 +42,26 @@ struct AcidLevel {
 };
 
 /// Exploration health and carried items; workshop has no separate health.
-/// `exhaustions` counts the times this actor's health ran out.
+/// `exhaustions` counts the times this actor's health ran out, and `load` the
+/// ingredients it collected today.
 struct ActorSnapshot {
   Location location = Location::Base;
   std::uint8_t health = 3;
   std::vector<IngredientId> inventory;
   std::vector<ToolId> tools;
   std::uint32_t exhaustions = 0;
+  std::uint32_t load = 0;
   friend bool operator==(const ActorSnapshot &,
                          const ActorSnapshot &) = default;
 };
 
 /// Caller-supplied daily exploration budget and seed, with no production
-/// balance default.
+/// balance default. Acid reaching `full_acid` loses the run; left out, only the
+/// storage limit does.
 struct Config {
   std::chrono::microseconds exploration_budget;
   std::uint32_t seed;
+  AcidLevel full_acid{std::numeric_limits<std::uint32_t>::max()};
 };
 
 /// Value snapshot of one run; consumers cannot mutate the simulation through
@@ -75,14 +86,14 @@ enum class Result : std::uint8_t {
   NotInWorkshop,
   MissingIngredients,
   MissingTool,
-  Escaped
+  RunOver
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
 class Simulation {
 public:
   /// Starts day one at base; throws std::invalid_argument for a nonpositive
-  /// budget.
+  /// budget or full acid.
   explicit Simulation(Config config);
   /// Enters or re-enters the city using the existing time, inventory and
   /// health.
@@ -104,8 +115,9 @@ public:
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
   /// Removes one tool from the two inventories, the chef's first.
   [[nodiscard]] Result consume_tool(ToolId tool);
-  /// Raises acid, saturating at its limit, and starts the next day with a full
-  /// exploration budget.
+  /// Raises acid, stopping at full, and starts the next day with a full
+  /// exploration budget and empty loads. Full acid ends the run as lost, before
+  /// anything can act on the new day.
   [[nodiscard]] Result finish_day(AcidLevel acid_rise);
   /// Ends the run from the workshop; every later command leaves the snapshot
   /// unchanged.
@@ -119,6 +131,7 @@ private:
 
   Snapshot world;
   std::chrono::microseconds daily_budget;
+  AcidLevel full_acid;
 };
 
 } // namespace neocity::survival

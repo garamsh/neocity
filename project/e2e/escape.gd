@@ -16,6 +16,7 @@ const CARD_FRAME_MARGIN: int = 12
 const INTRO_CARD_FRAMES: int = 240
 const ENDING_CARD_FRAMES: int = 360
 const DAY_LIMIT: int = 120
+const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
 const SLOW_FRAME_MS: int = 500
 ## The intro card's 4 seconds at SLOW_FRAME_MS, and 4 frames of margin.
 const INTRO_CARD_SLOW_FRAMES: int = 12
@@ -24,6 +25,8 @@ var scene: AscentScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
 var failed: bool = false
+## Frames one survival step lasts: one on the 5 frames per second run.
+var step_frames: int = 6
 ## Keeps each taken-over resource alive; the cache forgets a path when it is freed.
 var stand_in: Resource
 var frame_seconds: float = 0.0
@@ -48,6 +51,7 @@ func _run() -> void:
 			quit(0)
 		return
 	if frame_seconds > 0.1:
+		step_frames = 1
 		await _slow_frames()
 		if not failed:
 			print("Escape slow frames: ", checks, " live checks passed.")
@@ -80,21 +84,25 @@ func _fallback_intro() -> void:
 	await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", 60)
 
 func _play_to_the_ending() -> void:
-	while _int("day") < 30:
-		await _end_day()
-	if not _check(_str("phase") == "workshop" and _int("escape_rolls") == 0, "no escape roll before day thirty finishes"):
+	while _int("day") < 30 and _str("phase") != "lost":
+		await _follow_next()
+	if not _check(_str("phase") == "workshop" or _str("phase") == "exploration", "following NEXT reaches day thirty with the acid below full"):
 		return
-	await _end_day()
+	if not _check(_int("escape_rolls") == 0, "no escape roll before day thirty finishes"):
+		return
+	while _int("day") == 30:
+		await _follow_next()
 	if not _check(_int("escape_rolls") == 1, "finishing day thirty rolls once"):
 		return
-	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
-		await _end_day()
+	await _follow_to_the_end()
 	if not _check(_str("phase") == "escaped", "a later day escapes"):
 		return
 	_check(_int("day") > 31 and _int("escape_rolls") == _int("day") - 30, "each finished day from thirty rolled once, with a miss before the hit")
 
 func _fallback_ending() -> void:
 	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the fallback card"):
+		return
+	if not _check(_str("dish_offered") == "", "an escaped party is offered no dish"):
 		return
 	var before: Dictionary = scene.survival_status()
 	await _tap(KEY_Q)
@@ -167,8 +175,7 @@ func _scene_ending() -> void:
 	ending.take_over_path(ENDING)
 	await _start()
 	await _tap(KEY_E)
-	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
-		await _end_day()
+	await _follow_to_the_end()
 	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "scene", "an ending asset plays as a scene"):
 		return
 	if not await _until("the ending scene reports its end", func() -> bool: return scene.screen_name() == "main", 120):
@@ -193,12 +200,8 @@ func _instant_ending(fixture: String) -> void:
 	_stand_in(load(fixture), ENDING)
 	await _start()
 	await _tap(KEY_E)
-	while scene.screen_name() != "main" and _int("day") < DAY_LIMIT:
-		var day: int = _int("day")
-		await _tap(KEY_G)
-		if not await _until("the day ends or the ending closes", func() -> bool: return scene.screen_name() == "main" or _int("day") == day + 1, 30):
-			return
-	_check(scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
+	await _follow_to_the_end()
+	_check(_int("escape_rolls") == 0 and scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 
 ## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
 ## would run in the frame that escaped.
@@ -207,8 +210,7 @@ func _slow_frames() -> void:
 	await _tap(KEY_E)
 	if not _check(_str("cinematic") == "", "E skips the card on slow frames"):
 		return
-	while _str("phase") != "escaped" and _int("day") < DAY_LIMIT:
-		await _end_day()
+	await _follow_to_the_end()
 	if not _check(_str("phase") == "escaped" and _str("cinematic") == "ending", "a slow frame opens the ending on the hit"):
 		return
 	_check(_int("day") == 33 and _int("escape_rolls") == 3, "a slow frame takes the same rolls to the same day")
@@ -242,10 +244,37 @@ func _start() -> void:
 func _leave() -> void:
 	await _tap(KEY_M)
 
-func _end_day() -> void:
-	var day: int = _int("day")
-	await _tap(KEY_G)
-	await _until("the day ends", func() -> bool: return _int("day") == day + 1, 30)
+## Plays on what NEXT says until the run ends: only following it holds the acid.
+func _follow_to_the_end() -> void:
+	while (_str("phase") == "workshop" or _str("phase") == "exploration") and _int("day") < DAY_LIMIT:
+		await _follow_next()
+
+## Presses the one key NEXT names, or lets the day run while it names none.
+func _follow_next() -> void:
+	var line: String = _str("next")
+	if line.contains("Set out") or line.contains("Nothing is within reach"):
+		await _tap(KEY_Q)
+	elif line.contains("[F] Feed"):
+		await _tap(KEY_F)
+	elif line.contains("[R] "):
+		await _tap(KEY_R)
+	elif line.contains("[G] "):
+		await _tap(KEY_G)
+	elif line.contains("[E] "):
+		await _tap(KEY_E)
+	elif line.contains("gold-framed"):
+		await _walk_a_cell()
+	else:
+		await _frames(step_frames)
+
+## Walks one cell along the route to the human's next errand: a press and release
+## in one frame walks one step at any frame length.
+func _walk_a_cell() -> void:
+	var code: Key = ROUTE_KEYS.get(_str("route"), KEY_NONE)
+	if code != KEY_NONE:
+		_key(code, true)
+		_key(code, false)
+	await _frames(step_frames)
 
 func _mounted() -> bool:
 	return scene.get_node_or_null("Cinematic") != null

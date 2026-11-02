@@ -232,15 +232,15 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   const auto rolls = escape.snapshot();
   ASSERT_EQ(progression.acid, ACID);
   ASSERT_EQ(city.peak_acid, AcidLevel{});
-  EXPECT_EQ(exploration.enter(Actor::Chef), Result::Escaped);
-  EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::Escaped);
+  EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.damage(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
   EXPECT_NE(exploration.repair(Actor::Chef, FLOOR, ToolId{20}),
             RepairResult::Applied);
-  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::Escaped);
+  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),
@@ -249,6 +249,82 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   EXPECT_EQ(workshop.end_day_unfed(AcidLevel{9}),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.replace_tool(WorkshopTool::Spatula),
+            WorkshopResult::NotInWorkshop);
+  workshop.damage_tool(WorkshopTool::Magnifier);
+  EXPECT_EQ(escape.check(), EscapeResult::NotDue);
+  EXPECT_EQ(simulation.snapshot(), progression);
+  EXPECT_EQ(world.snapshot(), city);
+  EXPECT_EQ(exploration.snapshot(), explored);
+  EXPECT_EQ(workshop.snapshot(), base);
+  EXPECT_EQ(escape.snapshot(), rolls);
+}
+
+TEST(Escape, ALossOnTheDayOfACheckComesFirstAndDrawsNothing) {
+  Simulation lost(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{30}});
+  Escape closed(lost, CERTAIN);
+  for (std::uint32_t day = 0; day < 30; ++day) {
+    ASSERT_EQ(lost.finish_day(AcidLevel{1}), Result::Applied);
+  }
+  ASSERT_EQ(lost.snapshot().phase, Phase::Lost);
+  EXPECT_EQ(closed.check(), EscapeResult::NotDue);
+  EXPECT_EQ(closed.snapshot().rolls, 0U);
+  EXPECT_EQ(lost.snapshot().phase, Phase::Lost);
+
+  // The control: one more unit of room and the same day's check escapes.
+  Simulation spared(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{31}});
+  Escape open(spared, CERTAIN);
+  for (std::uint32_t day = 0; day < 30; ++day) {
+    ASSERT_EQ(spared.finish_day(AcidLevel{1}), Result::Applied);
+  }
+  EXPECT_EQ(open.check(), EscapeResult::Escaped);
+  EXPECT_EQ(spared.snapshot().phase, Phase::Escaped);
+}
+
+TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 2, .full_acid = ACID});
+  World world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 8, .height = 1}},
+               {.id = SOURCE,
+                .kind = ObjectKind::MaterialSource,
+                .area = {.x = 1},
+                .ingredient = RICE}});
+  Exploration exploration(simulation, world,
+                          {.base = {.x = -5, .y = -5},
+                           .entry = {},
+                           .maximum_stamina = 2,
+                           .collection_distance = 2,
+                           .sources = {{.id = SOURCE}}});
+  // The control: entering and collecting apply before the loss.
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
+  Workshop workshop(simulation, balance());
+  Escape escape(simulation, {.first_day = 1, .chance_percent = 100});
+  ASSERT_EQ(workshop.end_day_unfed(ACID), WorkshopResult::Applied);
+  ASSERT_EQ(simulation.snapshot().phase, Phase::Lost);
+
+  const auto progression = simulation.snapshot();
+  const auto city = world.snapshot();
+  const auto explored = exploration.snapshot();
+  const auto base = workshop.snapshot();
+  const auto rolls = escape.snapshot();
+  EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
+  EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(exploration.damage(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::NotExploring);
+  EXPECT_NE(exploration.repair(Actor::Chef, FLOOR, ToolId{20}),
+            RepairResult::Applied);
+  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
+  EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.end_day_unfed(AcidLevel{9}),
             WorkshopResult::NotInWorkshop);
   workshop.damage_tool(WorkshopTool::Magnifier);
   EXPECT_EQ(escape.check(), EscapeResult::NotDue);

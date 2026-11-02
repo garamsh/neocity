@@ -48,10 +48,12 @@ struct WorldEvent {
 using Event =
     std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent, WorldEvent>;
 
-/// What one human's interact and feed keys would do right now.
+/// What one human's interact and feed keys would do right now, and the way AI
+/// would walk in that human's place: idle once the errand is in reach.
 struct Offers {
   std::optional<survival::Action> interact;
   std::optional<survival::Action> feed;
+  survival::Direction route = survival::Direction::Idle;
 };
 
 /// Everything one survival frame draws, read from snapshots.
@@ -65,8 +67,8 @@ struct SurvivalFrame {
   std::vector<Event> events;
 };
 
-/// The two authored moments of a run.
-enum class Cinematic : std::uint8_t { Intro, Ending };
+/// The authored moments of a run: its start and each way it can end.
+enum class Cinematic : std::uint8_t { Intro, Ending, Loss };
 
 /// Draws the choice of who plays which actor.
 void paint_survival_setup(godot::Node2D &canvas,

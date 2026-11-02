@@ -3,6 +3,8 @@
 
 #include <gtest/gtest.h>
 
+#include <utility>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -38,6 +40,15 @@ WorkshopConfig balance() {
       .satisfying_score = 12,
       .disliked_acid_rise = AcidLevel{7},
       .unsatisfied_acid_rise = AcidLevel{2}};
+}
+
+/// The stored dishes' foods, in storage order.
+std::vector<FoodId> stored(const Workshop &workshop) {
+  std::vector<FoodId> foods;
+  for (const auto &dish : workshop.snapshot().foods) {
+    foods.push_back(dish.food);
+  }
+  return foods;
 }
 
 /// Finds a seed whose first draw lands on the requested percentile.
@@ -131,7 +142,7 @@ TEST(Workshop, IntactSpatulaSucceedsThroughRoll89AndFailsAtRoll90) {
   ASSERT_EQ(succeeding.appraise(Actor::Appraiser, RICE),
             WorkshopResult::Applied);
   EXPECT_EQ(succeeding.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
-  EXPECT_EQ(succeeding.snapshot().foods, (std::vector<FoodId>{PORRIDGE}));
+  EXPECT_EQ(stored(succeeding), (std::vector<FoodId>{PORRIDGE}));
 
   auto at = carrying(seed_for_cook_roll(90), {RICE});
   Workshop failing(at, balance());
@@ -397,10 +408,9 @@ TEST(Workshop, FeedingSpendsOneDishAndKeepsTheOthersForLaterDays) {
   ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
-  ASSERT_EQ(workshop.snapshot().foods,
-            (std::vector<FoodId>{PORRIDGE, PORRIDGE}));
+  ASSERT_EQ(stored(workshop), (std::vector<FoodId>{PORRIDGE, PORRIDGE}));
   ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
-  EXPECT_EQ(workshop.snapshot().foods, (std::vector<FoodId>{PORRIDGE}));
+  EXPECT_EQ(stored(workshop), (std::vector<FoodId>{PORRIDGE}));
   EXPECT_EQ(workshop.snapshot().eaten_foods, (std::vector<FoodId>{PORRIDGE}));
   EXPECT_EQ(workshop.snapshot().eaten_ingredients,
             (std::vector<IngredientId>{RICE}));
@@ -689,6 +699,165 @@ TEST(Workshop, ToolDamageReachesEveryPhaseButTheEscapedOne) {
   ASSERT_EQ(simulation.escape(), Result::Applied);
   workshop.damage_tool(WorkshopTool::Spatula);
   EXPECT_EQ(workshop.snapshot().spatula, ToolState::Intact);
+}
+
+WorkshopConfig flavored() {
+  auto config = balance();
+  config.new_food_score = 10;
+  config.new_ingredient_score = 3;
+  config.satisfying_score = 20;
+  config.unsatisfied_acid_rise = AcidLevel{8};
+  config.flavors = {{.ingredient = RICE, .taste = 2},
+                    {.ingredient = EGG, .taste = 4}};
+  config.fine_dish_score = 5;
+  return config;
+}
+
+/// A seed whose appraisal draw succeeds and whose cook draw is `roll`.
+std::uint32_t seed_for_appraised_cook(std::uint32_t roll) {
+  for (std::uint32_t seed = 0;; ++seed) {
+    std::mt19937 engine(seed);
+    const auto first = engine() % 100U;
+    if (first < 90U && engine() % 100U == roll) {
+      return seed;
+    }
+  }
+}
+
+TEST(Workshop, TheLowerHalfOfTheSuccessRangeCooksAFineDish) {
+  for (const auto &[roll, quality] :
+       {std::pair{44U, DishQuality::Fine}, std::pair{45U, DishQuality::Plain},
+        std::pair{89U, DishQuality::Plain}}) {
+    auto simulation = carrying(seed_for_appraised_cook(roll), {RICE});
+    Workshop workshop(simulation, balance());
+    ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE),
+              WorkshopResult::Applied);
+    ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+    ASSERT_EQ(workshop.snapshot().foods.size(), 1U);
+    EXPECT_EQ(workshop.snapshot().foods.front().quality, quality);
+    EXPECT_EQ(workshop.snapshot().rolls, 2U);
+  }
+}
+
+TEST(Workshop, ADamagedSpatulaCooksFewerFineDishes) {
+  auto simulation = carrying(seed_for_appraised_cook(25), {RICE});
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  workshop.damage_tool(WorkshopTool::Spatula);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.snapshot().foods.size(), 1U);
+  EXPECT_EQ(workshop.snapshot().foods.front().quality, DishQuality::Plain);
+}
+
+TEST(Workshop, TheScoreAddsNoveltyTasteAndTheCookingResult) {
+  auto plain = carrying(seed_for_appraised_cook(50), {RICE});
+  Workshop plain_kitchen(plain, flavored());
+  ASSERT_EQ(plain_kitchen.appraise(Actor::Appraiser, RICE),
+            WorkshopResult::Applied);
+  ASSERT_EQ(plain_kitchen.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(plain_kitchen.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(plain_kitchen).score, 10U + 3U + 2U);
+
+  auto fine = carrying(seed_for_appraised_cook(10), {RICE});
+  Workshop fine_kitchen(fine, flavored());
+  ASSERT_EQ(fine_kitchen.appraise(Actor::Appraiser, RICE),
+            WorkshopResult::Applied);
+  ASSERT_EQ(fine_kitchen.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(fine_kitchen.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(fine_kitchen).score, 10U + 3U + 2U + 5U);
+}
+
+TEST(Workshop, TasteCountsEveryIngredientOfARecipe) {
+  const auto config = flavored();
+  EXPECT_EQ(taste_of(config.recipes.at(1), config), 2U + 4U);
+  EXPECT_EQ(taste_of(config.recipes.at(2), config), 0U);
+}
+
+TEST(Workshop, ASatisfyingMealHoldsTheAcidWithoutLoweringIt) {
+  auto simulation = carrying(seed_for_appraised_cook(10), {RICE});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{6}), Result::Applied);
+  Workshop workshop(simulation, flavored());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(workshop).reaction, MonsterReaction::Satisfied);
+  EXPECT_EQ(last_day(workshop).acid_rise, AcidLevel{});
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{6});
+}
+
+TEST(Workshop, BelowTheThresholdAcidRisesWithTheShortfallRoundedUp) {
+  auto simulation = carrying(seed_for_appraised_cook(50), {RICE});
+  Workshop workshop(simulation, flavored());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(workshop).score, 15U);
+  EXPECT_EQ(last_day(workshop).reaction, MonsterReaction::Unsatisfied);
+  EXPECT_EQ(last_day(workshop).acid_rise, AcidLevel{2});
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{2});
+}
+
+TEST(Workshop, ARepeatOfTheSameDishRaisesMoreThanItsFirstServing) {
+  auto simulation = carrying(lucky_seed(), {RICE, RICE});
+  auto config = flavored();
+  config.satisfying_score = 100;
+  Workshop workshop(simulation, config);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  const auto first = last_day(workshop);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  const auto repeat = last_day(workshop);
+  EXPECT_LT(repeat.score, first.score);
+  EXPECT_GT(repeat.acid_rise.value, first.acid_rise.value);
+}
+
+TEST(Workshop, ADislikedFoodIsRememberedAndAWantedOneIsNot) {
+  auto simulation = carrying(lucky_seed(), {CHILI, RICE});
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, CHILI),
+            WorkshopResult::Applied);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, CURRY), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_TRUE(workshop.snapshot().rejected_foods.empty());
+  ASSERT_EQ(workshop.feed(CURRY), WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().rejected_foods, (std::vector<FoodId>{CURRY}));
+}
+
+TEST(Workshop, TheMealThatFillsTheAcidIsRecordedAndNothingFollows) {
+  Simulation simulation({.exploration_budget = 10s,
+                         .seed = lucky_seed(),
+                         .full_acid = AcidLevel{7}});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, CHILI), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, CHILI),
+            WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, CURRY), WorkshopResult::Applied);
+  // The control: the role and the dish are accepted before the loss.
+  ASSERT_EQ(workshop.feed(CURRY), WorkshopResult::Applied);
+  ASSERT_EQ(simulation.snapshot().phase, Phase::Lost);
+  EXPECT_EQ(last_day(workshop).reaction, MonsterReaction::Disliked);
+
+  const auto progression = simulation.snapshot();
+  const auto kitchen = workshop.snapshot();
+  EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.feed(CURRY), WorkshopResult::NoFood);
+  EXPECT_EQ(workshop.end_day_unfed(AcidLevel{1}),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Spatula),
+            WorkshopResult::NotInWorkshop);
+  workshop.damage_tool(WorkshopTool::Spatula);
+  EXPECT_EQ(simulation.snapshot(), progression);
+  EXPECT_EQ(workshop.snapshot(), kitchen);
 }
 
 } // namespace

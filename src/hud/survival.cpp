@@ -34,8 +34,6 @@ using survival::Location;
 using survival::Phase;
 
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
-/// The acid level drawn as a full gauge; the rules have no such cap.
-constexpr std::uint32_t FULL_ACID = 100;
 constexpr float CARD_Y = 588.0F;
 constexpr float CARD_WIDTH = 276.0F;
 constexpr float CARD_HEIGHT = 84.0F;
@@ -230,17 +228,21 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
       action);
 }
 
-/// Where `actor` has something to do: a stocked source that is supplying, or a
-/// broken passage it carries the tool for.
-std::vector<survival::WorldArea> errand_areas(const GameView &view,
+/// Where `actor` has something to do: a stocked source that is supplying and
+/// that it can still take from today, or a broken passage it carries the tool
+/// for.
+std::vector<survival::WorldArea> errand_areas(const SurvivalFrame &frame,
                                               Actor actor) {
+  const auto &view = frame.view;
+  const bool load_left = state_of(view, actor).load <
+                         frame.content.get().companion.exploration.daily_load;
   std::vector<survival::WorldArea> areas;
   const auto &objects = view.world.objects;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
     if (stock.remaining > 0 && object != objects.end() &&
-        object->material_available) {
+        object->material_available && (object->tool || load_left)) {
       areas.push_back(object->area);
     }
   }
@@ -258,7 +260,7 @@ std::vector<survival::WorldArea> errand_areas(const GameView &view,
 /// Searches outward from `from` over the cells movement allows.
 bool errand_in_reach(const SurvivalFrame &frame, Actor actor,
                      GridPosition from) {
-  const auto areas = errand_areas(frame.view, actor);
+  const auto areas = errand_areas(frame, actor);
   const auto range =
       frame.content.get().companion.exploration.collection_distance;
   std::set<std::pair<std::int32_t, std::int32_t>> seen{{from.x, from.y}};
@@ -310,9 +312,13 @@ bool worth_setting_out(const SurvivalFrame &frame) {
 
 String city_step(const SurvivalFrame &frame, Actor actor,
                  const KeyLabels &keys) {
-  const auto &offer = frame.offers.at(index_of(actor)).interact;
-  if (offer) {
-    return offered_step(*offer, keys);
+  const auto &offers = frame.offers.at(index_of(actor));
+  // A source passed on the way to what the party lacks would spend the load.
+  const bool passing =
+      offers.route != survival::Direction::Idle && offers.interact &&
+      std::holds_alternative<survival::Collect>(*offers.interact);
+  if (offers.interact && !passing) {
+    return offered_step(*offers.interact, keys);
   }
   if (!errand_in_reach(frame, actor, position_of(frame.view, actor))) {
     return "Nothing is within reach for now. " + from(keys.travel) +
@@ -400,6 +406,11 @@ String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
          number(frame.content.get().companion.unfed_penalty.value) + ".";
 }
 
+float acid_ratio(const SurvivalFrame &frame) {
+  return static_cast<float>(frame.view.progression.acid.value) /
+         static_cast<float>(frame.content.get().run.full_acid.value);
+}
+
 void bar(godot::Node2D &canvas, float x, float y, float width, float height,
          float fill, godot::Color tint) {
   canvas.draw_rect(rect(x, y, width, height), color(44, 40, 66, 1.0F));
@@ -423,13 +434,12 @@ void paint_top_bar(godot::Node2D &canvas,
   drawing.text(canvas, 24.0F, 42.0F, "DAY " + number(progression.day), 30,
                tones.gold);
   drawing.text(canvas, 190.0F, 40.0F, "ACID", 24, color(150, 255, 120, 1.0F));
-  bar(canvas, 262.0F, 20.0F, 440.0F, 24.0F,
-      static_cast<float>(progression.acid.value) /
-          static_cast<float>(FULL_ACID),
+  bar(canvas, 262.0F, 20.0F, 440.0F, 24.0F, acid_ratio(frame),
       color(90, 226, 80, 1.0F));
   drawing.text(canvas, 716.0F, 40.0F,
-               number(progression.acid.value) + " / " + number(FULL_ACID), 22,
-               tones.white);
+               number(progression.acid.value) + " / " +
+                   number(frame.content.get().run.full_acid.value),
+               22, tones.white);
   drawing.text(canvas, 880.0F, 40.0F, "TIME LEFT", 20, tones.muted);
   drawing.text(canvas, 990.0F, 44.0F, clock(progression.remaining_exploration),
                32, tones.white);
@@ -468,6 +478,10 @@ void paint_actor_card(godot::Node2D &canvas,
   drawing.text(canvas, x + 196.0F, CARD_Y + 22.0F,
                state.location == Location::City ? "in city" : "at base", 15,
                state.location == Location::City ? tones.cyan : tones.gold);
+  drawing.text(canvas, x + 196.0F, CARD_Y + 60.0F,
+               "Load " + number(state.load) + "/" +
+                   number(frame.content.get().companion.exploration.daily_load),
+               15, tones.muted);
   paint_hearts(canvas, x + 72.0F, CARD_Y + 29.0F, state.health);
   bar(canvas, x + 146.0F, CARD_Y + 31.0F, 120.0F, 10.0F, stamina,
       color(96, 200, 250, 1.0F));
@@ -690,23 +704,31 @@ void paint_cook_panel(godot::Node2D &canvas,
                String("Spatula ") +
                    tool_condition(role_tool_state(view, Actor::Chef)),
                16, tones.muted);
+  drawing.text(canvas, x + 362.0F, PANEL_Y + 30.0F, "Taste", 14, tones.muted);
   float y = PANEL_Y + 60.0F;
   const auto offered = offered_dish(frame);
-  for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
+  const auto &tuning = frame.content.get().companion.workshop;
+  for (const auto &recipe : tuning.recipes) {
     const auto missing = recipe_status(view, recipe);
     if (offered == recipe.food) {
       drawing.text(canvas, x + 3.0F, y, ">", 18, tones.gold);
     }
     const auto &eaten = view.workshop.eaten_foods;
+    const auto &rejected = view.workshop.rejected_foods;
     const bool repeat = std::ranges::find(eaten, recipe.food) != eaten.end();
+    const bool hated =
+        std::ranges::find(rejected, recipe.food) != rejected.end();
     drawing.text(canvas, x + 14.0F, y, from(survival::food_name(recipe.food)),
                  18, tones.white);
     drawing.text(canvas, x + 170.0F, y,
                  missing.is_empty() ? String("ready") : missing, 16,
                  missing.is_empty() ? tones.cyan : tones.muted);
     if (repeat) {
-      drawing.text(canvas, x + 340.0F, y, "eaten", 16, tones.gold);
+      drawing.text(canvas, x + 324.0F, y, hated ? "hated" : "eaten", 16,
+                   tones.gold);
     }
+    drawing.text(canvas, x + 372.0F, y,
+                 number(survival::taste_of(recipe, tuning)), 16, tones.muted);
     y += 25.0F;
   }
 }
@@ -748,15 +770,19 @@ void paint_feed_panel(godot::Node2D &canvas,
                  18, tones.muted);
     y += 25.0F;
   }
-  for (const auto food : workshop.foods) {
-    drawing.text(canvas, x + 14.0F, y, from(survival::food_name(food)), 18,
-                 tones.cyan);
+  for (const auto &dish : workshop.foods) {
+    drawing.text(canvas, x + 14.0F, y,
+                 from(survival::food_name(dish.food)) +
+                     (dish.quality == survival::DishQuality::Fine
+                          ? String(" (fine)")
+                          : String()),
+                 18, tones.cyan);
     y += 25.0F;
   }
   drawing.text(canvas, x + 14.0F, y + 12.0F,
-               "It craves new dishes and ingredients.", 16, tones.muted);
+               "New and delicious food holds the acid back.", 16, tones.muted);
   drawing.text(canvas, x + 14.0F, y + 34.0F,
-               "A rejected meal raises acid and wrecks the city.", 16,
+               "Anything else raises it. Full acid ends the run.", 16,
                tones.muted);
   if (workshop.last_day) {
     const auto &last = *workshop.last_day;
@@ -805,7 +831,7 @@ String refusal_text(survival::Result result) {
   case survival::Result::NotInWorkshop:
   case survival::Result::MissingIngredients:
   case survival::Result::MissingTool:
-  case survival::Result::Escaped:
+  case survival::Result::RunOver:
     return "That cannot be done now.";
   }
   std::abort();
@@ -819,6 +845,8 @@ String refusal_text(survival::CollectionResult result) {
     return "That source is empty.";
   case survival::CollectionResult::Unavailable:
     return "That source is gone.";
+  case survival::CollectionResult::LoadFull:
+    return "That is all you can carry today.";
   case survival::CollectionResult::OutOfRange:
     return "Move closer.";
   case survival::CollectionResult::NotExploring:
@@ -944,8 +972,7 @@ void paint_survival(godot::Node2D &canvas,
                     const rendering::AscentDrawing &drawing,
                     const SurvivalFrame &frame) {
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, static_cast<float>(progression.acid.value) /
-                                     static_cast<float>(FULL_ACID));
+  rendering::paint_mouth(canvas, acid_ratio(frame));
   if (progression.phase == Phase::Exploration) {
     paint_city_screen(canvas, drawing, frame);
   } else {
@@ -965,8 +992,7 @@ void paint_cinematic(godot::Node2D &canvas,
   }
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, static_cast<float>(progression.acid.value) /
-                                     static_cast<float>(FULL_ACID));
+  rendering::paint_mouth(canvas, acid_ratio(frame));
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
   drawing.sprite(canvas, 0, rect(130.0F, 300.0F, 130.0F, 150.0F), false);
   drawing.sprite(canvas, 2, rect(280.0F, 300.0F, 130.0F, 150.0F), false);
@@ -981,6 +1007,14 @@ void paint_cinematic(godot::Node2D &canvas,
     drawing.text(canvas, 130.0F, 170.0F, "ESCAPED", 46, tones.gold);
     drawing.text(canvas, 130.0F, 230.0F,
                  "The party got out of the monster after " +
+                     number(progression.day - 1) + String(" days."),
+                 24, tones.white);
+    break;
+  case Cinematic::Loss:
+    drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 46,
+                 color(150, 255, 120, 1.0F));
+    drawing.text(canvas, 130.0F, 230.0F,
+                 "The acid filled the monster's mouth after " +
                      number(progression.day - 1) + String(" days."),
                  24, tones.white);
     break;
@@ -1000,6 +1034,9 @@ String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   if (view.progression.phase == Phase::Escaped) {
     return "The party has escaped.";
+  }
+  if (view.progression.phase == Phase::Lost) {
+    return "The acid has filled the mouth.";
   }
   if (view.progression.phase == Phase::Workshop) {
     return workshop_step(frame, KEY_LABELS.at(0));
