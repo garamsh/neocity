@@ -27,7 +27,6 @@ struct ControlMap {
 /// both.
 [[nodiscard]] ControlMap switch_control(ControlMap control);
 /// A human leaves locally: AI continues that actor from its current state.
-/// Online host succession is not modelled.
 [[nodiscard]] ControlMap leave(ControlMap control, Actor actor);
 /// The local key set driving an actor, or nothing under AI. A lone human holds
 /// the first set on either actor; two humans hold one set per actor.
