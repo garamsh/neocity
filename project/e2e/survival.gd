@@ -27,9 +27,15 @@ var held: Dictionary[Key, bool] = {}
 var checks: int = 0
 var failed: bool = false
 var walker: String = "chef"
+var awaiting_quit: bool = false
 
 func _initialize() -> void:
 	_run.call_deferred()
+
+## Only the game's own quit reaches here with the pass line owed.
+func _finalize() -> void:
+	if awaiting_quit and not failed:
+		print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -65,11 +71,156 @@ func _run() -> void:
 	if not failed:
 		await _two_players()
 	if not failed:
+		await _pause_and_leave()
+	if not failed:
+		await _hand_off_shows_the_keys_left()
+	if not failed:
 		await _loss_clears_the_offer()
-	if failed:
+	if not failed:
+		await _main_menu_quits()
+
+## Real keys: Esc, M and Enter over a run, and over a cinematic.
+func _pause_and_leave() -> void:
+	await _leave_run()
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("cinematic") == "intro" and _str("interruption") == "", "Esc does not pause a cinematic"):
 		return
-	print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).")
-	quit(0)
+	await _tap(KEY_M)
+	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "M during a cinematic leaves at once"):
+		return
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
+		return
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "paused", "Esc pauses the run"):
+		return
+	var keys: String = str(_lines("pause_keys"))
+	if not _check(keys.contains("Run: Shift") and keys.contains("Swap actor: Tab") and keys.contains("WASD or arrows"), "the pause screen lists one player's keys: %s" % keys):
+		return
+	if not _check(not keys.contains("Hand your actor") and not keys.contains("IJKL"), "the pause screen leaves out keys one player cannot use: %s" % keys):
+		return
+	if not _text_fits("the pause screen for one player"):
+		return
+	var day: int = _int("day")
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "", "Esc continues the run"):
+		return
+	await _tap(KEY_M)
+	if not _check(_str("interruption") == "confirm_leave" and scene.screen_name() == "survival", "M asks before ending a run"):
+		return
+	if not _check(str(_lines("prompt")).contains("not saved"), "the question says progress is not saved"):
+		return
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "" and _int("day") == day and _where("chef") == "city", "Esc keeps the run"):
+		return
+	await _tap(KEY_M)
+	_key(KEY_ENTER, true)
+	await _frames(4)
+	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "Enter ends the run for the main menu"):
+		return
+	await _tap(KEY_1)
+	if not _check(scene.screen_name() == "main", "Enter held into the main menu holds its keys back"):
+		return
+	_key(KEY_ENTER, false)
+	await _frames(4)
+	await _tap(KEY_1)
+	if not _check(scene.screen_name() == "survival_setup", "the main menu answers once Enter is up"):
+		return
+	await _tap(KEY_M)
+
+## Player two's keys cross a pause, then each hand-off shows the keys left.
+func _hand_off_shows_the_keys_left() -> void:
+	await _start_two_players()
+	if not _check(_str("hand_off") == "", "no notice while both players remain"):
+		return
+	await _tap(KEY_ESCAPE)
+	var keys: String = str(_lines("pause_keys"))
+	for row: String in ["Run: Shift / H", "Hand your actor to AI: X / N", "Swap actor, once one player is left: Tab / none", "Move: WASD or arrows / IJKL"]:
+		if not _check(keys.contains(row), "the pause screen for two lists %s" % row):
+			return
+	if not _text_fits("the pause screen for two players"):
+		return
+	_key(KEY_U, true)
+	await _frames(12)
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "resuming", "player two's held key holds the resume"):
+		return
+	await _frames(12)
+	_key(KEY_U, false)
+	await _frames(30)
+	if not _check(_str("interruption") == "" and _where("appraiser") == "base", "player two's key held across a pause does not act"):
+		return
+	await _tap(KEY_U)
+	if not await _until("player two sets out with a fresh press", func() -> bool: return _where("appraiser") == "city", 30):
+		return
+	await _tap(KEY_X)
+	if not await _until("player one hands off", func() -> bool: return _actor("chef", "key_set") == -1, 30):
+		return
+	if not _check(_actor("appraiser", "key_set") == 0, "the player left moves to the first key set"):
+		return
+	if not _check(_str("hand_off").contains("Appraiser") and _str("hand_off").contains("WASD move") and _str("hand_off").contains("Tab swap"), "the screen names the keys of the player left"):
+		return
+	if not _text_fits("the hand-off notice"):
+		return
+	var x: int = _actor("appraiser", "x")
+	_key(KEY_L, true)
+	await _frames(30)
+	_key(KEY_L, false)
+	if not _check(_actor("appraiser", "x") == x, "the second key set no longer moves the appraiser"):
+		return
+	_key(KEY_D, true)
+	var walked: bool = await _until("the first key set moves the appraiser", func() -> bool: return _actor("appraiser", "x") > x, 30)
+	_key(KEY_D, false)
+	if not walked:
+		return
+	await _tap(KEY_ESCAPE)
+	keys = str(_lines("pause_keys"))
+	if not _check(keys.contains("Swap actor: Tab") and not keys.contains("IJKL"), "the pause screen follows the hand-off: %s" % keys):
+		return
+	await _tap(KEY_ESCAPE)
+	await _start_two_players()
+	await _tap(KEY_N)
+	if not await _until("player two hands off", func() -> bool: return _actor("appraiser", "key_set") == -1, 30):
+		return
+	if not _check(_str("hand_off").contains("Chef") and _str("hand_off").contains("WASD move"), "the chef's player is told the keys too"):
+		return
+	await _tap(KEY_TAB)
+	if not await _until("the player left swaps", func() -> bool: return _actor("chef", "key_set") == -1, 30):
+		return
+	if not _check(_str("hand_off").contains("Appraiser"), "the notice follows a swap"):
+		return
+	await _leave_run()
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_TAB)
+	if not await _until("one player swaps", func() -> bool: return _actor("chef", "key_set") == -1, 30):
+		return
+	_check(_str("hand_off") == "", "one player from the start gets no hand-off notice")
+
+func _start_two_players() -> void:
+	await _leave_run()
+	await _tap(KEY_1)
+	await _tap(KEY_3)
+	await _tap(KEY_E)
+
+## 4 ends the application: the pass line prints from `_finalize` only.
+func _main_menu_quits() -> void:
+	await _leave_run()
+	if not _check(scene.screen_name() == "main", "back at the main menu"):
+		return
+	await _tap(KEY_5)
+	if not _check(scene.screen_name() == "main", "a number with no entry does nothing"):
+		return
+	awaiting_quit = true
+	await _tap(KEY_4)
+	await _frames(30)
+	_check(false, "4 on the main menu quits")
 
 func _menus() -> void:
 	await _tap(KEY_1)
@@ -299,7 +450,7 @@ func _second_day() -> void:
 	_check(_int("eaten") == 2 and _str("reaction") == "satisfied", "a second new dish satisfies the monster")
 
 func _chef_chooses_a_dish() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	await _tap(KEY_1)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -327,6 +478,14 @@ func _chef_chooses_a_dish() -> void:
 	_key(KEY_S, false)
 	await _frames(8)
 	if not _check(_actor("chef", "key_set") == 0 and unmoved == first, "a key held through the swap chooses nothing"):
+		return
+	_key(KEY_S, true)
+	await _frames(1)
+	_key(KEY_S, false)
+	await _tap(KEY_ESCAPE)
+	await _tap(KEY_ESCAPE)
+	await _frames(12)
+	if not _check(_str("dish_offered") == first, "a dish press pending when the pause opens chooses nothing"):
 		return
 	_key(KEY_S, true)
 	await _frames(30)
@@ -433,7 +592,7 @@ func _set_out_before_feeding() -> void:
 
 ## Plays on what NEXT says alone until the stock is gone.
 func _follow_next_to_the_last_dish() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	await _tap(KEY_1)
 	scene.pin_survival_seed(LONG_RUN_SEED)
 	await _tap(KEY_1)
@@ -451,7 +610,7 @@ func _follow_next_to_the_last_dish() -> void:
 ## A repair is an errand only towards stock, so a wrench in hand does not keep
 ## the line setting out once the broken passages lead to nothing.
 func _wrench_stops_setting_out_with_no_stock_behind() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	await _tap(KEY_1)
 	scene.pin_survival_seed(WRENCH_SEED)
 	await _tap(KEY_1)
@@ -567,7 +726,7 @@ func _collect_from_the_washed_up_bag() -> void:
 	await _until("the party is home from the bag", func() -> bool: return _str("phase") == "workshop", 120)
 
 func _appraiser_run() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "M ends the run"):
 		return
 	await _tap(KEY_1)
@@ -615,7 +774,7 @@ func _appraiser_run() -> void:
 
 ## An AI chef cooks a step after the last appraisal, so NEXT must not end that day.
 func _appraiser_follows_next() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	await _tap(KEY_1)
 	await _tap(KEY_2)
 	await _tap(KEY_E)
@@ -663,10 +822,7 @@ func _human_repairs_the_ladder() -> void:
 
 ## The second key set's own keys, which the timing checks inject past.
 func _two_players() -> void:
-	await _tap(KEY_M)
-	await _tap(KEY_1)
-	await _tap(KEY_3)
-	await _tap(KEY_E)
+	await _start_two_players()
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
 	await _tap(KEY_U)
@@ -699,7 +855,7 @@ func _two_players() -> void:
 	await _until("player two ends the day", func() -> bool: return _int("day") == 2, 30)
 
 func _loss_clears_the_offer() -> void:
-	await _tap(KEY_M)
+	await _leave_run()
 	await _tap(KEY_1)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -821,6 +977,11 @@ func _until(name: String, condition: Callable, limit: int) -> bool:
 			return true
 		await process_frame
 	return _check(false, name)
+
+## M asks first mid-run; Enter accepts.
+func _leave_run() -> void:
+	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

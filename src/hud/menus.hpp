@@ -7,8 +7,8 @@
 
 namespace neocity::hud {
 
-/// Draws the start screen: the survival game, the developer page, and the
-/// ascent prototype.
+/// Draws the start screen: the survival game, the developer page, the ascent
+/// prototype, and quitting.
 void paint_main_menu(godot::Node2D &canvas,
                      const rendering::AscentDrawing &drawing);
 /// Draws the developer page listing every registered experiment.

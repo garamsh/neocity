@@ -4,6 +4,9 @@
 #include "../hud/menus.hpp"
 #include "../hud/survival.hpp"
 
+#include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
+
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -62,6 +65,29 @@ const char *cinematic_name(hud::Cinematic cinematic) {
   std::abort();
 }
 
+const char *interruption_name(hud::Interruption interruption) {
+  switch (interruption) {
+  case hud::Interruption::Paused:
+    return "paused";
+  case hud::Interruption::ConfirmLeave:
+  case hud::Interruption::ConfirmLeaveFromPause:
+    return "confirm_leave";
+  case hud::Interruption::Resuming:
+    return "resuming";
+  }
+  std::abort();
+}
+
+/// Ends the application; the running host's main loop is always its SceneTree.
+void quit_game() {
+  auto *tree = godot::Object::cast_to<godot::SceneTree>(
+      godot::Engine::get_singleton()->get_main_loop());
+  if (tree == nullptr) {
+    std::abort();
+  }
+  tree->quit();
+}
+
 } // namespace
 
 Session::Session(gameplay::AscentEngine &ascent_engine,
@@ -86,6 +112,7 @@ void Session::enter(Screen destination) {
   screen = destination;
   reset();
   run.reset();
+  interruption.reset();
   accumulator = 0.0;
   pending = {};
   waiting_for_release = true;
@@ -100,6 +127,8 @@ void Session::choose(std::size_t option) {
       enter(Screen::Developer);
     } else if (option == 3) {
       enter(Screen::Ascent);
+    } else if (option == 4) {
+      quit_game();
     }
     return;
   case Screen::SurvivalSetup:
@@ -171,13 +200,23 @@ void Session::finish_cinematic(hud::Cinematic cinematic) {
 }
 
 void Session::advance(double delta, Command command) {
+  if (interruption) {
+    advance_interruption(*interruption, command);
+    return;
+  }
   if (command.menu) {
     switch (screen) {
     case Screen::Main:
       break;
+    case Screen::Survival:
+      // Mid-run the key asks first, in advance_run.
+      if (!playback) {
+        break;
+      }
+      enter(Screen::Main);
+      return;
     case Screen::Developer:
     case Screen::SurvivalSetup:
-    case Screen::Survival:
     case Screen::Ascent:
       enter(Screen::Main);
       return;
@@ -206,12 +245,7 @@ void Session::advance(double delta, Command command) {
     return;
   }
   if (run) {
-    run->advance(delta, command.survival, command.dish_step);
-    if (run->escaped()) {
-      play(hud::Cinematic::Ending);
-    } else if (run->lost()) {
-      play(hud::Cinematic::Loss);
-    }
+    advance_run(delta, command);
   }
   if (screen == Screen::Ascent) {
     pending.horizontal = command.ascent.horizontal;
@@ -225,6 +259,65 @@ void Session::advance(double delta, Command command) {
         pending.retry_pressed || command.ascent.retry_pressed;
     tick_ascent(delta);
   }
+}
+
+// The frame of the press was played up to it, so it spends its time, but no key
+// pressed before the run stopped may act once it continues.
+void Session::advance_run(double delta, const Command &command) {
+  std::optional<hud::Interruption> opening;
+  if (command.menu) {
+    opening = hud::Interruption::ConfirmLeave;
+  } else if (command.pause) {
+    opening = hud::Interruption::Paused;
+  }
+  if (opening) {
+    run->drop_input();
+    run->advance(delta, {}, survival::Direction::Idle);
+  } else {
+    run->advance(delta, command.survival, command.dish_step);
+  }
+  if (run->escaped()) {
+    play(hud::Cinematic::Ending);
+  } else if (run->lost()) {
+    play(hud::Cinematic::Loss);
+  } else {
+    interruption = opening;
+  }
+}
+
+// The run takes no key and no time here; a held key is waited out before it
+// continues, under the same rule as a transition.
+void Session::advance_interruption(hud::Interruption open,
+                                   const Command &command) {
+  switch (open) {
+  case hud::Interruption::Paused:
+    if (command.pause) {
+      interruption = hud::Interruption::Resuming;
+    } else if (command.menu) {
+      interruption = hud::Interruption::ConfirmLeaveFromPause;
+    }
+    return;
+  case hud::Interruption::ConfirmLeave:
+    if (command.confirm) {
+      enter(Screen::Main);
+    } else if (command.pause) {
+      interruption = hud::Interruption::Resuming;
+    }
+    return;
+  case hud::Interruption::ConfirmLeaveFromPause:
+    if (command.confirm) {
+      enter(Screen::Main);
+    } else if (command.pause) {
+      interruption = hud::Interruption::Paused;
+    }
+    return;
+  case hud::Interruption::Resuming:
+    if (!command.controls_held) {
+      interruption.reset();
+    }
+    return;
+  }
+  std::abort();
 }
 
 void Session::tick_ascent(double delta) {
@@ -260,7 +353,11 @@ void Session::paint(godot::Node2D &canvas,
       hud::paint_cinematic(canvas, drawing, playback->cinematic,
                            playback->card_left.has_value(), run->frame());
     } else if (run) {
-      hud::paint_survival(canvas, drawing, run->frame());
+      const auto frame = run->frame();
+      hud::paint_survival(canvas, drawing, frame);
+      if (interruption) {
+        hud::paint_interruption(canvas, drawing, *interruption, frame);
+      }
     }
     return;
   case Screen::Ascent:
@@ -313,6 +410,14 @@ godot::Dictionary Session::survival_status() const {
   if (playback) {
     status.set("cinematic", cinematic_name(playback->cinematic));
     status.set("cinematic_source", playback->card_left ? "fallback" : "scene");
+  }
+  if (interruption) {
+    status.set("interruption", interruption_name(*interruption));
+    godot::Array prompt;
+    for (const auto &line : hud::interruption_text(*interruption)) {
+      prompt.push_back(line);
+    }
+    status.set("prompt", prompt);
   }
   return status;
 }

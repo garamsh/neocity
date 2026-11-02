@@ -34,10 +34,12 @@ sample_session_input(std::optional<survival::ControlMap> control) {
     }
   }
   command.menu = input->is_action_just_pressed("menu");
+  command.pause = input->is_action_just_pressed("pause");
+  command.confirm = input->is_action_just_pressed("confirm");
   command.ascent = sample_input();
   for (const auto *action :
        {"move_left", "move_right", "move_up", "move_down", "jump",
-        "switch_character", "pause", "retry", "menu"}) {
+        "switch_character", "pause", "retry", "menu", "confirm"}) {
     command.controls_held =
         command.controls_held || input->is_action_pressed(action);
   }

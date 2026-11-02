@@ -188,7 +188,10 @@ godot::Dictionary actor_status(const GameView &view,
 } // namespace
 
 SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players)
-    : features(rules), controllers(players) {}
+    : features(rules), controllers(players),
+      started_together(
+          survival::key_set(players, Actor::Chef).has_value() &&
+          survival::key_set(players, Actor::Appraiser).has_value()) {}
 
 void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
                           survival::Direction dish_press) {
@@ -224,6 +227,11 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
     pending = {};
     dish_step = survival::Direction::Idle;
   }
+}
+
+void SurvivalRun::drop_input() {
+  pending = {};
+  dish_step = survival::Direction::Idle;
 }
 
 bool SurvivalRun::escaped() const {
@@ -419,6 +427,7 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .view = view(),
                             .control = controllers,
                             .offers = {},
+                            .started_together = started_together,
                             .last_day_map_changes = last_day_map_changes,
                             .events = {events.begin(), events.end()}};
   const auto chef = features.companion.get().command(Actor::Chef, controllers,
@@ -497,6 +506,13 @@ godot::Dictionary SurvivalRun::status() const {
   }
   status.set("stock", stock);
   status.set("next", hud::next_step(current));
+  status.set("hand_off", hud::hand_off_notice(current));
+  godot::Array keys;
+  for (const auto &row : hud::key_rows(current)) {
+    keys.push_back(row.action + godot::String(": ") + row.first +
+                   godot::String(" / ") + row.second);
+  }
+  status.set("pause_keys", keys);
   status.set("goal", hud::escape_goal());
   godot::Array result;
   for (const auto &line : hud::day_result(current)) {

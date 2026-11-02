@@ -78,10 +78,31 @@ constexpr int CARD_TOOLS_SIZE = 13;
 /// The workshop's event log, kept above the monster's bowl at y 157.
 constexpr float EVENT_Y = 64.0F;
 constexpr float EVENT_HEIGHT = 90.0F;
+/// The hand-off notice shares the top bar's lower row with the escape goal.
+constexpr float HAND_OFF_X = 330.0F;
+constexpr int HAND_OFF_SIZE = 14;
+constexpr float PAUSE_BOX_X = 170.0F;
+constexpr float PAUSE_BOX_Y = 40.0F;
+constexpr float PAUSE_BOX_WIDTH = 940.0F;
+constexpr float PAUSE_BOX_HEIGHT = 640.0F;
+constexpr float PAUSE_TEXT_X = 200.0F;
+constexpr float PAUSE_FIRST_X = 680.0F;
+constexpr float PAUSE_SECOND_X = 900.0F;
+constexpr float PAUSE_ROWS_Y = 170.0F;
+constexpr float PAUSE_ROW_HEIGHT = 40.0F;
+constexpr int PAUSE_ROW_SIZE = 20;
+constexpr float NOTICE_BOX_X = 290.0F;
+constexpr float NOTICE_BOX_Y = 240.0F;
+constexpr float NOTICE_BOX_WIDTH = 700.0F;
+constexpr float NOTICE_BOX_HEIGHT = 230.0F;
+constexpr float NOTICE_TEXT_X = 320.0F;
+constexpr int INTERRUPTION_TITLE_SIZE = 36;
+constexpr int INTERRUPTION_LINE_SIZE = 22;
 
 /// The key each action is bound to in project.godot, one entry per key set.
 struct KeyLabels {
   const char *move;
+  const char *every_move;
   const char *run;
   const char *travel;
   const char *interact;
@@ -93,6 +114,7 @@ struct KeyLabels {
 };
 
 constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
+                                          .every_move = "WASD or arrows",
                                           .run = "Shift",
                                           .travel = "Q",
                                           .interact = "E",
@@ -102,6 +124,7 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .switch_actor = "Tab",
                                           .leave = "X"},
                                 KeyLabels{.move = "IJKL",
+                                          .every_move = "IJKL",
                                           .run = "H",
                                           .travel = "U",
                                           .interact = "O",
@@ -113,6 +136,7 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
 
 /// A human chef always holds the first key set's up and down.
 constexpr const char *CHOOSE_DISH_KEYS = "W/S";
+constexpr const char *EVERY_CHOOSE_DISH_KEY = "W/S or up/down";
 
 String from(std::string_view text) {
   return String::utf8(text.data(), static_cast<std::int64_t>(text.size()));
@@ -469,7 +493,10 @@ void paint_top_bar(godot::Node2D &canvas,
   drawing.text(canvas, 880.0F, 40.0F, "TIME LEFT", 20, tones.muted);
   drawing.text(canvas, 990.0F, 44.0F, clock(progression.remaining_exploration),
                32, tones.white);
+  drawing.text(canvas, 1140.0F, 20.0F, "Esc: pause", 16, tones.muted);
   drawing.text(canvas, 1140.0F, 40.0F, "M: main menu", 16, tones.muted);
+  drawing.text(canvas, HAND_OFF_X, 57.0F, hand_off_notice(frame), HAND_OFF_SIZE,
+               tones.gold);
 }
 
 void paint_hearts(godot::Node2D &canvas, float x, float y,
@@ -1023,6 +1050,22 @@ FittedText fitted(const String &text, int size, float width) {
   return {.text = text, .size = size, .width = width};
 }
 
+void paint_pause_keys(godot::Node2D &canvas,
+                      const rendering::AscentDrawing &drawing,
+                      const SurvivalFrame &frame) {
+  const auto tones = rendering::palette();
+  float y = PAUSE_ROWS_Y;
+  for (const auto &row : key_rows(frame)) {
+    drawing.text(canvas, PAUSE_TEXT_X, y, row.action, PAUSE_ROW_SIZE,
+                 tones.white);
+    drawing.text(canvas, PAUSE_FIRST_X, y, row.first, PAUSE_ROW_SIZE,
+                 tones.cyan);
+    drawing.text(canvas, PAUSE_SECOND_X, y, row.second, PAUSE_ROW_SIZE,
+                 tones.cyan);
+    y += PAUSE_ROW_HEIGHT;
+  }
+}
+
 } // namespace
 
 void paint_survival_setup(godot::Node2D &canvas,
@@ -1065,6 +1108,34 @@ void paint_survival(godot::Node2D &canvas,
   }
   paint_top_bar(canvas, drawing, frame);
   paint_next_step(canvas, drawing, frame);
+}
+
+void paint_interruption(godot::Node2D &canvas,
+                        const rendering::AscentDrawing &drawing,
+                        Interruption interruption, const SurvivalFrame &frame) {
+  const auto tones = rendering::palette();
+  const auto text = interruption_text(interruption);
+  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
+  if (interruption == Interruption::Paused) {
+    frame_box(canvas, PAUSE_BOX_X, PAUSE_BOX_Y, PAUSE_BOX_WIDTH,
+              PAUSE_BOX_HEIGHT);
+    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 50.0F, text.at(0),
+                 INTERRUPTION_TITLE_SIZE, tones.gold);
+    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 85.0F, text.at(1),
+                 INTERRUPTION_LINE_SIZE, tones.white);
+    paint_pause_keys(canvas, drawing, frame);
+    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + PAUSE_BOX_HEIGHT - 20.0F,
+                 text.at(2), INTERRUPTION_LINE_SIZE, tones.cyan);
+    return;
+  }
+  frame_box(canvas, NOTICE_BOX_X, NOTICE_BOX_Y, NOTICE_BOX_WIDTH,
+            NOTICE_BOX_HEIGHT);
+  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 60.0F, text.at(0),
+               INTERRUPTION_TITLE_SIZE, tones.gold);
+  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 115.0F, text.at(1),
+               INTERRUPTION_LINE_SIZE, tones.white);
+  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 180.0F, text.at(2),
+               INTERRUPTION_LINE_SIZE, tones.cyan);
 }
 
 void paint_cinematic(godot::Node2D &canvas,
@@ -1113,6 +1184,72 @@ void paint_cinematic(godot::Node2D &canvas,
 bool recipe_ready(const GameView &view, const survival::Recipe &recipe) {
   const auto needs = recipe_needs(view, recipe);
   return needs.missing.empty() && needs.unidentified.empty();
+}
+
+std::vector<KeyRow> key_rows(const SurvivalFrame &frame) {
+  const bool together = survival::key_set(frame.control, Actor::Chef) &&
+                        survival::key_set(frame.control, Actor::Appraiser);
+  const auto row = [together](const char *action, const char *first,
+                              const char *second) {
+    return KeyRow{.action = action,
+                  .first = first,
+                  .second = together ? String(second) : String()};
+  };
+  const auto &one = KEY_LABELS.at(0);
+  const auto &two = KEY_LABELS.at(1);
+  std::vector<KeyRow> rows;
+  if (together) {
+    rows.push_back(row("", "P1", "P2"));
+  }
+  rows.push_back(row("Move", one.every_move, two.every_move));
+  rows.push_back(row("Run", one.run, two.run));
+  rows.push_back(row("Set out or return to base", one.travel, two.travel));
+  rows.push_back(row("Collect or repair; appraise or cook at base",
+                     one.interact, two.interact));
+  rows.push_back(row("Choose the dish, as the chef at base",
+                     EVERY_CHOOSE_DISH_KEY, "none"));
+  rows.push_back(
+      row("Replace a damaged base tool", one.replace_tool, two.replace_tool));
+  rows.push_back(row("Feed a stored dish", one.feed, two.feed));
+  rows.push_back(row("End the day unfed", one.end_day, two.end_day));
+  if (together) {
+    rows.push_back(row("Hand your actor to AI", one.leave, two.leave));
+    rows.push_back(
+        row("Swap actor, once one player is left", one.switch_actor, "none"));
+  } else {
+    rows.push_back(row("Swap actor", one.switch_actor, "none"));
+  }
+  return rows;
+}
+
+std::array<String, 3> interruption_text(Interruption interruption) {
+  switch (interruption) {
+  case Interruption::Paused:
+    return {"PAUSED", "The clock is stopped.",
+            "Esc: continue     M: leave the run"};
+  case Interruption::ConfirmLeave:
+  case Interruption::ConfirmLeaveFromPause:
+    return {"LEAVE THIS RUN?", "Progress is not saved: the run ends here.",
+            "Enter: leave for the main menu     Esc: cancel"};
+  case Interruption::Resuming:
+    return {"RELEASE EVERY KEY", "The run continues once all keys are up.", ""};
+  }
+  std::abort();
+}
+
+String hand_off_notice(const SurvivalFrame &frame) {
+  const auto chef = survival::key_set(frame.control, Actor::Chef);
+  const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
+  if (!frame.started_together || (chef && appraiser)) {
+    return {};
+  }
+  const auto &keys = KEY_LABELS.at(0);
+  return "One player left, as the " +
+         String(actor_name(chef ? Actor::Chef : Actor::Appraiser)) + ": " +
+         from(keys.move) + " move  " + from(keys.run) + " run  " +
+         from(keys.interact) + " use  " + from(keys.travel) + " travel  " +
+         from(keys.replace_tool) + " tool  " + from(keys.feed) + " feed  " +
+         from(keys.end_day) + " end day  " + from(keys.switch_actor) + " swap";
 }
 
 String next_step(const SurvivalFrame &frame) {
@@ -1264,6 +1401,26 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
       fitted(next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X));
   lines.push_back(
       fitted(key_legend(frame), LEGEND_SIZE, SCREEN_EDGE - LEGEND_X));
+  lines.push_back(
+      fitted(hand_off_notice(frame), HAND_OFF_SIZE, SCREEN_EDGE - HAND_OFF_X));
+  for (const auto &row : key_rows(frame)) {
+    lines.push_back(fitted(row.action, PAUSE_ROW_SIZE,
+                           PAUSE_FIRST_X - PAUSE_TEXT_X - 8.0F));
+    lines.push_back(fitted(row.first, PAUSE_ROW_SIZE,
+                           PAUSE_SECOND_X - PAUSE_FIRST_X - 8.0F));
+    lines.push_back(
+        fitted(row.second, PAUSE_ROW_SIZE,
+               PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_SECOND_X - 8.0F));
+  }
+  const float notice_width =
+      NOTICE_BOX_X + NOTICE_BOX_WIDTH - NOTICE_TEXT_X - 8.0F;
+  for (const auto interruption :
+       {Interruption::ConfirmLeave, Interruption::Resuming}) {
+    const auto text = interruption_text(interruption);
+    lines.push_back(fitted(text.at(0), INTERRUPTION_TITLE_SIZE, notice_width));
+    lines.push_back(fitted(text.at(1), INTERRUPTION_LINE_SIZE, notice_width));
+    lines.push_back(fitted(text.at(2), INTERRUPTION_LINE_SIZE, notice_width));
+  }
   lines.push_back(
       fitted(appraise_job(frame), PANEL_JOB_SIZE, APPRAISE_WIDTH - job_inset));
   lines.push_back(

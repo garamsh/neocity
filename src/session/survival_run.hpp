@@ -37,6 +37,8 @@ public:
   /// Retains this frame's input and runs every step the frame time completes.
   void advance(double delta, const std::array<survival::PlayerInput, 2> &input,
                survival::Direction dish_press);
+  /// Forgets every key press not yet stepped, keeping the frame time.
+  void drop_input();
   /// Whether the run has ended in the escaped phase.
   [[nodiscard]] bool escaped() const;
   /// Whether the run has ended in the lost phase.
@@ -67,6 +69,7 @@ private:
 
   SurvivalFeatures features;
   survival::ControlMap controllers;
+  bool started_together = false;
   double accumulated = 0.0;
   std::array<survival::PlayerInput, 2> pending{};
   std::array<survival::ExplorationInput, 2> held{};

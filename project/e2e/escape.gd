@@ -250,6 +250,7 @@ func _start() -> void:
 
 func _leave() -> void:
 	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
 
 ## Plays on what NEXT says until the run ends: only following it holds the acid.
 func _follow_to_the_end() -> void:
