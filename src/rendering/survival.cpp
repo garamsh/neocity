@@ -683,27 +683,35 @@ Image figure(Actor actor, bool climbing, bool walking, bool second_step) {
   return chef ? Image::ChefWalk1 : Image::AppraiserWalk1;
 }
 
-/// Draws an actor taller than its cell, its frame's bottom edge on the cell's
-/// floor: climbing on a ladder, walking for a moment after each step, and
-/// facing the way it last walked.
+/// Where an actor's feet are drawn: its sub-cell position, eased across each
+/// 100ms step so it moves smoothly between them.
+Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
+  const bool chef = actor == Actor::Chef;
+  return {art.glide(chef ? "chef_feet_x" : "appraiser_feet_x",
+                    MAP_X + static_cast<float>(body.position.x)),
+          art.glide(chef ? "chef_feet_y" : "appraiser_feet_y",
+                    MAP_Y + static_cast<float>(body.position.y))};
+}
+
+/// Draws an actor taller than its cell, its frame's bottom edge on its feet:
+/// climbing on a ladder, walking for a moment after each step and while in
+/// the air, and facing the way it last moved sideways.
 void paint_actor(godot::Node2D &canvas, const Art &art,
                  const survival::GameView &view, Actor actor,
-                 survival::GridPosition position, float offset) {
-  const auto motion = art.track(actor, position, view.progression.world_time);
-  const bool climbing = std::ranges::any_of(
-      view.world.objects, [&](const ObjectSnapshot &object) {
-        return object.kind == ObjectKind::Ladder &&
-               object.state == ObjectState::Intact &&
-               covers(object.area, position);
-      });
-  const bool walking = motion.moved_at >= 0us &&
-                       view.progression.world_time - motion.moved_at <= STRIDE;
+                 const survival::Body &body, float offset) {
+  const auto motion = art.track(actor, survival::cell_of(body.position),
+                                view.progression.world_time);
+  const bool climbing = body.stance == survival::Stance::Climbing;
+  const bool walking =
+      body.stance == survival::Stance::Airborne ||
+      (motion.moved_at >= 0us &&
+       view.progression.world_time - motion.moved_at <= STRIDE);
   const Image image = figure(actor, climbing, walking, motion.second_step);
   const Vector2 size = art.size(image);
+  const Vector2 feet = feet_of(art, actor, body);
   art.image(canvas, image,
-            Vector2(cell_x(position.x) + (CELL - size.x) / 2.0F + offset,
-                    cell_y(position.y) + CELL - size.y),
-            1.0F, motion.facing_left && !climbing);
+            Vector2(feet.x - size.x / 2.0F + offset, feet.y - size.y), 1.0F,
+            body.heading == survival::Direction::Left && !climbing);
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -794,18 +802,18 @@ Plates label_city(const Art &art, const survival::Content &content,
         Vector2(box.position.x - 30.0F, box.position.y + box.size.y + 14.0F),
         "ACID DRIP: -1 health", 13, color(180, 255, 140, 1.0F));
   }
-  const auto tag = [&](Actor actor, survival::GridPosition position,
-                       float offset) {
-    plates.add(art,
-               Vector2(cell_x(position.x) + 6.0F + offset,
-                       cell_y(position.y) - TAG_RISE),
-               tag_of(control, actor), 14, tones.cyan);
+  const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
+    const Vector2 feet = feet_of(art, actor, body);
+    plates.add(
+        art,
+        Vector2(feet.x - CELL / 2.0F + 6.0F + offset, feet.y - CELL - TAG_RISE),
+        tag_of(control, actor), 14, tones.cyan);
   };
   if (party.chef_out) {
-    tag(Actor::Chef, view.exploration.chef.position, 0.0F);
+    tag(Actor::Chef, view.exploration.chef.body, 0.0F);
   }
   if (party.appraiser_out) {
-    tag(Actor::Appraiser, view.exploration.appraiser.position,
+    tag(Actor::Appraiser, view.exploration.appraiser.body,
         party.shared ? SHARED_CELL_TAG_SHIFT : 0.0F);
   }
   return plates;
@@ -875,13 +883,15 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                          .promised = stocked_open && walkable});
     }
   }
-  const auto &chef = view.exploration.chef.position;
-  const auto &appraiser = view.exploration.appraiser.position;
+  const auto &chef = view.exploration.chef.body;
+  const auto &appraiser = view.exploration.appraiser.body;
   Party party{.chef_out =
                   view.progression.chef.location == survival::Location::City,
               .appraiser_out = view.progression.appraiser.location ==
                                survival::Location::City};
-  party.shared = party.chef_out && party.appraiser_out && chef == appraiser;
+  party.shared =
+      party.chef_out && party.appraiser_out &&
+      survival::cell_of(chef.position) == survival::cell_of(appraiser.position);
   paint_decorations(canvas, art, content, true);
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {

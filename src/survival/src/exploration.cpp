@@ -2,7 +2,9 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <deque>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
@@ -11,7 +13,15 @@ namespace {
 
 using namespace std::chrono_literals;
 constexpr auto MOVEMENT_TICK = 100ms;
+constexpr auto TICKS_PER_UNIT = MOVEMENT_TICK / PHYSICS.tick;
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
+
+/// A steered jump waits while one more walking unit would stay in the cell,
+/// so it leaves with at most this much room before the edge.
+constexpr std::int32_t JUMP_ROOM =
+    static_cast<std::int32_t>(TICKS_PER_UNIT) * PHYSICS.walk - 1;
+/// Ticks a link's simulated body may take before it counts as lost.
+constexpr int LINK_TICKS = 200;
 
 ActorSnapshot actor_state(const Snapshot &snapshot, Actor actor) {
   switch (actor) {
@@ -23,29 +33,225 @@ ActorSnapshot actor_state(const Snapshot &snapshot, Actor actor) {
   std::abort();
 }
 
-GridPosition direction_offset(Direction direction) {
-  switch (direction) {
-  case Direction::Idle:
-    return {};
-  case Direction::Left:
-    return {.x = -1};
-  case Direction::Right:
-    return {.x = 1};
-  case Direction::Up:
-    return {.y = -1};
-  case Direction::Down:
-    return {.y = 1};
-  }
-  std::abort();
-}
-
 void require_applied(Result result) {
   if (result != Result::Applied) {
     throw std::logic_error("exploration command lost its active actor");
   }
 }
 
+/// Rounds towards negative infinity, so cells left of zero stay whole.
+std::int32_t floor_div(std::int32_t value, std::int32_t divisor) {
+  const auto quotient = value / divisor;
+  return quotient * divisor > value ? quotient - 1 : quotient;
+}
+
+bool floor_at(Cell cell) {
+  return cell == Cell::Floor || cell == Cell::LadderOnFloor;
+}
+
+bool ladder_at(Cell cell) {
+  return cell == Cell::Ladder || cell == Cell::LadderOnFloor;
+}
+
+bool sideways(Direction direction) {
+  return direction == Direction::Left || direction == Direction::Right;
+}
+
+/// The line feet rest on in `row`.
+std::int32_t floor_line(std::int32_t row) { return (row + 1) * SUBCELLS; }
+
+/// The row a walking body ends in on entering `column` from `row`: the same
+/// row, a step up, or a step down; nothing when it walks off into the air.
+std::optional<std::int32_t> settle(const CellMap &map, std::int32_t column,
+                                   std::int32_t row) {
+  for (const auto candidate : {row, row - 1, row + 1}) {
+    if (stands_on(map, {.x = column, .y = candidate})) {
+      return candidate;
+    }
+  }
+  return std::nullopt;
+}
+
+/// The sideways part of a tick: stops at a blocked cell's edge, and a standing
+/// body steps up, steps down, or walks off into the air.
+void move_sideways(const CellMap &map, Body &body, Direction direction,
+                   std::int32_t speed) {
+  const auto step = direction == Direction::Left ? -speed : speed;
+  body.heading = direction;
+  const auto from = cell_of(body.position);
+  const auto to_x = body.position.x + step;
+  const auto column = floor_div(to_x, SUBCELLS);
+  const auto stop = [&] {
+    body.position.x = step < 0 ? from.x * SUBCELLS : floor_line(from.x) - 1;
+  };
+  if (column == from.x) {
+    body.position.x = to_x;
+    return;
+  }
+  if (map.at({.x = column, .y = from.y}) == Cell::Blocked) {
+    stop();
+    return;
+  }
+  if (body.stance != Stance::Standing) {
+    body.position.x = to_x;
+    return;
+  }
+  const auto row = settle(map, column, from.y);
+  body.position.x = to_x;
+  if (row) {
+    body.position.y = floor_line(*row);
+  } else {
+    body.stance = Stance::Airborne;
+    body.fall_speed = 0;
+  }
+}
+
+/// The vertical part of a tick in the air: rising stops under a blocked cell,
+/// and falling lands on the first floor line it reaches.
+void move_in_air(const CellMap &map, Body &body) {
+  const auto column = cell_of(body.position).x;
+  const auto from = body.position.y;
+  const auto to = from + body.fall_speed;
+  const bool rising = body.fall_speed < 0;
+  body.fall_speed = std::min(body.fall_speed + PHYSICS.gravity, PHYSICS.fall);
+  if (rising) {
+    const auto row = floor_div(to - 1, SUBCELLS);
+    if (map.at({.x = column, .y = row}) == Cell::Blocked) {
+      body.position.y = floor_line(row + 1);
+      body.fall_speed = 0;
+      return;
+    }
+    body.position.y = to;
+    return;
+  }
+  for (auto row = floor_div(from - 1, SUBCELLS); floor_line(row) <= to; ++row) {
+    if (floor_line(row) >= from && stands_on(map, {.x = column, .y = row})) {
+      body.position.y = floor_line(row);
+      body.stance = Stance::Standing;
+      body.fall_speed = 0;
+      return;
+    }
+  }
+  body.position.y = to;
+}
+
+/// The highest and lowest feet line of the run of ladder through `cell`.
+std::pair<std::int32_t, std::int32_t> ladder_span(const CellMap &map,
+                                                  GridPosition cell) {
+  auto top = cell.y;
+  while (ladder_at(map.at({.x = cell.x, .y = top - 1}))) {
+    --top;
+  }
+  auto bottom = cell.y;
+  while (ladder_at(map.at({.x = cell.x, .y = bottom + 1}))) {
+    ++bottom;
+  }
+  return {floor_line(top), floor_line(bottom)};
+}
+
+/// Whether `direction` takes hold of a ladder from where `body` is: there is
+/// ladder that way to climb.
+bool grabs(const CellMap &map, const Body &body, Direction direction) {
+  const auto cell = cell_of(body.position);
+  if (!ladder_at(map.at(cell))) {
+    return false;
+  }
+  const auto [top, bottom] = ladder_span(map, cell);
+  return (direction == Direction::Up && body.position.y > top) ||
+         (direction == Direction::Down && body.position.y < bottom);
+}
+
+/// Up or down a ladder by one tick, inside the run of ladder it is on.
+void climb(const CellMap &map, Body &body, Direction direction) {
+  const auto cell = cell_of(body.position);
+  const auto [top, bottom] = ladder_span(map, cell);
+  body.position.x = cell.x * SUBCELLS + SUBCELLS / 2;
+  body.stance = Stance::Climbing;
+  body.fall_speed = 0;
+  if (direction == Direction::Up) {
+    body.position.y = std::max(top, body.position.y - PHYSICS.climb);
+  } else {
+    body.position.y = std::min(bottom, body.position.y + PHYSICS.climb);
+  }
+}
+
+/// Sub-cell units between a body and the edge of its cell towards
+/// `direction`.
+std::int32_t edge_room(const Body &body, Direction direction) {
+  const auto offset = body.position.x - cell_of(body.position).x * SUBCELLS;
+  return direction == Direction::Left ? offset : SUBCELLS - 1 - offset;
+}
+
+Direction direction_of(Move move) {
+  switch (move) {
+  case Move::Left:
+  case Move::JumpLeft:
+    return Direction::Left;
+  case Move::Right:
+  case Move::JumpRight:
+    return Direction::Right;
+  case Move::ClimbUp:
+    return Direction::Up;
+  case Move::ClimbDown:
+    return Direction::Down;
+  }
+  std::abort();
+}
+
+/// Where a body steered by `move` comes to stand in another cell, or nothing
+/// when a wall stops it, it falls into the acid, or it never settles.
+std::optional<GridPosition> follow(const CellMap &map, Body body, Move move) {
+  const auto start = cell_of(body.position);
+  for (int tick = 0; tick < LINK_TICKS; ++tick) {
+    const auto next = physics_tick(map, body, steer(move, body));
+    if (next == body) {
+      return std::nullopt;
+    }
+    body = next;
+    const auto cell = cell_of(body.position);
+    if (map.below(cell)) {
+      return std::nullopt;
+    }
+    if (body.stance == Stance::Standing && cell != start) {
+      return cell;
+    }
+  }
+  return std::nullopt;
+}
+
+/// Where a steered jump towards `direction` from `from` lands: it leaves from
+/// anywhere between the room it waits for and the edge, so both ends must
+/// land on the same row.
+std::optional<GridPosition> jump_landing(const CellMap &map, GridPosition from,
+                                         Move jump) {
+  const auto direction = direction_of(jump);
+  const auto edge =
+      direction == Direction::Left ? from.x * SUBCELLS : floor_line(from.x) - 1;
+  const auto inward = direction == Direction::Left ? 1 : -1;
+  std::optional<GridPosition> landing;
+  for (const auto room : {JUMP_ROOM, 0}) {
+    const Body takeoff{
+        .position = {.x = edge + inward * room, .y = floor_line(from.y)},
+        .heading = direction};
+    const auto landed = follow(map, takeoff, jump);
+    if (!landed || (landing && landing->y != landed->y)) {
+      return std::nullopt;
+    }
+    landing = landing ? landing : landed;
+  }
+  return landing;
+}
+
 } // namespace
+
+GridPosition cell_of(Position position) {
+  return {.x = floor_div(position.x, SUBCELLS),
+          .y = floor_div(position.y - 1, SUBCELLS)};
+}
+
+Position standing_in(GridPosition cell) {
+  return {.x = cell.x * SUBCELLS + SUBCELLS / 2, .y = floor_line(cell.y)};
+}
 
 std::int64_t distance(GridPosition position, WorldArea area) {
   const auto right = std::int64_t{area.x} + area.width - 1;
@@ -56,38 +262,220 @@ std::int64_t distance(GridPosition position, WorldArea area) {
                    std::int64_t{position.y} - bottom, std::int64_t{0}});
 }
 
-Cell cell_at(const WorldSnapshot &snapshot, GridPosition position) {
-  bool supported = false;
-  bool building = false;
-  bool open_passage = false;
-  bool broken_passage = false;
+bool stands_on(const CellMap &map, GridPosition cell) {
+  const auto here = map.at(cell);
+  return floor_at(here) ||
+         (here != Cell::Blocked &&
+          map.at({.x = cell.x, .y = cell.y + 1}) == Cell::Blocked);
+}
+
+bool holds(const CellMap &map, GridPosition cell) {
+  return stands_on(map, cell) || ladder_at(map.at(cell));
+}
+
+CellMap::CellMap(const WorldSnapshot &snapshot) {
+  if (snapshot.objects.empty()) {
+    return;
+  }
+  auto left = MAP_LIMIT;
+  auto top = MAP_LIMIT;
+  auto right = -MAP_LIMIT;
+  auto bottom = -MAP_LIMIT;
   for (const auto &object : snapshot.objects) {
-    if (object.state == ObjectState::Dormant ||
-        distance(position, object.area) != 0) {
+    const auto &area = object.area;
+    const auto far_x = std::int64_t{area.x} + area.width;
+    const auto far_y = std::int64_t{area.y} + area.height;
+    if (area.x < -MAP_LIMIT || area.y < -MAP_LIMIT || far_x > MAP_LIMIT ||
+        far_y > MAP_LIMIT || area.width <= 0 || area.height <= 0) {
+      throw std::invalid_argument("a city reaches past the movement limit");
+    }
+    left = std::min(left, area.x);
+    top = std::min(top, area.y);
+    right = std::max(right, static_cast<std::int32_t>(far_x));
+    bottom = std::max(bottom, static_cast<std::int32_t>(far_y));
+  }
+  origin = {.x = left, .y = top};
+  width = right - left;
+  height = bottom - top;
+  struct Marks {
+    bool floor = false;
+    bool ladder = false;
+    bool building = false;
+    bool open_passage = false;
+    bool broken_passage = false;
+  };
+  std::vector<Marks> marks(static_cast<std::size_t>(width) *
+                           static_cast<std::size_t>(height));
+  for (const auto &object : snapshot.objects) {
+    if (object.state == ObjectState::Dormant) {
       continue;
     }
-    switch (object.kind) {
-    case ObjectKind::Building:
-      building = building || object.state == ObjectState::Intact;
-      break;
-    case ObjectKind::Ladder:
-    case ObjectKind::Entrance:
-      broken_passage = broken_passage || !object.traversable;
-      open_passage = open_passage || object.traversable;
-      supported = supported || object.traversable;
-      break;
-    case ObjectKind::Terrain:
-      supported = supported || object.traversable;
-      break;
-    case ObjectKind::Npc:
-    case ObjectKind::MaterialSource:
-      break;
+    for (auto y = object.area.y; y < object.area.y + object.area.height; ++y) {
+      for (auto x = object.area.x; x < object.area.x + object.area.width; ++x) {
+        auto &mark = marks.at(static_cast<std::size_t>(y - top) *
+                                  static_cast<std::size_t>(width) +
+                              static_cast<std::size_t>(x - left));
+        switch (object.kind) {
+        case ObjectKind::Building:
+          mark.building = mark.building || object.state == ObjectState::Intact;
+          break;
+        case ObjectKind::Ladder:
+          mark.ladder = mark.ladder || object.traversable;
+          mark.open_passage = mark.open_passage || object.traversable;
+          break;
+        case ObjectKind::Entrance:
+          mark.broken_passage = mark.broken_passage || !object.traversable;
+          mark.open_passage = mark.open_passage || object.traversable;
+          break;
+        case ObjectKind::Terrain:
+          mark.floor = mark.floor || object.traversable;
+          break;
+        case ObjectKind::Npc:
+        case ObjectKind::MaterialSource:
+          break;
+        }
+      }
     }
   }
-  if (broken_passage || (building && !open_passage)) {
-    return Cell::Blocked;
+  cells.reserve(marks.size());
+  for (const auto &mark : marks) {
+    if (mark.broken_passage || (mark.building && !mark.open_passage)) {
+      cells.push_back(Cell::Blocked);
+    } else if (mark.ladder) {
+      cells.push_back(mark.floor ? Cell::LadderOnFloor : Cell::Ladder);
+    } else {
+      cells.push_back(mark.floor ? Cell::Floor : Cell::Open);
+    }
   }
-  return supported ? Cell::Supported : Cell::Falling;
+}
+
+bool CellMap::below(GridPosition cell) const {
+  return std::int64_t{cell.y} >= std::int64_t{origin.y} + height;
+}
+
+Cell CellMap::at(GridPosition cell) const {
+  const auto x = std::int64_t{cell.x} - origin.x;
+  const auto y = std::int64_t{cell.y} - origin.y;
+  if (x < 0 || y < 0 || x >= width || y >= height) {
+    return Cell::Open;
+  }
+  return cells.at(static_cast<std::size_t>(y * width + x));
+}
+
+Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
+  const auto direction = input.direction;
+  if (body.stance == Stance::Climbing &&
+      !ladder_at(map.at(cell_of(body.position)))) {
+    body.stance = Stance::Airborne;
+    body.fall_speed = 0;
+  }
+  if (input.jump && body.stance != Stance::Airborne) {
+    body.stance = Stance::Airborne;
+    body.fall_speed = -PHYSICS.jump;
+  } else if ((direction == Direction::Up || direction == Direction::Down) &&
+             (body.stance == Stance::Climbing || grabs(map, body, direction))) {
+    climb(map, body, direction);
+    return body;
+  }
+  if (body.stance == Stance::Climbing) {
+    if (!sideways(direction)) {
+      return body;
+    }
+    // Stepping off a ladder puts the feet on the floor of its cell, if any.
+    const auto cell = cell_of(body.position);
+    if (stands_on(map, cell)) {
+      body.stance = Stance::Standing;
+      body.position.y = floor_line(cell.y);
+    } else {
+      body.stance = Stance::Airborne;
+    }
+  }
+  if (sideways(direction)) {
+    const bool running = input.running && body.stance == Stance::Standing;
+    move_sideways(map, body, direction, running ? PHYSICS.run : PHYSICS.walk);
+  }
+  if (body.stance == Stance::Standing &&
+      !stands_on(map, cell_of(body.position))) {
+    body.stance = Stance::Airborne;
+    body.fall_speed = 0;
+  }
+  if (body.stance == Stance::Airborne) {
+    move_in_air(map, body);
+  }
+  return body;
+}
+
+ExplorationInput steer(Move move, const Body &body) {
+  if (body.stance == Stance::Airborne) {
+    return {.direction = body.heading};
+  }
+  const auto direction = direction_of(move);
+  switch (move) {
+  case Move::Left:
+  case Move::Right:
+  case Move::ClimbUp:
+  case Move::ClimbDown:
+    return {.direction = direction};
+  case Move::JumpLeft:
+  case Move::JumpRight:
+    return {.direction = direction,
+            .jump = body.stance == Stance::Standing &&
+                    edge_room(body, direction) <= JUMP_ROOM};
+  }
+  std::abort();
+}
+
+std::vector<Link> links(const CellMap &map, GridPosition from) {
+  std::vector<Link> found;
+  if (!holds(map, from)) {
+    return found;
+  }
+  const bool on_floor = stands_on(map, from);
+  const Body standing{.position = standing_in(from),
+                      .stance = on_floor ? Stance::Standing : Stance::Climbing};
+  for (const auto &[walk, jump] : {std::pair{Move::Left, Move::JumpLeft},
+                                   std::pair{Move::Right, Move::JumpRight}}) {
+    const auto walked = follow(map, standing, walk);
+    if (walked) {
+      found.push_back({.to = *walked, .move = walk});
+    }
+    // A jump is only a way where walking does not reach the next column.
+    const bool next_door = walked && std::abs(walked->x - from.x) == 1 &&
+                           std::abs(walked->y - from.y) <= 1;
+    if (next_door || !on_floor) {
+      continue;
+    }
+    if (const auto landed = jump_landing(map, from, jump)) {
+      found.push_back({.to = *landed, .move = jump});
+    }
+  }
+  if (ladder_at(map.at(from))) {
+    for (const auto &[move, row] : {std::pair{Move::ClimbUp, from.y - 1},
+                                    std::pair{Move::ClimbDown, from.y + 1}}) {
+      const GridPosition next{.x = from.x, .y = row};
+      if (ladder_at(map.at(next))) {
+        found.push_back({.to = next, .move = move});
+      }
+    }
+  }
+  return found;
+}
+
+std::vector<GridPosition> reachable_cells(const CellMap &map,
+                                          GridPosition from) {
+  std::vector<GridPosition> seen{from};
+  std::deque<GridPosition> frontier{from};
+  while (!frontier.empty()) {
+    const auto cell = frontier.front();
+    frontier.pop_front();
+    for (const auto &link : links(map, cell)) {
+      if (std::ranges::find(seen, link.to) == seen.end()) {
+        seen.push_back(link.to);
+        frontier.push_back(link.to);
+      }
+    }
+  }
+  return seen;
 }
 
 Exploration::Exploration(Simulation &progression, World &city,
@@ -95,7 +483,7 @@ Exploration::Exploration(Simulation &progression, World &city,
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
   if (config.maximum_stamina == 0 || config.collection_time < 0us ||
-      cell_at(snapshot, config.entry) != Cell::Supported) {
+      !stands_on(CellMap(snapshot), config.entry)) {
     throw std::invalid_argument("exploration requires stamina and safe entry");
   }
   std::vector<ObjectId> ids;
@@ -120,13 +508,14 @@ Result Exploration::enter(Actor actor) {
       Location::City) {
     return Result::Applied;
   }
-  if (cell_at(world.get().snapshot(), config.entry) != Cell::Supported) {
+  if (!stands_on(CellMap(world.get().snapshot()), config.entry)) {
     return Result::NotExploring;
   }
   const auto result = simulation.get().enter(actor);
   if (result == Result::Applied) {
     explorer(actor) = {
-        .state = {.position = config.entry, .stamina = config.maximum_stamina}};
+        .state = {.body = {.position = standing_in(config.entry)},
+                  .stamina = config.maximum_stamina}};
   }
   return result;
 }
@@ -165,7 +554,6 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
   // Apply acid and a finished day's time even with no elapsed time, including
   // while at base.
   advance_world(acid);
-  check_support();
   while (remaining > 0us &&
          simulation.get().snapshot().phase == Phase::Exploration) {
     const auto before = simulation.get().snapshot();
@@ -184,7 +572,6 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
       }
     }
     synchronize();
-    check_support();
     for (std::size_t index = 0; index < ACTORS.size(); ++index) {
       const auto actor = ACTORS.at(index);
       auto &state = explorer(actor);
@@ -219,7 +606,7 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (!object->material_available) {
     return CollectionResult::Unavailable;
   }
-  if (distance(explorer(actor).state.position, object->area) >
+  if (distance(cell_of(explorer(actor).state.body.position), object->area) >
       config.collection_distance) {
     return CollectionResult::OutOfRange;
   }
@@ -253,7 +640,7 @@ RepairResult Exploration::repair(Actor actor, ObjectId target, ToolId tool) {
   if (object == snapshot.objects.end()) {
     return RepairResult::UnknownObject;
   }
-  if (distance(explorer(actor).state.position, object->area) >
+  if (distance(cell_of(explorer(actor).state.body.position), object->area) >
       config.collection_distance) {
     return RepairResult::OutOfRange;
   }
@@ -283,8 +670,9 @@ void Exploration::synchronize() {
   const auto snapshot = simulation.get().snapshot();
   for (const auto actor : ACTORS) {
     if (actor_state(snapshot, actor).location == Location::Base) {
-      explorer(actor) = {.state = {.position = config.base,
-                                   .stamina = config.maximum_stamina}};
+      explorer(actor) = {
+          .state = {.body = {.position = standing_in(config.base)},
+                    .stamina = config.maximum_stamina}};
     }
   }
 }
@@ -296,47 +684,19 @@ void Exploration::advance_world(AcidLevel acid) {
   }
 }
 
-void Exploration::check_support() {
-  const auto snapshot = world.get().snapshot();
-  for (const auto actor : ACTORS) {
-    if (actor_state(simulation.get().snapshot(), actor).location ==
-            Location::City &&
-        cell_at(snapshot, explorer(actor).state.position) != Cell::Supported) {
-      require_applied(return_to_base(actor));
-    }
-  }
-}
-
 void Exploration::tick(Actor actor, ExplorationInput input) {
   auto &state = explorer(actor).state;
-  const bool running =
-      input.running && input.direction != Direction::Idle && state.stamina > 0;
-  if (running) {
+  input.running =
+      input.running && sideways(input.direction) && state.stamina > 0;
+  if (input.running) {
     --state.stamina;
   } else if (state.stamina < config.maximum_stamina) {
     ++state.stamina;
   }
-  const auto offset = direction_offset(input.direction);
-  const auto snapshot = world.get().snapshot();
-  const int cells = running ? 2 : 1;
-  for (int index = 0; index < cells; ++index) {
-    const auto x = std::int64_t{state.position.x} + offset.x;
-    const auto y = std::int64_t{state.position.y} + offset.y;
-    if (x < std::numeric_limits<std::int32_t>::min() ||
-        x > std::numeric_limits<std::int32_t>::max() ||
-        y < std::numeric_limits<std::int32_t>::min() ||
-        y > std::numeric_limits<std::int32_t>::max()) {
-      return;
-    }
-    const GridPosition next{.x = static_cast<std::int32_t>(x),
-                            .y = static_cast<std::int32_t>(y)};
-    switch (cell_at(snapshot, next)) {
-    case Cell::Supported:
-      state.position = next;
-      break;
-    case Cell::Blocked:
-      return;
-    case Cell::Falling:
+  const CellMap map(world.get().snapshot());
+  for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
+    state.body = physics_tick(map, state.body, input);
+    if (map.below(cell_of(state.body.position))) {
       require_applied(return_to_base(actor));
       return;
     }

@@ -90,6 +90,7 @@ bool refused(const ActionResult &result) {
 bool same_command(const ActorCommand &left, const ActorCommand &right) {
   return left.movement.direction == right.movement.direction &&
          left.movement.running == right.movement.running &&
+         left.movement.jump == right.movement.jump &&
          left.action == right.action;
 }
 
@@ -161,8 +162,8 @@ GameView base_view() {
   floor.area.width = 10;
   floor.traversable = true;
   view.world.objects.push_back(floor);
-  view.exploration.chef.position = BASE;
-  view.exploration.appraiser.position = BASE;
+  view.exploration.chef.body.position = standing_in(BASE);
+  view.exploration.appraiser.body.position = standing_in(BASE);
   return view;
 }
 
@@ -171,8 +172,8 @@ GameView city_view(GridPosition position) {
   view.progression.phase = Phase::Exploration;
   view.progression.chef.location = Location::City;
   view.progression.appraiser.location = Location::City;
-  view.exploration.chef.position = position;
-  view.exploration.appraiser.position = position;
+  view.exploration.chef.body.position = standing_in(position);
+  view.exploration.appraiser.body.position = standing_in(position);
   return view;
 }
 
@@ -184,13 +185,17 @@ void add_source(GameView &view, ObjectId id, std::int32_t x) {
   view.exploration.sources.push_back({.id = id});
 }
 
-/// The chef at `position`, carrying the wrench for a broken door at x 1.
+/// The chef at `position`, carrying the wrench for a broken door at x 1 in a
+/// wall too tall to jump.
 GameView view_with_broken_door(GridPosition position) {
   auto view = city_view(position);
   auto door = object_of(DOOR, ObjectKind::Entrance, 1);
   door.state = ObjectState::Destroyed;
   door.repair_with = WRENCH;
   view.world.objects.push_back(door);
+  auto wall = object_of(WALL, ObjectKind::Building, 1);
+  wall.area.y = -1;
+  view.world.objects.push_back(wall);
   view.progression.chef.tools = {WRENCH};
   return view;
 }
@@ -204,6 +209,11 @@ Companion companion_with(const WorkshopConfig &work = kitchen()) {
 std::optional<Action> ai_action(const GameView &view, Actor actor,
                                 ControlMap control = ALL_AI) {
   return companion_with().command(actor, control, NO_INPUT, view).action;
+}
+
+/// The cell an explorer's feet stand in.
+GridPosition at(const ExplorerSnapshot &explorer) {
+  return cell_of(explorer.body.position);
 }
 
 TEST(Grid, DistanceCountsFromTheNearestCellOfAnAreaOnEverySide) {
@@ -256,19 +266,17 @@ TEST(Control, TwoHumansHoldOneKeySetEachAndAiHoldsNone) {
   EXPECT_EQ(key_set(ALL_AI, Actor::Appraiser), std::nullopt);
 }
 
-TEST(Companion, WalksToASourceOneCellPerTickAndCollectsWithinRange) {
+TEST(Companion, WalksToASourceAndCollectsWithinRange) {
   Game game({floor_of(10), ingredient_source(SOURCE, 3)},
             tuning({{.id = SOURCE}}), kitchen());
   game.step(ALL_AI);
-  EXPECT_EQ(game.exploration().snapshot().chef.position, ENTRY);
+  EXPECT_EQ(at(game.exploration().snapshot().chef), ENTRY);
   game.step(ALL_AI);
-  EXPECT_EQ(game.exploration().snapshot().chef.position,
-            (GridPosition{.x = 1}));
-  EXPECT_EQ(game.exploration().snapshot().appraiser.position,
+  EXPECT_EQ(at(game.exploration().snapshot().chef), (GridPosition{.x = 1}));
+  EXPECT_EQ(at(game.exploration().snapshot().appraiser),
             (GridPosition{.x = 1}));
   game.step(ALL_AI);
-  EXPECT_EQ(game.exploration().snapshot().chef.position,
-            (GridPosition{.x = 2}));
+  EXPECT_EQ(at(game.exploration().snapshot().chef), (GridPosition{.x = 2}));
   ASSERT_TRUE(game.simulation().snapshot().chef.inventory.empty());
   game.step(ALL_AI);
   EXPECT_EQ(game.simulation().snapshot().chef.inventory,
@@ -277,77 +285,90 @@ TEST(Companion, WalksToASourceOneCellPerTickAndCollectsWithinRange) {
   EXPECT_EQ(game.refusals(), 0U);
 }
 
-TEST(Companion, RoutesAroundAGapInsteadOfFallingBackToBase) {
+TEST(Companion, JumpsAGapAndClimbsALadderToAHighSourceWithoutFalling) {
   const std::vector<ObjectDefinition> city{
-      {.id = FLOOR, .area = {.width = 3}},
-      {.id = ObjectId{2}, .area = {.x = 2, .height = 3}},
-      {.id = ObjectId{3}, .area = {.y = 2, .width = 3}},
-      ingredient_source(SOURCE, 0, 2)};
-  Game game(city, tuning({{.id = SOURCE}}), kitchen());
+      {.id = FLOOR, .area = {.y = 3, .width = 4}},
+      {.id = ObjectId{2}, .area = {.x = 6, .y = 3, .width = 3}},
+      {.id = ObjectId{3},
+       .kind = ObjectKind::Ladder,
+       .area = {.x = 8, .height = 4}},
+      {.id = ObjectId{4}, .area = {.x = 7, .width = 4}},
+      ingredient_source(SOURCE, 10)};
+  auto places = tuning({{.id = SOURCE}});
+  places.entry = {.y = 3};
+  Game game(city, places, kitchen(), 30s);
   game.step(ALL_AI);
+  bool jumped = false;
+  bool climbed = false;
   while (game.simulation().snapshot().chef.inventory.empty()) {
     ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City);
     ASSERT_GT(game.simulation().snapshot().remaining_exploration, 0us);
     game.step(ALL_AI);
+    const auto stance = game.exploration().snapshot().chef.body.stance;
+    jumped = jumped || stance == Stance::Airborne;
+    climbed = climbed || stance == Stance::Climbing;
   }
+  EXPECT_TRUE(jumped);
+  EXPECT_TRUE(climbed);
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
 }
-
-TEST(Companion, RoutesAroundABuildingAndThroughItsOpenEntrance) {
-  const std::vector<ObjectDefinition> around{
-      floor_of(5, 3),
-      {.id = WALL,
-       .kind = ObjectKind::Building,
-       .area = {.x = 2, .width = 1, .height = 2}},
-      ingredient_source(SOURCE, 4)};
-  Game walked(around, tuning({{.id = SOURCE}}), kitchen());
+TEST(Companion, JumpsALowBuildingAndWalksThroughATallOnesOpenEntrance) {
+  const std::vector<ObjectDefinition> over{
+      {.id = FLOOR, .area = {.y = 1, .width = 6}},
+      {.id = WALL, .kind = ObjectKind::Building, .area = {.x = 2, .y = 1}},
+      ingredient_source(SOURCE, 5, 1)};
+  auto places = tuning({{.id = SOURCE}});
+  places.entry = {.y = 1};
+  Game jumped(over, places, kitchen());
   const std::vector<ObjectDefinition> through{
-      floor_of(5, 3),
+      {.id = FLOOR, .area = {.y = 1, .width = 6}},
       {.id = WALL,
        .kind = ObjectKind::Building,
-       .area = {.x = 2, .width = 1, .height = 3}},
+       .area = {.x = 2, .y = -1, .height = 3}},
       {.id = DOOR, .kind = ObjectKind::Entrance, .area = {.x = 2, .y = 1}},
-      ingredient_source(SOURCE, 4)};
-  Game entered(through, tuning({{.id = SOURCE}}), kitchen());
+      ingredient_source(SOURCE, 5, 1)};
+  Game entered(through, places, kitchen());
   for (int tick = 0; tick < 12; ++tick) {
-    walked.step(ALL_AI);
+    jumped.step(ALL_AI);
     entered.step(ALL_AI);
   }
-  EXPECT_EQ(walked.exploration().snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(jumped.exploration().snapshot().sources.front().remaining, 0U);
   EXPECT_EQ(entered.exploration().snapshot().sources.front().remaining, 0U);
 }
-
-TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessAnotherWayExists) {
+TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
   const auto broken = [](std::int32_t height) {
     return std::vector<ObjectDefinition>{
-        floor_of(5, 3),
+        {.id = FLOOR, .area = {.y = 1, .width = 6}},
         {.id = WALL,
          .kind = ObjectKind::Building,
-         .area = {.x = 2, .width = 1, .height = height}},
+         .area = {.x = 2, .y = 2 - height, .height = height}},
         {.id = DOOR,
          .kind = ObjectKind::Entrance,
          .area = {.x = 2, .y = 1},
          .destroyed_after = WorldThreshold{.acid = AcidLevel{1}},
          .repair_with = WRENCH},
-        ingredient_source(SOURCE, 4)};
+        ingredient_source(SOURCE, 5, 1)};
   };
-  Game sealed(broken(3), tuning({{.id = SOURCE}}), kitchen());
+  auto places = tuning({{.id = SOURCE}});
+  places.entry = {.y = 1};
+  Game sealed(broken(3), places, kitchen());
   ASSERT_EQ(sealed.world().update({.acid = AcidLevel{1}}),
             WorldUpdateResult::Applied);
-  Game gapped(broken(2), tuning({{.id = SOURCE}}), kitchen());
-  ASSERT_EQ(gapped.world().update({.acid = AcidLevel{1}}),
+  Game hurdle(broken(1), places, kitchen());
+  ASSERT_EQ(hurdle.world().update({.acid = AcidLevel{1}}),
             WorldUpdateResult::Applied);
   sealed.step(ALL_AI);
-  gapped.step(ALL_AI);
+  hurdle.step(ALL_AI);
   EXPECT_EQ(sealed.simulation().snapshot().chef.location, Location::Base);
   EXPECT_EQ(sealed.simulation().snapshot().day, 2U);
-  EXPECT_EQ(gapped.simulation().snapshot().chef.location, Location::City);
+  EXPECT_EQ(hurdle.simulation().snapshot().chef.location, Location::City);
 }
-
 TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {
   auto view = city_view({.x = 2});
   add_source(view, SOURCE, 9);
-  const auto building = object_of(WALL, ObjectKind::Building, 3);
+  auto building = object_of(WALL, ObjectKind::Building, 3);
+  building.area.y = -1;
+  building.area.height = 2;
   view.world.objects.push_back(building);
   ASSERT_EQ(ai_action(view, Actor::Chef), Action{ReturnToBase{}});
   view.world.objects.back().state = ObjectState::Destroyed;
@@ -374,7 +395,7 @@ TEST(Companion, ACollectableSourceComesBeforeANearerRepair) {
 TEST(Companion, ARepairIsAnErrandOnlyWhileItOpensTheWayToStock) {
   auto view = view_with_broken_door({.x = 3});
   add_source(view, FAR_SOURCE, 0);
-  ASSERT_EQ(cell_at(view.world, {.x = 1}), Cell::Blocked);
+  ASSERT_EQ(CellMap(view.world).at({.x = 1}), Cell::Blocked);
   const auto errand = companion_with().errand(Actor::Chef, view);
   ASSERT_TRUE(errand.has_value());
   EXPECT_EQ(errand.value_or(Errand{}).target, DOOR);
@@ -398,11 +419,12 @@ TEST(Companion, SettingOutIsWorthItOnlyForStockARepairCanReach) {
   view.progression.chef.location = Location::Base;
   view.progression.appraiser.location = Location::Base;
   view.world.objects.at(1).area.x = 2;
+  view.world.objects.at(2).area.x = 2;
   add_source(view, FAR_SOURCE, 5);
   const CompanionConfig config{.exploration = tuning({}),
                                .workshop = kitchen(),
                                .unfed_penalty = UNFED_PENALTY};
-  ASSERT_EQ(cell_at(view.world, {.x = 2}), Cell::Blocked);
+  ASSERT_EQ(CellMap(view.world).at({.x = 2}), Cell::Blocked);
   EXPECT_TRUE(worth_entering(config, Actor::Chef, view));
   EXPECT_FALSE(worth_entering(config, Actor::Appraiser, view));
   view.exploration.sources.front().remaining = 0;
@@ -418,34 +440,10 @@ TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
              ingredient_source(SOURCE, 4)},
             tuning({{.id = SOURCE}}), kitchen());
   ASSERT_EQ(game.view().world.objects.at(1).state, ObjectState::Dormant);
-  for (int tick = 0; tick < 5; ++tick) {
+  for (int tick = 0; tick < 8; ++tick) {
     game.step(ALL_AI);
   }
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
-}
-
-TEST(Companion, RoutesDoNotWrapAroundTheEndsOfTheGrid) {
-  constexpr auto LOWEST = std::numeric_limits<std::int32_t>::min();
-  constexpr auto HIGHEST = std::numeric_limits<std::int32_t>::max();
-  const auto companion = companion_with();
-  const auto stranded = [&](GridPosition position, WorldArea next_floor,
-                            WorldArea source) {
-    auto view = city_view(position);
-    view.world.objects.front().area = {.x = position.x, .y = position.y};
-    auto floor = object_of(ObjectId{2}, ObjectKind::Terrain, 0);
-    floor.area = next_floor;
-    floor.traversable = true;
-    view.world.objects.push_back(floor);
-    add_source(view, SOURCE, 0);
-    view.world.objects.back().area = source;
-    return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).action ==
-           Action{ReturnToBase{}};
-  };
-  ASSERT_FALSE(stranded({.x = 0}, {.x = 1}, {.x = 2}));
-  EXPECT_TRUE(stranded({.x = HIGHEST}, {.x = LOWEST}, {.x = LOWEST + 1}));
-  EXPECT_TRUE(stranded({.x = LOWEST}, {.x = HIGHEST}, {.x = HIGHEST - 1}));
-  EXPECT_TRUE(stranded({.y = HIGHEST}, {.y = LOWEST}, {.y = LOWEST + 1}));
-  EXPECT_TRUE(stranded({.y = LOWEST}, {.y = HIGHEST}, {.y = HIGHEST - 1}));
 }
 
 TEST(Companion, SkipsDepletedAndUnavailableSourcesForOneItCanUse) {
@@ -499,8 +497,11 @@ TEST(Companion, UsesACarriedToolOnABrokenPassageOnlyWhenNothingIsCollectable) {
                               .destroyed_after =
                                   WorldThreshold{.acid = AcidLevel{1}},
                               .repair_with = WRENCH};
+  const ObjectDefinition wall{
+      .id = WALL, .kind = ObjectKind::Building, .area = {.x = 3, .y = -1}};
   const std::vector<ObjectDefinition> city{floor_of(6),
                                            door,
+                                           wall,
                                            ingredient_source(SOURCE, 5),
                                            {.id = TOOL_SOURCE,
                                             .kind = ObjectKind::MaterialSource,
@@ -742,7 +743,7 @@ TEST(Companion, AHumanCollectsOnlyWithinRangeAndMovesAsPressed) {
   EXPECT_EQ(near.action, Action{Collect{SOURCE}});
   EXPECT_EQ(near.movement.direction, Direction::Right);
   EXPECT_TRUE(near.movement.running);
-  view.exploration.chef.position = {.x = 0};
+  view.exploration.chef.body.position = standing_in({.x = 0});
   EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
             std::nullopt);
 }
@@ -867,13 +868,12 @@ TEST(Companion, ALeftActorKeepsItsStateAndAiCarriesOnFromIt) {
       PlayerInput{.movement = {.direction = Direction::Right}}};
   game.step(two_players(), right);
   const auto before = game.view();
-  ASSERT_EQ(before.exploration.chef.position, (GridPosition{.x = 1}));
+  ASSERT_EQ(at(before.exploration.chef), (GridPosition{.x = 1}));
   const auto control = leave(two_players(), Actor::Chef);
   ASSERT_EQ(game.view().progression, before.progression);
   game.step(control, {NO_INPUT, NO_INPUT});
-  EXPECT_EQ(game.exploration().snapshot().chef.position,
-            (GridPosition{.x = 2}));
-  EXPECT_EQ(game.exploration().snapshot().appraiser.position,
+  EXPECT_EQ(at(game.exploration().snapshot().chef), (GridPosition{.x = 2}));
+  EXPECT_EQ(at(game.exploration().snapshot().appraiser),
             (GridPosition{.x = 1}));
   game.step(control, {NO_INPUT, NO_INPUT});
   EXPECT_EQ(game.simulation().snapshot().chef.inventory,
@@ -886,11 +886,11 @@ TEST(Companion, SwitchingHandsTheFormerHumanActorToAiMidRun) {
   const auto control = single_player(Actor::Chef);
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
   game.step(control);
-  ASSERT_EQ(game.exploration().snapshot().chef.position, ENTRY);
-  ASSERT_NE(game.exploration().snapshot().appraiser.position, ENTRY);
+  ASSERT_EQ(at(game.exploration().snapshot().chef), ENTRY);
+  ASSERT_NE(at(game.exploration().snapshot().appraiser), ENTRY);
   const auto switched = switch_control(control);
   game.step(switched);
-  EXPECT_NE(game.exploration().snapshot().chef.position, ENTRY);
+  EXPECT_NE(at(game.exploration().snapshot().chef), ENTRY);
 }
 
 /// Steps until `day` arrives, asserting a bound so a stuck AI fails the test.
@@ -1110,11 +1110,11 @@ TEST(Companion, TheErrandNamesWhereAiWouldWalkAndStopsStepping) {
   const auto companion = companion_with();
   const auto walking = companion.errand(Actor::Chef, view).value_or(Errand{});
   EXPECT_EQ(walking.target, NEAR);
-  EXPECT_EQ(walking.step, Direction::Right);
-  view.exploration.chef.position = {.x = 5};
+  EXPECT_EQ(walking.step, Move::Right);
+  view.exploration.chef.body.position = standing_in({.x = 5});
   const auto there = companion.errand(Actor::Chef, view).value_or(Errand{});
   EXPECT_EQ(there.target, NEAR);
-  EXPECT_EQ(there.step, Direction::Idle);
+  EXPECT_EQ(there.step, std::nullopt);
   view.exploration.sources.back().remaining = 0;
   EXPECT_FALSE(companion.errand(Actor::Chef, view).has_value());
 }

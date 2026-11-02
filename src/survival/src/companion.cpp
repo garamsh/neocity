@@ -5,16 +5,12 @@
 #include <cstdlib>
 #include <deque>
 #include <iterator>
-#include <limits>
 #include <set>
 #include <utility>
 #include <vector>
 
 namespace neocity::survival {
 namespace {
-
-constexpr std::array STEPS{Direction::Left, Direction::Right, Direction::Up,
-                           Direction::Down};
 
 Actor partner_of(Actor actor) {
   switch (actor) {
@@ -46,14 +42,18 @@ const ActorSnapshot &state_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
-GridPosition position_of(const GameView &view, Actor actor) {
+const Body &body_of(const GameView &view, Actor actor) {
   switch (actor) {
   case Actor::Chef:
-    return view.exploration.chef.position;
+    return view.exploration.chef.body;
   case Actor::Appraiser:
-    return view.exploration.appraiser.position;
+    return view.exploration.appraiser.body;
   }
   std::abort();
+}
+
+GridPosition cell_of_actor(const GameView &view, Actor actor) {
+  return cell_of(body_of(view, actor).position);
 }
 
 WorkshopTool role_tool(Actor actor) {
@@ -84,36 +84,6 @@ ToolId replacement_for(const WorkshopConfig &workshop, WorkshopTool tool) {
     return workshop.spatula;
   }
   std::abort();
-}
-
-std::optional<GridPosition> neighbour(GridPosition position,
-                                      Direction direction) {
-  auto x = std::int64_t{position.x};
-  auto y = std::int64_t{position.y};
-  switch (direction) {
-  case Direction::Idle:
-    break;
-  case Direction::Left:
-    --x;
-    break;
-  case Direction::Right:
-    ++x;
-    break;
-  case Direction::Up:
-    --y;
-    break;
-  case Direction::Down:
-    ++y;
-    break;
-  }
-  if (x < std::numeric_limits<std::int32_t>::min() ||
-      x > std::numeric_limits<std::int32_t>::max() ||
-      y < std::numeric_limits<std::int32_t>::min() ||
-      y > std::numeric_limits<std::int32_t>::max()) {
-    return std::nullopt;
-  }
-  return GridPosition{.x = static_cast<std::int32_t>(x),
-                      .y = static_cast<std::int32_t>(y)};
 }
 
 /// An object to stand near and the action that works there. `lacking` marks a
@@ -182,21 +152,21 @@ const Goal *goal_in_range(const std::vector<Goal> &goals, GridPosition position,
   return found != goals.end() ? &*found : nullptr;
 }
 
-/// A cell to search, with the first step of the route that reaches it.
+/// A cell to search, with the first move of the route that reaches it.
 struct Frontier {
   GridPosition position;
-  Direction first_step = Direction::Idle;
+  std::optional<Move> first_move = std::nullopt;
 };
 
-/// A goal and the first step towards it: idle once it works from where the
+/// A goal and the first move towards it: none once it works from where the
 /// actor stands.
 struct Route {
   Goal goal;
-  Direction step = Direction::Idle;
+  std::optional<Move> step = std::nullopt;
 };
 
-/// Breadth-first over supported cells, so a route never leaves support.
-std::optional<Route> route_to(const WorldSnapshot &world, GridPosition start,
+/// Breadth-first over the links between held cells, so a route never falls.
+std::optional<Route> route_to(const CellMap &map, GridPosition start,
                               const std::vector<Goal> &goals,
                               std::uint32_t range) {
   if (goals.empty()) {
@@ -208,16 +178,13 @@ std::optional<Route> route_to(const WorldSnapshot &world, GridPosition start,
     const auto cell = frontier.front();
     frontier.pop_front();
     if (const auto *goal = goal_in_range(goals, cell.position, range)) {
-      return Route{.goal = *goal, .step = cell.first_step};
+      return Route{.goal = *goal, .step = cell.first_move};
     }
-    for (const auto step : STEPS) {
-      const auto next = neighbour(cell.position, step);
-      if (next && cell_at(world, *next) == Cell::Supported &&
-          seen.insert({next->x, next->y}).second) {
-        frontier.push_back({.position = *next,
-                            .first_step = cell.first_step == Direction::Idle
-                                              ? step
-                                              : cell.first_step});
+    for (const auto &link : links(map, cell.position)) {
+      if (seen.insert({link.to.x, link.to.y}).second) {
+        frontier.push_back(
+            {.position = link.to,
+             .first_move = cell.first_move ? cell.first_move : link.move});
       }
     }
   }
@@ -234,7 +201,7 @@ bool opens_a_way(const WorldSnapshot &world, const Goal &passage,
       object.traversable = true;
     }
   }
-  return route_to(repaired, from, goals, range).has_value();
+  return route_to(CellMap(repaired), from, goals, range).has_value();
 }
 
 /// Collection comes first, what the party lacks before anything else; repair is
@@ -244,13 +211,14 @@ std::optional<Route> next_errand(const CompanionConfig &config,
                                  const GameView &view, Actor actor,
                                  GridPosition from) {
   const auto range = config.exploration.collection_distance;
+  const CellMap map(view.world);
   const auto goals = collection_goals(view);
   std::vector<Goal> lacking;
   std::ranges::copy_if(goals, std::back_inserter(lacking), &Goal::lacking);
-  if (auto errand = route_to(view.world, from, lacking, range)) {
+  if (auto errand = route_to(map, from, lacking, range)) {
     return errand;
   }
-  if (auto errand = route_to(view.world, from, goals, range)) {
+  if (auto errand = route_to(map, from, goals, range)) {
     return errand;
   }
   std::vector<Goal> repairs;
@@ -259,7 +227,7 @@ std::optional<Route> next_errand(const CompanionConfig &config,
                          return opens_a_way(view.world, passage, goals, from,
                                             range);
                        });
-  return route_to(view.world, from, repairs, range);
+  return route_to(map, from, repairs, range);
 }
 
 std::optional<IngredientId> first_unidentified(const GameView &view) {
@@ -381,7 +349,7 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
     if (input.travel) {
       command.action = ReturnToBase{};
     } else if (input.interact) {
-      const auto position = position_of(view, actor);
+      const auto position = cell_of_actor(view, actor);
       const auto range = config.exploration.collection_distance;
       const auto goals = collection_goals(view);
       const auto repairs = repair_goals(view, actor);
@@ -446,14 +414,19 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return worth_entering(config, actor, view) ? ActorCommand{.action = Enter{}}
                                                : ActorCommand{};
   }
-  const auto route = next_errand(config, view, actor, position_of(view, actor));
+  const auto &body = body_of(view, actor);
+  // In the air there is nothing to choose: keep the way the jump or drop went.
+  if (body.stance == Stance::Airborne) {
+    return {.movement = {.direction = body.heading}};
+  }
+  const auto route = next_errand(config, view, actor, cell_of(body.position));
   if (!route) {
     return {.action = ReturnToBase{}};
   }
-  if (route->step == Direction::Idle) {
+  if (!route->step) {
     return {.action = route->goal.action};
   }
-  return {.movement = {.direction = route->step}};
+  return {.movement = steer(*route->step, body)};
 }
 
 ActorCommand decide(const CompanionConfig &config, Actor actor,
@@ -567,7 +540,7 @@ bool worth_entering(const CompanionConfig &config, Actor actor,
                     const GameView &view) {
   const auto entry = config.exploration.entry;
   return view.progression.remaining_exploration.count() > 0 &&
-         cell_at(view.world, entry) == Cell::Supported &&
+         stands_on(CellMap(view.world), entry) &&
          next_errand(config, view, actor, entry).has_value();
 }
 
@@ -575,7 +548,8 @@ Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}
 
 std::optional<Errand> Companion::errand(Actor actor,
                                         const GameView &view) const {
-  const auto route = next_errand(config, view, actor, position_of(view, actor));
+  const auto route =
+      next_errand(config, view, actor, cell_of_actor(view, actor));
   if (!route) {
     return std::nullopt;
   }

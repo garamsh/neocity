@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#include <deque>
 #include <map>
 #include <set>
 #include <string>
@@ -190,6 +189,7 @@ struct KeyLabels {
   const char *end_day;
   const char *switch_actor;
   const char *leave;
+  const char *jump;
 };
 
 constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
@@ -201,7 +201,8 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .feed = "F",
                                           .end_day = "G",
                                           .switch_actor = "Tab",
-                                          .leave = "X"},
+                                          .leave = "X",
+                                          .jump = "Space"},
                                 KeyLabels{.move = "IJKL",
                                           .every_move = "IJKL",
                                           .run = "H",
@@ -211,7 +212,8 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .feed = "[",
                                           .end_day = "]",
                                           .switch_actor = "B",
-                                          .leave = "N"}};
+                                          .leave = "N",
+                                          .jump = ";"}};
 
 /// A human chef always holds the first key set's up and down.
 constexpr const char *CHOOSE_DISH_KEYS = "W/S";
@@ -278,9 +280,9 @@ std::uint32_t stamina_of(const GameView &view, Actor actor) {
 GridPosition position_of(const GameView &view, Actor actor) {
   switch (actor) {
   case Actor::Chef:
-    return view.exploration.chef.position;
+    return survival::cell_of(view.exploration.chef.body.position);
   case Actor::Appraiser:
-    return view.exploration.appraiser.position;
+    return survival::cell_of(view.exploration.appraiser.body.position);
   }
   std::abort();
 }
@@ -498,38 +500,30 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
 
 using Cells = std::set<std::pair<std::int32_t, std::int32_t>>;
 
-/// Adds to `seen` every cell movement allows from `from`.
+/// Adds to `seen` every cell movement reaches from `from`.
 void add_walkable(Cells &seen, const survival::WorldSnapshot &world,
                   GridPosition from) {
-  seen.insert({from.x, from.y});
-  std::deque<GridPosition> frontier{from};
-  while (!frontier.empty()) {
-    const auto cell = frontier.front();
-    frontier.pop_front();
-    for (const auto next : {GridPosition{.x = cell.x - 1, .y = cell.y},
-                            GridPosition{.x = cell.x + 1, .y = cell.y},
-                            GridPosition{.x = cell.x, .y = cell.y - 1},
-                            GridPosition{.x = cell.x, .y = cell.y + 1}}) {
-      if (survival::cell_at(world, next) == survival::Cell::Supported &&
-          seen.insert({next.x, next.y}).second) {
-        frontier.push_back(next);
-      }
-    }
+  for (const auto cell :
+       survival::reachable_cells(survival::CellMap(world), from)) {
+    seen.insert({cell.x, cell.y});
   }
 }
 
-const char *direction_word(survival::Direction direction) {
-  switch (direction) {
-  case survival::Direction::Idle:
-    return "over";
-  case survival::Direction::Left:
-    return "left";
-  case survival::Direction::Right:
-    return "right";
-  case survival::Direction::Up:
-    return "up";
-  case survival::Direction::Down:
-    return "down";
+/// The first move of an errand, worded for a human holding `keys`.
+String move_words(survival::Move move, const KeyLabels &keys) {
+  switch (move) {
+  case survival::Move::Left:
+    return "Walk left";
+  case survival::Move::Right:
+    return "Walk right";
+  case survival::Move::ClimbUp:
+    return "Climb up";
+  case survival::Move::ClimbDown:
+    return "Climb down";
+  case survival::Move::JumpLeft:
+    return "Jump left with " + from(keys.jump);
+  case survival::Move::JumpRight:
+    return "Jump right with " + from(keys.jump);
   }
   std::abort();
 }
@@ -571,8 +565,7 @@ String city_step(const SurvivalFrame &frame, Actor actor,
   const bool collecting =
       offers.interact &&
       std::holds_alternative<survival::Collect>(*offers.interact);
-  const bool walking =
-      offers.errand && offers.errand->step != survival::Direction::Idle;
+  const bool walking = offers.errand && offers.errand->step.has_value();
   // A source passed on the way to what the party lacks would spend the clock,
   // and a repair with no errand left opens no way to stock.
   if (offers.interact && offers.errand && !(collecting && walking)) {
@@ -584,7 +577,12 @@ String city_step(const SurvivalFrame &frame, Actor actor,
     return "Nothing is within reach for now. " + from(keys.travel) +
            " returns to base.";
   }
-  return "Walk " + String(direction_word(offers.errand->step)) + " to " +
+  if (!offers.errand->step) {
+    return "Walk over to " +
+           from(survival::object_name(offers.errand->target)) + ". " +
+           from(keys.travel) + " returns.";
+  }
+  return move_words(*offers.errand->step, keys) + " to " +
          from(survival::object_name(offers.errand->target)) + ". " +
          from(keys.travel) + " returns.";
 }
@@ -1053,7 +1051,8 @@ bool travel_asked(const SurvivalFrame &frame, Actor actor) {
 
 /// The movement keys a lone human reads beside its travel button.
 String move_hint(const KeyLabels &keys) {
-  return from(keys.move) + " move  " + from(keys.run) + " run";
+  return from(keys.move) + " move  " + from(keys.run) + " run  " +
+         from(keys.jump) + " jump";
 }
 
 /// The humans in the city phase, chef first, with their key sets.
@@ -1609,6 +1608,7 @@ std::vector<KeyRow> rows_for(bool together) {
   }
   rows.push_back(row("Move", one.every_move, two.every_move));
   rows.push_back(row("Run", one.run, two.run));
+  rows.push_back(row("Jump", one.jump, two.jump));
   rows.push_back(row("Set out or return to base", one.travel, two.travel));
   rows.push_back(row("Collect or repair; appraise or cook at base",
                      one.interact, two.interact));
@@ -1879,9 +1879,10 @@ String hand_off_notice(const SurvivalFrame &frame) {
   return "One player left, as the " +
          String(actor_name(chef ? Actor::Chef : Actor::Appraiser)) + ": " +
          from(keys.move) + " move  " + from(keys.run) + " run  " +
-         from(keys.interact) + " use  " + from(keys.travel) + " travel  " +
-         from(keys.replace_tool) + " tool  " + from(keys.feed) + " feed  " +
-         from(keys.end_day) + " end day  " + from(keys.switch_actor) + " swap";
+         from(keys.jump) + " jump  " + from(keys.interact) + " use  " +
+         from(keys.travel) + " travel  " + from(keys.replace_tool) + " tool  " +
+         from(keys.feed) + " feed  " + from(keys.end_day) + " end day  " +
+         from(keys.switch_actor) + " swap";
 }
 
 String next_step(const SurvivalFrame &frame) {

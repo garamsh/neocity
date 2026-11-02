@@ -44,15 +44,20 @@ const survival::ActorSnapshot &state_of(const survival::Snapshot &snapshot,
   std::abort();
 }
 
-GridPosition position_of(const survival::ExplorationSnapshot &snapshot,
-                         Actor actor) {
+const survival::Body &body_of(const survival::ExplorationSnapshot &snapshot,
+                              Actor actor) {
   switch (actor) {
   case Actor::Chef:
-    return snapshot.chef.position;
+    return snapshot.chef.body;
   case Actor::Appraiser:
-    return snapshot.appraiser.position;
+    return snapshot.appraiser.body;
   }
   std::abort();
+}
+
+GridPosition position_of(const survival::ExplorationSnapshot &snapshot,
+                         Actor actor) {
+  return survival::cell_of(body_of(snapshot, actor).position);
 }
 
 std::uint32_t stamina_of(const survival::ExplorationSnapshot &snapshot,
@@ -103,6 +108,7 @@ void retain_edges(PlayerInput &pending, const PlayerInput &input) {
   pending.end_day = pending.end_day || input.end_day;
   pending.switch_actor = pending.switch_actor || input.switch_actor;
   pending.leave = pending.leave || input.leave;
+  pending.movement.jump = pending.movement.jump || input.movement.jump;
 }
 
 godot::String from(std::string_view text) {
@@ -160,6 +166,18 @@ const char *reaction_name(survival::MonsterReaction reaction) {
   std::abort();
 }
 
+const char *stance_name(survival::Stance stance) {
+  switch (stance) {
+  case survival::Stance::Standing:
+    return "standing";
+  case survival::Stance::Airborne:
+    return "airborne";
+  case survival::Stance::Climbing:
+    return "climbing";
+  }
+  std::abort();
+}
+
 const char *location_name(survival::Location location) {
   switch (location) {
   case survival::Location::Base:
@@ -174,11 +192,15 @@ godot::Dictionary actor_status(const GameView &view,
                                survival::ControlMap control, Actor actor) {
   const auto &state = state_of(view.progression, actor);
   const auto position = position_of(view.exploration, actor);
+  const auto &body = body_of(view.exploration, actor);
   const auto keys = survival::key_set(control, actor);
   godot::Dictionary status;
   status.set("location", location_name(state.location));
   status.set("x", position.x);
   status.set("y", position.y);
+  status.set("sub_x", body.position.x);
+  status.set("sub_y", body.position.y);
+  status.set("stance", stance_name(body.stance));
   status.set("health", state.health);
   status.set("stamina", stamina_of(view.exploration, actor));
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
@@ -203,13 +225,14 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   }
   for (std::size_t index = 0; index < input.size(); ++index) {
     const auto &movement = input.at(index).movement;
-    retain_edges(pending.at(index), input.at(index));
-    // A press shorter than a step still walks one cell; a key held across a
-    // step stops walking when released.
+    // A press shorter than a step still walks one movement unit; a key held
+    // across a step stops walking when released.
     if (movement.direction != survival::Direction::Idle &&
         movement.direction != held.at(index).direction) {
-      pending.at(index).movement = movement;
+      pending.at(index).movement.direction = movement.direction;
+      pending.at(index).movement.running = movement.running;
     }
+    retain_edges(pending.at(index), input.at(index));
     held.at(index) = movement;
   }
   if (dish_press != survival::Direction::Idle) {
@@ -219,12 +242,14 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
       auto &next = pending.at(index);
+      const bool jump = next.movement.jump;
       if (next.tap != survival::Direction::Idle) {
         next.movement = {.direction = next.tap,
                          .running = held.at(index).running};
       } else if (held.at(index).direction != survival::Direction::Idle) {
         next.movement = held.at(index);
       }
+      next.movement.jump = jump;
     }
     step();
     pending = {};

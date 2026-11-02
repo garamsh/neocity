@@ -22,6 +22,7 @@ struct KeySet {
   const char *end_day;
   const char *switch_actor;
   const char *leave;
+  const char *jump;
 };
 
 constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
@@ -35,7 +36,8 @@ constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
                                      .feed = "survival_1_feed",
                                      .end_day = "survival_1_end_day",
                                      .switch_actor = "survival_1_switch",
-                                     .leave = "survival_1_leave"},
+                                     .leave = "survival_1_leave",
+                                     .jump = "survival_1_jump"},
                               KeySet{.left = "survival_2_left",
                                      .right = "survival_2_right",
                                      .up = "survival_2_up",
@@ -47,7 +49,8 @@ constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
                                      .feed = "survival_2_feed",
                                      .end_day = "survival_2_end_day",
                                      .switch_actor = "survival_2_switch",
-                                     .leave = "survival_2_leave"}};
+                                     .leave = "survival_2_leave",
+                                     .jump = "survival_2_jump"}};
 
 template <typename Test>
 survival::Direction first_direction(const KeySet &keys, Test test) {
@@ -85,7 +88,8 @@ survival::PlayerInput sample_keys(const godot::Input &input,
                                   const KeySet &keys) {
   return {
       .movement = {.direction = held_direction(input, keys),
-                   .running = input.is_action_pressed(keys.run)},
+                   .running = input.is_action_pressed(keys.run),
+                   .jump = input.is_action_just_pressed(keys.jump)},
       .tap = tapped_direction(input, keys),
       .travel = input.is_action_just_pressed(keys.travel),
       .interact = input.is_action_just_pressed(keys.interact),
@@ -135,7 +139,7 @@ bool survival_controls_held() {
     return std::ranges::any_of(
         std::array{keys.left, keys.right, keys.up, keys.down, keys.run,
                    keys.travel, keys.interact, keys.replace_tool, keys.feed,
-                   keys.end_day, keys.switch_actor, keys.leave},
+                   keys.end_day, keys.switch_actor, keys.leave, keys.jump},
         [input](const char *action) {
           return input->is_action_pressed(action);
         });

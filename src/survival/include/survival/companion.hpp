@@ -120,11 +120,11 @@ struct CompanionConfig {
   AcidLevel unfed_penalty;
 };
 
-/// What AI would walk to next, and the first step on the way there: idle once
+/// What AI would go to next, and the first move on the way there: none once
 /// the target works from where the actor stands.
 struct Errand {
   ObjectId target;
-  Direction step = Direction::Idle;
+  std::optional<Move> step = std::nullopt;
 };
 
 /// Whether setting out now gives `actor` an errand, by the search `errand`
@@ -139,7 +139,7 @@ public:
   explicit Companion(CompanionConfig settings);
   /// Translates `input` for a human; AI ignores it. Read a fresh view for each
   /// actor after applying the other's action, and advance at most one 100ms
-  /// movement tick between commands, since `movement` is valid for one cell.
+  /// movement unit between commands, since AI steers from where it stands.
   [[nodiscard]] ActorCommand command(Actor actor, ControlMap control,
                                      const PlayerInput &input,
                                      const GameView &view) const;

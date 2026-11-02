@@ -127,29 +127,36 @@ std::uint32_t unfed_days(Game &game, std::uint32_t last_day) {
   return unfed;
 }
 
-bool reachable(const Content &content, const WorldSnapshot &world,
-               const WorldArea &area) {
-  const auto entry = content.companion.exploration.entry;
-  const auto range = content.companion.exploration.collection_distance;
-  std::set<std::pair<std::int32_t, std::int32_t>> seen{{entry.x, entry.y}};
-  std::deque<GridPosition> frontier{entry};
+/// The cells a party can reach from the entrance by `allowed` moves.
+std::vector<GridPosition>
+cells_reached(const Content &content, const WorldSnapshot &world,
+              const std::set<Move> &allowed = {
+                  Move::Left, Move::Right, Move::ClimbUp, Move::ClimbDown,
+                  Move::JumpLeft, Move::JumpRight}) {
+  const auto &exploration = content.companion.exploration;
+  const CellMap map(world);
+  std::vector<GridPosition> seen{exploration.entry};
+  std::deque<GridPosition> frontier{exploration.entry};
   while (!frontier.empty()) {
     const auto cell = frontier.front();
     frontier.pop_front();
-    if (distance(cell, area) <= range) {
-      return true;
-    }
-    for (const auto next : {GridPosition{.x = cell.x - 1, .y = cell.y},
-                            GridPosition{.x = cell.x + 1, .y = cell.y},
-                            GridPosition{.x = cell.x, .y = cell.y - 1},
-                            GridPosition{.x = cell.x, .y = cell.y + 1}}) {
-      if (cell_at(world, next) == Cell::Supported &&
-          seen.insert({next.x, next.y}).second) {
-        frontier.push_back(next);
+    for (const auto &link : links(map, cell)) {
+      if (allowed.contains(link.move) &&
+          std::ranges::find(seen, link.to) == seen.end()) {
+        seen.push_back(link.to);
+        frontier.push_back(link.to);
       }
     }
   }
-  return false;
+  return seen;
+}
+
+bool reachable(const Content &content, const WorldSnapshot &world,
+               const WorldArea &area) {
+  const auto range = content.companion.exploration.collection_distance;
+  return std::ranges::any_of(
+      cells_reached(content, world),
+      [&](GridPosition cell) { return distance(cell, area) <= range; });
 }
 
 /// The source's world object, as a snapshot.
@@ -349,7 +356,7 @@ TEST(TemporaryContent, RubbleBlocksItsCellForTheWholeRun) {
       if (kind == GroundKind::Rubble) {
         ++rubble;
         EXPECT_EQ(
-            cell_at(world.snapshot(), {.x = cell.first, .y = cell.second}),
+            CellMap(world.snapshot()).at({.x = cell.first, .y = cell.second}),
             Cell::Blocked)
             << cell.first << ", " << cell.second;
       }
@@ -377,6 +384,45 @@ TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
     }
   }
   EXPECT_GT(ends, 0U);
+}
+
+TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
+  const auto content = temporary_content(1);
+  const auto ground = ground_of(content);
+  std::size_t walkways = 0;
+  for (const auto &object : content.objects) {
+    if (object.kind == ObjectKind::Terrain) {
+      ++walkways;
+      EXPECT_EQ(object.area.height, 1) << object_name(object.id);
+    }
+  }
+  EXPECT_GT(walkways, 0U);
+  for (const auto &[cell, kind] : ground) {
+    EXPECT_FALSE(ground.contains({cell.first, cell.second - 1}))
+        << cell.first << ", " << cell.second;
+  }
+}
+
+TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
+  const auto content = temporary_content(1);
+  World world(content.objects);
+  const auto every_way = cells_reached(content, world.snapshot());
+  const auto walking =
+      cells_reached(content, world.snapshot(), {Move::Left, Move::Right});
+  const auto no_jump =
+      cells_reached(content, world.snapshot(),
+                    {Move::Left, Move::Right, Move::ClimbUp, Move::ClimbDown});
+  const auto no_climb =
+      cells_reached(content, world.snapshot(),
+                    {Move::Left, Move::Right, Move::JumpLeft, Move::JumpRight});
+  EXPECT_LT(walking.size(), no_jump.size());
+  EXPECT_LT(no_jump.size(), every_way.size());
+  EXPECT_LT(no_climb.size(), every_way.size());
+  std::set<std::int32_t> rows;
+  for (const auto cell : every_way) {
+    rows.insert(cell.y);
+  }
+  EXPECT_GE(rows.size(), 6U);
 }
 
 TEST(TemporaryContent, NoStraightRunOfGroundIsLongerThanAThirdOfTheMap) {
