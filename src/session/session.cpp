@@ -97,8 +97,10 @@ void quit_game() {
 
 } // namespace
 
-Session::Session(StartSurvival start_survival, CinematicStage cinematic_stage)
-    : start(std::move(start_survival)), stage(std::move(cinematic_stage)) {}
+Session::Session(StartSurvival start_survival, CinematicStage cinematic_stage,
+                 SoundStage sound_stage)
+    : start(std::move(start_survival)), stage(std::move(cinematic_stage)),
+      sound(std::move(sound_stage)) {}
 
 void Session::enter(Screen destination) {
   if (playback) {
@@ -108,10 +110,13 @@ void Session::enter(Screen destination) {
   screen = destination;
   run.reset();
   interruption.reset();
+  bursts.clear();
+  strides = {};
   waiting_for_release = true;
 }
 
 void Session::choose(std::size_t option) {
+  cue(Cue::MenuSelect);
   switch (screen) {
   case Screen::Main:
     if (option >= 1 && option <= hud::TITLE_ENTRIES.size()) {
@@ -162,15 +167,23 @@ void Session::select(hud::SetupEntry entry) {
 
 // A step and Enter in one frame select the entry stepped to.
 void Session::advance_title(const Command &command) {
+  if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
+    cue(Cue::MenuMove);
+  }
   move_cursor(cursor, hud::TITLE_ENTRIES.size(), command.step);
   if (command.confirm) {
+    cue(Cue::MenuSelect);
     select(hud::TITLE_ENTRIES.at(cursor));
   }
 }
 
 void Session::advance_setup(const Command &command) {
+  if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
+    cue(Cue::MenuMove);
+  }
   move_cursor(setup_cursor, hud::SETUP_ENTRIES.size(), command.step);
   if (command.confirm) {
+    cue(Cue::MenuSelect);
     select(hud::SETUP_ENTRIES.at(setup_cursor));
   }
 }
@@ -220,6 +233,11 @@ void Session::finish_cinematic(hud::Cinematic cinematic) {
 }
 
 void Session::advance(double delta, Command command) {
+  if (!volume_sent) {
+    send_volume();
+    volume_sent = true;
+  }
+  keep_music();
   if (interruption) {
     advance_interruption(*interruption, command);
     return;
@@ -238,6 +256,7 @@ void Session::advance(double delta, Command command) {
       return;
     case Screen::Controls:
     case Screen::SurvivalSetup:
+      cue(Cue::MenuBack);
       enter(Screen::Main);
       return;
     }
@@ -280,11 +299,18 @@ void Session::advance_run(SurvivalRun &open, double delta,
   } else if (command.pause) {
     opening = hud::Interruption::Paused;
   }
+  age_bursts(delta);
+  const auto before = open.view();
+  std::vector<hud::Event> events;
   if (opening) {
     open.drop_input();
-    open.advance(delta, {}, survival::Direction::Idle);
+    events = open.advance(delta, {}, survival::Direction::Idle);
   } else {
-    open.advance(delta, command.survival, command.dish_step);
+    events = open.advance(delta, command.survival, command.dish_step);
+  }
+  react(moments(before, open.view(), events, strides));
+  if (opening) {
+    cue(Cue::MenuSelect);
   }
   if (open.escaped()) {
     play(hud::Cinematic::Ending);
@@ -302,7 +328,10 @@ void Session::advance_interruption(hud::Interruption open,
   switch (open) {
   case hud::Interruption::Paused:
     if (command.pause) {
+      cue(Cue::MenuBack);
       interruption = hud::Interruption::Resuming;
+    } else if (command.step) {
+      adjust_volume(*command.step);
     } else if (command.menu) {
       interruption = hud::Interruption::ConfirmLeaveFromPause;
     }
@@ -330,6 +359,76 @@ void Session::advance_interruption(hud::Interruption open,
   std::abort();
 }
 
+void Session::cue(Cue cue) const {
+  if (volume.effects > 0) {
+    sound.play(cue);
+  }
+}
+
+void Session::react(const std::vector<Moment> &found) {
+  for (const auto &moment : found) {
+    cue(moment.cue);
+    if (const auto flourish = flourish_of(moment.cue)) {
+      bursts.push_back({.kind = *flourish, .at = moment.at, .age = 0.0F});
+    }
+  }
+}
+
+void Session::age_bursts(double delta) {
+  if (!std::isfinite(delta) || delta <= 0.0) {
+    return;
+  }
+  for (auto &burst : bursts) {
+    burst.age += static_cast<float>(delta);
+  }
+  std::erase_if(bursts, [](const rendering::Burst &burst) {
+    return burst.age >= rendering::lifetime(burst.kind);
+  });
+}
+
+// Up and down choose the bus; left and right change its level by one step.
+void Session::adjust_volume(MenuStep step) {
+  auto &level = volume.marked == Bus::Effects ? volume.effects : volume.music;
+  switch (step) {
+  case MenuStep::Up:
+  case MenuStep::Down:
+    volume.marked = volume.marked == Bus::Effects ? Bus::Music : Bus::Effects;
+    break;
+  case MenuStep::Left:
+    level = level > 0 ? static_cast<std::uint8_t>(level - 1) : level;
+    break;
+  case MenuStep::Right:
+    level = level < VOLUME_STEPS ? static_cast<std::uint8_t>(level + 1) : level;
+    break;
+  }
+  send_volume();
+  cue(Cue::MenuMove);
+}
+
+void Session::send_volume() const {
+  sound.volume(Bus::Effects, loudness(volume.effects));
+  sound.volume(Bus::Music, loudness(volume.music));
+}
+
+// Off music plays nothing; a cinematic and a finished run bring their own.
+void Session::keep_music() const {
+  auto track = Track::Title;
+  float tension = 0.0F;
+  if (screen == Screen::Survival) {
+    track = Track::Silence;
+    if (run && !playback) {
+      const auto progression = run->view().progression;
+      tension = run->acid_fill();
+      if (progression.phase == survival::Phase::Exploration) {
+        track = Track::City;
+      } else if (progression.phase == survival::Phase::Workshop) {
+        track = Track::Workshop;
+      }
+    }
+  }
+  sound.music(volume.music > 0 ? track : Track::Silence, tension);
+}
+
 void Session::paint(godot::Node2D &canvas,
                     const rendering::Art &drawing) const {
   switch (screen) {
@@ -349,9 +448,10 @@ void Session::paint(godot::Node2D &canvas,
                            playback->card_left.has_value(), run->frame());
     } else if (run) {
       const auto frame = run->frame();
-      hud::paint_survival(canvas, drawing, frame);
+      hud::paint_survival(canvas, drawing, frame, bursts);
       if (interruption) {
-        hud::paint_interruption(canvas, drawing, *interruption, frame);
+        hud::paint_interruption(canvas, drawing, *interruption, frame,
+                                volume_rows(volume));
       }
     }
     return;
@@ -386,6 +486,11 @@ godot::Dictionary Session::survival_status() const {
     status.set("cinematic", cinematic_name(playback->cinematic));
     status.set("cinematic_source", playback->card_left ? "fallback" : "scene");
   }
+  godot::Array shown;
+  for (const auto &burst : bursts) {
+    shown.push_back(rendering::flourish_name(burst.kind));
+  }
+  status.set("flourishes", shown);
   if (interruption) {
     status.set("interruption", interruption_name(*interruption));
     godot::Array prompt;

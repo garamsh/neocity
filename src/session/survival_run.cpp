@@ -218,8 +218,10 @@ SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players)
           survival::key_set(players, Actor::Chef).has_value() &&
           survival::key_set(players, Actor::Appraiser).has_value()) {}
 
-void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
-                          survival::Direction dish_press) {
+std::vector<hud::Event>
+SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
+                     survival::Direction dish_press) {
+  fresh.clear();
   if (std::isfinite(delta) && delta > 0.0) {
     accumulated += delta;
   }
@@ -255,6 +257,7 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
     pending = {};
     dish_step = survival::Direction::Idle;
   }
+  return fresh;
 }
 
 void SurvivalRun::drop_input() {
@@ -275,6 +278,15 @@ bool SurvivalRun::over() const {
 }
 
 survival::ControlMap SurvivalRun::control() const { return controllers; }
+
+float SurvivalRun::acid_fill() const {
+  const auto full = features.content.get().run.full_acid.value;
+  const auto acid = features.simulation.get().snapshot().acid.value;
+  return full > 0
+             ? std::clamp(static_cast<float>(acid) / static_cast<float>(full),
+                          0.0F, 1.0F)
+             : 0.0F;
+}
 
 GameView SurvivalRun::view() const {
   return {.progression = features.simulation.get().snapshot(),
@@ -458,6 +470,7 @@ void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
 }
 
 void SurvivalRun::record(const hud::Event &event) {
+  fresh.push_back(event);
   events.push_back(event);
   while (events.size() > EVENT_LIMIT) {
     events.pop_front();

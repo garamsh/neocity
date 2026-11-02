@@ -2,6 +2,7 @@
 
 #include "rendering/drawing.hpp"
 #include "session/session.hpp"
+#include "session/speaker.hpp"
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
@@ -63,6 +64,9 @@ public:
   [[nodiscard]] static godot::PackedStringArray controls_keys();
   /// Pins the seed of every later survival run, for repeatable host checks.
   void pin_survival_seed(std::int64_t seed);
+  /// Reports what the speakers played and play now, for host checks; empty
+  /// before the scene is ready.
+  [[nodiscard]] godot::Dictionary sound_status() const;
 
 protected:
   static void _bind_methods();
@@ -79,6 +83,7 @@ private:
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
   std::optional<rendering::Art> drawing;
+  std::optional<session::Speaker> speaker;
 };
 
 } // namespace neocity

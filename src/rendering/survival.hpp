@@ -6,11 +6,17 @@
 #include <survival/content.hpp>
 
 #include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
 #include <vector>
 
 namespace neocity::rendering {
 
+/// The canvas height of the acid's surface at `acid_ratio`, from below the
+/// map's lowest ground row at 0 to the top of the map at 1.
+[[nodiscard]] float acid_surface(float acid_ratio);
+/// Where a point of the city, in sub-cells, falls on the canvas.
+[[nodiscard]] godot::Vector2 map_point(survival::Position position);
 /// Draws the monster's throat, the distant city, and the acid sea behind every
 /// survival screen, darker and cooler than the map. The surface rises with
 /// `acid_ratio`, from below the map's lowest ground row at 0 to the top of the

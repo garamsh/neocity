@@ -14,6 +14,7 @@
 #include <deque>
 #include <functional>
 #include <optional>
+#include <vector>
 
 namespace neocity::session {
 
@@ -35,9 +36,11 @@ struct SurvivalFeatures {
 class SurvivalRun {
 public:
   SurvivalRun(SurvivalFeatures rules, survival::ControlMap players);
-  /// Retains this frame's input and runs every step the frame time completes.
-  void advance(double delta, const std::array<survival::PlayerInput, 2> &input,
-               survival::Direction dish_press);
+  /// Retains this frame's input and runs every step the frame time completes;
+  /// returns the events those steps recorded, oldest first.
+  std::vector<hud::Event>
+  advance(double delta, const std::array<survival::PlayerInput, 2> &input,
+          survival::Direction dish_press);
   /// Forgets every key press not yet stepped, keeping the frame time.
   void drop_input();
   /// Whether the run has ended in the escaped phase.
@@ -48,11 +51,14 @@ public:
   [[nodiscard]] survival::ControlMap control() const;
   /// Reads one frame's values for the screen.
   [[nodiscard]] hud::SurvivalFrame frame() const;
+  /// Reads every rule object's snapshot.
+  [[nodiscard]] survival::GameView view() const;
+  /// How full the acid is, from 0 to 1 at the rules' full value.
+  [[nodiscard]] float acid_fill() const;
   /// Reports the screen's values by name for host integration assertions.
   [[nodiscard]] godot::Dictionary status() const;
 
 private:
-  [[nodiscard]] survival::GameView view() const;
   [[nodiscard]] bool over() const;
   /// `Companion`'s command, with a human chef's cooking set to the chosen dish.
   [[nodiscard]] survival::ActorCommand
@@ -85,6 +91,8 @@ private:
   std::uint32_t map_changes = 0;
   std::uint32_t last_day_map_changes = 0;
   std::deque<hud::Event> events;
+  /// The events recorded since the current `advance` began.
+  std::vector<hud::Event> fresh;
 };
 
 } // namespace neocity::session

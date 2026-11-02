@@ -5,6 +5,7 @@
 
 #include "../hud/menus.hpp"
 #include "../rendering/drawing.hpp"
+#include "sound.hpp"
 #include "survival_run.hpp"
 
 #include <godot_cpp/variant/dictionary.hpp>
@@ -12,6 +13,7 @@
 #include <array>
 #include <functional>
 #include <optional>
+#include <vector>
 
 namespace neocity::session {
 
@@ -19,8 +21,9 @@ namespace neocity::session {
 /// players, and the survival game.
 enum class Screen : std::uint8_t { Main, Controls, SurvivalSetup, Survival };
 
-/// A press that moves the cursor of the title screen or the choice of players.
-enum class MenuStep : std::uint8_t { Up, Down };
+/// A press that moves the cursor of the title screen or the choice of players,
+/// or, left and right, changes a volume on the pause screen.
+enum class MenuStep : std::uint8_t { Up, Down, Left, Right };
 
 /// One host frame's sampled actions.
 struct Command {
@@ -67,8 +70,10 @@ struct Playback {
 /// root.
 class Session {
 public:
-  /// Receives the survival run factory and the stage that plays cinematics.
-  Session(StartSurvival start_survival, CinematicStage cinematic_stage);
+  /// Receives the survival run factory, the stage that plays cinematics, and
+  /// the one that plays sound.
+  Session(StartSurvival start_survival, CinematicStage cinematic_stage,
+          SoundStage sound_stage);
   /// Samples edges once and advances the open screen; a survival run takes all
   /// of the frame time.
   void advance(double delta, Command command);
@@ -95,10 +100,26 @@ private:
   void play(hud::Cinematic cinematic);
   void advance_cinematic(Playback &open, double delta, const Command &command);
   void finish_cinematic(hud::Cinematic cinematic);
+  /// Plays `cue` unless the effects are off.
+  void cue(Cue cue) const;
+  /// Plays the moments of a run's frame and starts their flourishes.
+  void react(const std::vector<Moment> &found);
+  /// Moves the flourishes on by `delta` seconds and drops the finished ones.
+  void age_bursts(double delta);
+  void adjust_volume(MenuStep step);
+  void send_volume() const;
+  /// Keeps the open screen's music playing.
+  void keep_music() const;
 
   StartSurvival start;
   std::optional<SurvivalRun> run;
   CinematicStage stage;
+  SoundStage sound;
+  Volume volume;
+  bool volume_sent = false;
+  Strides strides{};
+  /// The flourishes under way in the open run.
+  std::vector<rendering::Burst> bursts;
   std::optional<Playback> playback;
   std::optional<hud::Interruption> interruption;
   Screen screen = Screen::Main;

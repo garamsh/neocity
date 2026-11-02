@@ -43,9 +43,12 @@ add_library(
     src/input/survival.cpp
     src/register_types.cpp
     src/rendering/drawing.cpp
+    src/rendering/feedback.cpp
     src/rendering/survival.cpp
     src/scene.cpp
     src/session/session.cpp
+    src/session/sound.cpp
+    src/session/speaker.cpp
     src/session/survival_run.cpp
 )
 target_link_libraries(neocity PRIVATE survival godot-cpp)
