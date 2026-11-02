@@ -47,12 +47,24 @@ MonsterReaction react(const Recipe &recipe, std::uint64_t score,
                                    : MonsterReaction::Unsatisfied;
 }
 
-AcidLevel acid_rise(MonsterReaction reaction, const WorkshopConfig &config) {
+/// Rounds up, so any meal below the satisfying score raises acid. A score of
+/// zero rises by the whole configured amount.
+AcidLevel shortfall_rise(std::uint64_t score, const WorkshopConfig &config) {
+  const std::uint64_t satisfying = config.satisfying_score;
+  const auto rise = (std::uint64_t{config.unsatisfied_acid_rise.value} *
+                         (satisfying - score) +
+                     satisfying - 1) /
+                    satisfying;
+  return AcidLevel{static_cast<std::uint32_t>(rise)};
+}
+
+AcidLevel acid_rise(MonsterReaction reaction, std::uint64_t score,
+                    const WorkshopConfig &config) {
   switch (reaction) {
   case MonsterReaction::Disliked:
     return config.disliked_acid_rise;
   case MonsterReaction::Unsatisfied:
-    return config.unsatisfied_acid_rise;
+    return shortfall_rise(score, config);
   case MonsterReaction::Satisfied:
   case MonsterReaction::Unfed:
     return {};
@@ -61,6 +73,16 @@ AcidLevel acid_rise(MonsterReaction reaction, const WorkshopConfig &config) {
 }
 
 } // namespace
+
+std::uint64_t taste_of(const Recipe &recipe, const WorkshopConfig &config) {
+  std::uint64_t taste = 0;
+  for (const auto ingredient : recipe.ingredients) {
+    const auto flavor =
+        std::ranges::find(config.flavors, ingredient, &Flavor::ingredient);
+    taste += flavor != config.flavors.end() ? flavor->taste : 0U;
+  }
+  return taste;
+}
 
 Workshop::Workshop(Simulation &progression, WorkshopConfig settings)
     : simulation(progression), config(std::move(settings)),
@@ -93,7 +115,7 @@ WorkshopResult Workshop::appraise(Actor actor, IngredientId ingredient) {
   if (!carried(simulation.get().snapshot(), ingredient)) {
     return WorkshopResult::NotCarried;
   }
-  if (!attempt(condition(WorkshopTool::Magnifier))) {
+  if (roll() >= success_percent(condition(WorkshopTool::Magnifier))) {
     return WorkshopResult::Failed;
   }
   state.identified.push_back(ingredient);
@@ -122,15 +144,20 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
   if (simulation.get().consume(recipe->ingredients) != Result::Applied) {
     return WorkshopResult::NotCarried;
   }
-  if (!attempt(condition(WorkshopTool::Spatula))) {
+  const auto result = roll();
+  const auto success = success_percent(condition(WorkshopTool::Spatula));
+  if (result >= success) {
     return WorkshopResult::Failed;
   }
-  state.foods.push_back(food);
+  state.foods.push_back({.food = food,
+                         .quality = result * 2U < success
+                                        ? DishQuality::Fine
+                                        : DishQuality::Plain});
   return WorkshopResult::Applied;
 }
 
 WorkshopResult Workshop::feed(FoodId food) {
-  const auto stored = std::ranges::find(state.foods, food);
+  const auto stored = std::ranges::find(state.foods, food, &Dish::food);
   if (stored == state.foods.end()) {
     return WorkshopResult::NoFood;
   }
@@ -149,15 +176,22 @@ WorkshopResult Workshop::feed(FoodId food) {
       std::ranges::find(state.eaten_foods, food) == state.eaten_foods.end();
   const std::uint64_t score =
       (new_food ? config.new_food_score : 0U) +
-      std::uint64_t{config.new_ingredient_score} * new_ingredients.size();
+      std::uint64_t{config.new_ingredient_score} * new_ingredients.size() +
+      taste_of(recipe, config) +
+      (stored->quality == DishQuality::Fine ? config.fine_dish_score : 0U);
   const auto reaction = react(recipe, score, config.satisfying_score);
-  const auto rise = acid_rise(reaction, config);
+  const auto rise = acid_rise(reaction, score, config);
   const auto day = simulation.get().snapshot().day;
   if (simulation.get().finish_day(rise) != Result::Applied) {
     return WorkshopResult::NotInWorkshop;
   }
   state.foods.erase(stored);
   state.eaten_foods.push_back(food);
+  if (reaction == MonsterReaction::Disliked &&
+      std::ranges::find(state.rejected_foods, food) ==
+          state.rejected_foods.end()) {
+    state.rejected_foods.push_back(food);
+  }
   state.eaten_ingredients.insert(state.eaten_ingredients.end(),
                                  new_ingredients.begin(),
                                  new_ingredients.end());
@@ -181,7 +215,7 @@ WorkshopResult Workshop::end_day_unfed(AcidLevel acid_penalty) {
 }
 
 void Workshop::damage_tool(WorkshopTool tool) {
-  if (simulation.get().snapshot().phase == Phase::Escaped) {
+  if (run_over(simulation.get().snapshot().phase)) {
     return;
   }
   tool_state(tool) = ToolState::Damaged;
@@ -249,9 +283,9 @@ bool Workshop::in_workshop() const {
 
 // The standard fixes mt19937's output but not uniform_int_distribution's, so
 // this transform replays a seed identically on every implementation.
-bool Workshop::attempt(ToolState tool) {
+std::uint32_t Workshop::roll() {
   ++state.rolls;
-  return generator() % 100U < success_percent(tool);
+  return static_cast<std::uint32_t>(generator() % 100U);
 }
 
 } // namespace neocity::survival

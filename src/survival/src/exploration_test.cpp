@@ -599,9 +599,115 @@ TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
   ASSERT_EQ(escaped.finish_day(ACID), Result::Applied);
   ASSERT_EQ(escaped.escape(), Result::Applied);
   const auto before = escaped_world.snapshot();
-  EXPECT_EQ(escaped_exploration.advance(1s, IDLE, ACID), Result::Escaped);
+  EXPECT_EQ(escaped_exploration.advance(1s, IDLE, ACID), Result::RunOver);
   EXPECT_EQ(escaped_world.snapshot(), before);
   EXPECT_EQ(state_of_weak(escaped_world), ObjectState::Intact);
+}
+
+TEST(Exploration, ACollectionSpendsTheSharedClockOnceAndAdvancesTheWorld) {
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 5}};
+  settings.collection_time = 2s;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 3s);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 2s);
+  EXPECT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 1s);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 4s);
+}
+
+TEST(Exploration, ARefusedCollectionSpendsNoTime) {
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 1}};
+  settings.collection_time = 2s;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(simulation.snapshot().remaining_exploration, 3s);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Depleted);
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 3s);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 2s);
+}
+
+TEST(Exploration,
+     ACollectionThatRunsTheClockOutKeepsItsItemAndReturnsEveryone) {
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 5}};
+  settings.collection_time = 3s;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
+            CollectionResult::Applied);
+  const auto snapshot = simulation.snapshot();
+  EXPECT_EQ(snapshot.remaining_exploration, 0us);
+  EXPECT_EQ(snapshot.phase, Phase::Workshop);
+  EXPECT_EQ(snapshot.chef.location, Location::Base);
+  EXPECT_EQ(snapshot.appraiser.location, Location::Base);
+  EXPECT_EQ(exploration.snapshot().appraiser.position, settings.base);
+  EXPECT_EQ(snapshot.appraiser.inventory.size(), 1U);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 5s);
+}
+
+TEST(Exploration, ReturningWithTimeLeftKeepsTheSpentTimeAndAllowsAnotherTrip) {
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 5}};
+  settings.collection_time = 2s;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 3s);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 1s);
+}
+
+TEST(Exploration, ACollectionTimeBelowZeroIsRefused) {
+  auto settings = tuning();
+  settings.collection_time = -1us;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  EXPECT_THROW(Exploration(simulation, world, settings), std::invalid_argument);
+  settings.collection_time = 0us;
+  EXPECT_NO_THROW(Exploration(simulation, world, settings));
+}
+
+TEST(Exploration, ADestroyedSourceKeepsItsStockOutOfReach) {
+  auto objects = city();
+  objects.at(1).destroyed_after = WorldThreshold{.acid = AcidLevel{5}};
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 3}};
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(objects);
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.advance(100ms, IDLE, AcidLevel{5}), Result::Applied);
+  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Unavailable);
+  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 1U);
+  EXPECT_EQ(exploration.snapshot().sources.at(0).remaining, 2U);
 }
 
 } // namespace

@@ -30,7 +30,7 @@ struct SurvivalFeatures {
 /// Drives one survival run: accumulates frame time into fixed 100ms steps,
 /// retains input between them, and runs both actors' commands through the
 /// rules. The step clock runs in every phase; `Exploration` spends only
-/// exploration time from it. No step runs once the party has escaped.
+/// exploration time from it. No step runs once the run is over.
 class SurvivalRun {
 public:
   SurvivalRun(SurvivalFeatures rules, survival::ControlMap players);
@@ -39,6 +39,8 @@ public:
                survival::Direction dish_press);
   /// Whether the run has ended in the escaped phase.
   [[nodiscard]] bool escaped() const;
+  /// Whether the run has ended in the lost phase.
+  [[nodiscard]] bool lost() const;
   /// Who drives each actor, for sampling their keys.
   [[nodiscard]] survival::ControlMap control() const;
   /// Reads one frame's values for the screen.
@@ -48,6 +50,7 @@ public:
 
 private:
   [[nodiscard]] survival::GameView view() const;
+  [[nodiscard]] bool over() const;
   /// `Companion`'s command, with a human chef's cooking set to the chosen dish.
   [[nodiscard]] survival::ActorCommand
   command_for(survival::Actor actor, const survival::PlayerInput &input,

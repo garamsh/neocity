@@ -48,10 +48,13 @@ struct WorldEvent {
 using Event =
     std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent, WorldEvent>;
 
-/// What one human's interact and feed keys would do right now.
+/// What one human's interact and feed keys would do right now, and the errand
+/// AI would run in that human's place. The NEXT line names that errand, so the
+/// screen tells a player where to walk.
 struct Offers {
   std::optional<survival::Action> interact;
   std::optional<survival::Action> feed;
+  std::optional<survival::Errand> errand;
 };
 
 /// Everything one survival frame draws, read from snapshots.
@@ -61,12 +64,14 @@ struct SurvivalFrame {
   survival::ControlMap control;
   /// Chef first; an AI actor's entry stays empty.
   std::array<Offers, 2> offers;
+  /// An AI chef has base work to do on its next step.
+  bool ai_chef_working = false;
   /// Oldest first.
   std::vector<Event> events;
 };
 
-/// The two authored moments of a run.
-enum class Cinematic : std::uint8_t { Intro, Ending };
+/// The authored moments of a run: its start and each way it can end.
+enum class Cinematic : std::uint8_t { Intro, Ending, Loss };
 
 /// Draws the choice of who plays which actor.
 void paint_survival_setup(godot::Node2D &canvas,

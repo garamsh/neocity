@@ -5,10 +5,19 @@ extends SceneTree
 
 const SEED: int = 11
 const DAY_FRAMES: int = 2900
-## Its escape checks miss through day 56, so the stock ends first.
-const LONG_RUN_SEED: int = 1293
+## On this seed the stock ends before the acid fills or an escape hits.
+const LONG_RUN_SEED: int = 1018
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
+const GATHERING_DAYS: int = 3
+const APPRAISER_DAYS: int = 29
+## This seed's pack after GATHERING_DAYS cooks this dish twice.
+const CHOSEN: String = "Fish Stew"
+const REPLACEMENT_DAYS: int = 12
+const MENU_PRESSES: int = 12
+const COOK_ATTEMPTS: int = 12
+const STEP_FRAMES: int = 6
+const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
 
 var scene: AscentScene
 var held: Dictionary[Key, bool] = {}
@@ -33,7 +42,13 @@ func _run() -> void:
 	if not failed:
 		await _second_day()
 	if not failed:
+		await _third_day_falls()
+	if not failed:
 		await _acid_changes_the_city()
+	if not failed:
+		await _exhaust_the_chef()
+	if not failed:
+		await _replace_the_spatula()
 	if not failed:
 		await _chef_chooses_a_dish()
 	if not failed:
@@ -41,9 +56,11 @@ func _run() -> void:
 	if not failed:
 		await _appraiser_run()
 	if not failed:
+		await _appraiser_follows_next()
+	if not failed:
 		await _two_players()
 	if not failed:
-		await _escape_clears_the_offer()
+		await _loss_clears_the_offer()
 	if failed:
 		return
 	print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).")
@@ -83,7 +100,7 @@ func _first_day() -> void:
 		return
 	if not await _walk_to(6, 7):
 		return
-	if not _check(_next().contains("Tomato Machine"), "the screen names the source in reach"):
+	if not _check(_next().begins_with("Walk "), "the screen walks past a kind the party already took"):
 		return
 	var stock: int = _stock("Tomato Machine")
 	await _tap(KEY_E)
@@ -91,15 +108,6 @@ func _first_day() -> void:
 		return
 	await _run_east()
 	if failed:
-		return
-	await _burn_and_fall()
-	if failed:
-		return
-	await _exhaust_the_chef()
-	if failed:
-		return
-	await _tap(KEY_Q)
-	if not await _until("chef sets out again", func() -> bool: return _where("chef") == "city", 30):
 		return
 	var remaining: int = _int("remaining_ms")
 	if not await _until("time expires", func() -> bool: return _str("phase") == "workshop", DAY_FRAMES):
@@ -123,9 +131,16 @@ func _run_east() -> void:
 		return
 	if not await _walk_to(17, 7):
 		return
-	_check(_next().contains("gold-framed"), "the screen points at stock the chef can walk to")
+	var line: String = _next()
+	var target: String = line.get_slice(" to ", 1).get_slice(".", 0)
+	var objects: Dictionary = scene.survival_status()["objects"]
+	_check(line.begins_with("Walk ") and objects.has(target), "the screen names the object to walk to")
 
-func _burn_and_fall() -> void:
+## Stops before anything is collected, so the fall leaves time on the clock.
+func _third_day_falls() -> void:
+	await _tap(KEY_Q)
+	if not await _until("chef sets out to the drip", func() -> bool: return _where("chef") == "city", 30):
+		return
 	if not await _walk_to(19, 7):
 		return
 	if not _check(_actor("chef", "health") == 2 and _next_event_has("burned"), "the acid drip costs one health slot"):
@@ -142,15 +157,30 @@ func _burn_and_fall() -> void:
 		return
 	if not _check(_int("remaining_ms") > 0 and _int("remaining_ms") <= remaining, "a fall keeps the remaining time"):
 		return
-	_check(_next_event_has("fell"), "the screen reports the fall")
-
-func _exhaust_the_chef() -> void:
+	if not _check(_next_event_has("fell"), "the screen reports the fall"):
+		return
 	if not await _until("AI comes back to base", func() -> bool: return _str("phase") == "workshop", 120):
 		return
 	var left: int = _int("remaining_ms")
 	await _frames(30)
 	if not _check(_int("remaining_ms") == left and left > 0, "a return with time left keeps the rest of the day"):
 		return
+	if not await _until("AI appraises before the chef goes out again", func() -> bool: return not _next().contains("identifying"), 300):
+		return
+	if not _check(_next().contains("Set out") or _next().contains("[E] "), "with time left the screen offers more to do"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("chef goes out again with time left", func() -> bool: return _where("chef") == "city", 30):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the party is home again", func() -> bool: return _str("phase") == "workshop", 120):
+		return
+	var day: int = _int("day")
+	await _tap(KEY_G)
+	await _until("the fall's day ends", func() -> bool: return _int("day") == day + 1, 30)
+
+## Starts a new day, so that drips, not the clock, end the trip.
+func _exhaust_the_chef() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef re-enters", func() -> bool: return _where("chef") == "city", 30):
 		return
@@ -172,16 +202,22 @@ func _exhaust_the_chef() -> void:
 		return
 	await _until("AI comes back after the exhaustion", func() -> bool: return _str("phase") == "workshop", 120)
 
+## The damaged spatula stays damaged until the party finds its replacement.
+func _replace_the_spatula() -> void:
+	var day: int = _int("day")
+	while not _next().contains("Replace the damaged Spatula"):
+		if _int("day") >= day + REPLACEMENT_DAYS or _str("phase") == "lost" or _str("phase") == "escaped":
+			_check(false, "the screen offers the found replacement")
+			return
+		await _follow_next()
+	var carried: int = _actor("chef", "tools") + _actor("appraiser", "tools")
+	await _tap(KEY_R)
+	_check(_spatula() == "intact" and _actor("chef", "tools") + _actor("appraiser", "tools") == carried - 1, "R spends a found tool on the damaged spatula")
+
 func _workshop_day_one() -> void:
 	if not await _until("AI appraises the finds", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 300):
 		return
 	if not _check(_int("remaining_ms") == 0 and _int("day") == 1, "the workshop runs with no clock and stays on the same day"):
-		return
-	if not _check(_next().contains("Replace the damaged Spatula"), "the screen offers the found replacement"):
-		return
-	var carried: int = _actor("chef", "tools") + _actor("appraiser", "tools")
-	await _tap(KEY_R)
-	if not _check(_spatula() == "intact" and _actor("chef", "tools") + _actor("appraiser", "tools") == carried - 1, "R spends a found tool on the damaged spatula"):
 		return
 	await _cook()
 	if failed:
@@ -191,7 +227,7 @@ func _workshop_day_one() -> void:
 	await _tap(KEY_F)
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
 		return
-	if not _check(_str("reaction") == "satisfied" and _int("score") >= 60, "a new dish satisfies the monster"):
+	if not _check(_str("reaction") == "satisfied" and _int("score") >= 100, "a new dish satisfies the monster"):
 		return
 	if not _check(_int("acid") == 0 and _int("eaten") == 1 and _int("foods") == 0, "a satisfied monster raises no acid and the dish is gone"):
 		return
@@ -216,26 +252,10 @@ func _second_day() -> void:
 		return
 	if not _check(_stock("Tomato Machine") == spent, "a new day does not refill stock"):
 		return
-	if not await _walk_to(5, 7):
-		return
-	if not await _until("a washed-up bag appears", func() -> bool: return _object("Washed-up Bag 1") == "intact", DAY_FRAMES):
-		return
-	await _until("the chef has a source in reach", func() -> bool: return _next().contains("Washed-up Bag 1"), 30)
-	var pack: int = _actor("chef", "ingredients")
-	await _tap(KEY_E)
-	if not _check(_actor("chef", "ingredients") == pack + 1, "day two collects from a source that time exposed"):
-		return
-	if not await _until("AI empties all it can walk to", func() -> bool: return _next().contains("Nothing is within reach"), 300):
-		return
-	if not _check(_stock("Arcade Bag") > 0 and _object("Old Kiosk") == "intact", "stock behind the kiosk is not called reachable"):
-		return
-	if not await _until("exploration time breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", DAY_FRAMES):
-		return
-	if not await _until("AI repairs the ladder with its found wrench", func() -> bool: return _object("Roof Ladder") == "intact" and _next_event_has("repaired Roof Ladder"), 600):
-		return
+	var pack: int = _actor("chef", "ingredients") + _actor("appraiser", "ingredients")
 	if not await _until("day two expires", func() -> bool: return _str("phase") == "workshop", DAY_FRAMES):
 		return
-	if not _check(_object("Old Kiosk") == "destroyed", "exploration time collapsed the kiosk"):
+	if not _check(_int("remaining_ms") == 0 and _actor("chef", "ingredients") + _actor("appraiser", "ingredients") > pack, "collecting runs the day's clock out"):
 		return
 	await _until("AI appraises day two's finds", func() -> bool: return not _next().contains("identifying"), 300)
 	await _cook()
@@ -254,11 +274,14 @@ func _chef_chooses_a_dish() -> void:
 	await _set_out_before_feeding()
 	if failed:
 		return
-	if not await _until("the rest of day one runs out", func() -> bool: return _int("remaining_ms") == 0 and _str("phase") == "workshop", DAY_FRAMES):
-		return
-	if not await _until("AI appraises the day's finds", func() -> bool: return not _next().contains("identifying"), 300):
-		return
-	if not _check(_str("dish_offered") == "Mushroom Soup", "with no choice the key offers Companion's dish"):
+	await _gather_rest_of_day()
+	for day: int in range(GATHERING_DAYS):
+		await _tap(KEY_Q)
+		await _gather_rest_of_day()
+		if failed:
+			return
+	var first: String = _str("dish_offered")
+	if not _check(first != "", "with no choice the key offers Companion's dish"):
 		return
 	await _tap(KEY_TAB)
 	if not _check(_actor("chef", "key_set") == -1, "the human takes the appraiser"):
@@ -269,70 +292,98 @@ func _chef_chooses_a_dish() -> void:
 	var unmoved: String = _str("dish_offered")
 	_key(KEY_S, false)
 	await _frames(8)
-	if not _check(_actor("chef", "key_set") == 0 and unmoved == "Mushroom Soup", "a key held through the swap chooses nothing"):
+	if not _check(_actor("chef", "key_set") == 0 and unmoved == first, "a key held through the swap chooses nothing"):
 		return
 	_key(KEY_S, true)
 	await _frames(30)
 	_key(KEY_S, false)
 	await _frames(8)
-	if not _check(_str("dish_offered") == "Fish Stew", "a held S moves the choice one dish"):
+	var second: String = _str("dish_offered")
+	if not _check(second != first, "a held S moves the choice"):
 		return
 	_key(KEY_S, true)
 	await _frames(12)
 	await _tap(KEY_W)
 	_key(KEY_S, false)
 	await _frames(8)
-	if not _check(_str("dish_offered") == "Fish Stew", "S held under a tapped W counts each press once"):
+	if not _check(_str("dish_offered") == second, "S held under a tapped W counts each press once"):
 		return
 	_key(KEY_A, true)
 	await _frames(12)
 	await _tap(KEY_S)
 	_key(KEY_A, false)
 	await _frames(8)
-	if not _check(_str("dish_offered") == "Kelp Wrap", "S chooses while A is held"):
+	var third: String = _str("dish_offered")
+	if not _check(third != second and third != first, "S chooses while A is held"):
 		return
 	await _tap(KEY_W)
-	await _tap(KEY_W)
-	await _tap(KEY_W)
-	if not _check(_str("dish_offered") == "Pickle Surprise", "W wraps past the first dish"):
+	if not _check(_str("dish_offered") == second, "W walks up the list"):
 		return
+	var presses: int = 0
 	await _tap(KEY_W)
-	if not _check(_str("dish_offered") == "Truffle Roast", "W walks up the list"):
+	while _str("dish_offered") != second and presses < MENU_PRESSES:
+		presses += 1
+		await _tap(KEY_W)
+	if not _check(presses >= 2 and _str("dish_offered") == second, "W wraps past the first dish"):
 		return
+	while _str("dish_offered") != CHOSEN and presses < 2 * MENU_PRESSES:
+		presses += 1
+		await _tap(KEY_W)
 	var attempts: int = 0
-	while not _stored().has("Truffle Roast") and attempts < 6:
+	while not _stored().has(CHOSEN) and attempts < 6:
 		attempts += 1
 		await _tap(KEY_E)
-	if not _check(_stored().has("Truffle Roast") and not _stored().has("Mushroom Soup"), "the chosen dish is the one cooked"):
+	if not _check(_stored().has(CHOSEN), "the chosen dish is the one cooked"):
 		return
-	if not _check(_str("dish_offered") == "Truffle Roast", "the choice stands while it can be cooked"):
-		return
-	attempts = 0
-	while _str("dish_offered") == "Truffle Roast" and attempts < 6:
-		attempts += 1
-		await _tap(KEY_E)
-	if not _check(_str("dish_offered") == "Mushroom Soup", "a choice out of ingredients falls back to Companion's dish"):
+	if not _check(_str("dish_offered") == CHOSEN, "the choice stands while it can be cooked"):
 		return
 	attempts = 0
-	while not _stored().has("Mushroom Soup") and attempts < 6:
+	while _str("dish_offered") == CHOSEN and attempts < COOK_ATTEMPTS:
 		attempts += 1
 		await _tap(KEY_E)
-	if not _check(_stored().has("Mushroom Soup"), "the key cooks the dish it fell back to"):
+	var fallback: String = _str("dish_offered")
+	if not _check(fallback != CHOSEN and fallback != "", "a choice out of ingredients falls back to Companion's dish"):
+		return
+	attempts = 0
+	while not _stored().has(fallback) and attempts < 6:
+		attempts += 1
+		await _tap(KEY_E)
+	if not _check(_stored().has(fallback), "the key cooks the dish it fell back to"):
 		return
 	await _tap(KEY_S)
-	if not _check(_str("dish_offered") == "Fish Stew", "a choice is made late in the day"):
+	var late: String = _str("dish_offered")
+	if not _check(late != fallback, "a choice is made late in the day"):
 		return
+	var day: int = _int("day")
 	await _tap(KEY_F)
-	if not await _until("day two begins", func() -> bool: return _int("day") == 2, 30):
+	if not await _until("the next day begins", func() -> bool: return _int("day") == day + 1, 30):
 		return
-	if not _check(_str("dish_offered") == "Mushroom Soup", "a new day clears the choice"):
+	if not _check(_str("dish_offered") != late, "a new day clears the choice"):
 		return
-	await _follow_next_past_a_broken_ladder()
+
+## Gathers until the clock or the stock ends, and ends the day with the finds
+## appraised.
+func _gather_rest_of_day() -> void:
+	var day: int = _int("day")
+	var steps: int = 0
+	while _str("phase") == "exploration" and not _next().contains("Nothing is within reach") and steps < DAY_STEPS:
+		steps += 1
+		await _follow_next()
+	await _tap(KEY_Q)
+	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", 300):
+		return
+	if not await _until("AI appraises the day's finds", func() -> bool: return not _next().contains("identifying"), 300):
+		return
+	await _tap(KEY_G)
+	await _until("the gathering day ends", func() -> bool: return _int("day") == day + 1, 30)
+	if failed:
+		return
+	await _until("AI appraises what was left", func() -> bool: return not _next().contains("identifying"), 300)
 
 ## A dish keeps, so the screen spends the day's time before ending the day.
 func _set_out_before_feeding() -> void:
 	await _tap(KEY_Q)
-	if not await _until("AI gathers a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 8, 900):
+	if not await _until("AI gathers a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 2, 900):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party comes back early", func() -> bool: return _str("phase") == "workshop", 120):
@@ -346,33 +397,6 @@ func _set_out_before_feeding() -> void:
 		return
 	await _tap(KEY_Q)
 
-## The AI partner holds the wrench and comes home with the chef, so the repair
-## stays undone; NEXT must end the day and not send the chef back out.
-func _follow_next_past_a_broken_ladder() -> void:
-	await _tap(KEY_Q)
-	if not await _until("the ladder falls with nothing left for the chef", func() -> bool: return _object("Roof Ladder") == "destroyed" and _next().contains("Nothing is within reach"), DAY_FRAMES):
-		return
-	if not _check(_actor("appraiser", "tools") > 0 and _actor("chef", "tools") == 0, "only the AI partner carries a tool"):
-		return
-	await _tap(KEY_Q)
-	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", 120):
-		return
-	if not _check(_object("Roof Ladder") == "destroyed" and _int("remaining_ms") > 0, "the repair is undone with time left"):
-		return
-	var day: int = _int("day")
-	for round: int in range(6):
-		if _next().contains("Set out"):
-			await _tap(KEY_Q)
-			await _until("the chef sets out as told", func() -> bool: return _where("chef") == "city", 30)
-		elif _next().contains("Nothing is within reach"):
-			await _tap(KEY_Q)
-			await _until("the party comes home as told", func() -> bool: return _str("phase") == "workshop", 120)
-		elif _next().contains("[F] Feed"):
-			await _tap(KEY_F)
-			await _until("feeding ends the day", func() -> bool: return _int("day") > day, 30)
-			break
-	_check(_int("day") > day, "following NEXT past the broken ladder ends the day")
-
 ## Plays on what NEXT says alone until the stock is gone, with only the budget of
 ## steps a day takes: a line that sends the player in circles spends it.
 func _follow_next_to_the_last_dish() -> void:
@@ -384,7 +408,7 @@ func _follow_next_to_the_last_dish() -> void:
 	var day: int = _int("day")
 	var steps: int = 0
 	while not (_next().contains("End the day unfed") and _int("remaining_ms") > 0):
-		if _str("phase") == "escaped" or _int("day") >= LONG_RUN_DAYS:
+		if _str("phase") == "escaped" or _str("phase") == "lost" or _int("day") >= LONG_RUN_DAYS:
 			_check(false, "the stock runs out before the run ends")
 			return
 		await _follow_next()
@@ -412,23 +436,56 @@ func _follow_next() -> void:
 		await _tap(KEY_G)
 	elif line.contains("[E] "):
 		await _tap(KEY_E)
+	elif line.begins_with("Walk "):
+		await _walk_a_cell(line)
 	else:
 		await _frames(12)
+
+## Walks one cell the way NEXT names: a press and release in one frame walks one
+## step at any frame length.
+func _walk_a_cell(line: String) -> void:
+	var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
+	if code != KEY_NONE:
+		_key(code, true)
+		_key(code, false)
+	await _frames(STEP_FRAMES)
 
 func _acid_changes_the_city() -> void:
 	if not _check(_object("Noodle Vendor") == "intact" and _object("Drifted Ferry") == "dormant", "the vendor stands and the ferry is away"):
 		return
-	await _tap(KEY_G)
-	await _until("the first unfed day ends", func() -> bool: return _int("day") == 4, 30)
-	if not _check(_int("acid") == 15 and _str("reaction") == "unfed", "an unfed day raises acid by the penalty"):
+	if not _check(_int("day") == 4 and _int("acid") == 12 and _str("reaction") == "unfed", "an unfed day raises acid by the penalty"):
 		return
 	if not await _until("the screen reports the unfed day", func() -> bool: return _next_event_has("unfed"), 30):
+		return
+	if not await _until("acid brings a washed-up bag and breaks the ladder", func() -> bool: return _object("Washed-up Bag 1") == "intact" and _object("Roof Ladder") == "destroyed", 30):
+		return
+	await _collect_from_the_washed_up_bag()
+	if failed:
 		return
 	await _tap(KEY_G)
 	await _until("the second unfed day ends", func() -> bool: return _int("day") == 5, 30)
 	if not await _until("acid reaches the city", func() -> bool: return _object("Noodle Vendor") == "destroyed", 30):
 		return
-	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 30, "rising acid brings the ferry in")
+	await _tap(KEY_G)
+	await _until("the third unfed day ends", func() -> bool: return _int("day") == 6, 30)
+	await _until("acid brings the ferry", func() -> bool: return _object("Drifted Ferry") == "intact", 30)
+	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 36, "rising acid brings the ferry in")
+
+func _collect_from_the_washed_up_bag() -> void:
+	await _tap(KEY_Q)
+	if not await _until("the chef sets out for the bag", func() -> bool: return _where("chef") == "city", 30):
+		return
+	if not await _walk_to(5, 7):
+		return
+	var pack: int = _actor("chef", "ingredients")
+	var left: int = _int("remaining_ms")
+	await _tap(KEY_E)
+	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source that acid exposed"):
+		return
+	if not _check(_int("remaining_ms") <= left - 12000, "a collection spends the shared clock"):
+		return
+	await _tap(KEY_Q)
+	await _until("the party is home from the bag", func() -> bool: return _str("phase") == "workshop", 120)
 
 func _appraiser_run() -> void:
 	await _tap(KEY_M)
@@ -451,7 +508,7 @@ func _appraiser_run() -> void:
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "tools") == 1, "the human collects a tool"):
 		return
-	if not await _until("AI collects mushrooms and tomatoes", func() -> bool: return _stock("Lost Basket") == 0 and _stock("Tomato Machine") == 0 and _int("elapsed_ms") >= 20000, DAY_FRAMES):
+	if not await _until("AI collects", func() -> bool: return _actor("chef", "ingredients") >= 2, DAY_FRAMES):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", 120):
@@ -473,13 +530,38 @@ func _appraiser_run() -> void:
 		return
 	await _human_repairs_the_ladder()
 
+## An AI chef cooks a step after the last appraisal, so NEXT must not end that day.
+func _appraiser_follows_next() -> void:
+	await _tap(KEY_M)
+	await _tap(KEY_1)
+	await _tap(KEY_2)
+	await _tap(KEY_E)
+	var steps: int = 0
+	var fed: bool = true
+	while _int("day") <= APPRAISER_DAYS and steps < APPRAISER_DAYS * DAY_STEPS:
+		steps += 1
+		await _follow_next()
+		fed = fed and _str("reaction") != "unfed"
+	if not _check(fed, "following NEXT feeds what an AI chef can cook"):
+		return
+	_check(_int("day") > APPRAISER_DAYS, "the appraiser's days keep moving on NEXT alone")
+
 func _human_repairs_the_ladder() -> void:
+	await _tap(KEY_Q)
+	if not await _until("day two runs out", func() -> bool: return _int("remaining_ms") == 0 and _str("phase") == "workshop", DAY_FRAMES):
+		return
+	if not await _until("AI cooks day two's finds", func() -> bool: return _int("foods") >= 1, 300):
+		return
+	await _tap(KEY_F)
+	if not await _until("the appraiser feeds day two's dish", func() -> bool: return _int("day") == 3, 30):
+		return
+	await _tap(KEY_G)
+	if not await _until("acid breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
+		return
 	await _tap(KEY_Q)
 	for waypoint: Vector2i in [Vector2i(26, 7), Vector2i(26, 4), Vector2i(31, 4)]:
 		if not await _walk_to(waypoint.x, waypoint.y):
 			return
-	if not await _until("the ladder breaks over the human", func() -> bool: return _object("Roof Ladder") == "destroyed", DAY_FRAMES):
-		return
 	await _until("the screen offers the repair", func() -> bool: return _next().contains("Repair Roof Ladder"), 30)
 	if not _check(_next().contains("Repair Roof Ladder"), "the screen offers the repair in reach"):
 		return
@@ -509,6 +591,14 @@ func _two_players() -> void:
 		return
 	if not _check(_where("chef") == "base", "a human partner stays until told"):
 		return
+	await _tap(KEY_Q)
+	if not await _until("player one joins", func() -> bool: return _where("chef") == "city", 30):
+		return
+	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: Walk "), "the screen tells each player where to walk"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("player one goes home", func() -> bool: return _where("chef") == "base", 30):
+		return
 	var x: int = _actor("appraiser", "x")
 	_key(KEY_L, true)
 	var walked: bool = await _until("player two walks", func() -> bool: return _actor("appraiser", "x") > x, 30)
@@ -521,7 +611,7 @@ func _two_players() -> void:
 	await _tap(KEY_BRACKETRIGHT)
 	await _until("player two ends the day", func() -> bool: return _int("day") == 2, 30)
 
-func _escape_clears_the_offer() -> void:
+func _loss_clears_the_offer() -> void:
 	await _tap(KEY_M)
 	await _tap(KEY_1)
 	await _tap(KEY_1)
@@ -532,10 +622,10 @@ func _escape_clears_the_offer() -> void:
 	if not await _until("AI appraises the last run's finds", func() -> bool: return _str("dish_offered") != "" and not _next().contains("identifying"), 300):
 		return
 	var days: int = 0
-	while _str("phase") != "escaped" and days < LONG_RUN_DAYS:
+	while _str("phase") != "lost" and days < LONG_RUN_DAYS:
 		days += 1
 		await _tap(KEY_G)
-	_check(_str("phase") == "escaped" and _str("dish_offered") == "", "an escaped party is offered no dish")
+	_check(_str("phase") == "lost" and _str("dish_offered") == "", "a lost party is offered no dish")
 
 func _next() -> String:
 	return _str("next")

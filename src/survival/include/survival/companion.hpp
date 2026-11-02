@@ -120,6 +120,13 @@ struct CompanionConfig {
   AcidLevel unfed_penalty;
 };
 
+/// What AI would walk to next, and the first step on the way there: idle once
+/// the target works from where the actor stands.
+struct Errand {
+  ObjectId target;
+  Direction step = Direction::Idle;
+};
+
 /// Turns a view into the next command for either kind of controller. Holds no
 /// game state and no random state, so one input gives one command.
 class Companion {
@@ -131,6 +138,10 @@ public:
   [[nodiscard]] ActorCommand command(Actor actor, ControlMap control,
                                      const PlayerInput &input,
                                      const GameView &view) const;
+  /// The errand AI would run in this actor's place, for telling a human the
+  /// same way. Empty when nothing is in reach.
+  [[nodiscard]] std::optional<Errand> errand(Actor actor,
+                                             const GameView &view) const;
 
 private:
   CompanionConfig config;

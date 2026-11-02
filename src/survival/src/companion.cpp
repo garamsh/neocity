@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdlib>
 #include <deque>
+#include <iterator>
 #include <limits>
 #include <set>
 #include <utility>
@@ -115,12 +116,29 @@ std::optional<GridPosition> neighbour(GridPosition position,
                       .y = static_cast<std::int32_t>(y)};
 }
 
-/// An object to stand near and the action that works there.
+/// An object to stand near and the action that works there. `lacking` marks a
+/// source of what the party carries none of.
 struct Goal {
+  ObjectId target;
   WorldArea area;
   Action action;
+  bool lacking = false;
 };
 
+bool party_carries(const GameView &view, const ObjectSnapshot &source) {
+  const auto holds = [&source](const ActorSnapshot &state) {
+    return std::ranges::find(state.inventory, source.ingredient,
+                             [](IngredientId held) {
+                               return std::optional{held};
+                             }) != state.inventory.end() ||
+           std::ranges::find(state.tools, source.tool, [](ToolId held) {
+             return std::optional{held};
+           }) != state.tools.end();
+  };
+  return holds(view.progression.chef) || holds(view.progression.appraiser);
+}
+
+/// Stocked sources that are supplying, what the party lacks first.
 std::vector<Goal> collection_goals(const GameView &view) {
   std::vector<Goal> goals;
   for (const auto &stock : view.exploration.sources) {
@@ -128,9 +146,13 @@ std::vector<Goal> collection_goals(const GameView &view) {
         std::ranges::find(view.world.objects, stock.id, &ObjectSnapshot::id);
     if (stock.remaining > 0 && object != view.world.objects.end() &&
         object->material_available) {
-      goals.push_back({.area = object->area, .action = Collect{stock.id}});
+      goals.push_back({.target = stock.id,
+                       .area = object->area,
+                       .action = Collect{stock.id},
+                       .lacking = !party_carries(view, *object)});
     }
   }
+  std::ranges::stable_partition(goals, &Goal::lacking);
   return goals;
 }
 
@@ -143,22 +165,21 @@ std::vector<Goal> repair_goals(const GameView &view, Actor actor) {
     }
     const auto tool = *object.repair_with;
     if (std::ranges::find(tools, tool) != tools.end()) {
-      goals.push_back({.area = object.area,
+      goals.push_back({.target = object.id,
+                       .area = object.area,
                        .action = Repair{.target = object.id, .tool = tool}});
     }
   }
   return goals;
 }
 
-std::optional<Action> goal_in_range(const std::vector<Goal> &goals,
-                                    GridPosition position,
-                                    std::uint32_t range) {
-  for (const auto &goal : goals) {
-    if (distance(position, goal.area) <= range) {
-      return goal.action;
-    }
-  }
-  return std::nullopt;
+const Goal *goal_in_range(const std::vector<Goal> &goals, GridPosition position,
+                          std::uint32_t range) {
+  const auto found =
+      std::ranges::find_if(goals, [position, range](const Goal &goal) {
+        return distance(position, goal.area) <= range;
+      });
+  return found != goals.end() ? &*found : nullptr;
 }
 
 /// A cell to search, with the first step of the route that reaches it.
@@ -167,12 +188,17 @@ struct Frontier {
   Direction first_step = Direction::Idle;
 };
 
-/// Breadth-first over supported cells, so a route never leaves support. Gives
-/// the goal's action once it works from `start`, otherwise the next step.
-std::optional<ActorCommand> route_to(const WorldSnapshot &world,
-                                     GridPosition start,
-                                     const std::vector<Goal> &goals,
-                                     std::uint32_t range) {
+/// A goal and the first step towards it: idle once it works from where the
+/// actor stands.
+struct Route {
+  Goal goal;
+  Direction step = Direction::Idle;
+};
+
+/// Breadth-first over supported cells, so a route never leaves support.
+std::optional<Route> route_to(const WorldSnapshot &world, GridPosition start,
+                              const std::vector<Goal> &goals,
+                              std::uint32_t range) {
   if (goals.empty()) {
     return std::nullopt;
   }
@@ -181,11 +207,8 @@ std::optional<ActorCommand> route_to(const WorldSnapshot &world,
   while (!frontier.empty()) {
     const auto cell = frontier.front();
     frontier.pop_front();
-    if (const auto action = goal_in_range(goals, cell.position, range)) {
-      if (cell.first_step == Direction::Idle) {
-        return ActorCommand{.action = action};
-      }
-      return ActorCommand{.movement = {.direction = cell.first_step}};
+    if (const auto *goal = goal_in_range(goals, cell.position, range)) {
+      return Route{.goal = *goal, .step = cell.first_step};
     }
     for (const auto step : STEPS) {
       const auto next = neighbour(cell.position, step);
@@ -201,11 +224,19 @@ std::optional<ActorCommand> route_to(const WorldSnapshot &world,
   return std::nullopt;
 }
 
-/// Collection comes first; repair is the fallback when nothing is collectable.
-std::optional<ActorCommand> next_errand(const GameView &view, Actor actor,
-                                        GridPosition from,
-                                        std::uint32_t range) {
-  if (auto errand = route_to(view.world, from, collection_goals(view), range)) {
+/// Collection comes first, what the party lacks before anything else; repair is
+/// the fallback when nothing is collectable.
+std::optional<Route> next_errand(const CompanionConfig &config,
+                                 const GameView &view, Actor actor,
+                                 GridPosition from) {
+  const auto range = config.exploration.collection_distance;
+  const auto goals = collection_goals(view);
+  std::vector<Goal> lacking;
+  std::ranges::copy_if(goals, std::back_inserter(lacking), &Goal::lacking);
+  if (auto errand = route_to(view.world, from, lacking, range)) {
+    return errand;
+  }
+  if (auto errand = route_to(view.world, from, goals, range)) {
     return errand;
   }
   return route_to(view.world, from, repair_goals(view, actor), range);
@@ -245,30 +276,37 @@ bool eaten(const GameView &view, FoodId food) {
          view.workshop.eaten_foods.end();
 }
 
-// Reads no `Recipe::disliked`: a dislike is learned by feeding.
+bool rejected(const GameView &view, FoodId food) {
+  return std::ranges::find(view.workshop.rejected_foods, food) !=
+         view.workshop.rejected_foods.end();
+}
+
+/// New before repeated, the tastiest first within each; a food the monster
+/// rejected is never offered again. Reads no `Recipe::disliked`: a dislike is
+/// learned by feeding.
 std::optional<FoodId> food_to_cook(const WorkshopConfig &workshop,
                                    const GameView &view) {
-  std::optional<FoodId> repeat;
+  const auto rank = [&view, &workshop](const Recipe &recipe) {
+    return std::pair{!eaten(view, recipe.food), taste_of(recipe, workshop)};
+  };
+  const Recipe *best = nullptr;
   for (const auto &recipe : workshop.recipes) {
-    if (!cookable(recipe, view)) {
-      continue;
+    if (cookable(recipe, view) && !rejected(view, recipe.food) &&
+        (best == nullptr || rank(recipe) > rank(*best))) {
+      best = &recipe;
     }
-    if (!eaten(view, recipe.food)) {
-      return recipe.food;
-    }
-    repeat = repeat.value_or(recipe.food);
   }
-  return repeat;
+  return best != nullptr ? std::optional{best->food} : std::nullopt;
 }
 
 std::optional<FoodId> food_to_feed(const GameView &view) {
   const auto &foods = view.workshop.foods;
   const auto fresh = std::ranges::find_if(
-      foods, [&view](FoodId food) { return !eaten(view, food); });
+      foods, [&view](const Dish &dish) { return !eaten(view, dish.food); });
   if (fresh != foods.end()) {
-    return *fresh;
+    return fresh->food;
   }
-  return foods.empty() ? std::nullopt : std::optional{foods.front()};
+  return foods.empty() ? std::nullopt : std::optional{foods.front().food};
 }
 
 std::optional<Action> role_craft(const WorkshopConfig &workshop, Actor actor,
@@ -317,10 +355,12 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
     } else if (input.interact) {
       const auto position = position_of(view, actor);
       const auto range = config.exploration.collection_distance;
-      command.action = goal_in_range(collection_goals(view), position, range);
-      if (!command.action) {
-        command.action =
-            goal_in_range(repair_goals(view, actor), position, range);
+      const auto goals = collection_goals(view);
+      const auto repairs = repair_goals(view, actor);
+      const auto *goal = goal_in_range(goals, position, range);
+      goal = goal != nullptr ? goal : goal_in_range(repairs, position, range);
+      if (goal != nullptr) {
+        command.action = goal->action;
       }
     }
     return command;
@@ -346,8 +386,7 @@ bool worth_entering(const CompanionConfig &config, Actor actor,
   const auto entry = config.exploration.entry;
   return view.progression.remaining_exploration.count() > 0 &&
          cell_at(view.world, entry) == Cell::Supported &&
-         next_errand(view, actor, entry, config.exploration.collection_distance)
-             .has_value();
+         next_errand(config, view, actor, entry).has_value();
 }
 
 ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
@@ -387,9 +426,14 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return worth_entering(config, actor, view) ? ActorCommand{.action = Enter{}}
                                                : ActorCommand{};
   }
-  auto errand = next_errand(view, actor, position_of(view, actor),
-                            config.exploration.collection_distance);
-  return errand ? *errand : ActorCommand{.action = ReturnToBase{}};
+  const auto route = next_errand(config, view, actor, position_of(view, actor));
+  if (!route) {
+    return {.action = ReturnToBase{}};
+  }
+  if (route->step == Direction::Idle) {
+    return {.action = route->goal.action};
+  }
+  return {.movement = {.direction = route->step}};
 }
 
 ActorCommand decide(const CompanionConfig &config, Actor actor,
@@ -400,6 +444,7 @@ ActorCommand decide(const CompanionConfig &config, Actor actor,
   case Phase::Exploration:
     return ai_in_exploration(config, actor, control, view);
   case Phase::Escaped:
+  case Phase::Lost:
     return {};
   }
   std::abort();
@@ -499,6 +544,15 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
 }
 
 Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}
+
+std::optional<Errand> Companion::errand(Actor actor,
+                                        const GameView &view) const {
+  const auto route = next_errand(config, view, actor, position_of(view, actor));
+  if (!route) {
+    return std::nullopt;
+  }
+  return Errand{.target = route->goal.target, .step = route->step};
+}
 
 ActorCommand Companion::command(Actor actor, ControlMap control,
                                 const PlayerInput &input,

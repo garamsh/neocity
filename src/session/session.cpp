@@ -18,10 +18,13 @@ constexpr double TICK = 1.0 / 120.0;
 /// How long each fallback card stands without a skip; temporary values.
 constexpr double INTRO_CARD_SECONDS = 4.0;
 constexpr double ENDING_CARD_SECONDS = 6.0;
+constexpr double LOSS_CARD_SECONDS = 6.0;
 constexpr const char *INTRO_SCENE =
     "res://levels/monster_mouth_escape/cinematics/intro/intro.tscn";
 constexpr const char *ENDING_SCENE =
     "res://levels/monster_mouth_escape/cinematics/ending/ending.tscn";
+constexpr const char *LOSS_SCENE =
+    "res://levels/monster_mouth_escape/cinematics/loss/loss.tscn";
 
 const char *cinematic_scene(hud::Cinematic cinematic) {
   switch (cinematic) {
@@ -29,6 +32,8 @@ const char *cinematic_scene(hud::Cinematic cinematic) {
     return INTRO_SCENE;
   case hud::Cinematic::Ending:
     return ENDING_SCENE;
+  case hud::Cinematic::Loss:
+    return LOSS_SCENE;
   }
   std::abort();
 }
@@ -39,6 +44,8 @@ double card_seconds(hud::Cinematic cinematic) {
     return INTRO_CARD_SECONDS;
   case hud::Cinematic::Ending:
     return ENDING_CARD_SECONDS;
+  case hud::Cinematic::Loss:
+    return LOSS_CARD_SECONDS;
   }
   std::abort();
 }
@@ -49,6 +56,8 @@ const char *cinematic_name(hud::Cinematic cinematic) {
     return "intro";
   case hud::Cinematic::Ending:
     return "ending";
+  case hud::Cinematic::Loss:
+    return "loss";
   }
   std::abort();
 }
@@ -153,10 +162,10 @@ void Session::advance_cinematic(Playback &open, double delta,
   }
 }
 
-// The intro hands the run its first frame; the ending closes the run.
+// The intro hands the run its first frame; the ending and the loss close it.
 void Session::finish_cinematic(hud::Cinematic cinematic) {
   playback.reset();
-  if (cinematic == hud::Cinematic::Ending) {
+  if (cinematic != hud::Cinematic::Intro) {
     enter(Screen::Main);
   }
 }
@@ -200,6 +209,8 @@ void Session::advance(double delta, Command command) {
     run->advance(delta, command.survival, command.dish_step);
     if (run->escaped()) {
       play(hud::Cinematic::Ending);
+    } else if (run->lost()) {
+      play(hud::Cinematic::Loss);
     }
   }
   if (screen == Screen::Ascent) {

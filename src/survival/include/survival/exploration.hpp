@@ -42,13 +42,15 @@ struct SourceStock {
 };
 
 /// Temporary tuning: walking/running move one/two cells per 100ms tick.
-/// `collection_distance` also bounds repairs.
+/// `collection_distance` also bounds repairs. `collection_time` is the shared
+/// exploration time one collection spends, ingredient or tool.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
   std::uint32_t maximum_stamina = 10;
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
+  std::chrono::microseconds collection_time{};
 };
 
 /// Current input only; no movement or collection requests are queued.
@@ -100,12 +102,14 @@ public:
   [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// World time is advanced here only; acid is explicit until feeding is wired.
-  /// Answers `Result::Escaped` with no change once the party has escaped.
+  /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);
   /// Checks identity, supply, distance and shared stock before recording the
-  /// source's ingredient or tool.
+  /// source's ingredient or tool, then spends `collection_time` of the shared
+  /// clock, or what is left of it: a collection that runs the clock out keeps
+  /// its item and returns everyone.
   [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
   /// Repairs from within interaction distance with a tool this actor carries;
   /// the tool is kept.
@@ -123,6 +127,7 @@ private:
   void synchronize();
   void tick(Actor actor, ExplorationInput input);
   void check_support();
+  void advance_world(std::chrono::microseconds consumed, AcidLevel acid);
 
   std::reference_wrapper<Simulation> simulation;
   std::reference_wrapper<World> world;

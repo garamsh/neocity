@@ -13,6 +13,9 @@ namespace {
 
 using namespace std::chrono_literals;
 
+constexpr IngredientId RICE{5};
+constexpr ToolId WRENCH{6};
+
 TEST(Survival, StartsWithTwoHealthyActorsAtAnUntimedBase) {
   const Simulation simulation({.exploration_budget = 12s, .seed = 42});
   const auto state = simulation.snapshot();
@@ -378,8 +381,6 @@ TEST(Survival, EscapeIsRefusedUntilBothActorsAreBackInTheWorkshop) {
 }
 
 TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
-  constexpr IngredientId RICE{5};
-  constexpr ToolId WRENCH{6};
   const std::array ingredients{RICE};
   Simulation simulation({.exploration_budget = 10s, .seed = 4});
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
@@ -396,8 +397,8 @@ TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
   ASSERT_EQ(simulation.escape(), Result::Applied);
   const auto escaped = simulation.snapshot();
   ASSERT_EQ(escaped.phase, Phase::Escaped);
-  EXPECT_EQ(simulation.enter(Actor::Chef), Result::Escaped);
-  EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::Escaped);
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(simulation.return_to_base(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(simulation.advance(1s), Result::Applied);
   EXPECT_EQ(simulation.damage(Actor::Chef), Result::NotExploring);
@@ -408,6 +409,81 @@ TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
   EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
   EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
   EXPECT_EQ(simulation.snapshot(), escaped);
+}
+
+TEST(Simulation, FullAcidMustBePositive) {
+  EXPECT_THROW(
+      (Simulation(
+          {.exploration_budget = 1s, .seed = 1, .full_acid = AcidLevel{0}})),
+      std::invalid_argument);
+  const Simulation accepted(
+      {.exploration_budget = 1s, .seed = 1, .full_acid = AcidLevel{1}});
+  EXPECT_EQ(accepted.snapshot().phase, Phase::Workshop);
+}
+
+TEST(Simulation, ReachingFullAcidLosesTheRunAndOneBelowDoesNot) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{10}});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{9}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{1}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Lost);
+  EXPECT_EQ(simulation.snapshot().day, 3U);
+}
+
+TEST(Simulation, AcidStopsAtFull) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{10}});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{25}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{10});
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Lost);
+}
+
+TEST(Simulation, NoCommandChangesTheSnapshotAfterALoss) {
+  const std::vector<IngredientId> ingredients{RICE};
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{5}});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.collect_tool(Actor::Chef, WRENCH), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{5}), Result::Applied);
+  const auto lost = simulation.snapshot();
+  ASSERT_EQ(lost.phase, Phase::Lost);
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::RunOver);
+  EXPECT_EQ(simulation.return_to_base(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(simulation.advance(1s), Result::Applied);
+  EXPECT_EQ(simulation.damage(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::NotExploring);
+  EXPECT_EQ(simulation.collect_tool(Actor::Chef, WRENCH), Result::NotExploring);
+  EXPECT_EQ(simulation.consume(ingredients), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.consume_tool(WRENCH), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), lost);
+}
+
+TEST(Simulation, LosingKeepsWhatTheActorsCarry) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{5}});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{5}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.inventory,
+            (std::vector<IngredientId>{RICE}));
+}
+
+TEST(Simulation, HealthExhaustionIsNotALoss) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = AcidLevel{5}});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  for (int hit = 0; hit < 3; ++hit) {
+    ASSERT_EQ(simulation.damage(Actor::Chef), Result::Applied);
+  }
+  EXPECT_EQ(simulation.snapshot().chef.exhaustions, 1U);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
 }
 
 } // namespace

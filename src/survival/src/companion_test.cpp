@@ -69,7 +69,8 @@ WorkshopConfig kitchen(std::vector<Recipe> recipes = {
           .new_ingredient_score = 5,
           .satisfying_score = 12,
           .disliked_acid_rise = AcidLevel{7},
-          .unsatisfied_acid_rise = AcidLevel{2}};
+          .unsatisfied_acid_rise = AcidLevel{2},
+          .flavors = {}};
 }
 
 bool refused(const ActionResult &result) {
@@ -603,7 +604,7 @@ TEST(Companion, OneStoredDishStopsTheChefCookingAnother) {
   view.progression.chef.inventory = {CARROT};
   view.workshop.identified = {CARROT};
   ASSERT_EQ(ai_action(view, Actor::Chef), Action{Cook{SOUP}});
-  view.workshop.foods = {SOUP};
+  view.workshop.foods = {{.food = SOUP}};
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{SOUP}});
 }
 
@@ -637,11 +638,11 @@ TEST(Companion, ReplacesNothingIntactOrWithoutTheMatchingTool) {
 
 TEST(Companion, OnlyTheChefEndsAnAiDayAndFeedsAnUneatenDishFirst) {
   auto view = base_view();
-  view.workshop.foods = {SOUP, STEW};
+  view.workshop.foods = {{.food = SOUP}, {.food = STEW}};
   view.workshop.eaten_foods = {SOUP};
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{STEW}});
   EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
-  view.workshop.foods = {SOUP};
+  view.workshop.foods = {{.food = SOUP}};
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{SOUP}});
   view.workshop.foods = {};
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{EndDayUnfed{UNFED_PENALTY}});
@@ -744,14 +745,14 @@ TEST(Companion, AHumanInteractsAtBaseThroughTheirRole) {
   EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
             std::nullopt);
   view.workshop.identified = {CARROT};
-  view.workshop.foods = {SOUP};
+  view.workshop.foods = {{.food = SOUP}};
   EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
             Action{Cook{SOUP}});
 }
 
 TEST(Companion, AHumanReplacesTheirRoleToolFeedsAndEndsTheDayOnRequest) {
   auto view = base_view();
-  view.workshop.foods = {SOUP};
+  view.workshop.foods = {{.food = SOUP}};
   const auto companion = companion_with();
   const auto press = [&](Actor actor, const PlayerInput &input) {
     return companion.command(actor, two_players(), input, view).action;
@@ -975,6 +976,87 @@ TEST(CompanionRun, AnAiPartyAppraisesAgainAfterAFailedRoll) {
   EXPECT_EQ(workshop.identified, std::vector<IngredientId>{CARROT});
   EXPECT_GE(workshop.rolls, 1U);
   EXPECT_EQ(game.refusals(), 0U);
+}
+
+TEST(Companion, TheChefCooksTheTastiestNewDish) {
+  auto work = kitchen({{.food = SOUP, .ingredients = {CARROT}},
+                       {.food = STEW, .ingredients = {ONION}}});
+  work.flavors = {{.ingredient = CARROT, .taste = 1},
+                  {.ingredient = ONION, .taste = 9}};
+  auto view = base_view();
+  view.workshop.identified = {CARROT, ONION};
+  view.progression.chef.inventory = {CARROT, ONION};
+  EXPECT_EQ(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{STEW}}));
+  view.workshop.eaten_foods = {STEW};
+  EXPECT_EQ(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{SOUP}}));
+}
+
+TEST(Companion, TheChefNeverCooksARejectedDishAgain) {
+  auto work = kitchen({{.food = SOUP, .ingredients = {CARROT}},
+                       {.food = STEW, .ingredients = {ONION}}});
+  work.flavors = {{.ingredient = CARROT, .taste = 1},
+                  {.ingredient = ONION, .taste = 9}};
+  auto view = base_view();
+  view.workshop.identified = {CARROT, ONION};
+  view.progression.chef.inventory = {CARROT, ONION};
+  view.workshop.eaten_foods = {SOUP, STEW};
+  view.workshop.rejected_foods = {STEW};
+  EXPECT_EQ(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{SOUP}}));
+  view.progression.chef.inventory = {ONION};
+  EXPECT_NE(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{STEW}}));
+  view.workshop.rejected_foods.clear();
+  EXPECT_EQ(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{STEW}}));
+}
+
+TEST(Companion, TheErrandNamesWhereAiWouldWalkAndStopsStepping) {
+  constexpr ObjectId NEAR{70};
+  auto view = city_view({.x = 2});
+  add_source(view, NEAR, 6);
+  const auto companion = companion_with();
+  const auto walking = companion.errand(Actor::Chef, view).value_or(Errand{});
+  EXPECT_EQ(walking.target, NEAR);
+  EXPECT_EQ(walking.step, Direction::Right);
+  view.exploration.chef.position = {.x = 5};
+  const auto there = companion.errand(Actor::Chef, view).value_or(Errand{});
+  EXPECT_EQ(there.target, NEAR);
+  EXPECT_EQ(there.step, Direction::Idle);
+  view.exploration.sources.back().remaining = 0;
+  EXPECT_FALSE(companion.errand(Actor::Chef, view).has_value());
+}
+
+TEST(Companion, AiWalksToWhatThePartyLacksBeforeANearerSource) {
+  constexpr ObjectId NEAR{70};
+  constexpr ObjectId FAR{72};
+  auto view = city_view({.x = 2});
+  add_source(view, NEAR, 2);
+  add_source(view, FAR, 6);
+  view.world.objects.back().ingredient = ONION;
+  EXPECT_EQ(ai_action(view, Actor::Chef),
+            (std::optional<Action>{Collect{NEAR}}));
+  view.progression.appraiser.inventory = {CARROT};
+  const auto lacking =
+      companion_with().command(Actor::Chef, ALL_AI, NO_INPUT, view);
+  EXPECT_EQ(lacking.movement.direction, Direction::Right);
+  EXPECT_FALSE(lacking.action.has_value());
+}
+
+TEST(Companion, ALostPartyIsGivenNoCommand) {
+  auto view = base_view();
+  view.workshop.foods = {{.food = SOUP}};
+  ASSERT_TRUE(ai_action(view, Actor::Chef).has_value());
+  view.progression.phase = Phase::Lost;
+  EXPECT_FALSE(ai_action(view, Actor::Chef).has_value());
+  EXPECT_FALSE(ai_action(view, Actor::Appraiser).has_value());
 }
 
 } // namespace

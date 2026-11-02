@@ -94,7 +94,7 @@ Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
-  if (config.maximum_stamina == 0 ||
+  if (config.maximum_stamina == 0 || config.collection_time < 0us ||
       cell_at(snapshot, config.entry) != Cell::Supported) {
     throw std::invalid_argument("exploration requires stamina and safe entry");
   }
@@ -150,8 +150,8 @@ Result Exploration::damage(Actor actor) {
 Result Exploration::advance(std::chrono::microseconds elapsed,
                             const std::array<ExplorationInput, 2> &inputs,
                             AcidLevel acid) {
-  if (simulation.get().snapshot().phase == Phase::Escaped) {
-    return Result::Escaped;
+  if (run_over(simulation.get().snapshot().phase)) {
+    return Result::RunOver;
   }
   const auto progression = world.get().snapshot().progression;
   const auto available = simulation.get().snapshot().remaining_exploration;
@@ -163,14 +163,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
   synchronize();
   auto remaining = elapsed;
   // Apply acid even with no elapsed time, including while at base.
-  const auto update_world = [&](std::chrono::microseconds consumed) {
-    const auto current = world.get().snapshot().progression.elapsed;
-    if (world.get().update({.elapsed = current + consumed, .acid = acid}) !=
-        WorldUpdateResult::Applied) {
-      throw std::logic_error("exploration world time regressed");
-    }
-  };
-  update_world(0us);
+  advance_world(0us, acid);
   check_support();
   while (remaining > 0us &&
          simulation.get().snapshot().phase == Phase::Exploration) {
@@ -182,7 +175,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
       }
     }
     require_applied(simulation.get().advance(step));
-    update_world(step);
+    advance_world(step, acid);
     remaining -= step;
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
@@ -238,6 +231,12 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
     require_applied(simulation.get().collect_tool(actor, *object->tool));
   }
   --stock->remaining;
+  const auto spent =
+      std::min(config.collection_time,
+               simulation.get().snapshot().remaining_exploration);
+  require_applied(simulation.get().advance(spent));
+  advance_world(spent, snapshot.progression.acid);
+  synchronize();
   return CollectionResult::Applied;
 }
 
@@ -286,6 +285,15 @@ void Exploration::synchronize() {
       explorer(actor) = {.state = {.position = config.base,
                                    .stamina = config.maximum_stamina}};
     }
+  }
+}
+
+void Exploration::advance_world(std::chrono::microseconds consumed,
+                                AcidLevel acid) {
+  const auto current = world.get().snapshot().progression.elapsed;
+  if (world.get().update({.elapsed = current + consumed, .acid = acid}) !=
+      WorldUpdateResult::Applied) {
+    throw std::logic_error("exploration world time regressed");
   }
 }
 
