@@ -1,0 +1,39 @@
+Monster-mouth escape sound provenance, 2026-11-03, issue #111
+
+Every sound is CC0 1.0 (Creative Commons Zero, https://creativecommons.org/publicdomain/zero/1.0/), as the user decided on #111: no file under another licence is used. CC0 asks for no credit; the authors are named here as the record of where each file came from.
+Every file is taken byte for byte from its archive and renamed for what it plays; none is cut, mixed or re-encoded. Godot imports each with its default settings, except that the four files under music/ loop (loop=true in their .import files, which are Godot's).
+Runtime: project/levels/monster_mouth_escape/audio/effects/ and project/levels/monster_mouth_escape/audio/music/.
+The choice of file for each cue was made from the file names and pack descriptions, without listening; the creative decision-maker named on #111 decides whether they stay.
+
+Archives, each downloaded on 2026-11-03 from its OpenGameArt page, with the licence that page states and the archive's SHA-256:
+- RPG sounds, by Kenney (www.kenney.nl). Page: https://opengameart.org/content/50-rpg-sound-effects, licence CC0; the archive's license.txt also says CC0. Archive: https://opengameart.org/sites/default/files/RPGsounds_Kenney.zip, 3ae398ad63e293f9c450bda22d5d81c3af69c74df66fc1400f33c012c0bbc231
+- Interface Sounds 1.0, by Kenney. Page: https://opengameart.org/content/interface-sounds, licence CC0; the archive's License.txt also says CC0. Archive: https://opengameart.org/sites/default/files/kenney_interfaceSounds.zip, f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232
+- Sci-Fi Sounds 1.0, by Kenney. Page: https://opengameart.org/content/sci-fi-sounds, licence CC0; the archive's License.txt also says CC0. Archive: https://opengameart.org/sites/default/files/sci-fi_sounds.zip, 119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04
+- Digital SFX set, by Kenney. Page: https://opengameart.org/content/63-digital-sound-effects-lasers-phasers-space-etc, licence CC0; the archive's readme.txt names no licence, so the page is the licence record. Archive: https://opengameart.org/sites/default/files/Digital_SFX_Set.zip, 022f0f4b73da55989567fe2b373c8af89d74f5d015257e293cab497ca606d063
+- Short jingles, by Kenney. Page: https://opengameart.org/content/85-short-music-jingles, licence CC0; the archive's license.txt also says CC0. Archive: https://opengameart.org/sites/default/files/jingleSounds_Kenney.zip, be324b6cf26e35c95c2a344569a2470512819d0246cc81328bef3499de3682e5
+- Chiptune Adventures (OGG), by Juhani Junkala. Page: https://opengameart.org/content/4-chiptunes-adventure, licence CC0; the archive's INFO.txt says the tracks "have been released under CC0 creative commons license". Archive: https://opengameart.org/sites/default/files/Juhani%20Junkala%20%5BChiptune%20Adventures%5D%20OGG.zip, 9c9547e184a6daef0cddf9eff5b8c42b357a9a0d2c8f2b5a01aa95154b85edef
+
+Files, as runtime name <- archive and path inside it, with the SHA-256 of the file:
+- effects/step.ogg <- RPG sounds OGG/footstep02.ogg, 2d9575b7dead6e1217ca113991fc5229e9b6d998ea0726ebbb277e7398ab888f
+- effects/jump.mp3 <- Digital SFX set phaseJump1.mp3, bf227d8dd70117318e3b4e12c88797fdc4c350fe29211302f539a179a99083c9
+- effects/land.ogg <- RPG sounds OGG/dropLeather.ogg, 097e1d3b74949b0145fda0519d40b7e0773ab82ec4858727f95be830927e1a45
+- effects/collect.ogg <- Interface Sounds Audio/pluck_001.ogg, be97ec4893a02d6eccfb678daa76c83e34cb2583b834ec2593d2641def739fa4
+- effects/repair.ogg <- RPG sounds OGG/metalLatch.ogg, ba9ba60b172b3ebc131a940f25793cd2e207aca7af73dc80d637277f060f1708
+- effects/hurt.ogg <- Sci-Fi Sounds Audio/explosionCrunch_000.ogg, 4b597d658d0ae101f0a030fbeea5fc3a4292ab85f017470a8254a8e7959cbd69
+- effects/travel.ogg <- RPG sounds OGG/doorClose_1.ogg, 834d29c60a8a8bfb50b158cdb6b7dfa8f02812a408a1ee9703d038dfab0b1aeb
+- effects/identified.ogg <- Interface Sounds Audio/confirmation_002.ogg, 33b17a9a9a2397c62b285c52c33a907fdffb476909c99e42dde603f6a7a8b12c
+- effects/failed.ogg <- Interface Sounds Audio/error_004.ogg, 0b574cea597d96507e782ae9764f88482ce49f46e931e57054bf7150047f2d69
+- effects/cook.ogg <- RPG sounds OGG/metalPot1.ogg, 159def979e8e386c2c539f5e99cc30a080eb2dcb6c911fa2e4ccc0785b2522fd
+- effects/satisfied.ogg <- Short jingles OGG/jingles_PIZZA/jingles_PIZZA00.ogg, b442ade3308a2bbda4b8c572c86f9f1071c7bdbcfb1e6f915d35c605b61bd475
+- effects/refused.ogg <- Interface Sounds Audio/error_008.ogg, eba17ecb2a426bfd4a8a6acff5f8a86202b6424a77af0fd842e37809a1ab6d81
+- effects/acid.mp3 <- Digital SFX set lowDown.mp3, 7cb72968216a27079304ecc78d1993ddee2dc88fd6a0bba3c76617745889f233
+- effects/day.ogg <- Short jingles OGG/jingles_NES/jingles_NES00.ogg, 1010c9b566d6c090ff03a4aaaf7439e26eb4cc4f20373800d0b7e6a9057b795d
+- effects/menu_move.ogg <- Interface Sounds Audio/tick_002.ogg, 869442f54214be902ec7437f79e400dc91c1bfd90d18a6dd2d5b7e41ffbf457b
+- effects/menu_select.ogg <- Interface Sounds Audio/select_002.ogg, 4cc6ac5341b9b2c86fef80c347de028e9ab9f2e037586ac7d9fa59a403a1c012
+- effects/menu_back.ogg <- Interface Sounds Audio/back_001.ogg, 07db973f79f6ae0f2edc34561e7592e24d0577455919fb602cb8ecc0da991dcf
+- music/title.ogg <- Chiptune Adventures "Juhani Junkala [Chiptune Adventures] 4. Stage Select.ogg", 8d5c0456107049b0d846b72eba722bea5f897e3b2c96a68512edb8f898170e7c
+- music/city.ogg <- Chiptune Adventures "Juhani Junkala [Chiptune Adventures] 1. Stage 1.ogg", cd35b9cf8929352d60b79fdedbe43f7fab3e6e0c228b22970851c542a89f0531
+- music/workshop.ogg <- Chiptune Adventures "Juhani Junkala [Chiptune Adventures] 2. Stage 2.ogg", 68ec252839e1f227275fe46fca5e38ffab5086b39a6ab2650a752e4f2ef2a5a7
+- music/tension.ogg <- Sci-Fi Sounds Audio/engineCircular_000.ogg, 8ab85f9fa85e9e692287f98acb36b9ac3ba15313b007c039055e286b736f4e3a
+
+Not used: kenney.nl itself answered the download of https://kenney.nl/assets/interface-sounds with HTTP 403, so every Kenney pack comes from Kenney's own uploads to OpenGameArt above.
