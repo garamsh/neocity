@@ -408,6 +408,13 @@ bool has_unidentified(const GameView &view) {
   });
 }
 
+/// Whether a human's feed key would feed a stored dish. A rejected food is not
+/// fed, so a store of only those counts as empty.
+bool dish_to_feed(const SurvivalFrame &frame) {
+  return std::ranges::any_of(
+      frame.offers, [](const auto &offers) { return offers.feed.has_value(); });
+}
+
 std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
   if (has_unidentified(frame.view)) {
     if (auto step = role_step(frame, Actor::Appraiser,
@@ -419,14 +426,14 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
     return step;
   }
   const auto chef_keys = survival::key_set(frame.control, Actor::Chef);
-  if (chef_keys && frame.view.workshop.foods.empty()) {
+  if (chef_keys && !dish_to_feed(frame)) {
     const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
     if (offer) {
       return offered_step(*offer, KEY_LABELS.at(*chef_keys));
     }
   }
   // An AI chef cooks on its next step, so the day must not end unfed first.
-  if (frame.ai_chef_working && frame.view.workshop.foods.empty()) {
+  if (frame.ai_chef_working && !dish_to_feed(frame)) {
     return "The AI chef is cooking.";
   }
   // Feeding ends the day, and a stored dish keeps while the city still gives.

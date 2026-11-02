@@ -1063,6 +1063,46 @@ TEST(Companion, TheChefNeverCooksARejectedDishAgain) {
       (std::optional<Action>{Cook{STEW}}));
 }
 
+TEST(Companion, NoOneFeedsARejectedDishAgain) {
+  auto view = base_view();
+  view.workshop.foods = {{.food = SOUP}};
+  view.workshop.eaten_foods = {SOUP};
+  view.workshop.rejected_foods = {SOUP};
+  const auto companion = companion_with();
+  const auto press = [&] {
+    return companion.command(Actor::Chef, two_players(), {.feed = true}, view)
+        .action;
+  };
+  EXPECT_EQ(press(), std::nullopt);
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{EndDayUnfed{UNFED_PENALTY}});
+  view.workshop.foods = {{.food = SOUP}, {.food = STEW}};
+  view.workshop.eaten_foods = {SOUP, STEW};
+  EXPECT_EQ(press(), Action{Feed{STEW}});
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{STEW}});
+  view.workshop.foods = {{.food = SOUP}};
+  view.workshop.rejected_foods.clear();
+  EXPECT_EQ(press(), Action{Feed{SOUP}});
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{SOUP}});
+}
+
+TEST(Companion, AStoredRejectedDishDoesNotStopTheChefCooking) {
+  const auto companion =
+      companion_with(kitchen({{.food = SOUP, .ingredients = {CARROT}},
+                              {.food = STEW, .ingredients = {ONION}}}));
+  auto view = base_view();
+  view.progression.chef.inventory = {ONION};
+  view.workshop.identified = {ONION};
+  view.workshop.foods = {{.food = SOUP}};
+  view.workshop.eaten_foods = {SOUP};
+  view.workshop.rejected_foods = {SOUP};
+  const auto action = [&] {
+    return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).action;
+  };
+  EXPECT_EQ(action(), Action{Cook{STEW}});
+  view.workshop.rejected_foods.clear();
+  EXPECT_EQ(action(), Action{Feed{SOUP}});
+}
+
 TEST(Companion, TheErrandNamesWhereAiWouldWalkAndStopsStepping) {
   constexpr ObjectId NEAR{70};
   auto view = city_view({.x = 2});
