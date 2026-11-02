@@ -8,9 +8,6 @@ const DAY_FRAMES: int = 2900
 ## On this seed a party following NEXT alone escapes.
 const LONG_RUN_SEED: int = 44
 const LONG_RUN_DAYS: int = 60
-## On this seed a chef who takes the wrench first outlasts the stock with the
-## roof ladder broken.
-const WRENCH_SEED: int = 391
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
 const APPRAISER_DAYS: int = 29
@@ -35,6 +32,9 @@ const MARKET_ROUTE: Array[Vector2i] = [Vector2i(8, 7), Vector2i(8, 12), Vector2i
 const DRIP_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(10, 7)]
 ## From the entrance up the ramp to the foot of the roof ladder on the overpass.
 const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(16, 5)]
+## From the entrance up the ramp, over the overpass and up the roof ladder to
+## the roof bag.
+const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(16, 5), Vector2i(16, 3), Vector2i(22, 3)]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -709,20 +709,37 @@ func _follow_next_to_an_escape() -> void:
 ## A repair is an errand only towards stock, so a wrench in hand does not keep
 ## the line setting out once the broken passages lead to nothing.
 func _wrench_stops_setting_out_with_no_stock_behind() -> void:
-	await _leave_run()
-	await _tap(KEY_1)
-	scene.pin_survival_seed(WRENCH_SEED)
-	await _tap(KEY_1)
-	await _tap(KEY_E)
+	# A second player keeps the appraiser home, so the chef alone spends the
+	# shared clock on the roof bag before acid breaks its ladder.
+	await _start_two_players()
 	await _tap(KEY_Q)
-	if not await _until("the chef sets out for the wrench", func() -> bool: return _where("chef") == "city", 30):
+	if not await _until("the chef sets out alone for the roof bag", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "base", 30):
+		return
+	if not await _walk_route(ROOF_ROUTE):
+		return
+	await _tap(KEY_E)
+	await _tap(KEY_E)
+	if not _check(_stock("Roof Bag") == 0 and _object("Roof Ladder") == "intact", "the roof bag is emptied while its ladder stands"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the chef comes home from the roof", func() -> bool: return _str("phase") == "workshop", 120):
+		return
+	await _tap(KEY_G)
+	if not await _until("an unfed day breaks the ladder", func() -> bool: return _int("day") == 2 and _object("Roof Ladder") == "destroyed", 30):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the chef sets out alone for the wrench", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "base", 30):
 		return
 	if not await _walk_route(MARKET_ROUTE):
 		return
 	await _tap(KEY_E)
 	if not _check(_actor("chef", "tools") == 1, "the chef carries the wrench"):
 		return
-	if not await _follow_next_until_day_ends_unfed():
+	# The rest is one-player play, with the AI appraiser.
+	await _tap(KEY_N)
+	if not await _until("player two hands the appraiser to AI", func() -> bool: return _actor("appraiser", "key_set") == -1 and _actor("chef", "key_set") == 0, 30):
+		return
+	if not await _gather_unfed_until_nothing_is_left():
 		return
 	if not _check(_object("Roof Ladder") == "destroyed" and _stock("Roof Bag") == 0, "a broken passage is left, with no stock behind it"):
 		return
@@ -737,17 +754,21 @@ func _wrench_stops_setting_out_with_no_stock_behind() -> void:
 		return
 	await _tap(KEY_E)
 	_check(_object("Roof Ladder") == "intact", "the key still repairs what the line leaves out")
-	scene.pin_survival_seed(SEED)
 
-## Follows NEXT until it names ending the day unfed with time left, with only the
-## budget of steps a day takes: a line that sends the player in circles spends it.
-func _follow_next_until_day_ends_unfed() -> bool:
+## Follows NEXT, but ends each day unfed where it names feeding, until it names
+## ending the day with time left: nothing in reach is left once the rising acid
+## has taken what the party did not empty. A line that sends the player in
+## circles spends the budget of steps a day takes.
+func _gather_unfed_until_nothing_is_left() -> bool:
 	var day: int = _int("day")
 	var steps: int = 0
-	while not (_next().contains("End the day unfed") and _int("remaining_ms") > 0):
+	while not ((_next().contains("End the day unfed") or _next().contains("[F] Feed")) and _int("remaining_ms") > 0):
 		if _str("phase") == "escaped" or _str("phase") == "lost" or _int("day") >= LONG_RUN_DAYS:
 			return _check(false, "the stock runs out before the run ends")
-		await _follow_next()
+		if _next().contains("[F] Feed"):
+			await _tap(KEY_G)
+		else:
+			await _follow_next()
 		steps = 0 if _int("day") != day else steps + 1
 		day = _int("day")
 		if steps >= DAY_STEPS:
