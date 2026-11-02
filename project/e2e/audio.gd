@@ -3,8 +3,8 @@ extends SceneTree
 ## Plays with real key events and reads what the speakers were asked to play and
 ## which flourishes are on screen: the menus' cues, the title, workshop and city
 ## music and its tension, the cues of walking, jumping, landing, collecting,
-## travelling, appraising, cooking, feeding, a new day, rising acid and a burn,
-## and the pause screen's volumes, where an effects volume of 0 plays no effect
+## travelling, appraising, cooking, feeding, a new day, rising acid, a burn, a
+## repair and a fall into the acid, and the pause screen's volumes, where an effects volume of 0 plays no effect
 ## and a music volume of 0 plays no music. Runs with no audio device.
 
 const SEED: int = 11
@@ -13,6 +13,11 @@ const FIRST_SOURCE: Vector2i = Vector2i(7, 8)
 const SECOND_SOURCE: Array[Vector2i] = [Vector2i(7, 11), Vector2i(6, 11)]
 ## The acid drip stands on the ramp's first step at 10, 7.
 const DRIP: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(10, 7)]
+## Down the market ladder to the tool bag and its wrench.
+const TOOL_BAG_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
+## Back up the market ladder, up the ramp and along the overpass to the foot of
+## the roof ladder.
+const ROOF_LADDER_ROUTE: Array[Vector2i] = [Vector2i(7, 11), Vector2i(7, 8), Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5)]
 const APPRAISE_ATTEMPTS: int = 12
 const COOK_ATTEMPTS: int = 6
 const PLAYER_TWO: Dictionary[String, Key] = {
@@ -44,7 +49,9 @@ func _run() -> void:
 		return
 	if not await _acid_raises_the_tension_and_burns():
 		return
-	print("Audio: ", checks, " live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, burn, flourishes, effects off, music off).")
+	if not await _repair_and_fall():
+		return
+	print("Audio: ", checks, " live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, burn, repair, fall, flourishes, effects off, music off).")
 	quit(0)
 
 func _title_plays_music_and_menu_cues() -> bool:
@@ -197,6 +204,37 @@ func _acid_raises_the_tension_and_burns() -> bool:
 		if _actor("health") < health:
 			break
 	return _check(_actor("health") < health and _heard("hurt") and _shown("hit"), "the drip burns with the hurt cue, a flash and a shake")
+
+## The unfed day broke the roof ladder: player two fetches the wrench, repairs
+## the ladder, and walks off the overpass's east end into the acid.
+func _repair_and_fall() -> bool:
+	if not _check(_object("Roof Ladder") == "destroyed", "the unfed day broke the roof ladder"):
+		return false
+	for waypoint: Vector2i in TOOL_BAG_ROUTE:
+		if not await _walk_to(waypoint):
+			return false
+	await _tap(KEY_O)
+	if not _check(_actor("tools") == 1, "player two takes the wrench from the tool bag"):
+		return false
+	for waypoint: Vector2i in ROOF_LADDER_ROUTE:
+		if not await _walk_to(waypoint):
+			return false
+	await _tap(KEY_O)
+	if not _check(_object("Roof Ladder") == "intact" and _heard("repair") and _shown("spark"), "a repair plays its cue and sparks"):
+		return false
+	_key(PLAYER_TWO["right"], true)
+	var off: bool = await _until("player two walks off the overpass's east end", func() -> bool: return _stance() == "airborne", 120)
+	_key(PLAYER_TWO["right"], false)
+	if not off:
+		return false
+	if not await _until("player two falls into the acid", func() -> bool: return _where("appraiser") == "base", 120):
+		return false
+	return _check(_heard("fall") and _shown("splash"), "a fall into the acid plays its cue and splashes")
+
+func _object(object: String) -> String:
+	var objects: Dictionary = scene.survival_status()["objects"]
+	var state: String = objects[object]
+	return state
 
 func _track() -> String:
 	var value: String = scene.sound_status()["track"]
