@@ -63,7 +63,8 @@ struct Config {
 };
 
 /// Value snapshot of one run; consumers cannot mutate the simulation through
-/// it.
+/// it. `world_time` is the run's clock: the exploration time spent today plus a
+/// full budget for every finished day, spent or not.
 struct Snapshot {
   ActorSnapshot chef;
   ActorSnapshot appraiser;
@@ -72,6 +73,7 @@ struct Snapshot {
   std::chrono::microseconds remaining_exploration{};
   AcidLevel acid;
   std::uint32_t seed = 0;
+  std::chrono::microseconds world_time{};
   friend bool operator==(const Snapshot &, const Snapshot &) = default;
 };
 
@@ -113,9 +115,9 @@ public:
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
   /// Removes one tool from the two inventories, the chef's first.
   [[nodiscard]] Result consume_tool(ToolId tool);
-  /// Raises acid, stopping at full, and starts the next day with a full
-  /// exploration budget. Full acid ends the run as lost, before anything can
-  /// act on the new day.
+  /// Raises acid, stopping at full, passes the day's unspent time on the run's
+  /// clock, and starts the next day with a full exploration budget. Full acid
+  /// ends the run as lost, before anything can act on the new day.
   [[nodiscard]] Result finish_day(AcidLevel acid_rise);
   /// Ends the run from the workshop; every later command leaves the snapshot
   /// unchanged.
