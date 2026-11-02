@@ -162,8 +162,9 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
   }
   synchronize();
   auto remaining = elapsed;
-  // Apply acid even with no elapsed time, including while at base.
-  advance_world(0us, acid);
+  // Apply acid and a finished day's time even with no elapsed time, including
+  // while at base.
+  advance_world(acid);
   check_support();
   while (remaining > 0us &&
          simulation.get().snapshot().phase == Phase::Exploration) {
@@ -175,7 +176,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
       }
     }
     require_applied(simulation.get().advance(step));
-    advance_world(step, acid);
+    advance_world(acid);
     remaining -= step;
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
@@ -235,7 +236,7 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
       std::min(config.collection_time,
                simulation.get().snapshot().remaining_exploration);
   require_applied(simulation.get().advance(spent));
-  advance_world(spent, snapshot.progression.acid);
+  advance_world(snapshot.progression.acid);
   synchronize();
   return CollectionResult::Applied;
 }
@@ -288,11 +289,9 @@ void Exploration::synchronize() {
   }
 }
 
-void Exploration::advance_world(std::chrono::microseconds consumed,
-                                AcidLevel acid) {
-  const auto current = world.get().snapshot().progression.elapsed;
-  if (world.get().update({.elapsed = current + consumed, .acid = acid}) !=
-      WorldUpdateResult::Applied) {
+void Exploration::advance_world(AcidLevel acid) {
+  if (world.get().update({.elapsed = simulation.get().snapshot().world_time,
+                          .acid = acid}) != WorldUpdateResult::Applied) {
     throw std::logic_error("exploration world time regressed");
   }
 }

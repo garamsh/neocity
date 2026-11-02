@@ -71,6 +71,7 @@ TEST(Survival, TimeExpiryReturnsBothActorsAndPreservesTheirInventory) {
   expected.appraiser.health = 3;
   expected.phase = Phase::Workshop;
   expected.remaining_exploration = 0us;
+  expected.world_time = 10s;
   EXPECT_EQ(simulation.snapshot(), expected);
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::NoExplorationTime);
   EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::NoExplorationTime);
@@ -429,6 +430,22 @@ TEST(Simulation, ReachingFullAcidLosesTheRunAndOneBelowDoesNot) {
   ASSERT_EQ(simulation.finish_day(AcidLevel{1}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().phase, Phase::Lost);
   EXPECT_EQ(simulation.snapshot().day, 3U);
+}
+
+TEST(Simulation, AFinishedDayAddsTheSameTimeWhateverWasSpent) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.advance(3s), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().world_time, 3s);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().world_time, 10s);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().world_time, 20s);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.advance(15s), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().world_time, 30s);
 }
 
 TEST(Simulation, AcidStopsAtFull) {

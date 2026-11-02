@@ -57,8 +57,9 @@ Result Simulation::advance(std::chrono::microseconds elapsed) {
     return Result::InvalidElapsed;
   }
   if (world.phase == Phase::Exploration) {
-    world.remaining_exploration -=
-        std::min(elapsed, world.remaining_exploration);
+    const auto spent = std::min(elapsed, world.remaining_exploration);
+    world.remaining_exploration -= spent;
+    world.world_time += spent;
     if (world.remaining_exploration == std::chrono::microseconds::zero()) {
       relocate(world.chef);
       relocate(world.appraiser);
@@ -133,6 +134,7 @@ Result Simulation::finish_day(AcidLevel acid_rise) {
   world.acid.value +=
       std::min(acid_rise.value, full_acid.value - world.acid.value);
   ++world.day;
+  world.world_time += world.remaining_exploration;
   world.remaining_exploration = daily_budget;
   if (world.acid == full_acid) {
     world.phase = Phase::Lost;

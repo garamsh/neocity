@@ -337,8 +337,7 @@ TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
   }
 }
 
-TEST(TemporaryContent,
-     AtEveryExplorationTimeRisingAcidLeavesNoKindMoreToCollect) {
+TEST(TemporaryContent, AtEveryWorldTimeRisingAcidLeavesNoKindMoreToCollect) {
   const auto content = temporary_content(1);
   for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
        elapsed += SUPPLY_SCAN_STEP) {
@@ -592,6 +591,32 @@ TEST(TemporaryContent, WashedUpBagsArriveAcrossTwentySixFullDaysOfTime) {
   EXPECT_EQ(bags(world.snapshot()), 7);
   ASSERT_EQ(world.update({.elapsed = 26 * budget}), WorldUpdateResult::Applied);
   EXPECT_EQ(bags(world.snapshot()), 8);
+}
+
+TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
+  Game game(temporary_content(1));
+  const std::array<ExplorationInput, 2> idle{};
+  const auto end_days = [&](std::uint32_t days) {
+    for (std::uint32_t day = 0; day < days; ++day) {
+      ASSERT_EQ(game.workshop().end_day_unfed(AcidLevel{}),
+                WorkshopResult::Applied);
+    }
+    ASSERT_EQ(game.exploration().advance(0us, idle, AcidLevel{}),
+              Result::Applied);
+  };
+  end_days(2);
+  ASSERT_EQ(game.world().snapshot().progression.elapsed, 90s);
+  EXPECT_EQ(object_named(game.world().snapshot(), "Washed-up Bag 1").state,
+            ObjectState::Dormant);
+  end_days(1);
+  EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 1")
+                  .material_available);
+  end_days(23);
+  ASSERT_EQ(game.world().snapshot().progression.elapsed, 1170s);
+  EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 7")
+                  .material_available);
+  EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
+  EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
 }
 
 TEST(TemporaryContent, RisingAcidStrandsStockThatNoOneCollected) {

@@ -6,11 +6,11 @@ extends SceneTree
 const SEED: int = 11
 const DAY_FRAMES: int = 2900
 ## On this seed the stock ends before the acid fills or an escape hits.
-const LONG_RUN_SEED: int = 81
+const LONG_RUN_SEED: int = 44
 const LONG_RUN_DAYS: int = 60
 ## On this seed a chef who takes the wrench first outlasts the stock with the
 ## roof ladder broken.
-const WRENCH_SEED: int = 2389
+const WRENCH_SEED: int = 391
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
 const APPRAISER_DAYS: int = 29
@@ -697,7 +697,9 @@ func _acid_changes_the_city() -> void:
 		return
 	if not await _until("acid breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
 		return
-	if not _check(_object("Washed-up Bag 1") == "dormant", "acid brings no bag"):
+	if not _check(_object("Washed-up Bag 2") == "dormant", "acid brings no bag"):
+		return
+	if not _check(_int("elapsed_ms") == 135000 and _object("Washed-up Bag 1") == "intact", "every finished day passes its whole time and lands the bag"):
 		return
 	await _collect_from_the_tomato_machine()
 	if failed:

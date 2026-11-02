@@ -682,6 +682,19 @@ TEST(Exploration, ReturningWithTimeLeftKeepsTheSpentTimeAndAllowsAnotherTrip) {
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 1s);
 }
 
+TEST(Exploration, AFinishedDaysUnspentTimeReachesTheWorldOnceFromBase) {
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, tuning());
+  ASSERT_EQ(exploration.advance(0us, IDLE, AcidLevel{}), Result::Applied);
+  ASSERT_EQ(world.snapshot().progression.elapsed, 0us);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{}), Result::Applied);
+  ASSERT_EQ(exploration.advance(1s, IDLE, AcidLevel{}), Result::Applied);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 5s);
+  ASSERT_EQ(exploration.advance(1s, IDLE, AcidLevel{}), Result::Applied);
+  EXPECT_EQ(world.snapshot().progression.elapsed, 5s);
+}
+
 TEST(Exploration, ACollectionTimeBelowZeroIsRefused) {
   auto settings = tuning();
   settings.collection_time = -1us;
