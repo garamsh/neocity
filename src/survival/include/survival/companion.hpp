@@ -127,6 +127,11 @@ struct Errand {
   Direction step = Direction::Idle;
 };
 
+/// Whether setting out now gives `actor` an errand, by the search `errand`
+/// runs, from the entrance.
+[[nodiscard]] bool worth_entering(const CompanionConfig &config, Actor actor,
+                                  const GameView &view);
+
 /// Turns a view into the next command for either kind of controller. Holds no
 /// game state and no random state, so one input gives one command.
 class Companion {

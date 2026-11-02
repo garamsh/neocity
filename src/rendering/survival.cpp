@@ -28,6 +28,10 @@ constexpr float TOOTH_WIDTH = 88.0F;
 constexpr int TEETH = 15;
 constexpr std::size_t CHEF_SPRITE = 0;
 constexpr std::size_t APPRAISER_SPRITE = 2;
+constexpr float DASH = 4.0F;
+constexpr float TAG_RISE = 24.0F;
+/// Clears the chef's tag when the two actors share a cell.
+constexpr float SHARED_CELL_TAG_SHIFT = 26.0F;
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -50,6 +54,29 @@ void triangle(godot::Node2D &canvas, Vector2 a, Vector2 b, Vector2 c,
   points.push_back(b);
   points.push_back(c);
   canvas.draw_colored_polygon(points, tint);
+}
+
+/// Text on an opaque plate, whose contrast no acid level can change.
+void plated_text(godot::Node2D &canvas, const AscentDrawing &drawing, float x,
+                 float y, const godot::String &text, int size,
+                 godot::Color tint) {
+  const auto height = static_cast<float>(size);
+  canvas.draw_rect(rect(x - 2.0F, y - height,
+                        drawing.text_width(text, size) + 4.0F, height * 1.3F),
+                   color(14, 12, 26, 1.0F));
+  drawing.text(canvas, x, y, text, size, tint);
+}
+
+void dashed_frame(godot::Node2D &canvas, const godot::Rect2 &box,
+                  godot::Color tint) {
+  const Vector2 top_left = box.position;
+  const Vector2 bottom_right = box.position + box.size;
+  const Vector2 top_right(bottom_right.x, top_left.y);
+  const Vector2 bottom_left(top_left.x, bottom_right.y);
+  canvas.draw_dashed_line(top_left, top_right, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(top_right, bottom_right, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(bottom_right, bottom_left, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(bottom_left, top_left, tint, 2.0F, DASH);
 }
 
 void cross(godot::Node2D &canvas, const godot::Rect2 &box, godot::Color tint) {
@@ -136,8 +163,8 @@ void paint_building(godot::Node2D &canvas, const AscentDrawing &drawing,
   }
   canvas.draw_rect(box, color(40, 26, 62, 1.0F));
   canvas.draw_rect(box, color(150, 112, 190, 1.0F), false, 2.0F);
-  drawing.text(canvas, box.position.x + 4.0F, box.position.y + 16.0F,
-               from(survival::object_name(object.id)), 13, tones.muted);
+  plated_text(canvas, drawing, box.position.x + 4.0F, box.position.y + 14.0F,
+              from(survival::object_name(object.id)), 13, tones.muted);
 }
 
 void paint_passage(godot::Node2D &canvas, const AscentDrawing &drawing,
@@ -146,8 +173,8 @@ void paint_passage(godot::Node2D &canvas, const AscentDrawing &drawing,
   if (object.state == ObjectState::Destroyed) {
     canvas.draw_rect(box, color(120, 24, 34, 1.0F));
     cross(canvas, box, color(255, 110, 110, 1.0F));
-    drawing.text(canvas, box.position.x + 36.0F, box.position.y + 21.0F,
-                 "BROKEN", 13, color(255, 150, 150, 1.0F));
+    plated_text(canvas, drawing, box.position.x + 36.0F, box.position.y + 21.0F,
+                "BROKEN", 13, color(255, 150, 150, 1.0F));
     return;
   }
   canvas.draw_rect(box,
@@ -174,8 +201,9 @@ void paint_npc(godot::Node2D &canvas, const AscentDrawing &drawing,
   canvas.draw_rect(rect(head.x - 7.0F, head.y + 6.0F, 14.0F, 15.0F),
                    color(212, 104, 148, 1.0F));
   canvas.draw_circle(head, 7.0F, color(244, 208, 170, 1.0F));
-  drawing.text(canvas, box.position.x - 62.0F, box.position.y - 3.0F,
-               from(survival::object_name(object.id)), 13, palette().white);
+  plated_text(canvas, drawing, box.position.x - 32.0F,
+              box.position.y + CELL + 13.0F,
+              from(survival::object_name(object.id)), 13, palette().white);
 }
 
 godot::Color source_tint(SourceKind kind) {
@@ -216,32 +244,56 @@ godot::String supply_name(const ObjectSnapshot &source) {
   return "";
 }
 
-void paint_source(godot::Node2D &canvas, const AscentDrawing &drawing,
-                  const ObjectSnapshot &object,
-                  const survival::SourceStock &stock) {
-  const auto box = area_rect(object.area).grow(-2.0F);
+/// One source as the map shows it.
+struct Marker {
+  ObjectSnapshot object;
+  survival::SourceStock stock;
+  bool stocked_open = false;
+  bool walkable = false;
+
+  /// A gold frame is a promise that a player can walk there.
+  [[nodiscard]] bool promised() const { return stocked_open && walkable; }
+};
+
+void paint_source(godot::Node2D &canvas, const Marker &marker) {
+  const auto box = area_rect(marker.object.area).grow(-2.0F);
   const auto tones = palette();
-  const bool stocked = stock.remaining > 0;
-  const bool open = object.material_available && stocked;
-  canvas.draw_rect(box,
-                   open ? source_tint(stock.kind) : color(60, 58, 66, 1.0F));
-  if (open) {
+  canvas.draw_rect(box, marker.promised() ? source_tint(marker.stock.kind)
+                                          : color(60, 58, 66, 1.0F));
+  if (marker.promised()) {
     canvas.draw_rect(box.grow(2.0F), tones.gold, false, 2.0F);
+  } else if (marker.stocked_open) {
+    dashed_frame(canvas, box.grow(2.0F), tones.white);
   }
-  drawing.text(canvas, box.position.x + 1.0F, box.position.y + 12.0F,
-               source_kind_name(stock.kind), 10,
-               open ? tones.white : tones.muted);
-  const auto count = godot::String::num_int64(stock.remaining);
-  drawing.text(canvas, box.position.x + 9.0F, box.position.y + 26.0F, count, 15,
-               open ? tones.white : tones.muted);
-  if (!object.material_available) {
+  if (!marker.object.material_available) {
     cross(canvas, box, color(235, 64, 74, 1.0F));
   }
-  const float label_y = object.area.y == 0 || object.area.y == 13
+}
+
+void paint_source_name(godot::Node2D &canvas, const AscentDrawing &drawing,
+                       const Marker &marker) {
+  const auto box = area_rect(marker.object.area).grow(-2.0F);
+  const auto tones = palette();
+  const float label_y = marker.object.area.y == 0 || marker.object.area.y == 13
                             ? box.position.y + 44.0F
                             : box.position.y - 4.0F;
-  drawing.text(canvas, box.position.x - 8.0F, label_y, supply_name(object), 14,
-               open ? tones.white : tones.muted);
+  const godot::String kind = source_kind_name(marker.stock.kind);
+  plated_text(canvas, drawing, box.position.x - 8.0F, label_y,
+              kind + godot::String(" ") + supply_name(marker.object) +
+                  (marker.stocked_open && !marker.walkable
+                       ? godot::String(": no way there")
+                       : godot::String()),
+              13, marker.promised() ? tones.white : tones.muted);
+}
+
+/// The count comes last of all, so an actor never hides what is left.
+void paint_source_count(godot::Node2D &canvas, const AscentDrawing &drawing,
+                        const Marker &marker) {
+  const auto box = area_rect(marker.object.area).grow(-2.0F);
+  const auto tones = palette();
+  plated_text(canvas, drawing, box.position.x + 9.0F, box.position.y + 21.0F,
+              godot::String::num_int64(marker.stock.remaining), 15,
+              marker.promised() ? tones.white : tones.muted);
 }
 
 void paint_hazards(godot::Node2D &canvas, const AscentDrawing &drawing,
@@ -258,22 +310,28 @@ void paint_hazards(godot::Node2D &canvas, const AscentDrawing &drawing,
                Vector2(box.position.x + CELL / 2.0F, y - 8.0F),
                color(160, 255, 120, 1.0F));
     }
-    drawing.text(canvas, box.position.x - 30.0F,
-                 box.position.y + box.size.y + 14.0F, "ACID DRIP: -1 health",
-                 13, color(180, 255, 140, 1.0F));
+    plated_text(canvas, drawing, box.position.x - 30.0F,
+                box.position.y + box.size.y + 14.0F, "ACID DRIP: -1 health", 13,
+                color(180, 255, 140, 1.0F));
   }
 }
 
 void paint_actor(godot::Node2D &canvas, const AscentDrawing &drawing,
                  survival::GridPosition position, std::size_t sprite,
-                 const godot::String &tag, float offset) {
+                 float offset) {
   const float x = cell_x(position.x) + offset;
   const float y = cell_y(position.y);
   canvas.draw_circle(Vector2(x + CELL / 2.0F, y + CELL - 2.0F), 13.0F,
                      color(4, 8, 25, 0.5F));
   drawing.sprite(canvas, sprite, rect(x - 6.0F, y - 20.0F, 44.0F, 52.0F),
                  false);
-  drawing.text(canvas, x + 6.0F, y - 24.0F, tag, 14, palette().cyan);
+}
+
+void paint_tag(godot::Node2D &canvas, const AscentDrawing &drawing,
+               survival::GridPosition position, const godot::String &tag,
+               float offset) {
+  plated_text(canvas, drawing, cell_x(position.x) + 6.0F + offset,
+              cell_y(position.y) - TAG_RISE, tag, 14, palette().cyan);
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -312,7 +370,8 @@ void paint_mouth(godot::Node2D &canvas, float acid_ratio) {
 
 void paint_city(godot::Node2D &canvas, const AscentDrawing &drawing,
                 const survival::Content &content,
-                const survival::GameView &view, survival::ControlMap control) {
+                const survival::GameView &view, survival::ControlMap control,
+                const std::vector<survival::ObjectId> &out_of_reach) {
   const auto &objects = view.world.objects;
   const auto paint_kind = [&](ObjectKind kind, const auto &paint) {
     for (const auto &object : objects) {
@@ -337,28 +396,52 @@ void paint_city(godot::Node2D &canvas, const AscentDrawing &drawing,
   paint_kind(ObjectKind::Npc, [&](const ObjectSnapshot &object) {
     paint_npc(canvas, drawing, object);
   });
+  std::vector<Marker> markers;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(objects, stock.id, &ObjectSnapshot::id);
     if (object != objects.end() && object->state != ObjectState::Dormant) {
-      paint_source(canvas, drawing, *object, stock);
+      markers.push_back(
+          {.object = *object,
+           .stock = stock,
+           .stocked_open = object->material_available && stock.remaining > 0,
+           .walkable = std::ranges::find(out_of_reach, stock.id) ==
+                       out_of_reach.end()});
     }
+  }
+  for (const auto &marker : markers) {
+    paint_source(canvas, marker);
   }
   const auto tones = palette();
   const auto base = content.objects.front().area;
-  drawing.text(canvas, cell_x(base.x) + 18.0F, cell_y(base.y) + 22.0F, "BASE",
-               18, tones.gold);
-  if (view.progression.chef.location == survival::Location::City) {
-    paint_actor(canvas, drawing, view.exploration.chef.position, CHEF_SPRITE,
-                tag_of(control, Actor::Chef), 0.0F);
+  plated_text(canvas, drawing, cell_x(base.x) + 18.0F, cell_y(base.y) + 22.0F,
+              "BASE", 18, tones.gold);
+  const auto &chef = view.exploration.chef.position;
+  const auto &appraiser = view.exploration.appraiser.position;
+  const bool chef_out =
+      view.progression.chef.location == survival::Location::City;
+  const bool appraiser_out =
+      view.progression.appraiser.location == survival::Location::City;
+  const bool shared = chef_out && appraiser_out && chef == appraiser;
+  if (chef_out) {
+    paint_actor(canvas, drawing, chef, CHEF_SPRITE, 0.0F);
   }
-  if (view.progression.appraiser.location == survival::Location::City) {
-    paint_actor(canvas, drawing, view.exploration.appraiser.position,
-                APPRAISER_SPRITE, tag_of(control, Actor::Appraiser),
-                view.exploration.appraiser.position ==
-                        view.exploration.chef.position
-                    ? 10.0F
-                    : 0.0F);
+  if (appraiser_out) {
+    paint_actor(canvas, drawing, appraiser, APPRAISER_SPRITE,
+                shared ? 10.0F : 0.0F);
+  }
+  for (const auto &marker : markers) {
+    paint_source_name(canvas, drawing, marker);
+  }
+  if (chef_out) {
+    paint_tag(canvas, drawing, chef, tag_of(control, Actor::Chef), 0.0F);
+  }
+  if (appraiser_out) {
+    paint_tag(canvas, drawing, appraiser, tag_of(control, Actor::Appraiser),
+              shared ? SHARED_CELL_TAG_SHIFT : 0.0F);
+  }
+  for (const auto &marker : markers) {
+    paint_source_count(canvas, drawing, marker);
   }
 }
 

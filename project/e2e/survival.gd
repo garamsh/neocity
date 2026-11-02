@@ -8,6 +8,9 @@ const DAY_FRAMES: int = 2900
 ## On this seed the stock ends before the acid fills or an escape hits.
 const LONG_RUN_SEED: int = 1018
 const LONG_RUN_DAYS: int = 60
+## On this seed a chef who takes the wrench first outlasts the stock with the
+## roof ladder broken.
+const WRENCH_SEED: int = 18
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
 const APPRAISER_DAYS: int = 29
@@ -54,6 +57,8 @@ func _run() -> void:
 	if not failed:
 		await _follow_next_to_the_last_dish()
 	if not failed:
+		await _wrench_stops_setting_out_with_no_stock_behind()
+	if not failed:
 		await _appraiser_run()
 	if not failed:
 		await _appraiser_follows_next()
@@ -97,6 +102,10 @@ func _first_day() -> void:
 	if not _check(_int("remaining_ms") < budget and _str("phase") == "exploration", "setting out starts the clock"):
 		return
 	if not await _until("AI follows into the city", func() -> bool: return _where("appraiser") == "city", 30):
+		return
+	if not _check(_out_of_reach().has("Arcade Bag") and not _out_of_reach().has("Tomato Machine"), "only stock behind the kiosk is marked out of reach"):
+		return
+	if not _text_fits("the first city screen"):
 		return
 	if not await _walk_to(6, 7):
 		return
@@ -223,6 +232,8 @@ func _workshop_day_one() -> void:
 	if failed:
 		return
 	if not _check(_next().contains("[F] Feed"), "the screen offers feeding the stored dish"):
+		return
+	if not _text_fits("the workshop"):
 		return
 	await _tap(KEY_F)
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
@@ -397,8 +408,7 @@ func _set_out_before_feeding() -> void:
 		return
 	await _tap(KEY_Q)
 
-## Plays on what NEXT says alone until the stock is gone, with only the budget of
-## steps a day takes: a line that sends the player in circles spends it.
+## Plays on what NEXT says alone until the stock is gone.
 func _follow_next_to_the_last_dish() -> void:
 	await _tap(KEY_M)
 	await _tap(KEY_1)
@@ -406,22 +416,64 @@ func _follow_next_to_the_last_dish() -> void:
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	var day: int = _int("day")
+	if not await _follow_next_until_day_ends_unfed():
+		return
+	if not _check(_stored().is_empty(), "the line ends the day only with no dish stored"):
+		return
+	day = _int("day")
+	await _tap(KEY_G)
+	await _until("the unfed day ends", func() -> bool: return _int("day") == day + 1, 30)
+	scene.pin_survival_seed(SEED)
+
+## A repair is an errand only towards stock, so a wrench in hand does not keep
+## the line setting out once the broken passages lead to nothing.
+func _wrench_stops_setting_out_with_no_stock_behind() -> void:
+	await _tap(KEY_M)
+	await _tap(KEY_1)
+	scene.pin_survival_seed(WRENCH_SEED)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	if not await _until("the chef sets out for the wrench", func() -> bool: return _where("chef") == "city", 30):
+		return
+	for waypoint: Vector2i in [Vector2i(13, 7), Vector2i(13, 12), Vector2i(16, 12)]:
+		if not await _walk_to(waypoint.x, waypoint.y):
+			return
+	await _tap(KEY_E)
+	if not _check(_actor("chef", "tools") == 1, "the chef carries the wrench"):
+		return
+	if not await _follow_next_until_day_ends_unfed():
+		return
+	if not _check(_object("Roof Ladder") == "destroyed" and _stock("Roof Bag") == 0, "a broken passage is left, with no stock behind it"):
+		return
+	if not _check(_int("remaining_ms") > 0 and not _next().contains("Set out"), "a wrench in hand does not set out for it"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the chef goes to the ladder anyway", func() -> bool: return _where("chef") == "city", 30):
+		return
+	for waypoint: Vector2i in [Vector2i(13, 7), Vector2i(13, 12), Vector2i(26, 12), Vector2i(26, 4), Vector2i(31, 4)]:
+		if not await _walk_to(waypoint.x, waypoint.y):
+			return
+	if not _check(_next().contains("Nothing is within reach"), "beside the dead passage the line names no repair"):
+		return
+	await _tap(KEY_E)
+	_check(_object("Roof Ladder") == "intact", "the key still repairs what the line leaves out")
+	scene.pin_survival_seed(SEED)
+
+## Follows NEXT until it names ending the day unfed with time left, with only the
+## budget of steps a day takes: a line that sends the player in circles spends it.
+func _follow_next_until_day_ends_unfed() -> bool:
+	var day: int = _int("day")
 	var steps: int = 0
 	while not (_next().contains("End the day unfed") and _int("remaining_ms") > 0):
 		if _str("phase") == "escaped" or _str("phase") == "lost" or _int("day") >= LONG_RUN_DAYS:
-			_check(false, "the stock runs out before the run ends")
-			return
+			return _check(false, "the stock runs out before the run ends")
 		await _follow_next()
 		steps = 0 if _int("day") != day else steps + 1
 		day = _int("day")
 		if steps >= DAY_STEPS:
-			_check(false, "following NEXT keeps the days moving")
-			return
-	if not _check(_stored().is_empty(), "the line ends the day only with no dish stored"):
-		return
-	await _tap(KEY_G)
-	await _until("the unfed day ends", func() -> bool: return _int("day") == day + 1, 30)
-	scene.pin_survival_seed(SEED)
+			return _check(false, "following NEXT keeps the days moving")
+	return true
 
 ## Presses the one key NEXT names, or waits while it names none.
 func _follow_next() -> void:
@@ -503,7 +555,9 @@ func _appraiser_run() -> void:
 	for waypoint: Vector2i in [Vector2i(13, 7), Vector2i(13, 12), Vector2i(16, 12)]:
 		if not await _walk_to(waypoint.x, waypoint.y):
 			return
-	if not _check(_next().contains("Tool Bag"), "the screen offers the wrench in reach"):
+	if not _check(_next().contains("Tool Bag") and _next().contains("(spends 0:12)"), "the screen offers the wrench in reach and its cost in time"):
+		return
+	if not _check(_screen_says("Each collection spends 0:12"), "the key line says what every collection spends"):
 		return
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "tools") == 1, "the human collects a tool"):
@@ -513,7 +567,7 @@ func _appraiser_run() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", 120):
 		return
-	if not _check(_next().contains("Appraise"), "the human appraiser is told to appraise"):
+	if not _check(_next().contains("Appraise") and _str("appraise_job").contains("[E] Appraise"), "the human appraiser is told to appraise"):
 		return
 	var identified: int = _int("identified")
 	var attempts: int = 0
@@ -521,6 +575,8 @@ func _appraiser_run() -> void:
 		attempts += 1
 		await _tap(KEY_E)
 	if not _check(_int("identified") > identified, "E appraises for the appraiser"):
+		return
+	if not _check(_str("appraise_job") == "Nothing to appraise.", "the panel stops asking once nothing is unknown"):
 		return
 	if not await _until("AI cooks once ingredients are known", func() -> bool: return _int("foods") >= 1, 120):
 		return
@@ -596,6 +652,8 @@ func _two_players() -> void:
 		return
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: Walk "), "the screen tells each player where to walk"):
 		return
+	if not _text_fits("two players in the city"):
+		return
 	await _tap(KEY_Q)
 	if not await _until("player one goes home", func() -> bool: return _where("chef") == "base", 30):
 		return
@@ -607,6 +665,8 @@ func _two_players() -> void:
 		return
 	await _tap(KEY_U)
 	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 30):
+		return
+	if not _text_fits("two players at base"):
 		return
 	await _tap(KEY_BRACKETRIGHT)
 	await _until("player two ends the day", func() -> bool: return _int("day") == 2, 30)
@@ -629,6 +689,32 @@ func _loss_clears_the_offer() -> void:
 
 func _next() -> String:
 	return _str("next")
+
+func _out_of_reach() -> Array:
+	return scene.survival_status()["out_of_reach"]
+
+func _changing_text() -> Array:
+	return scene.survival_status()["changing_text"]
+
+func _screen_says(words: String) -> bool:
+	for line: Dictionary in _changing_text():
+		var text: String = line["text"]
+		if text.contains(words):
+			return true
+	return false
+
+## Measures every changing line in the font the screen draws with.
+func _text_fits(where: String) -> bool:
+	var font: Font = ThemeDB.fallback_font
+	var overflowing: Array[String] = []
+	for line: Dictionary in _changing_text():
+		var text: String = line["text"]
+		var size: int = line["size"]
+		var width: float = line["width"]
+		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
+			overflowing.append(text)
+	var measured: bool = font.get_string_size(_next(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x > 0.0
+	return _check(measured and overflowing.is_empty(), "text fits on %s: %s" % [where, overflowing])
 
 func _next_event_has(text: String) -> bool:
 	for event: String in _events():

@@ -489,6 +489,21 @@ godot::Dictionary SurvivalRun::status() const {
   }
   status.set("stock", stock);
   status.set("next", hud::next_step(current));
+  status.set("appraise_job", hud::appraise_job(current));
+  godot::Array stranded;
+  for (const auto source : hud::out_of_reach(current)) {
+    stranded.push_back(from(survival::object_name(source)));
+  }
+  status.set("out_of_reach", stranded);
+  godot::Array fitted;
+  for (const auto &line : hud::changing_text(current)) {
+    godot::Dictionary entry;
+    entry.set("text", line.text);
+    entry.set("size", line.size);
+    entry.set("width", line.width);
+    fitted.push_back(entry);
+  }
+  status.set("changing_text", fitted);
   godot::Array log;
   for (const auto &event : current.events) {
     log.push_back(hud::describe(event));

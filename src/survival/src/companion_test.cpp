@@ -184,6 +184,17 @@ void add_source(GameView &view, ObjectId id, std::int32_t x) {
   view.exploration.sources.push_back({.id = id});
 }
 
+/// The chef at `position`, carrying the wrench for a broken door at x 1.
+GameView view_with_broken_door(GridPosition position) {
+  auto view = city_view(position);
+  auto door = object_of(DOOR, ObjectKind::Entrance, 1);
+  door.state = ObjectState::Destroyed;
+  door.repair_with = WRENCH;
+  view.world.objects.push_back(door);
+  view.progression.chef.tools = {WRENCH};
+  return view;
+}
+
 Companion companion_with(const WorkshopConfig &work = kitchen()) {
   return Companion({.exploration = tuning({}),
                     .workshop = work,
@@ -347,13 +358,9 @@ TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {
 }
 
 TEST(Companion, ACollectableSourceComesBeforeANearerRepair) {
-  auto view = city_view({.x = 2});
+  auto view = view_with_broken_door({.x = 3});
   add_source(view, SOURCE, 9);
-  auto door = object_of(DOOR, ObjectKind::Entrance, 0);
-  door.state = ObjectState::Destroyed;
-  door.repair_with = WRENCH;
-  view.world.objects.push_back(door);
-  view.progression.chef.tools = {WRENCH};
+  add_source(view, FAR_SOURCE, 0);
   const auto heading = [&] {
     return companion_with()
         .command(Actor::Chef, ALL_AI, NO_INPUT, view)
@@ -362,6 +369,44 @@ TEST(Companion, ACollectableSourceComesBeforeANearerRepair) {
   EXPECT_EQ(heading(), Direction::Right);
   view.exploration.sources.front().remaining = 0;
   EXPECT_EQ(heading(), Direction::Left);
+}
+
+TEST(Companion, ARepairIsAnErrandOnlyWhileItOpensTheWayToStock) {
+  auto view = view_with_broken_door({.x = 3});
+  add_source(view, FAR_SOURCE, 0);
+  ASSERT_EQ(cell_at(view.world, {.x = 1}), Cell::Blocked);
+  const auto errand = companion_with().errand(Actor::Chef, view);
+  ASSERT_TRUE(errand.has_value());
+  EXPECT_EQ(errand.value_or(Errand{}).target, DOOR);
+  view.exploration.sources.front().remaining = 0;
+  EXPECT_FALSE(companion_with().errand(Actor::Chef, view).has_value());
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{ReturnToBase{}});
+}
+
+TEST(Companion, AHumanStillRepairsAPassageThatOpensNothing) {
+  const auto view = view_with_broken_door({.x = 2});
+  EXPECT_EQ(companion_with()
+                .command(Actor::Chef, single_player(Actor::Chef),
+                         {.interact = true}, view)
+                .action,
+            (Action{Repair{.target = DOOR, .tool = WRENCH}}));
+}
+
+TEST(Companion, SettingOutIsWorthItOnlyForStockARepairCanReach) {
+  auto view = view_with_broken_door({.x = 3});
+  view.progression.phase = Phase::Workshop;
+  view.progression.chef.location = Location::Base;
+  view.progression.appraiser.location = Location::Base;
+  view.world.objects.at(1).area.x = 2;
+  add_source(view, FAR_SOURCE, 5);
+  const CompanionConfig config{.exploration = tuning({}),
+                               .workshop = kitchen(),
+                               .unfed_penalty = UNFED_PENALTY};
+  ASSERT_EQ(cell_at(view.world, {.x = 2}), Cell::Blocked);
+  EXPECT_TRUE(worth_entering(config, Actor::Chef, view));
+  EXPECT_FALSE(worth_entering(config, Actor::Appraiser, view));
+  view.exploration.sources.front().remaining = 0;
+  EXPECT_FALSE(worth_entering(config, Actor::Chef, view));
 }
 
 TEST(Companion, ADormantPassageDoesNotBlockItsCell) {

@@ -101,7 +101,7 @@ These make the ending reachable and are not final balance confirmed by the user.
 The following are the minimum that keeps a game from blocking, not final behavior or tactics.
 
 - AI walks and never runs, and collects from every available source with stock, ingredients and tools alike: what the party carries none of first, then the nearest. `Companion::errand` names that target and the first step towards it, so a screen can tell a human the same way.
-- AI repairs a destroyed passage with a tool it carries only when nothing is collectable from where it stands.
+- AI repairs a destroyed passage with a tool it carries only when nothing is collectable from where it stands and repairing that passage alone brings stock into reach, so a passage with nothing behind it is no errand. A human's key can still repair it.
 - AI with a human partner follows that partner: it sets out only while the partner is in the city and returns when the partner is at base, because workshop commands need both actors at base. With an AI partner, each sets out while time remains and something is reachable from the entrance.
 - AI in the city with nothing reachable returns to base, and it enters only when something is reachable from the entrance. Expiry returns it otherwise. Waiting at base therefore never holds the day open.
 - The appraiser appraises every unidentified carried ingredient and retries a failed roll under the existing unlimited retry policy. The chef cooks one dish when none is stored: an uneaten recipe before a repeat, the tastiest first within each, and never a rejected food. It reads a dislike only from `rejected_foods`, so it can feed a disliked recipe once. Each replaces its own role's damaged base tool when either actor carries the replacement.
