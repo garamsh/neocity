@@ -1,18 +1,20 @@
 # neocity
 
-Monster Mouth Escape, a neon-city ascent course, and a developer page of playable experiments, in one Godot-hosted C++ application.
+Monster Mouth Escape, a survival game for one or two players on one computer, built as a Godot-hosted C++ application.
 
-## Play locally
+## How to play
 
-On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, then double-click `play.command` in Finder. The tools stay under ignored `.tools/`; the installer verifies the official Godot archive and does not modify global PATH or require an account. Xcode Command Line Tools must be present for native compilation and supply the Python that installs the pinned C++ tools under `.tools/cpp` on the first build.
+A monster has swallowed the city. Play the chef or the appraiser while AI plays the other, or play both with a friend. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. New and delicious food holds the acid back; anything else raises it, and rising acid and time wreck the city and take the stock left in it. Each collection spends 12 seconds of the day's 45, a clock both actors share, so a day holds at most four collections between them. If the acid fills, the run is lost. From day 30, each finished day has a 20% chance that the party escapes. Either way the run then plays its ending and returns to the title screen, and the E key skips it. The opening, ending, and loss scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
 
-`play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
+The game opens on the title screen:
 
-The game opens on the main menu: **1** starts Monster Mouth Escape, **2** opens the developer page, **3** plays the earlier ascent prototype below, and **4** quits. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level; during a survival run it asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
+- **New game** asks who is playing: **1** the chef, **2** the appraiser, **3** two players.
+- **Controls** lists every key for both players.
+- **Quit** closes the game.
 
-In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the appraiser and AI plays the other, or choose two local players. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. New and delicious food holds the acid back; anything else raises it, and rising acid and time wreck the city and take the stock left in it. Each collection spends 12 seconds of the day's 45, a clock both actors share, so a day holds at most four collections between them. If the acid fills, the run is lost. From day 30, each finished day has a 20% chance that the party escapes. Either way the run then plays its ending and returns to the main menu, and the E key skips it. The opening, ending, and loss scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
+Move the cursor with W or up and S or down, and press Enter; 1, 2, and 3 choose an entry directly. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
 
-| Survival input | Player 1 | Player 2 |
+| Input | Player 1 | Player 2 |
 |---|---|---|
 | Move | WASD or arrows | IJKL |
 | Run | Shift | H |
@@ -25,33 +27,19 @@ In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the
 | Swap actor, playing alone | Tab | none |
 | Hand your actor to AI, playing together | X | N |
 | Pause or continue, listing every key | Esc | Esc |
-| Leave the run for the main menu | M, then Enter; Esc cancels | M, then Enter; Esc cancels |
+| Leave the run for the title screen | M, then Enter; Esc cancels | M, then Enter; Esc cancels |
 
-| Experiment | Try it |
-|---|---|
-| [`pan_dodge`](src/experiment/pan_dodge/README.md) | 3D. Move with WASD or the arrow keys on a pan that sways by itself, dodge the hazards dropping onto it, and leave through the green gate travelling around the rim. R restarts. |
+## Run it
 
-An experiment's scene also runs on its own, for example `godot --path project res://experiment/pan_dodge/pan_dodge.tscn` after `make build`. To add one, see [Contributing](#contributing).
+On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, then double-click `play.command` in Finder. The tools stay under ignored `.tools/`; the installer verifies the official Godot archive and does not modify global PATH or require an account. Xcode Command Line Tools must be present for native compilation and supply the Python that installs the pinned C++ tools under `.tools/cpp` on the first build.
 
-The ascent course keeps its original controls:
-
-| Ascent input | Action |
-|---|---|
-| A / D or left / right | Move |
-| Space, W, or up | Jump; hold for a higher jump |
-| Tab | Change the leading character |
-| R | Retry at the reached checkpoint; after completion, begin a new run |
-| Escape | Pause or continue |
-
-Climb the maintenance platforms, avoid urban pests, reach the cyan checkpoint, and collect the glowing spice fruit at the top. There is one course, not the full campaign. The companion follows a delayed visual trace; the party has one collision body. This reversible prototype control choice is not the final two-character mechanic.
+`play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
 
 ## Engine and screen ownership
 
-- `src/gameplay` owns deterministic rules, movement, collisions, obstacles, checkpoints, and completion. It has no Godot or rendering dependencies and can be tested by itself.
-- `src/experiment/<id>/` holds one experiment: a rules library with no Godot, ascent, or mutual dependencies, its Godot node in `view/`, and its record. `src/experiment/catalog.hpp` lists them for the developer page.
 - `src/survival` owns the rules of Monster Mouth Escape and its temporary content, with no Godot dependency.
-- `src/session` owns the main menu, the developer page, and run timing. `src/input`, `src/camera`, `src/rendering`, and `src/hud` own input translation, the camera, resources and canvas drawing, and the HUD; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rule libraries' public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window, input, canvas, and 3D services. No standalone GPU backend is claimed.
-- `project/` is the Godot project: the extension's `bin/neocity.gdextension`, the ascent level's scene and textures in `levels/ascent/`, which the survival screen's sprites also come from, each experiment's scene in `experiment/<id>/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
+- `src/session` owns the title screen, its controls page, and run timing. `src/input`, `src/rendering`, and `src/hud` own input translation, resources and canvas drawing, and the HUD and menus; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rules library's public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window, input, and canvas services. No standalone GPU backend is claimed.
+- `project/` is the Godot project: the host scene `main.tscn`, the extension's `bin/neocity.gdextension`, the character atlas the survival screen draws from in `levels/ascent/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains
@@ -62,34 +50,17 @@ make ci
 
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
-- `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
-- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 32 live checks pressing Escape, the arrow keys, and player two's keys, 18 live checks of both menus and the `pan_dodge` experiment, three session integration checks for partial-tick time and input edges, the survival fixed-step checks at two frame rates, and live checks playing the survival game with real key events.
-- `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed (see below), from the repository root:
+- `make build`: optimized CMake build of the rules library and extension, pinned Godot version, and resource import.
+- `make test`: the survival library's unit tests through CTest, configured main-scene readiness, live checks of the title screen, live checks pressing the arrow keys and player two's keys, the survival fixed-step checks at two frame rates and on the real clock, and live checks playing the survival game with real key events.
+- `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed by the first Make entry point, from the repository root:
 
 ```sh
 .tools/cpp/bin/cmake -S . -B build -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE="$PWD/.tools/cpp/bin/python"
-.tools/cpp/bin/cmake --build build --target gameplay_test pan_dodge_test survival_test
+.tools/cpp/bin/cmake --build build --target survival_test
 .tools/cpp/bin/ctest --test-dir build
 ```
 
-Each experiment's rules library also configures from its own folder without fetching or building Godot; its record lists the commands. After the first Make entry point installs the pinned tools, run them for every experiment from the repository root:
-
-```sh
-for experiment in src/experiment/*/; do
-  id=$(basename "$experiment")
-  .tools/cpp/bin/cmake -S "$experiment" -B "build/$id-only" -G Ninja -DCMAKE_MAKE_PROGRAM="$PWD/.tools/cpp/bin/ninja" -DCMAKE_BUILD_TYPE=Release
-  .tools/cpp/bin/cmake --build "build/$id-only"
-  .tools/cpp/bin/ctest --test-dir "build/$id-only" --output-on-failure --no-tests=error
-done
-```
-
-After `make build`, reproduce the real-input menu, experiment, and direct-launch checks with:
-
-```sh
-godot --headless --path project --main-loop PanExperimentsCheck --fixed-fps 120
-```
-
-Remove `--headless` to watch the same key-driven run in one window. The harness only presses keys: it steers toward the travelling gate, circles to dodge drops, and stands still to be hit; it does not set positions or outcomes. `godot --path project --main-loop PanExperimentsCapture --fixed-fps 120` saves real main-menu, developer-page, and `pan_dodge` frames as `user://main-menu.png`, `user://developer.png`, and `user://pan-dodge.png`; it requires a rendering display. The ascent capture uses `--main-loop AscentCapture` and selects the ascent prototype through the menu. Rendered examples: [main menu](docs/architecture/evidence/pan-experiments/main-menu.png), [developer page](docs/architecture/evidence/pan-experiments/developer.png), and [`pan_dodge`](docs/architecture/evidence/pan-experiments/pan-dodge.png).
+After `make build`, `godot --headless --path project --main-loop TitleMenuCheck --fixed-fps 60` reproduces the title screen's real-key checks; remove `--headless` to watch them in one window.
 
 C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 
@@ -97,4 +68,4 @@ CI uses the pinned Python setup action and the checksum-verified Linux Godot hel
 
 ## Contributing
 
-Read [AGENTS.md](AGENTS.md), [conventions](docs/convention/README.md), [architecture](docs/architecture/README.md), and [collaboration](docs/collaboration.md) before changing responsibilities. Changes land through the existing PR template. Use the repository's propose-art skill for scoped visual work. To add a developer-page experiment, follow [collaboration](docs/collaboration.md#adding-an-experiment) and the create-experiment skill. Final art and gameplay acceptance remain separate from engine tests.
+Read [AGENTS.md](AGENTS.md), [conventions](docs/convention/README.md), [architecture](docs/architecture/README.md), and [collaboration](docs/collaboration.md) before changing responsibilities. Changes land through the existing PR template. Use the repository's propose-art skill for scoped visual work. Final art and gameplay acceptance remain separate from engine tests.

@@ -5,8 +5,7 @@ PYTHON ?= python3
 # C++ tools are hash-pinned PyPI wheels installed into ignored .tools/cpp; one
 # line per tool, with a hash for each supported platform (macOS x86_64/arm64,
 # Linux x86_64). @sauce-git moves these pins together with the FetchContent
-# pins in CMakeLists.txt, src/gameplay/CMakeLists.txt, and
-# src/experiment/pan_dodge/CMakeLists.txt.
+# pins in CMakeLists.txt and src/survival/CMakeLists.txt.
 CPP_TOOL_REQUIREMENTS := \
 	'cmake==4.4.4 --hash=sha256:883962a72b1b3a16ff445427f24c8caca9797dd9e563bbe208cbcd89e877f9d3 --hash=sha256:f773a0544c66370408f451acd487c2c643b0dfebb48c5d64f3638bc1bb820238' \
 	'ninja==1.13.2 --hash=sha256:fd82e26c0706ad4ab88e5fdd26f3fab0a987a90f810160f6c322e752c6af298b --hash=sha256:65a24341b5ac09fcadcc37082660be40a94174e51a937fabf6e2cae26225fa2c' \
@@ -69,7 +68,7 @@ build: $(TOOLS_STAMP)
 # with --headless; --check-only answers with its exit status instead.
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
-	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt, src/experiment/pan_dodge/CMakeLists.txt and src/survival/CMakeLists.txt"
+	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/survival/CMakeLists.txt"
 	@files=$$($(GODOT_SCRIPTS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
 	test "$$count" -gt 0 || { echo "no GDScript harness was read" >&2; exit 1; }; \
 	log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
@@ -81,21 +80,14 @@ test: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
-	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AscentGameplayCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Gameplay: 3 live input checks passed (move, jump, retry).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop PanExperimentsCheck --fixed-fps 120 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 18 live checks passed (menus, mount, move, sway, loss, win, spawn, despawn, direct launch).' "$$log"
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 14 live checks passed (entries, cursor, wrap, controls, back, shortcuts, new game, quit).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop KeyCoverageCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 32 live checks passed (ascent, pan_dodge, survival player one, survival player two).' "$$log"
-
-	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SessionTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Session: 3 integration checks passed (discard time, accumulate time, retain edge).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 20 live checks passed (survival player one, survival player two).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
@@ -107,11 +99,11 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck -- real-clock > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 20 integration checks passed.' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 15 integration checks passed.' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 166 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 165 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, quit).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \

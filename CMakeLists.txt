@@ -19,8 +19,6 @@ set(NEOCITY_WARNINGS
 )
 
 enable_testing()
-add_subdirectory(src/gameplay)
-add_subdirectory(src/experiment/pan_dodge)
 add_subdirectory(src/survival)
 
 include(FetchContent)
@@ -39,12 +37,8 @@ FetchContent_MakeAvailable(godot-cpp)
 add_library(
     neocity
     SHARED
-    src/camera/camera.cpp
-    src/experiment/pan_dodge/view/scene.cpp
-    src/hud/hud.cpp
     src/hud/menus.cpp
     src/hud/survival.cpp
-    src/input/input.cpp
     src/input/menu.cpp
     src/input/survival.cpp
     src/register_types.cpp
@@ -54,7 +48,7 @@ add_library(
     src/session/session.cpp
     src/session/survival_run.cpp
 )
-target_link_libraries(neocity PRIVATE gameplay pan_dodge survival godot-cpp)
+target_link_libraries(neocity PRIVATE survival godot-cpp)
 target_compile_options(neocity PRIVATE ${NEOCITY_WARNINGS})
 # One library for editor and game, written to project/bin/ beside
 # neocity.gdextension, which loads it.

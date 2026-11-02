@@ -1,66 +1,139 @@
 #include "menus.hpp"
 
+#include "../rendering/survival.hpp"
+
+#include <cstddef>
+#include <cstdlib>
+
 namespace neocity::hud {
 namespace {
 
-void background(godot::Node2D &canvas) {
-  canvas.draw_rect(rendering::rect(0.0F, 0.0F, 1280.0F, 720.0F),
-                   rendering::color(19, 23, 30, 1.0F));
+using rendering::color;
+using rendering::rect;
+
+constexpr float ENTRY_X = 150.0F;
+constexpr float ENTRY_Y = 370.0F;
+constexpr float ENTRY_HEIGHT = 80.0F;
+constexpr float CONTROLS_ROW_Y = 160.0F;
+constexpr float CONTROLS_ROW_HEIGHT = 36.0F;
+constexpr int CONTROLS_ROW_SIZE = 20;
+
+/// One action and its key for each player, as project.godot binds them.
+struct ControlRow {
+  const char *action;
+  const char *first;
+  const char *second;
+};
+
+constexpr std::array CONTROL_ROWS{
+    ControlRow{.action = "", .first = "Player 1", .second = "Player 2"},
+    ControlRow{.action = "Move", .first = "WASD or arrows", .second = "IJKL"},
+    ControlRow{.action = "Run", .first = "Shift", .second = "H"},
+    ControlRow{
+        .action = "Set out or return to base", .first = "Q", .second = "U"},
+    ControlRow{.action = "Collect or repair; appraise or cook at base",
+               .first = "E",
+               .second = "O"},
+    ControlRow{.action = "Choose the dish, as the chef at base",
+               .first = "W/S or up/down",
+               .second = "none"},
+    ControlRow{
+        .action = "Replace a damaged base tool", .first = "R", .second = "P"},
+    ControlRow{.action = "Feed a stored dish", .first = "F", .second = "["},
+    ControlRow{.action = "End the day unfed", .first = "G", .second = "]"},
+    ControlRow{.action = "Swap actor, playing alone",
+               .first = "Tab",
+               .second = "none"},
+    ControlRow{.action = "Hand your actor to AI, playing together",
+               .first = "X",
+               .second = "N"},
+    ControlRow{.action = "Pause or continue", .first = "Esc", .second = "Esc"},
+    ControlRow{.action = "Leave the run; Esc cancels",
+               .first = "M, then Enter",
+               .second = "M, then Enter"},
+};
+
+const char *entry_label(TitleEntry entry) {
+  switch (entry) {
+  case TitleEntry::NewGame:
+    return "NEW GAME";
+  case TitleEntry::Controls:
+    return "CONTROLS";
+  case TitleEntry::Quit:
+    return "QUIT";
+  }
+  std::abort();
+}
+
+const char *entry_summary(TitleEntry entry) {
+  switch (entry) {
+  case TitleEntry::NewGame:
+    return "Play the chef, the appraiser, or both with a friend.";
+  case TitleEntry::Controls:
+    return "Every key for player one and player two.";
+  case TitleEntry::Quit:
+    return "Close the game.";
+  }
+  std::abort();
+}
+
+/// The monster's mouth behind a dark veil, so menu text reads over it.
+void backdrop(godot::Node2D &canvas, float veil) {
+  rendering::paint_mouth(canvas, 0.1F);
+  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, veil));
 }
 
 } // namespace
 
-void paint_main_menu(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing) {
-  const auto colors = rendering::palette();
-  background(canvas);
-  drawing.text(canvas, 130.0F, 140.0F, "NEOCITY", 54, colors.white);
-  drawing.text(canvas, 130.0F, 190.0F, "After Hours", 26, colors.muted);
-  drawing.text(canvas, 150.0F, 290.0F, "1   MONSTER MOUTH ESCAPE", 34,
-               colors.cyan);
-  drawing.text(canvas, 230.0F, 330.0F,
-               "Survive inside the monster: gather, cook, and feed it.", 22,
-               colors.white);
-  drawing.text(canvas, 150.0F, 410.0F, "2   DEVELOPER", 30, colors.gold);
-  drawing.text(canvas, 230.0F, 450.0F,
-               "Playable experiments contributors are trying out.", 22,
-               colors.muted);
-  drawing.text(canvas, 150.0F, 530.0F, "3   CITY CLIMB", 30, colors.gold);
-  drawing.text(canvas, 230.0F, 570.0F,
-               "The earlier prototype. Original controls and art.", 22,
-               colors.muted);
-  drawing.text(canvas, 150.0F, 625.0F, "4   QUIT", 30, colors.gold);
-  drawing.text(canvas, 130.0F, 685.0F,
-               "Press 1, 2, 3 or 4.   M returns here from a game.", 22,
-               colors.white);
-}
-
-void paint_developer_menu(godot::Node2D &canvas,
-                          const rendering::AscentDrawing &drawing,
-                          std::span<const experiment::Entry> experiments) {
-  const auto colors = rendering::palette();
-  background(canvas);
-  drawing.text(canvas, 130.0F, 120.0F, "DEVELOPER EXPERIMENTS", 42,
-               colors.gold);
-  drawing.text(canvas, 130.0F, 167.0F,
-               "Plain prototypes for trying ideas. None is the main game.", 22,
-               colors.muted);
-  float y = 270.0F;
-  int number = 1;
-  for (const experiment::Entry &entry : experiments) {
-    drawing.text(canvas, 150.0F, y,
-                 godot::String::num_int64(number) + "   " +
-                     godot::String::utf8(entry.title),
-                 30, colors.cyan);
-    drawing.text(canvas, 210.0F, y + 40.0F, godot::String::utf8(entry.summary),
-                 22, colors.white);
-    y += 120.0F;
+void paint_title(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
+                 TitleEntry selected) {
+  const auto tones = rendering::palette();
+  backdrop(canvas, 0.6F);
+  drawing.text(canvas, 130.0F, 200.0F, "MONSTER MOUTH ESCAPE", 64, tones.white);
+  drawing.text(canvas, 134.0F, 252.0F,
+               "Gather, cook, and feed the monster that swallowed the city.",
+               24, tones.muted);
+  drawing.sprite(canvas, 0, rect(880.0F, 330.0F, 150.0F, 172.0F), false);
+  drawing.sprite(canvas, 2, rect(1040.0F, 330.0F, 130.0F, 172.0F), false);
+  float y = ENTRY_Y;
+  std::size_t number = 1;
+  for (const TitleEntry entry : TITLE_ENTRIES) {
+    const bool chosen = entry == selected;
+    if (chosen) {
+      canvas.draw_rect(rect(ENTRY_X - 30.0F, y - 42.0F, 640.0F, 72.0F),
+                       color(14, 12, 26, 0.85F));
+      canvas.draw_rect(rect(ENTRY_X - 30.0F, y - 42.0F, 6.0F, 72.0F),
+                       tones.cyan);
+    }
+    drawing.text(canvas, ENTRY_X, y,
+                 godot::String::num_int64(static_cast<std::int64_t>(number)) +
+                     "   " + entry_label(entry),
+                 34, chosen ? tones.cyan : tones.white);
+    drawing.text(canvas, ENTRY_X + 48.0F, y + 22.0F, entry_summary(entry), 18,
+                 chosen ? tones.white : tones.muted);
+    y += ENTRY_HEIGHT;
     ++number;
   }
-  drawing.text(canvas, 130.0F, 658.0F,
-               "Press a number to play.   M: main menu (from an experiment: "
-               "back here).",
-               22, colors.white);
+  drawing.text(canvas, 130.0F, 680.0F,
+               "W/S or up/down: choose     Enter: select     1, 2, 3: jump "
+               "straight in",
+               20, tones.white);
+}
+
+void paint_controls(godot::Node2D &canvas,
+                    const rendering::AscentDrawing &drawing) {
+  const auto tones = rendering::palette();
+  backdrop(canvas, 0.9F);
+  drawing.text(canvas, 190.0F, 110.0F, "CONTROLS", 46, tones.white);
+  float y = CONTROLS_ROW_Y;
+  for (const ControlRow &row : CONTROL_ROWS) {
+    drawing.text(canvas, 190.0F, y, row.action, CONTROLS_ROW_SIZE, tones.white);
+    drawing.text(canvas, 700.0F, y, row.first, CONTROLS_ROW_SIZE, tones.cyan);
+    drawing.text(canvas, 930.0F, y, row.second, CONTROLS_ROW_SIZE, tones.cyan);
+    y += CONTROLS_ROW_HEIGHT;
+  }
+  drawing.text(canvas, 190.0F, 680.0F, "Esc or M: back to the title", 22,
+               tones.gold);
 }
 
 } // namespace neocity::hud

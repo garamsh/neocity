@@ -1,6 +1,6 @@
 # ADR 0004: Adopt the godot-cpp template layout
 
-> Status: accepted; single rules boundary superseded by ADR-0005
+> Status: accepted; single rules boundary superseded by ADR-0005; `gameplay` and `camera` folders, the ascent level scene, and the `AscentScene` root superseded by ADR-0006
 > Date: 2026-10-28
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

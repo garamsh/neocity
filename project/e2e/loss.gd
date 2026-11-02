@@ -12,7 +12,7 @@ const FINISHES_IN_READY: String = "res://e2e/cinematic_ready_fixture.tscn"
 const CARD_FRAMES: int = 372
 const DAY_LIMIT: int = 30
 
-var scene: AscentScene
+var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
 var failed: bool = false
@@ -29,7 +29,7 @@ func _process(delta: float) -> bool:
 
 func _run() -> void:
 	await _frames(2)
-	scene = current_scene as AscentScene
+	scene = current_scene as MainScene
 	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the main menu"):
 		return
 	scene.pin_survival_seed(SEED)

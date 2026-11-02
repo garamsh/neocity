@@ -20,16 +20,15 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `gameplay` library holds the rules of the earlier ascent prototype, the `survival` library holds the rules of the monster-mouth escape game, and each experiment under `src/experiment/<id>/` holds its own rules library; none has Godot or mutual dependencies. The shared C++/Godot host opens on a main menu that starts the survival game, opens a developer page listing the experiments, each a self-contained scene, or plays the earlier ascent prototype.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `survival` library holds the rules of Monster Mouth Escape, the one game, with no Godot dependency. The C++/Godot host opens on the game's title screen, which starts the game, shows the controls, or quits.
 
 - [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
-- [`experiments.md`](experiments.md) — what an experiment is made of, registration, launch, verification, and promotion; each experiment's rules live in its own record `src/experiment/<id>/README.md`.
-- [`session.md`](session.md) — main menu, developer page, run lifetime, input isolation, and fixed-step delivery to both games.
-- [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — one self-contained folder per experiment behind a developer page; supersedes ADR 0004's single rules boundary.
-- [`gameplay.md`](gameplay.md) — game rules of the ascent level, their public surface, and prototype control limitations.
+- [`session.md`](session.md) — title screen, controls page, run lifetime, input isolation, and fixed-step delivery to the survival game.
+- [`adr/0006-ship-one-game-behind-a-title-screen.md`](adr/0006-ship-one-game-behind-a-title-screen.md) — one game behind a title screen, with the developer page, the experiments, and the ascent prototype removed; supersedes ADR 0005 and ADR 0004's `gameplay` and `camera` folders, ascent level scene, and `AscentScene` root.
+- [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — one self-contained folder per experiment behind a developer page; supersedes ADR 0004's single rules boundary; superseded by ADR 0006.
 - [`survival.md`](survival.md) — independent progression rules of the monster-mouth escape game, shared state, the per-feature file ownership plan, and open questions.
-- [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, camera, rendering, HUD, and experiment hosting.
-- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names; its single rules boundary superseded by ADR 0005.
+- [`presentation.md`](presentation.md) — the GDExtension's entry point, composition site, input, rendering, HUD, and menus.
+- [`adr/0004-adopt-the-godot-cpp-template-layout.md`](adr/0004-adopt-the-godot-cpp-template-layout.md) — godot-cpp template layout with `project/` and purpose folders under `src/`; supersedes ADR 0001 and ADR 0003's partitioning and target names; its single rules boundary superseded by ADR 0005, its `gameplay` and `camera` folders, ascent level scene, and `AscentScene` root by ADR 0006.
 - [`adr/0003-implement-the-ascent-domain-in-cpp.md`](adr/0003-implement-the-ascent-domain-in-cpp.md) — C++ rules library and godot-cpp adapter, with each toolchain selection and its source; partitioning and target names superseded by ADR 0004.
 - [`adr/0002-isolate-the-ascent-engine-from-presentation.md`](adr/0002-isolate-the-ascent-engine-from-presentation.md) — engine/presentation dependency boundary; superseded by ADR 0003.
 - [`godot-runtime.md`](godot-runtime.md) — minimal Godot host, resource ownership, and import/startup checks.

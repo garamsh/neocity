@@ -27,7 +27,7 @@ const WALK_KEYS: Array[Key] = [KEY_A, KEY_D, KEY_W, KEY_S, KEY_J, KEY_L, KEY_I, 
 ## source west of the ferry, and the run is far from lost.
 const UNFED_DAYS: int = 5
 
-var scene: AscentScene
+var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
 var failed: bool = false
@@ -44,7 +44,7 @@ func _finalize() -> void:
 
 func _run() -> void:
 	await _frames(2)
-	scene = current_scene as AscentScene
+	scene = current_scene as MainScene
 	if not _check(scene != null and scene.screen_name() == "main", "configured startup main menu"):
 		return
 	scene.pin_survival_seed(SEED)
@@ -222,18 +222,15 @@ func _start_two_players() -> void:
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 
-## 4 ends the application: the pass line prints from `_finalize` only.
+## 3 ends the application: the pass line prints from `_finalize` only.
 func _main_menu_quits() -> void:
 	await _leave_run()
 	if not _check(scene.screen_name() == "main", "back at the main menu"):
 		return
-	await _tap(KEY_5)
-	if not _check(scene.screen_name() == "main", "a number with no entry does nothing"):
-		return
 	awaiting_quit = true
-	await _tap(KEY_4)
+	await _tap(KEY_3)
 	await _frames(30)
-	_check(false, "4 on the main menu quits")
+	_check(false, "3 on the main menu quits")
 
 func _menus() -> void:
 	await _tap(KEY_1)
@@ -1214,10 +1211,17 @@ func _until(name: String, condition: Callable, limit: int) -> bool:
 		await process_frame
 	return _check(false, name)
 
-## M asks first mid-run; Enter accepts.
+## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
+## the title screen takes its marked entry, so it is pressed only to answer the
+## question, and the title must show before the next menu key.
 func _leave_run() -> void:
-	await _tap(KEY_M)
-	await _tap(KEY_ENTER)
+	var status: Dictionary = scene.survival_status()
+	if status.has("cinematic"):
+		await _tap(KEY_M)
+	elif not status.is_empty():
+		await _tap(KEY_M)
+		await _tap(KEY_ENTER)
+	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and scene.survival_status().is_empty(), 30)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

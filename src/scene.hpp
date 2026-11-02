@@ -1,17 +1,14 @@
 #pragma once
 
-#include "camera/camera.hpp"
 #include "rendering/drawing.hpp"
 #include "session/session.hpp"
 
-#include <gameplay/engine.hpp>
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
 #include <survival/escape.hpp>
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
-#include <godot_cpp/variant/vector2.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -42,24 +39,22 @@ private:
   survival::Companion companion;
 };
 
-/// Godot composition root: wires both games, the menus, and the registered
-/// experiments to input, camera, and canvas adapters.
+/// Godot composition root: wires the title screen and the survival game to
+/// input and canvas adapters.
 // The suppressed diagnostics fire inside godot-cpp's GDCLASS expansion.
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
-class AscentScene : public godot::Node2D {
+class MainScene : public godot::Node2D {
   // NOLINTNEXTLINE(misc-const-correctness,modernize-use-auto)
-  GDCLASS(AscentScene, godot::Node2D)
+  GDCLASS(MainScene, godot::Node2D)
 
 public:
-  AscentScene();
+  MainScene();
 
   void _ready() override;
   void _process(double delta) override;
   void _draw() override;
 
-  /// Exposes the ascent game's actor location for host integration assertions.
-  [[nodiscard]] godot::Vector2 actor_position() const;
-  /// Reports the open screen, or the id of the mounted experiment.
+  /// Reports the open screen.
   [[nodiscard]] godot::String screen_name() const;
   /// Reports the open survival run for host integration assertions.
   [[nodiscard]] godot::Dictionary survival_status() const;
@@ -70,7 +65,6 @@ protected:
   static void _bind_methods();
 
 private:
-  void mount(const std::optional<godot::String> &scene);
   /// Starts a cinematic; false when it cannot load or breaks the scene
   /// contract, so the session shows its fallback.
   bool play_cinematic(const godot::String &scene);
@@ -78,8 +72,6 @@ private:
   void stop_cinematic();
   session::SurvivalFeatures start_survival();
 
-  gameplay::AscentEngine engine;
-  camera::AscentCamera camera;
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
