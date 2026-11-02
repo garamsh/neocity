@@ -44,9 +44,14 @@ struct WorldEvent {
   survival::ObjectState state = survival::ObjectState::Intact;
 };
 
+/// The escape check of finished day `day` did not hit.
+struct EscapeMissEvent {
+  std::uint32_t day = 0;
+};
+
 /// What the screen reports to the player.
-using Event =
-    std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent, WorldEvent>;
+using Event = std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent,
+                           WorldEvent, EscapeMissEvent>;
 
 /// What one human's interact and feed keys would do right now, and the errand
 /// AI would run in that human's place. The NEXT line names that errand, so the
@@ -66,6 +71,9 @@ struct SurvivalFrame {
   std::array<Offers, 2> offers;
   /// An AI chef has base work to do on its next step.
   bool ai_chef_working = false;
+  /// How many city objects changed during the last finished day, the acid it
+  /// raised included.
+  std::uint32_t last_day_map_changes = 0;
   /// Oldest first.
   std::vector<Event> events;
 };
@@ -99,6 +107,16 @@ void paint_cinematic(godot::Node2D &canvas,
                                 const survival::Recipe &recipe);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
+/// When the escape checks begin, on every survival screen.
+[[nodiscard]] godot::String escape_goal();
+/// The last finished day's result, line by line; empty before the first.
+[[nodiscard]] std::vector<godot::String> day_result(const SurvivalFrame &frame);
+/// The offered dish's score, plain and fine, against the threshold; empty when
+/// the chef's key offers no dish.
+[[nodiscard]] godot::String offered_forecast(const SurvivalFrame &frame);
+/// The ingredients eaten so far, wrapped for the appraise panel.
+[[nodiscard]] std::vector<godot::String>
+eaten_lines(const std::vector<survival::IngredientId> &eaten);
 /// The appraise panel's last line.
 [[nodiscard]] godot::String appraise_job(const SurvivalFrame &frame);
 /// Stocked, supplying sources no human can walk to: a human in the city from

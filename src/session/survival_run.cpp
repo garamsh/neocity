@@ -299,7 +299,9 @@ void SurvivalRun::step() {
       run_action(actor, *command.action, progression.day);
       // The roll follows the finishing command at once, before the partner's
       // command can set out and take the party out of the workshop.
-      (void)features.escape.get().check();
+      if (features.escape.get().check() == survival::EscapeResult::Stayed) {
+        record(hud::EscapeMissEvent{.day = progression.day});
+      }
       if (over()) {
         return;
       }
@@ -315,6 +317,10 @@ void SurvivalRun::step() {
   hurt_in_hazards(positions);
   report_returns(progression, walked_home);
   report_world_changes(city);
+  if (simulation.snapshot().day != progression.day) {
+    last_day_map_changes = map_changes;
+    map_changes = 0;
+  }
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     if (pending.at(index).switch_actor) {
       controllers = survival::switch_control(controllers);
@@ -396,6 +402,7 @@ void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
     // A repair reports itself as an action.
     if (object.state != then && then != survival::ObjectState::Destroyed) {
       record(hud::WorldEvent{.object = object.id, .state = object.state});
+      ++map_changes;
     }
   }
 }
@@ -412,6 +419,7 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .view = view(),
                             .control = controllers,
                             .offers = {},
+                            .last_day_map_changes = last_day_map_changes,
                             .events = {events.begin(), events.end()}};
   const auto chef = features.companion.get().command(Actor::Chef, controllers,
                                                      {}, result.view);
@@ -489,6 +497,18 @@ godot::Dictionary SurvivalRun::status() const {
   }
   status.set("stock", stock);
   status.set("next", hud::next_step(current));
+  status.set("goal", hud::escape_goal());
+  godot::Array result;
+  for (const auto &line : hud::day_result(current)) {
+    result.push_back(line);
+  }
+  status.set("day_result", result);
+  status.set("forecast", hud::offered_forecast(current));
+  godot::Array eaten;
+  for (const auto &line : hud::eaten_lines(view.workshop.eaten_ingredients)) {
+    eaten.push_back(line);
+  }
+  status.set("eaten_lines", eaten);
   status.set("appraise_job", hud::appraise_job(current));
   godot::Array stranded;
   for (const auto source : hud::out_of_reach(current)) {

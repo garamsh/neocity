@@ -111,11 +111,11 @@ test: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 92 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 103 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 29 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \

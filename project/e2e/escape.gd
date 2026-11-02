@@ -92,9 +92,13 @@ func _play_to_the_ending() -> void:
 		return
 	if not _check(_int("escape_rolls") == 0, "no escape roll before day thirty finishes"):
 		return
+	if not _check(not _events_say("stayed shut"), "no miss is reported before the first check"):
+		return
 	while _int("day") == 30:
 		await _follow_next()
 	if not _check(_int("escape_rolls") == 1, "finishing day thirty rolls once"):
+		return
+	if not _check(_events_say("Day 30: the way out stayed shut."), "the missed check is reported"):
 		return
 	await _follow_to_the_end()
 	if not _check(_str("phase") == "escaped", "a later day escapes"):
@@ -290,6 +294,13 @@ func _same_state(before: Dictionary) -> bool:
 		if now[field] != before[field]:
 			return false
 	return true
+
+func _events_say(words: String) -> bool:
+	var events: Array = scene.survival_status()["events"]
+	for event: String in events:
+		if event.contains(words):
+			return true
+	return false
 
 func _str(field: String) -> String:
 	var value: String = scene.survival_status().get(field, "")

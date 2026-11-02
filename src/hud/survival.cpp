@@ -2,6 +2,8 @@
 
 #include "../rendering/survival.hpp"
 
+#include <survival/escape.hpp>
+
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <algorithm>
@@ -53,6 +55,19 @@ constexpr float COOK_EATEN_X = 410.0F;
 constexpr float COOK_TASTE_X = 460.0F;
 constexpr int COOK_STATUS_SIZE = 15;
 constexpr int COOK_NAME_SIZE = 18;
+constexpr float COOK_ROW_HEIGHT = 23.0F;
+constexpr int FORECAST_SIZE = 15;
+constexpr int EATEN_SIZE = 14;
+constexpr std::size_t EATEN_PER_LINE = 4;
+/// The day's result, over the kitchen and clear of the two actors' heads.
+constexpr float RESULT_X = 44.0F;
+constexpr float RESULT_Y = 110.0F;
+constexpr float RESULT_WIDTH = 732.0F;
+constexpr float RESULT_LINE_HEIGHT = 21.0F;
+constexpr int RESULT_SIZE = 16;
+constexpr int GOAL_SIZE = 13;
+/// The row under the day runs clear of the acid label above it.
+constexpr float GOAL_WIDTH = 300.0F;
 constexpr float NEXT_TEXT_X = 70.0F;
 constexpr int NEXT_SIZE = 18;
 constexpr float LEGEND_X = 14.0F;
@@ -443,6 +458,7 @@ void paint_top_bar(godot::Node2D &canvas,
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 62.0F), color(14, 12, 26, 1.0F));
   drawing.text(canvas, 24.0F, 42.0F, "DAY " + number(progression.day), 30,
                tones.gold);
+  drawing.text(canvas, 24.0F, 57.0F, escape_goal(), GOAL_SIZE, tones.muted);
   drawing.text(canvas, 190.0F, 40.0F, "ACID", 24, color(150, 255, 120, 1.0F));
   bar(canvas, 262.0F, 20.0F, 440.0F, 24.0F, acid_ratio(frame),
       color(90, 226, 80, 1.0F));
@@ -632,6 +648,13 @@ void paint_appraise_panel(godot::Node2D &canvas,
                  known ? tones.cyan : tones.gold);
     y += 25.0F;
   }
+  const auto eaten = eaten_lines(view.workshop.eaten_ingredients);
+  float line = PANEL_Y + PANEL_HEIGHT - 56.0F;
+  for (const auto &text : eaten) {
+    drawing.text(canvas, x + PANEL_TEXT_MARGIN, line, text, EATEN_SIZE,
+                 tones.muted);
+    line += 18.0F;
+  }
 }
 
 /// What stands between a recipe and the pot, ingredient by ingredient.
@@ -706,6 +729,27 @@ String cook_job(const SurvivalFrame &frame) {
                : String("No dish can be cooked yet.");
 }
 
+/// "plain 85 falls short" and the like, for one quality of a dish.
+String score_word(const SurvivalFrame &frame, survival::Dish dish) {
+  const auto &tuning = frame.content.get().companion.workshop;
+  const auto score = survival::dish_score(dish, frame.view.workshop, tuning);
+  const auto total = score ? score->total : 0U;
+  return number(total) +
+         (total >= tuning.satisfying_score ? " passes" : " falls short");
+}
+
+/// What the offered dish would score, plain and fine, against the threshold.
+String cook_forecast(const SurvivalFrame &frame, survival::FoodId food) {
+  return "Plain " +
+         score_word(frame,
+                    {.food = food, .quality = survival::DishQuality::Plain}) +
+         ", fine " +
+         score_word(frame,
+                    {.food = food, .quality = survival::DishQuality::Fine}) +
+         ": needs " +
+         number(frame.content.get().companion.workshop.satisfying_score);
+}
+
 /// The dish the chef's key would cook, if any.
 std::optional<survival::FoodId> offered_dish(const SurvivalFrame &frame) {
   const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
@@ -753,8 +797,10 @@ void paint_cook_panel(godot::Node2D &canvas,
     }
     drawing.text(canvas, x + COOK_TASTE_X, y,
                  number(survival::taste_of(recipe, tuning)), 16, tones.muted);
-    y += 25.0F;
+    y += COOK_ROW_HEIGHT;
   }
+  drawing.text(canvas, x + PANEL_TEXT_MARGIN, PANEL_Y + PANEL_HEIGHT - 36.0F,
+               offered_forecast(frame), FORECAST_SIZE, tones.gold);
 }
 
 const char *reaction_text(survival::MonsterReaction reaction) {
@@ -803,6 +849,9 @@ void paint_feed_panel(godot::Node2D &canvas,
                           ? String(" (fine)")
                           : String()),
                  18, tones.cyan);
+    y += 19.0F;
+    drawing.text(canvas, x + PANEL_TEXT_MARGIN, y,
+                 "Score " + score_word(frame, dish), FORECAST_SIZE, tones.gold);
     y += 25.0F;
   }
   drawing.text(canvas, x + 14.0F, y + 12.0F,
@@ -810,16 +859,23 @@ void paint_feed_panel(godot::Node2D &canvas,
   drawing.text(canvas, x + 14.0F, y + 34.0F,
                "Anything else raises it. Full acid ends the run.", 16,
                tones.muted);
-  if (workshop.last_day) {
-    const auto &last = *workshop.last_day;
-    drawing.text(canvas, x + 14.0F, y + 70.0F,
-                 "Day " + number(last.completed_day) + ": " +
-                     reaction_text(last.reaction),
-                 20, tones.white);
-    drawing.text(canvas, x + 14.0F, y + 94.0F,
-                 "Score " + number(last.score) + ", acid +" +
-                     number(last.acid_rise.value),
-                 18, tones.muted);
+}
+
+/// Draws over the kitchen and reads only snapshots, so no clock or key waits.
+void paint_day_result(godot::Node2D &canvas,
+                      const rendering::AscentDrawing &drawing,
+                      const SurvivalFrame &frame) {
+  const auto lines = day_result(frame);
+  if (lines.empty()) {
+    return;
+  }
+  const auto tones = rendering::palette();
+  frame_box(canvas, RESULT_X, RESULT_Y, RESULT_WIDTH,
+            RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 8.0F);
+  float y = RESULT_Y + RESULT_LINE_HEIGHT;
+  for (const auto &line : lines) {
+    drawing.text(canvas, RESULT_X + 12.0F, y, line, RESULT_SIZE, tones.white);
+    y += RESULT_LINE_HEIGHT;
   }
 }
 
@@ -828,6 +884,7 @@ void paint_workshop_screen(godot::Node2D &canvas,
                            const SurvivalFrame &frame) {
   rendering::paint_workshop(canvas, drawing,
                             !frame.view.workshop.foods.empty());
+  paint_day_result(canvas, drawing, frame);
   paint_appraise_panel(canvas, drawing, frame, APPRAISE_X);
   paint_cook_panel(canvas, drawing, frame, COOK_X);
   paint_feed_panel(canvas, drawing, frame, FEED_X);
@@ -1098,6 +1155,64 @@ String appraise_job(const SurvivalFrame &frame) {
              : String("Nothing to appraise.");
 }
 
+std::vector<String> eaten_lines(const std::vector<IngredientId> &eaten) {
+  std::vector<String> lines{"Eaten:"};
+  for (std::size_t index = 0; index < eaten.size(); ++index) {
+    const bool wrap = index % EATEN_PER_LINE == 0;
+    if (wrap && index > 0) {
+      lines.emplace_back();
+    }
+    lines.back() += (wrap && index > 0 ? "" : " ") +
+                    from(survival::ingredient_name(eaten.at(index)));
+    if (index + 1 < eaten.size() && (index + 1) % EATEN_PER_LINE != 0) {
+      lines.back() += ",";
+    }
+  }
+  return lines;
+}
+
+String offered_forecast(const SurvivalFrame &frame) {
+  const auto offered = offered_dish(frame);
+  return offered ? cook_forecast(frame, *offered) : String();
+}
+
+String escape_goal() {
+  return "Escape checks from day " +
+         number(survival::TEMPORARY_ESCAPE.first_day);
+}
+
+std::vector<String> day_result(const SurvivalFrame &frame) {
+  const auto &last = frame.view.workshop.last_day;
+  if (!last) {
+    return {};
+  }
+  String headline = "Day " + number(last->completed_day) + ": ";
+  std::vector<String> lines;
+  if (last->fed) {
+    const auto &dish = last->fed->dish;
+    const auto &score = last->fed->score;
+    headline += from(survival::food_name(dish.food)) +
+                (dish.quality == survival::DishQuality::Fine ? String(" (fine)")
+                                                             : String()) +
+                ". ";
+    lines.emplace_back(headline + reaction_text(last->reaction));
+    const auto &tuning = frame.content.get().companion.workshop;
+    lines.push_back("New food " + number(score.new_food) + " + " +
+                    number(score.new_ingredients) + " new ingredients " +
+                    number(score.new_ingredient_points) + " + taste " +
+                    number(score.taste) + " + fine " + number(score.fine) +
+                    " = " + number(score.total) + ", needs " +
+                    number(tuning.satisfying_score));
+  } else {
+    lines.emplace_back(headline + reaction_text(last->reaction));
+  }
+  const auto after = frame.view.progression.acid.value;
+  const auto rise = std::min(after, last->acid_rise.value);
+  lines.push_back("Acid " + number(after - rise) + " to " + number(after) +
+                  ". Map changes: " + number(frame.last_day_map_changes));
+  return lines;
+}
+
 std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   const auto &exploration = frame.content.get().companion.exploration;
@@ -1134,6 +1249,17 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
 std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   const float job_inset = 2.0F * PANEL_TEXT_MARGIN;
   std::vector<FittedText> lines;
+  lines.push_back(fitted(escape_goal(), GOAL_SIZE, GOAL_WIDTH));
+  for (const auto &line : day_result(frame)) {
+    lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 24.0F));
+  }
+  std::vector<IngredientId> every_ingredient;
+  for (const auto &flavor : frame.content.get().companion.workshop.flavors) {
+    every_ingredient.push_back(flavor.ingredient);
+  }
+  for (const auto &line : eaten_lines(every_ingredient)) {
+    lines.push_back(fitted(line, EATEN_SIZE, APPRAISE_WIDTH - job_inset));
+  }
   lines.push_back(
       fitted(next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X));
   lines.push_back(
@@ -1149,6 +1275,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
                            CARD_TOOLS_SIZE, CARD_WIDTH - CARD_TEXT_X));
   }
   for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
+    lines.push_back(fitted(cook_forecast(frame, recipe.food), FORECAST_SIZE,
+                           COOK_WIDTH - job_inset));
     lines.push_back(fitted(from(survival::food_name(recipe.food)),
                            COOK_NAME_SIZE,
                            COOK_STATUS_X - PANEL_TEXT_MARGIN - 2.0F));
@@ -1183,6 +1311,8 @@ String describe(const Event &event) {
                  String(" fell and washed back to base.");
         } else if constexpr (std::is_same_v<Happened, TimeUpEvent>) {
           return "Time is up: everyone is back at base.";
+        } else if constexpr (std::is_same_v<Happened, EscapeMissEvent>) {
+          return "Day " + number(happened.day) + ": the way out stayed shut.";
         } else {
           const String name = from(survival::object_name(happened.object));
           return happened.state == survival::ObjectState::Destroyed

@@ -72,6 +72,19 @@ AcidLevel acid_rise(MonsterReaction reaction, std::uint64_t score,
   std::abort();
 }
 
+std::vector<IngredientId> first_eaten(const Recipe &recipe,
+                                      const WorkshopSnapshot &workshop) {
+  std::vector<IngredientId> fresh;
+  for (const auto ingredient : recipe.ingredients) {
+    if (std::ranges::find(workshop.eaten_ingredients, ingredient) ==
+            workshop.eaten_ingredients.end() &&
+        std::ranges::find(fresh, ingredient) == fresh.end()) {
+      fresh.push_back(ingredient);
+    }
+  }
+  return fresh;
+}
+
 } // namespace
 
 std::uint64_t taste_of(const Recipe &recipe, const WorkshopConfig &config) {
@@ -156,6 +169,30 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
   return WorkshopResult::Applied;
 }
 
+std::optional<DishScore> dish_score(const Dish &dish,
+                                    const WorkshopSnapshot &workshop,
+                                    const WorkshopConfig &config) {
+  const auto recipe =
+      std::ranges::find(config.recipes, dish.food, &Recipe::food);
+  if (recipe == config.recipes.end()) {
+    return std::nullopt;
+  }
+  const bool new_food = std::ranges::find(workshop.eaten_foods, dish.food) ==
+                        workshop.eaten_foods.end();
+  const auto new_ingredients =
+      static_cast<std::uint32_t>(first_eaten(*recipe, workshop).size());
+  DishScore score{
+      .new_food = new_food ? config.new_food_score : 0U,
+      .new_ingredients = new_ingredients,
+      .new_ingredient_points =
+          std::uint64_t{config.new_ingredient_score} * new_ingredients,
+      .taste = taste_of(*recipe, config),
+      .fine = dish.quality == DishQuality::Fine ? config.fine_dish_score : 0U};
+  score.total =
+      score.new_food + score.new_ingredient_points + score.taste + score.fine;
+  return score;
+}
+
 WorkshopResult Workshop::feed(FoodId food) {
   const auto stored = std::ranges::find(state.foods, food, &Dish::food);
   if (stored == state.foods.end()) {
@@ -163,22 +200,11 @@ WorkshopResult Workshop::feed(FoodId food) {
   }
   // Stored dishes always come from a configured recipe.
   const auto &recipe = *std::ranges::find(config.recipes, food, &Recipe::food);
-  std::vector<IngredientId> new_ingredients;
-  for (const auto ingredient : recipe.ingredients) {
-    if (std::ranges::find(state.eaten_ingredients, ingredient) ==
-            state.eaten_ingredients.end() &&
-        std::ranges::find(new_ingredients, ingredient) ==
-            new_ingredients.end()) {
-      new_ingredients.push_back(ingredient);
-    }
-  }
-  const bool new_food =
-      std::ranges::find(state.eaten_foods, food) == state.eaten_foods.end();
-  const std::uint64_t score =
-      (new_food ? config.new_food_score : 0U) +
-      std::uint64_t{config.new_ingredient_score} * new_ingredients.size() +
-      taste_of(recipe, config) +
-      (stored->quality == DishQuality::Fine ? config.fine_dish_score : 0U);
+  const auto new_ingredients = first_eaten(recipe, state);
+  const auto fed = FedDish{
+      .dish = *stored,
+      .score = dish_score(*stored, state, config).value_or(DishScore{})};
+  const auto score = fed.score.total;
   const auto reaction = react(recipe, score, config.satisfying_score);
   const auto rise = acid_rise(reaction, score, config);
   const auto day = simulation.get().snapshot().day;
@@ -198,7 +224,8 @@ WorkshopResult Workshop::feed(FoodId food) {
   state.last_day = {.completed_day = day,
                     .reaction = reaction,
                     .score = score,
-                    .acid_rise = rise};
+                    .acid_rise = rise,
+                    .fed = fed};
   return WorkshopResult::Applied;
 }
 
