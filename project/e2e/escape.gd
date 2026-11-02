@@ -202,6 +202,7 @@ func _instant_ending(fixture: String) -> void:
 	_stand_in(load(fixture), ENDING)
 	await _start()
 	await _tap(KEY_E)
+	rolls_seen = 0
 	await _follow_to_the_end()
 	_check(rolls_seen > 0 and scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 

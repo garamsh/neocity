@@ -391,13 +391,7 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
     }
   }
   // An AI chef cooks on its next step, so the day must not end unfed first.
-  const auto &recipes = frame.content.get().companion.workshop.recipes;
-  if (!chef_keys && frame.view.workshop.foods.empty() &&
-      std::ranges::any_of(recipes, [&frame](const survival::Recipe &recipe) {
-        const auto &rejected = frame.view.workshop.rejected_foods;
-        return recipe_ready(frame.view, recipe) &&
-               std::ranges::find(rejected, recipe.food) == rejected.end();
-      })) {
+  if (frame.ai_chef_working && frame.view.workshop.foods.empty()) {
     return "The AI chef is cooking.";
   }
   // Feeding ends the day, and a stored dish keeps while the city still gives.

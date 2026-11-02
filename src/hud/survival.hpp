@@ -64,6 +64,8 @@ struct SurvivalFrame {
   survival::ControlMap control;
   /// Chef first; an AI actor's entry stays empty.
   std::array<Offers, 2> offers;
+  /// An AI chef has base work to do on its next step.
+  bool ai_chef_working = false;
   /// Oldest first.
   std::vector<Event> events;
 };

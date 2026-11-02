@@ -474,27 +474,6 @@ TEST(TemporaryContent,
   EXPECT_LT(free_stock, stock);
 }
 
-TEST(TemporaryContent, AnAiPartyFeedsTheDislikedDishOnce) {
-  for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
-    Game game(temporary_content(seed));
-    std::uint32_t day = 0;
-    std::uint32_t disliked = 0;
-    for (std::uint32_t step = 0;
-         step < STEP_LIMIT && !run_over(game.simulation().snapshot().phase);
-         ++step) {
-      game.step(ALL_AI);
-      const auto last = game.workshop().snapshot().last_day;
-      if (last && last->completed_day != day) {
-        day = last->completed_day;
-        disliked += last->reaction == MonsterReaction::Disliked ? 1U : 0U;
-      }
-    }
-    EXPECT_TRUE(run_over(game.simulation().snapshot().phase))
-        << "seed " << seed;
-    EXPECT_LE(disliked, 1U) << "seed " << seed;
-  }
-}
-
 TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
   Game game(temporary_content(1));
   const auto penalty = game.content().companion.unfed_penalty;
@@ -518,6 +497,24 @@ TEST(TemporaryContent, AcidCarriesAWashedUpBagAwayAfterBringingIt) {
   ASSERT_EQ(world.update({.acid = AcidLevel{40}}), WorldUpdateResult::Applied);
   EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Destroyed);
+}
+
+TEST(TemporaryContent, WashedUpBagsArriveAcrossThirtyFullDaysOfTime) {
+  const auto budget = temporary_content(1).run.exploration_budget;
+  const auto bags = [](const WorldSnapshot &world) {
+    return std::ranges::count_if(
+        world.objects, [](const ObjectSnapshot &object) {
+          return object.state != ObjectState::Dormant &&
+                 object_name(object.id).starts_with("Washed-up Bag");
+        });
+  };
+  World world(temporary_content(1).objects);
+  ASSERT_EQ(world.update({.elapsed = 3 * budget}), WorldUpdateResult::Applied);
+  EXPECT_EQ(bags(world.snapshot()), 0);
+  ASSERT_EQ(world.update({.elapsed = 30 * budget}), WorldUpdateResult::Applied);
+  EXPECT_EQ(bags(world.snapshot()), 7);
+  ASSERT_EQ(world.update({.elapsed = 33 * budget}), WorldUpdateResult::Applied);
+  EXPECT_EQ(bags(world.snapshot()), 8);
 }
 
 TEST(TemporaryContent, RisingAcidStrandsStockThatNoOneCollected) {

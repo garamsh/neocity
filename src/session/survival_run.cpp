@@ -413,6 +413,12 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .control = controllers,
                             .offers = {},
                             .events = {events.begin(), events.end()}};
+  const auto chef = features.companion.get().command(Actor::Chef, controllers,
+                                                     {}, result.view);
+  result.ai_chef_working =
+      !survival::key_set(controllers, Actor::Chef) && chef.action &&
+      (std::holds_alternative<survival::Cook>(*chef.action) ||
+       std::holds_alternative<survival::ReplaceTool>(*chef.action));
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
     if (survival::key_set(controllers, actor) && !over()) {

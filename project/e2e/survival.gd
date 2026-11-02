@@ -10,7 +10,7 @@ const LONG_RUN_SEED: int = 1018
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
-const APPRAISER_DAYS: int = 14
+const APPRAISER_DAYS: int = 29
 ## This seed's pack after GATHERING_DAYS cooks this dish twice.
 const CHOSEN: String = "Fish Stew"
 const REPLACEMENT_DAYS: int = 12
