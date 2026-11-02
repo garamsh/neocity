@@ -112,135 +112,443 @@
    1
   ],
   [
-   "world/building_wall.png",
-   1088,
-   160,
-   2,
-   2
-  ],
-  [
-   "world/cold_store.png",
-   832,
-   160,
-   1,
-   1
-  ],
-  [
-   "world/platform.png",
-   832,
-   288,
-   14,
-   1
-  ],
-  [
-   "world/ladder.png",
-   800,
-   288,
-   1,
-   4
-  ],
-  [
-   "world/acid_drip.png",
-   704,
-   192,
-   1,
-   1
-  ],
-  [
-   "world/bag_roof.png",
-   1180,
-   254,
-   1,
-   1
-  ],
-  [
-   "world/platform.png",
+   "decor/flesh_vines.png",
+   560,
    0,
-   416,
+   1,
+   1
+  ],
+  [
+   "decor/cables_hanging.png",
+   1010,
+   96,
+   1,
+   1
+  ],
+  [
+   "decor/train_car_lit.png",
+   690,
+   300,
+   1,
+   1
+  ],
+  [
+   "decor/facade_tall.png",
    20,
-   1
-  ],
-  [
-   "world/bridge.png",
-   640,
-   416,
-   5,
-   1
-  ],
-  [
-   "world/kiosk.png",
-   64,
-   352,
-   1,
-   1
-  ],
-  [
-   "world/vending_machine.png",
-   160,
-   368,
-   1,
-   1
-  ],
-  [
-   "world/shop.png",
-   224,
    320,
    1,
    1
   ],
   [
+   "decor/facade_low.png",
+   380,
+   344,
+   1,
+   1
+  ],
+  [
+   "decor/neon_blade.png",
+   92,
+   260,
+   1,
+   1
+  ],
+  [
+   "decor/facade_tall.png",
+   1090,
+   256,
+   1,
+   1
+  ],
+  [
+   "decor/neon_box.png",
+   1030,
+   236,
+   1,
+   1
+  ],
+  [
+   "decor/cables_sagging.png",
+   300,
+   300,
+   1,
+   1
+  ],
+  [
+   "decor/pipes_valve.png",
+   1200,
+   316,
+   1,
+   1
+  ],
+  [
+   "decor/pillar_snapped.png",
+   120,
+   480,
+   1,
+   1
+  ],
+  [
+   "decor/pillar_deck.png",
+   590,
+   416,
+   1,
+   1
+  ],
+  [
+   "decor/pillar_snapped.png",
+   940,
+   416,
+   1,
+   1
+  ],
+  [
+   "decor/train_car_wrecked.png",
+   700,
+   470,
+   1,
+   1
+  ],
+  [
+   "decor/pipe_bent.png",
+   760,
+   400,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   0,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   32,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road_cracked.png",
+   64,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   96,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/pothole.png",
+   128,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   160,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   192,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_right.png",
+   224,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/bridge_plank.png",
+   256,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/bridge_plank.png",
+   288,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_left.png",
+   320,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   352,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/car_buried.png",
+   384,
+   432,
+   1,
+   1
+  ],
+  [
+   "ground/road_cracked.png",
+   416,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   448,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/slab_tilted.png",
+   480,
+   440,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_left.png",
+   512,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   544,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road_cracked.png",
+   576,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   608,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/pothole.png",
+   640,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   672,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_right.png",
+   704,
+   416,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_left.png",
+   832,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   864,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/rubble.png",
+   896,
+   368,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   928,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road_cracked.png",
+   960,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   992,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   1024,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_right.png",
+   1056,
+   384,
+   1,
+   1
+  ],
+  [
+   "ground/road_end_left.png",
+   1120,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   1152,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/car_buried.png",
+   1184,
+   432,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   1216,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/road.png",
+   1248,
+   448,
+   1,
+   1
+  ],
+  [
+   "decor/lamp_standing.png",
+   196,
+   382,
+   1,
+   1
+  ],
+  [
+   "decor/lamp_bent.png",
+   600,
+   358,
+   1,
+   1
+  ],
+  [
    "world/vendor_cart.png",
-   352,
-   352,
+   222,
+   384,
    1,
    1
   ],
   [
    "world/noodle_vendor.png",
-   396,
-   368,
+   262,
+   400,
+   1,
+   1
+  ],
+  [
+   "decor/rubble_low.png",
+   444,
+   384,
+   1,
+   1
+  ],
+  [
+   "decor/flesh_tumor.png",
+   690,
+   370,
+   1,
+   1
+  ],
+  [
+   "decor/flesh_tendril.png",
+   1000,
+   309,
+   1,
+   1
+  ],
+  [
+   "decor/rubble_high.png",
+   1140,
+   320,
    1,
    1
   ],
   [
    "characters/chef_walk_1.png",
-   470,
-   368,
+   300,
+   384,
    1,
    1
   ],
   [
-   "characters/appraiser_idle.png",
-   530,
-   368,
+   "characters/appraiser_walk_2.png",
+   560,
+   352,
    1,
    1
   ],
   [
-   "world/door_broken.png",
-   1000,
-   224,
+   "decor/flesh_polyps.png",
+   1210,
+   397,
    1,
    1
   ],
   [
    "backgrounds/acid.png",
    0,
-   500,
-   1,
-   1
-  ],
-  [
-   "world/ferry.png",
-   900,
-   440,
-   1,
-   1
-  ],
-  [
-   "world/bag_washed_up.png",
-   1120,
-   500,
+   540,
    1,
    1
   ]
@@ -342,6 +650,44 @@
   },
   "logo": {
    "url": "https://img.recraft.ai/7DLPUbzI8Gqz3BHliwqpEJcKcfSjDd2NdkFBt8X4zgw/raw:1/plain/abs://prod/images/a9e62625-5451-40d0-8697-3fdef4bc02c8"
+  },
+  "decor_trains": {
+   "url": "https://img.recraft.ai/vykQTwfV75k6rM-_b2886oqCNyiZb0Rbc1CCpOHQa8A/raw:1/plain/abs://prod/images/717a4726-9b09-442f-8472-0f5faa10968e",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/BCgHNX2H3xEJuUF3zzIcDl8GaPvb_xTpZ-k0uhDlBQE/raw:1/plain/abs://prod/images/6e93a879-d5f6-4984-ab03-f27e42498c2d"
+  },
+  "decor_facades": {
+   "url": "https://img.recraft.ai/iZInqGyIkL0WWApwRKZO_2ncQ4hKP2PHL3IKNLMFcx0/raw:1/plain/abs://prod/images/6486b829-2ee3-4437-9ba0-f80fecb7a51a"
+  },
+  "decor_cables": {
+   "url": "https://img.recraft.ai/CWNVV5fbIZogxzJ1ohoIV_YeAkgxECpaXEKahvLbJQ4/raw:1/plain/abs://prod/images/eec2b50a-6220-4a63-865f-4f9545ffc87d",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/JE3UXYxoAN8-Cji121HWMrfAOYMc5VHY5MNPP0SCly8/raw:1/plain/abs://prod/images/fc725362-8204-4ebe-b5b7-b4ecf3c47175"
+  },
+  "decor_neon": {
+   "url": "https://img.recraft.ai/k6RsqaiWYp69YKaa3xRjFi10v8d1dxN8Ep8on3Hw5V4/raw:1/plain/abs://prod/images/f93f70c5-0f21-49bc-9bb7-5fea5851c0fa"
+  },
+  "decor_flesh": {
+   "url": "https://img.recraft.ai/DQY_U0crIFB9tzrlID18_6BWHE9vonKbF3k3pQAtPws/raw:1/plain/abs://prod/images/01233118-067f-4d14-9e11-bce7915352d1",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/sD_pZbmGvlbxShHdi14J8BzH5mYc13OPinc3YoHWRuo/raw:1/plain/abs://prod/images/810eb4ad-1933-4c39-bd9d-8e7eb66efaef"
+  },
+  "decor_pillars": {
+   "url": "https://img.recraft.ai/yUQa5Q6HQhe622aQWALYHLKcl6yDD3cIzp4T55urXQ8/raw:1/plain/abs://prod/images/a8850938-858f-4036-a97a-bbd5914ab9ef"
+  },
+  "decor_rubble": {
+   "url": "https://img.recraft.ai/i98M91pHg6wBQzOoVrkSv3PFt9f9fA8D4hUD1IEGalI/raw:1/plain/abs://prod/images/f006e13a-4354-4f02-9021-300e09613a0f"
+  },
+  "ground_road": {
+   "url": "https://img.recraft.ai/Oh-6fr9cXsr1ILNN-bX86-26fxfgkz8Elh94VUj8aPQ/raw:1/plain/abs://prod/images/991a1e8a-2263-4f22-93bb-d6ae02d9e38b"
+  },
+  "ground_broken": {
+   "url": "https://img.recraft.ai/3RpGYBJRV2_NtsU3gYHkH5D58pHDPZR9fdOjMlaEjgA/raw:1/plain/abs://prod/images/fb4e07c2-3e13-4091-ae95-4ee297d33099",
+   "edited_from": "ground_road"
+  },
+  "ground_bridged": {
+   "url": "https://img.recraft.ai/Gk59jsJnIKts63gRe0f5_KqtH4RLOP61ddED5noDjz8/raw:1/plain/abs://prod/images/42228a82-b511-48e3-b75a-85cc58e73d8a",
+   "edited_from": "ground_broken"
   }
  },
  "assets": [
@@ -1773,6 +2119,695 @@
     "enclosed": true
    },
    "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
+  },
+  {
+   "path": "ground/road.png",
+   "source": "ground_road",
+   "crop": [
+    0,
+    264,
+    321,
+    241
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 16,
+   "seamless": "x",
+   "depicts": "Intact road: asphalt with an orange lane dash over a concrete deck, in section; tiles horizontally, and every other ground tile meets it without a seam"
+  },
+  {
+   "path": "ground/road_cracked.png",
+   "source": "ground_road",
+   "crop": [
+    1190,
+    264,
+    241,
+    241
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "lr",
+    "width": 8
+   },
+   "depicts": "Cracked road: zigzag fissures through the asphalt and deck"
+  },
+  {
+   "path": "ground/pothole.png",
+   "source": "ground_broken",
+   "crop": [
+    170,
+    248,
+    300,
+    226
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "lr",
+    "width": 8
+   },
+   "depicts": "Pothole: a dark hole bitten into the asphalt"
+  },
+  {
+   "path": "ground/road_end_left.png",
+   "source": "ground_broken",
+   "crop": [
+    786,
+    248,
+    226,
+    226
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "r",
+    "width": 8
+   },
+   "depicts": "Road end, left: the road breaks off at the tile's left edge with bent rebar; the road continues to the right"
+  },
+  {
+   "path": "ground/road_end_right.png",
+   "source": "ground_broken",
+   "crop": [
+    500,
+    248,
+    226,
+    226
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "l",
+    "width": 8
+   },
+   "depicts": "Road end, right: the road breaks off at the tile's right edge with bent rebar; the road continues to the left"
+  },
+  {
+   "path": "ground/slab_tilted.png",
+   "source": "ground_bridged",
+   "crop": [
+    150,
+    185,
+    280,
+    288
+   ],
+   "size": [
+    32,
+    40
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "lr",
+    "width": 8
+   },
+   "depicts": "Tilted slab: a loose piece of road tilted up to the right over the deck; 8 px taller than its cell"
+  },
+  {
+   "path": "ground/rubble.png",
+   "source": "ground_bridged",
+   "crop": [
+    1015,
+    132,
+    300,
+    341
+   ],
+   "size": [
+    32,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "lr",
+    "width": 8
+   },
+   "depicts": "Rubble: a heap of concrete blocks, bricks and rebar blocking the road; 16 px taller than its cell"
+  },
+  {
+   "path": "ground/bridge_plank.png",
+   "source": "ground_bridged",
+   "crop": [
+    628,
+    244,
+    220,
+    100
+   ],
+   "size": [
+    32,
+    14
+   ],
+   "scale": 1,
+   "colours": 16,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally"
+  },
+  {
+   "path": "ground/car_buried.png",
+   "source": "ground_broken",
+   "crop": [
+    1040,
+    132,
+    300,
+    341
+   ],
+   "size": [
+    32,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "ground/road.png",
+    "sides": "lr",
+    "width": 8
+   },
+   "depicts": "Half-buried car: a rusty violet car nose-down in the cracked road, rear wheel up; 16 px taller than its cell"
+  },
+  {
+   "path": "decor/train_car_lit.png",
+   "source": "decor_trains",
+   "crop": [
+    0,
+    0,
+    1024,
+    640
+   ],
+   "size": [
+    128,
+    80
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Tilted elevated train car, lit orange windows, bent bogies"
+  },
+  {
+   "path": "decor/train_car_wrecked.png",
+   "source": "decor_trains",
+   "crop": [
+    0,
+    424,
+    1024,
+    600
+   ],
+   "size": [
+    128,
+    75
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime"
+  },
+  {
+   "path": "decor/facade_tall.png",
+   "source": "decor_facades",
+   "crop": [
+    0,
+    0,
+    496,
+    1024
+   ],
+   "size": [
+    62,
+    128
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar"
+  },
+  {
+   "path": "decor/facade_low.png",
+   "source": "decor_facades",
+   "crop": [
+    488,
+    344,
+    536,
+    680
+   ],
+   "size": [
+    82,
+    104
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base"
+  },
+  {
+   "path": "decor/cables_sagging.png",
+   "source": "decor_cables",
+   "crop": [
+    0,
+    8,
+    448,
+    432
+   ],
+   "size": [
+    56,
+    54
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Cable bundle sagging between two snapped stubs"
+  },
+  {
+   "path": "decor/cables_hanging.png",
+   "source": "decor_cables",
+   "crop": [
+    670,
+    0,
+    354,
+    480
+   ],
+   "size": [
+    44,
+    60
+   ],
+   "scale": 1,
+   "colours": 16,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Two cables hanging straight down with frayed ends and a spark"
+  },
+  {
+   "path": "decor/pipe_bent.png",
+   "source": "decor_cables",
+   "crop": [
+    56,
+    512,
+    336,
+    384
+   ],
+   "size": [
+    42,
+    48
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Rusty pipe hanging at an angle from a broken end"
+  },
+  {
+   "path": "decor/pipes_valve.png",
+   "source": "decor_cables",
+   "crop": [
+    640,
+    552,
+    384,
+    472
+   ],
+   "size": [
+    48,
+    59
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel"
+  },
+  {
+   "path": "decor/neon_box.png",
+   "source": "decor_neon",
+   "crop": [
+    24,
+    0,
+    560,
+    560
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      0,
+      360
+     ],
+     "saturation": 0.3,
+     "lightness": 0.65
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain"
+  },
+  {
+   "path": "decor/neon_blade.png",
+   "source": "decor_neon",
+   "crop": [
+    685,
+    7,
+    320,
+    1017
+   ],
+   "size": [
+    32,
+    100
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      0,
+      360
+     ],
+     "saturation": 0.3,
+     "lightness": 0.65
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dead neon blade sign: tall, unlit stripes and a star"
+  },
+  {
+   "path": "decor/flesh_vines.png",
+   "source": "decor_flesh",
+   "crop": [
+    0,
+    0,
+    630,
+    635
+   ],
+   "size": [
+    83,
+    84
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Flesh vines drooping from above, dripping"
+  },
+  {
+   "path": "decor/flesh_tendril.png",
+   "source": "decor_flesh",
+   "crop": [
+    611,
+    10,
+    207,
+    567
+   ],
+   "size": [
+    27,
+    75
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Flesh tendril twisting up from a small base"
+  },
+  {
+   "path": "decor/flesh_tumor.png",
+   "source": "decor_flesh",
+   "crop": [
+    46,
+    677,
+    458,
+    347
+   ],
+   "size": [
+    60,
+    46
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Lumpy flesh growth with veins and pustules"
+  },
+  {
+   "path": "decor/flesh_polyps.png",
+   "source": "decor_flesh",
+   "crop": [
+    543,
+    639,
+    426,
+    385
+   ],
+   "size": [
+    56,
+    51
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Cluster of three glossy flesh polyps"
+  },
+  {
+   "path": "decor/rubble_low.png",
+   "source": "decor_rubble",
+   "crop": [
+    0,
+    0,
+    770,
+    768
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Low rubble heap: concrete chunks, bricks and rebar"
+  },
+  {
+   "path": "decor/rubble_high.png",
+   "source": "decor_rubble",
+   "crop": [
+    770,
+    0,
+    766,
+    768
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "High rubble heap: blocks, a blank sign post and flesh slime"
+  },
+  {
+   "path": "decor/pillar_snapped.png",
+   "source": "decor_pillars",
+   "crop": [
+    32,
+    20,
+    275,
+    473
+   ],
+   "size": [
+    40,
+    69
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 255,
+     "saturation": 0.6
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Overpass pillar snapped at the top, rebar bent out"
+  },
+  {
+   "path": "decor/pillar_deck.png",
+   "source": "decor_pillars",
+   "crop": [
+    514,
+    0,
+    470,
+    492
+   ],
+   "size": [
+    66,
+    69
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 255,
+     "saturation": 0.6
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Overpass pillar with a piece of deck still on top"
+  },
+  {
+   "path": "decor/lamp_standing.png",
+   "source": "decor_pillars",
+   "crop": [
+    130,
+    560,
+    225,
+    464
+   ],
+   "size": [
+    32,
+    66
+   ],
+   "scale": 1,
+   "colours": 16,
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Street lamp standing, dim amber bulb"
+  },
+  {
+   "path": "decor/lamp_bent.png",
+   "source": "decor_pillars",
+   "crop": [
+    602,
+    617,
+    281,
+    407
+   ],
+   "size": [
+    40,
+    58
+   ],
+   "scale": 1,
+   "colours": 16,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Street lamp bent over, head hanging, bulb smashed"
   }
  ]
 }

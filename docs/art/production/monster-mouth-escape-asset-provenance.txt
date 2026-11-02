@@ -1,16 +1,17 @@
-Monster-mouth escape asset provenance, 2026-11-02, issue #90
+Monster-mouth escape asset provenance, 2026-11-02, issues #90 and #98
 
-Version 2, after review of PR #96. Characters are cut from the approved concept sheets with no generation. Every other asset comes from Recraft, through its MCP connector, personal account. Every generation used the custom style below; Recraft ran it on model recraftv4_1_raster. No seed is exposed. Recraft returns WebP; the source URL of each generation is kept in tools/art/assets.json.
+Version 3, issue #98: adds the ground tiles and decorations, and fixes the noodle vendor and the empty heart handed over from the review of PR #96. Version 2 was the set after that review. Characters are cut from the approved concept sheets with no generation. Every other asset comes from Recraft, through its MCP connector, personal account; two ground sources are Recraft image_edit results, described under Ground. Every generation used the custom style below; Recraft ran it on model recraftv4_1_raster. No seed is exposed. Recraft returns WebP; the source URL of each generation is kept in tools/art/assets.json.
 Tools: Python 3.13.5 runs tools/art/pixelize.py, standard library only. ImageMagick 7.1.1-43 Q16 x86_64 decodes WebP in pixelize.py fetch (PNG24, or PNG32 for background-removed sources).
 Post-processing, the same for every asset, with per-asset values in assets.json; pixelize.py process:
 1. Crops the rectangle given. A seamless tile cross-fades the last quarter of its crop into the first along each tiling axis and drops it, so its edges meet.
 2. Masks the background: the given key colour connected to the border (or every pixel near it, for "enclosed"), or the alpha of a background-removed source; optionally keeps only the largest connected figure.
-3. Applies the asset's recolour rules, if any: hue ranges moved to red (tomato, meat, full heart, vending machine) or desaturated to grey steel (UI frames, slot, plain button, clock case, empty heart, which is also lightened).
-4. Detects the generation's own pixel grid from the spectrum of its column and row edges. Where both axes show a grid at least 4 times the median spectral strength, it moves the crop onto that grid so each output pixel is one drawn block; otherwise it divides the crop evenly. manifest.json does not record which; process prints it.
+3. Applies the asset's recolour rules, if any: hue ranges moved to red (tomato, meat, full heart, vending machine) or desaturated to grey steel (UI frames, slot, plain button, clock case); the empty heart takes the full heart's crop desaturated and darkened; the dead neon signs are desaturated and darkened; the overpass pillars move from magenta to indigo.
+4. Detects the generation's own pixel grid from the spectrum of its column and row edges. Where both axes show a grid at least 4 times the median spectral strength, it moves the crop onto that grid so each output pixel is one drawn block, or a whole number of blocks when the asset is drawn coarser than the generation, so the crop still covers the figure; otherwise it divides the crop evenly. Ground tiles that join the road skip detection, so their deck rows stay level with the road's. manifest.json does not record which; process prints it.
 5. Takes one colour per block: the most frequent master-palette colour in the block's central half; a block is clear when most of it is background.
-6. Limits the asset's colours to a subset of the 85-colour master palette in assets.json (64 median-cut from the three concept images, the 15 swatches of the two character sheets, and 6 greys from the concept's UI panels): 16 for characters, 12 for icons and UI, 24 for world tiles and props, 32 for backgrounds, workshop and key art, 16 for the logo. The most used colour is kept first, then each next pick maximises its use times its distance from the colours already kept, so small accents survive. Every other block takes its nearest kept colour.
+6. Limits the asset's colours to a subset of the 85-colour master palette in assets.json (64 median-cut from the three concept images, the 15 swatches of the two character sheets, and 6 greys from the concept's UI panels): 16 for characters, 12 for icons and UI, 24 for world tiles and props, 16 for the intact road and the plank bridge, 20 to 24 for the other ground tiles, 24 for the train cars, facades and rubble piles, 16 for the other decorations, 32 for backgrounds, workshop and key art, 16 for the logo. The most used colour is kept first, then each next pick maximises its use times its distance from the colours already kept, so small accents survive. Every other block takes its nearest kept colour.
 7. Cleans: clears opaque pixels with at most one opaque 4-neighbour, fills clear pixels with three or more, and replaces a pixel that touches none of its own colour by the colour around it when the two are close, so contrasting single pixels such as eyes stay.
-8. Characters and icons: sets every edge pixel to the outline colour #0a060e, giving a 1 px dark outline.
+8. Characters and icons: sets every edge pixel to the outline colour #0a060e, giving a 1 px dark outline. World props, ground tiles and decorations have none.
+8a. Ground tiles that join the road ("match" in assets.json): the colour limit of step 6 first keeps every colour of ground/road.png, and after step 7 each row takes the road's outer 4 to 8 columns on each joined side, the cut varying by row. Any two such tiles side by side then meet as road meets road, which tiles without a seam.
 9. Enlarges by the asset's scale with nearest-neighbour. Every pixel is fully opaque or fully clear.
 Raw generations are not committed. Running pixelize.py fetch and process again writes the committed PNGs and manifest.json byte for byte.
 
@@ -156,4 +157,72 @@ Runtime: title/logo.png
 
 Tiles: world/platform.png, world/bridge.png (horizontal) and world/building_wall.png (both directions) use the seamless cross-fade of step 1; their generations are unchanged from version 1.
 
-Review sheet: docs/art/production/monster-mouth-escape-review-v2.png, written by pixelize.py sheet from the committed runtime PNGs, the raw generations and the three concept images. Below the concepts, a 1280x720 frame composes some of the assets by the placements in assets.json; that layout illustrates the set only and is not the game's map. Then each character frame at 8x beside its sheet crop, then chef_idle and the tomato at 8x as the plain version 1 pipeline renders the same source beside the committed result.
+Review sheet: docs/art/production/monster-mouth-escape-review-v3.png, written by pixelize.py sheet from the committed runtime PNGs, the raw generations and the three concept images; it replaces version 2. Below the concepts, a 1280x720 frame composes a broken-road street from the ground tiles, decorations and some other assets by the placements in assets.json; that layout illustrates the set only and is not the game's map. Then each character frame at 8x beside its sheet crop, then chef_idle and the tomato at 8x as the plain version 1 pipeline renders the same source beside the committed result.
+
+Version 3 changes, issue #98
+Recraft use for issue #98: 91 credits, personal account (865 before, 774 after by get_user). generate_image with n=2 cost 4 credits a call, remove_background 1, image_edit with n=2 22. Every generate_image used the custom style above.
+
+noodle_vendor fix: no new generation. The version 2 file showed only the vendor's apron because grid detection found the generation's grid at half its real block size (8.75 px) and shrank the crop to its centre. Step 4 now takes a whole multiple of the detected grid; for the vendor that box no longer fits the image, so step 4 divides the given crop evenly, which covers the whole figure, head included. The same change redraws three version 2 assets whose crops had shrunk the same way: ui/icon_day.png (the whole sun), ui/icon_acid.png and world/acid_drip.png (the flesh blob and the splash return), world/vending_machine.png (the whole machine instead of its jars). The sun, the drip and the machine now sample a whole multiple of their detected grid; the acid droplet's box no longer fits, so it divides its crop evenly.
+A full-figure vendor was generated as well (generate_image, 1:2, n=2) and is unused, since the fix restores the figure that matches the version 2 cart.
+Prompt as sent:
+Isolated single pixel art game character sprite, side view, full body from head to feet with space above the head: a short old noodle vendor man standing, bald head with a dark headband, round face, wearing a dark shirt and a long stained tan apron, holding a ladle down in one hand, pale skin, dark trousers and shoes, chunky cartoon proportions with thick black outline. Centered on a plain flat solid white background. No cart, no scenery, no text, no letters.
+
+heart_empty fix: no new generation. It takes the full heart's crop from the ui source, desaturated and darkened, so it has the full heart's shape and outline. Version 2 cropped the generation's separate empty heart, whose thin outline broke into a few dots at 16 logical pixels.
+
+Ground
+ground_road: generate_image, 2:1, n=2, first rejected (orange stripes over the whole asphalt)
+Prompt as sent:
+Isolated pixel art game tile strip, side view cross-section: one long straight horizontal slab of a ruined city road, a dark charcoal asphalt top layer with a faded yellow lane marking along the top edge, under it a thick grey-indigo concrete deck layer with rebar ends and dark cracks, rust stains. Toward the right the asphalt gets cracked with zigzag fissures, and near the right end one small sunken pothole dips into the top surface. Uniform height along the whole strip, flat top, flat bottom, fills the full width edge to edge. Plain flat solid white background above and below. No cars, no people, no scenery, no text.
+Runtime: ground/road.png (seamless, from the left end), ground/road_cracked.png
+
+ground_broken: image_edit of ground_road, default model (nano_banana_2), no style, n=2, second rejected. Editing the road strip keeps its layers, so the tiles cut from it meet the road.
+Prompt as sent:
+Keep the exact same pixel art style, colours, layer thicknesses and the plain white background. Edit only the road slab: in the left third, add a deep dark pothole bitten into the top asphalt surface; in the middle, break the slab into two pieces with an empty white gap between them about as wide as the slab is thick, each broken end jagged with bent rusty rebar sticking out into the gap; in the right third, a small rusty violet car half buried nose-down into the slab, its rear end and one wheel sticking up a little above the asphalt, the road cracked around it. Remove the little posts under the slab. No text.
+Runtime: ground/pothole.png, ground/road_end_left.png, ground/road_end_right.png, ground/car_buried.png
+
+ground_bridged: image_edit of ground_broken, default model (nano_banana_2), no style, n=2, second rejected
+Prompt as sent:
+Keep the exact same pixel art style, colours, layer thicknesses, slab height and the plain white background. Make three edits only: 1) across the gap in the middle, lay a makeshift bridge of rough dark wooden planks and one bent metal sheet tied with rope, a thin flat walkway at the same height as the asphalt top, resting on the two broken ends; 2) replace the half-buried car with a tall heap of broken concrete blocks, bricks and bent rebar sitting on the road and blocking it, about as tall as the slab is thick; 3) replace the pothole section with one piece of the slab that has cracked loose and tilted about 20 degrees, its left end sunk down and its right end raised, with small dark gaps either side. No text.
+Runtime: ground/slab_tilted.png, ground/rubble.png, ground/bridge_plank.png
+
+Rejected ground generations, both generate_image, 2:1, n=2, every image rejected because its slab layers and colours differ from ground_road, so its tiles would not meet the road:
+Snapped road ends and a tilted chunk. Prompt as sent:
+Isolated pixel art game sprites, side view cross-section, on a plain flat solid white background with wide spacing: top row, two pieces of a snapped ruined city road slab facing each other across an empty gap, each piece a dark charcoal asphalt top layer over a thick grey-indigo concrete deck, the left piece ends on its right side in a jagged broken edge with bent rebar sticking out, the right piece ends on its left side in a jagged broken edge with bent rebar; bottom row, one loose chunk of the same road slab tilted at about 25 degrees, asphalt on top, concrete below, broken ends. No cars, no people, no scenery, no text.
+Plank bridge and buried car. Prompt as sent:
+Isolated pixel art game sprites, side view, on a plain flat solid white background with wide spacing: left, a makeshift bridge segment of rough dark wooden planks and a bent metal sheet laid flat side by side, held with rusty nails and rope, a thin horizontal walkway; right, a small old car half buried nose-down in a broken asphalt road slab, its rear end, rear wheel and rear window sticking up out of the cracked road, rusty violet paint, broken tail light. No people, no scenery, no text, no letters.
+
+Decorations
+decor_trains: generate_image, 1:1, n=2, second rejected (both cars cut by the frame); then remove_background
+Prompt as sent:
+Isolated pixel art game sprites, side view, two separate items stacked with wide spacing on a plain flat solid white background: top, one single dark purple elevated train car, rusty and dented, tilted about 15 degrees downhill to the right, warm orange lit windows, some windows broken and dark, bent bogies and a snapped coupling; bottom, one single wrecked train car of the same kind tilted the other way, its roof torn open, dark broken windows, magenta flesh slime dripping from it. Long and low, much wider than tall. No rails, no ground, no scenery, no text, no letters.
+Runtime: decor/train_car_lit.png, decor/train_car_wrecked.png
+
+decor_facades: generate_image, 1:1, n=2, second rejected
+Prompt as sent:
+Isolated pixel art game sprites, front view, two separate items side by side with wide spacing on a plain flat solid white background: left, a tall narrow collapsed apartment building facade fragment, dark indigo and violet concrete wall with a jagged broken top edge, a grid of small windows, two glowing warm orange and the rest dark and shattered, exposed rebar sticking out of the broken edges; right, a shorter wider collapsed shop facade fragment of the same kind, leaning slightly, crumbling top corner, dark broken windows, magenta flesh slime creeping over the bottom. No ground, no sky, no scenery, no text, no letters, no signs with writing.
+Runtime: decor/facade_tall.png, decor/facade_low.png
+
+decor_cables: generate_image, 1:1, n=2, second rejected; then remove_background. The bent pipe's crop stops above its drip, which background removal turned white.
+Prompt as sent:
+Isolated pixel art game sprites, side view, four separate items in a two by two grid with wide spacing on a plain flat solid white background: top left, a bundle of three black electric cables sagging in a deep curve between two broken stubs; top right, two loose black cables hanging straight down with frayed ends and a tiny spark; bottom left, a rusty bent iron pipe hanging down at an angle with a broken end dripping green; bottom right, two thick rusty pipes running side by side with a cracked joint and a valve wheel. Dark iron, rust orange highlights. No ground, no scenery, no text, no letters.
+Runtime: decor/cables_sagging.png, decor/cables_hanging.png, decor/pipe_bent.png, decor/pipes_valve.png
+
+decor_neon: generate_image, 1:1, n=2, first rejected (cut by the frame); then the dimming recolour rule, since both images drew the tubes lit
+Prompt as sent:
+Isolated pixel art game sprites, front view, two separate dead neon signs side by side with wide spacing on a plain flat solid white background: left, a wide horizontal box sign with a dark metal frame and unlit pale pink and cyan glass tubes forming a simple noodle bowl pictogram, some tubes broken, hanging crooked from one chain; right, a tall narrow vertical blade sign with a rusty frame and unlit glass tubes in abstract stripes and a star shape, cracked, one tube dangling. Unlit, dull, no glow. No letters, no words, no characters, no text of any kind. No wall, no scenery.
+Runtime: decor/neon_box.png, decor/neon_blade.png
+
+decor_flesh: generate_image, 1:1, n=2, second rejected; then remove_background
+Prompt as sent:
+Isolated pixel art game sprites, side view, four separate items in a two by two grid with wide spacing on a plain flat solid white background: top left, a hanging curtain of pink and magenta flesh vines drooping down with wet glossy highlights; top right, a single thick twisting magenta flesh tendril growing upward from a small base; bottom left, a large lumpy pink flesh growth tumor blob with veins and small pustules; bottom right, a small cluster of three round magenta flesh polyps with glossy highlights. Wet, organic, monster-gut look. No ground, no scenery, no text, no letters.
+Runtime: decor/flesh_vines.png, decor/flesh_tendril.png, decor/flesh_tumor.png, decor/flesh_polyps.png
+
+decor_pillars: generate_image, 1:1, n=2, second rejected (drew a scene around the items); then the indigo recolour rule on the pillars
+Prompt as sent:
+Isolated pixel art game sprites, side view, four separate items in a two by two grid with wide spacing on a plain flat solid white background: top left, a tall broken concrete elevated highway pillar, dark indigo concrete column snapped at the top with jagged edge and bent rebar; top right, a wider shorter broken overpass pillar with a piece of the deck still on top, cracked, leaning; bottom left, an old iron street lamp standing upright with a dark curved head and a dim amber bulb; bottom right, the same kind of street lamp bent over and broken, its head hanging, bulb smashed. Rust, cracks. No ground, no scenery, no text, no letters.
+Runtime: decor/pillar_snapped.png, decor/pillar_deck.png, decor/lamp_standing.png, decor/lamp_bent.png
+
+decor_rubble: generate_image, 2:1, n=2, first rejected
+Prompt as sent:
+Isolated pixel art game sprites, side view, two separate rubble piles side by side with wide spacing on a plain flat solid white background: left, a wide low heap of broken grey and indigo concrete chunks, bricks and bent rebar; right, a taller heap of concrete blocks, a broken road sign pole without any writing, twisted metal and a little magenta slime. Flat bottom edges. No ground, no scenery, no text, no letters.
+Runtime: decor/rubble_low.png, decor/rubble_high.png

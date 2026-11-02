@@ -620,6 +620,296 @@
    "scale": 4,
    "colours": 16,
    "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
+  },
+  {
+   "path": "ground/road.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Intact road: asphalt with an orange lane dash over a concrete deck, in section; tiles horizontally, and every other ground tile meets it without a seam"
+  },
+  {
+   "path": "ground/road_cracked.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 19,
+   "depicts": "Cracked road: zigzag fissures through the asphalt and deck"
+  },
+  {
+   "path": "ground/pothole.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "depicts": "Pothole: a dark hole bitten into the asphalt"
+  },
+  {
+   "path": "ground/road_end_left.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 19,
+   "depicts": "Road end, left: the road breaks off at the tile's left edge with bent rebar; the road continues to the right"
+  },
+  {
+   "path": "ground/road_end_right.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 20,
+   "depicts": "Road end, right: the road breaks off at the tile's right edge with bent rebar; the road continues to the left"
+  },
+  {
+   "path": "ground/slab_tilted.png",
+   "size": [
+    32,
+    40
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Tilted slab: a loose piece of road tilted up to the right over the deck; 8 px taller than its cell"
+  },
+  {
+   "path": "ground/rubble.png",
+   "size": [
+    32,
+    48
+   ],
+   "scale": 1,
+   "colours": 23,
+   "depicts": "Rubble: a heap of concrete blocks, bricks and rebar blocking the road; 16 px taller than its cell"
+  },
+  {
+   "path": "ground/bridge_plank.png",
+   "size": [
+    32,
+    14
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally"
+  },
+  {
+   "path": "ground/car_buried.png",
+   "size": [
+    32,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Half-buried car: a rusty violet car nose-down in the cracked road, rear wheel up; 16 px taller than its cell"
+  },
+  {
+   "path": "decor/train_car_lit.png",
+   "size": [
+    128,
+    80
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Tilted elevated train car, lit orange windows, bent bogies"
+  },
+  {
+   "path": "decor/train_car_wrecked.png",
+   "size": [
+    128,
+    75
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime"
+  },
+  {
+   "path": "decor/facade_tall.png",
+   "size": [
+    62,
+    128
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar"
+  },
+  {
+   "path": "decor/facade_low.png",
+   "size": [
+    82,
+    104
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base"
+  },
+  {
+   "path": "decor/cables_sagging.png",
+   "size": [
+    56,
+    54
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Cable bundle sagging between two snapped stubs"
+  },
+  {
+   "path": "decor/cables_hanging.png",
+   "size": [
+    44,
+    60
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Two cables hanging straight down with frayed ends and a spark"
+  },
+  {
+   "path": "decor/pipe_bent.png",
+   "size": [
+    42,
+    48
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Rusty pipe hanging at an angle from a broken end"
+  },
+  {
+   "path": "decor/pipes_valve.png",
+   "size": [
+    48,
+    59
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel"
+  },
+  {
+   "path": "decor/neon_box.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain"
+  },
+  {
+   "path": "decor/neon_blade.png",
+   "size": [
+    32,
+    100
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Dead neon blade sign: tall, unlit stripes and a star"
+  },
+  {
+   "path": "decor/flesh_vines.png",
+   "size": [
+    83,
+    84
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Flesh vines drooping from above, dripping"
+  },
+  {
+   "path": "decor/flesh_tendril.png",
+   "size": [
+    27,
+    75
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Flesh tendril twisting up from a small base"
+  },
+  {
+   "path": "decor/flesh_tumor.png",
+   "size": [
+    60,
+    46
+   ],
+   "scale": 1,
+   "colours": 15,
+   "depicts": "Lumpy flesh growth with veins and pustules"
+  },
+  {
+   "path": "decor/flesh_polyps.png",
+   "size": [
+    56,
+    51
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Cluster of three glossy flesh polyps"
+  },
+  {
+   "path": "decor/rubble_low.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Low rubble heap: concrete chunks, bricks and rebar"
+  },
+  {
+   "path": "decor/rubble_high.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "High rubble heap: blocks, a blank sign post and flesh slime"
+  },
+  {
+   "path": "decor/pillar_snapped.png",
+   "size": [
+    40,
+    69
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Overpass pillar snapped at the top, rebar bent out"
+  },
+  {
+   "path": "decor/pillar_deck.png",
+   "size": [
+    66,
+    69
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Overpass pillar with a piece of deck still on top"
+  },
+  {
+   "path": "decor/lamp_standing.png",
+   "size": [
+    32,
+    66
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Street lamp standing, dim amber bulb"
+  },
+  {
+   "path": "decor/lamp_bent.png",
+   "size": [
+    40,
+    58
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Street lamp bent over, head hanging, bulb smashed"
   }
  ]
 }

@@ -391,8 +391,8 @@ def sample_blocks(rows, mask, logical, pitch, palette):
     return out
 
 
-def limit_colours(cells, palette, count, keep):
-    """Keeps count palette indices (keep among them) and maps every other cell to the nearest kept one.
+def limit_colours(cells, palette, count, keep, fixed=()):
+    """Keeps count palette indices (keep and fixed among them) and maps every other cell to the nearest kept one.
 
     After the most used colour, each pick maximises usage times distance to the colours already
     kept, so a small accent such as an earring survives against shades of the large areas.
@@ -403,8 +403,9 @@ def limit_colours(cells, palette, count, keep):
             if index is not None:
                 usage[index] = usage.get(index, 0) + 1
     kept = [keep] if keep is not None and keep in usage else []
+    kept += [i for i in fixed if i not in kept]
     candidates = sorted(usage, key=lambda i: (-usage[i], i))
-    while len(kept) < min(count, len(usage)):
+    while len(kept) < count and any(i not in kept for i in candidates):
         kept.append(
             max(
                 (i for i in candidates if i not in kept),
@@ -474,6 +475,27 @@ def outline(cells, index):
     ]
 
 
+def match_edges(cells, base, sides, width):
+    """Gives cells the outer columns of base on each side named, so the two tiles meet without a seam.
+
+    base is aligned to the bottom of cells. Each row copies base up to a cut that varies from row to
+    row between half of width and width, so the join is ragged rather than a straight line.
+    """
+    height, tile_w, base_w = len(cells), len(cells[0]), len(base[0])
+    out = [list(row) for row in cells]
+    for by, base_row in enumerate(base):
+        y = height - len(base) + by
+        if y < 0:
+            continue
+        cut = width // 2 + (by * 5) % (width - width // 2 + 1)
+        for c in range(cut):
+            if "l" in sides:
+                out[y][c] = base_row[c]
+            if "r" in sides:
+                out[y][tile_w - 1 - c] = base_row[base_w - 1 - c]
+    return out
+
+
 def recolour_rows(rows, rules):
     """recolour with a per-colour cache, for full-resolution crops."""
     cache = {}
@@ -496,8 +518,12 @@ def upscale(rows, factor):
     return out
 
 
-def render(asset, raw_dir, palette, cache, sources, plain=False):
-    """Returns (rgba rows, report). plain renders the earlier nearest-neighbour pipeline for review."""
+def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
+    """Returns (rgba rows, report). plain renders the earlier nearest-neighbour pipeline for review.
+
+    done maps the path of each asset already rendered to its palette-index cells; an asset that
+    matches another reads that one's cells from it.
+    """
     source = asset["source"]
     if source not in cache:
         if "file" in sources[source]:
@@ -510,7 +536,7 @@ def render(asset, raw_dir, palette, cache, sources, plain=False):
     logical = (width // scale, height // scale)
     seamless = asset.get("seamless", "")
     box, pitch = asset["crop"], None
-    if not plain and not seamless:
+    if not plain and not seamless and "match" not in asset:
         box, pitch_x, pitch_y = grid_crop(cache[source], asset["crop"], logical)
         pitch = (pitch_x, pitch_y)
     rows = crop(cache[source], box)
@@ -540,9 +566,16 @@ def render(asset, raw_dir, palette, cache, sources, plain=False):
         pitch = (len(rows[0]) / logical[0], len(rows) / logical[1])
     cells = sample_blocks(rows, mask, logical, pitch, palette)
     edge = palette.index(hex_colour(asset["outline"])) if "outline" in asset else None
-    cells = clean(limit_colours(cells, palette, asset["colours"], edge), palette)
+    match = asset.get("match")
+    base = done[match["path"]] if match else None
+    fixed = sorted({i for row in base for i in row if i is not None}) if base else ()
+    cells = clean(limit_colours(cells, palette, asset["colours"], edge, fixed), palette)
     if edge is not None:
         cells = outline(cells, edge)
+    if match:
+        cells = match_edges(cells, base, match["sides"], match["width"])
+    if done is not None:
+        done[asset["path"]] = cells
     used = {i for row in cells for i in row if i is not None}
     rgba = [[(0, 0, 0, 0) if i is None else (*palette[i], 255) for i in row] for row in cells]
     grid = "detected" if box != asset["crop"] else "even"
@@ -580,9 +613,10 @@ def fetch(raw_dir):
 def process(raw_dir, art_dir):
     spec, palette = load_spec()
     cache = {}
+    done = {}
     manifest = []
     for asset in spec["assets"]:
-        rows, report = render(asset, raw_dir, palette, cache, spec["sources"])
+        rows, report = render(asset, raw_dir, palette, cache, spec["sources"], done=done)
         write_png(pathlib.Path(art_dir) / asset["path"], rows)
         manifest.append(
             {
