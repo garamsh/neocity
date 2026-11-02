@@ -273,31 +273,12 @@ bool has_ground(std::span<const survival::GroundCell> cells,
       cells, [&](const auto &ground) { return ground.cell == cell; });
 }
 
-/// The deck picture of a whole walkway cell; plain road varies along the row
-/// so no plate repeats across the screen.
-Image deck_image(const survival::GroundCell &ground) {
+/// The deck picture of a whole cell of plain road, varied along the row so no
+/// plate repeats across the screen.
+Image plain_deck(survival::GridPosition cell) {
   static constexpr std::array PLAIN{Image::Deck, Image::DeckRivets, Image::Deck,
                                     Image::DeckSeam};
-  switch (ground.kind) {
-  case GroundKind::Road:
-  case GroundKind::Rubble:
-  case GroundKind::BuriedCar:
-    return PLAIN.at(
-        static_cast<std::size_t>(ground.cell.x * 3 + ground.cell.y) %
-        PLAIN.size());
-  case GroundKind::CrackedRoad:
-    return Image::DeckWorn;
-  case GroundKind::Pothole:
-    return Image::DeckSeam;
-  case GroundKind::RoadEndLeft:
-    return Image::EndLeft;
-  case GroundKind::RoadEndRight:
-    return Image::EndRight;
-  case GroundKind::TiltedSlab:
-  case GroundKind::PlankBridge:
-    break;
-  }
-  std::abort();
+  return PLAIN.at(static_cast<std::size_t>(cell.x * 3 + cell.y) % PLAIN.size());
 }
 
 /// Draws a walkway's lit picture: brighter than the scenery behind it, its
@@ -311,11 +292,9 @@ void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
   }
 }
 
-/// A deck on its truss with its top on the floor line of `ground`'s cell.
-void paint_deck(godot::Node2D &canvas, const Art &art,
-                const survival::GroundCell &ground) {
-  const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
-  const Image deck = deck_image(ground);
+/// A deck picture with its top at `at`, on its truss unless it is a snapped
+/// end.
+void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at) {
   if (deck != Image::EndLeft && deck != Image::EndRight) {
     art.image(canvas, Image::Truss, at + Vector2(0.0F, art.size(deck).y), 1.0F,
               false, ground_tint());
@@ -340,8 +319,7 @@ void paint_step(godot::Node2D &canvas, const Art &art,
   } else if (rises_left) {
     paint_surface(canvas, art, Image::Stairs, at, true);
   } else {
-    paint_deck(canvas, art,
-               {.cell = ground.cell, .kind = GroundKind::CrackedRoad});
+    paint_deck(canvas, art, Image::DeckWorn, at);
   }
 }
 
@@ -381,19 +359,27 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
     art.image(canvas, Image::PlankBridge, at, 1.0F, false, ground_tint());
     return;
   case GroundKind::Rubble:
-    paint_deck(canvas, art, ground);
+    paint_deck(canvas, art, plain_deck(ground.cell), at);
     standing_on(Image::Rubble, 0.0F);
     return;
   case GroundKind::BuriedCar:
-    paint_deck(canvas, art, ground);
+    paint_deck(canvas, art, plain_deck(ground.cell), at);
     standing_on(Image::BuriedCar, 0.0F);
     return;
   case GroundKind::Road:
+    paint_deck(canvas, art, plain_deck(ground.cell), at);
+    return;
   case GroundKind::CrackedRoad:
+    paint_deck(canvas, art, Image::DeckWorn, at);
+    return;
   case GroundKind::Pothole:
+    paint_deck(canvas, art, Image::DeckSeam, at);
+    return;
   case GroundKind::RoadEndLeft:
+    paint_deck(canvas, art, Image::EndLeft, at);
+    return;
   case GroundKind::RoadEndRight:
-    paint_deck(canvas, art, ground);
+    paint_deck(canvas, art, Image::EndRight, at);
     return;
   }
   std::abort();
