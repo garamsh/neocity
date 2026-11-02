@@ -27,6 +27,9 @@ namespace {
 /// Metres per pan unit.
 constexpr float SCALE = 0.01F;
 constexpr float MAX_LEAN = 0.25F;
+/// Godot's default frame limit; the project's far higher one serves survival's
+/// clock. Ticks past it are dropped, so a slow frame slows this game.
+constexpr int RULE_TICKS_PER_FRAME = 8;
 
 bool in_editor() { return godot::Engine::get_singleton()->is_editor_hint(); }
 
@@ -184,9 +187,10 @@ void PanDodgeScene::build() {
 }
 
 void PanDodgeScene::_physics_process(double /*delta*/) {
-  if (in_editor()) {
+  if (in_editor() || ticks_this_frame >= RULE_TICKS_PER_FRAME) {
     return;
   }
+  ++ticks_this_frame;
   const godot::Input *input = godot::Input::get_singleton();
   if (input->is_action_just_pressed("retry")) {
     engine.reset();
@@ -197,6 +201,7 @@ void PanDodgeScene::_physics_process(double /*delta*/) {
 }
 
 void PanDodgeScene::_process(double /*delta*/) {
+  ticks_this_frame = 0;
   if (pan == nullptr) {
     return;
   }

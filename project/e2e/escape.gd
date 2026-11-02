@@ -14,6 +14,9 @@ const CARD_FRAME_MARGIN: int = 12
 const INTRO_CARD_FRAMES: int = 240
 const ENDING_CARD_FRAMES: int = 360
 const DAY_LIMIT: int = 120
+const SLOW_FRAME_MS: int = 500
+## The intro card's 4 seconds at SLOW_FRAME_MS, and 4 frames of margin.
+const INTRO_CARD_SLOW_FRAMES: int = 12
 
 var scene: AscentScene
 var held: Dictionary[Key, bool] = {}
@@ -36,6 +39,12 @@ func _run() -> void:
 	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the main menu"):
 		return
 	scene.pin_survival_seed(SEED)
+	if OS.get_cmdline_user_args().has("real-clock"):
+		await _real_frames()
+		if not failed:
+			print("Escape real frames: ", checks, " live checks passed.")
+			quit(0)
+		return
 	if frame_seconds > 0.1:
 		await _slow_frames()
 		if not failed:
@@ -176,6 +185,23 @@ func _slow_frames() -> void:
 	if not _check(_str("phase") == "escaped" and _str("cinematic") == "ending", "a slow frame opens the ending on the hit"):
 		return
 	_check(_int("day") == 33 and _int("escape_rolls") == 3, "a slow frame takes the same rolls to the same day")
+
+## Run with no --fixed-fps, which bypasses the engine's cap on `delta`: the card
+## stands its 4 seconds of wall clock on frames longer than that cap.
+func _real_frames() -> void:
+	await _start()
+	if not _check(_str("cinematic") == "intro", "a run opens on the intro card on real slow frames"):
+		return
+	var started: int = Time.get_ticks_msec()
+	for frame: int in range(INTRO_CARD_SLOW_FRAMES):
+		OS.delay_msec(SLOW_FRAME_MS)
+		await process_frame
+		if _str("cinematic") == "":
+			break
+	var stood_ms: int = Time.get_ticks_msec() - started
+	if not _check(_str("cinematic") == "", "the card closes after its seconds on real slow frames, open after %dms" % stood_ms):
+		return
+	_check(stood_ms >= 3500, "the card stands its seconds on real slow frames, closed after %dms" % stood_ms)
 
 ## Serves `resource` from `path` without writing to the art team's folder.
 func _stand_in(resource: Resource, path: String) -> void:

@@ -90,6 +90,9 @@ std::vector<survival::FoodId> ready_dishes(const survival::Content &content,
 
 /// Keeps every edge until a step consumes it.
 void retain_edges(PlayerInput &pending, const PlayerInput &input) {
+  if (input.tap != survival::Direction::Idle) {
+    pending.tap = input.tap;
+  }
   pending.travel = pending.travel || input.travel;
   pending.interact = pending.interact || input.interact;
   pending.replace_tool = pending.replace_tool || input.replace_tool;
@@ -207,8 +210,12 @@ void SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   while (accumulated >= STEP_SECONDS && !escaped()) {
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
-      if (held.at(index).direction != survival::Direction::Idle) {
-        pending.at(index).movement = held.at(index);
+      auto &next = pending.at(index);
+      if (next.tap != survival::Direction::Idle) {
+        next.movement = {.direction = next.tap,
+                         .running = held.at(index).running};
+      } else if (held.at(index).direction != survival::Direction::Idle) {
+        next.movement = held.at(index);
       }
     }
     step();

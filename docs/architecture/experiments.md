@@ -16,6 +16,7 @@ The developer-page experiments: what one is made of, how it is registered and ru
 - `src/experiment/<id>/` holds an independent rules library under the structural rules in [structure](structure.md), its Godot node in `view/`, and its record `README.md`. The record follows the [experiment template](../development/experiment-template.md) and is the experiment's responsibility document: its rules, controls, provenance, verification, and status live there, not in `docs/architecture/`.
 - `project/experiment/<id>/<id>.tscn` is a scene whose root is the experiment's node. Any resource used only by the experiment sits beside it.
 - The node builds its own camera, lights, meshes, and HUD from Godot primitives, reads Godot input actions, and steps its rules from `_physics_process`, which `project/project.godot` runs at 120 Hz. R restarts the run through the rules library's reset.
+- `project/project.godot` lets one frame run far more physics ticks for [survival's clock](session.md), so a node that steps rules this way limits them itself. `pan_dodge` runs at most 8 rule ticks a frame, Godot's default limit, and drops the rest, so it still slows below 15 fps and a stall spends no rule time.
 - Design-free by default: plain shapes and text. Art, story, or characters need their own scoped approval.
 
 ### Registration and launch

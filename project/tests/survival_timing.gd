@@ -2,10 +2,16 @@ class_name SurvivalTimingCheck
 extends SceneTree
 ## Exercises the survival host's fixed-step time through the shipped composition.
 ## Run with --fixed-fps 480 for sub-step frames and --fixed-fps 5 for frames that
-## span several steps.
+## span several steps. Run with no --fixed-fps and `-- real-clock` for frames
+## slowed for real, the only ones that reach the engine's frame time cap.
 
 const BUDGET_MS: int = 45000
 const STEP_MS: int = 100
+## Above this frame time Godot's default of 8 steps at 120 Hz cuts `delta`.
+const DEFAULT_CAP_MS: int = 67
+const RULE_TICKS_PER_FRAME: int = 8
+## The rule tick that hits an idle player in pan_dodge.
+const FIRST_HIT_TICK: int = 300
 
 var scene: AscentScene
 var checks: int = 0
@@ -23,7 +29,9 @@ func _run() -> void:
 	await _frames(2)
 	scene = current_scene as AscentScene
 	scene.pin_survival_seed(3)
-	if frame_seconds > 0.1:
+	if OS.get_cmdline_user_args().has("real-clock"):
+		await _real_frames()
+	elif frame_seconds > 0.1:
 		await _coarse_frames()
 	else:
 		await _fine_frames()
@@ -58,6 +66,20 @@ func _fine_frames() -> void:
 	await _one_frame("survival_1_right")
 	await _frames(60)
 	if not _check(_actor("chef", "x") == x + 1, "a one-frame direction tap walks exactly one cell"):
+		return
+	await _align_to_step()
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _frames(60)
+	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one frame walks exactly one cell"):
+		return
+	await _align_to_step()
+	x = _actor("chef", "x")
+	Input.action_press("survival_1_run")
+	_same_frame_tap(KEY_D)
+	await _frames(60)
+	Input.action_release("survival_1_run")
+	if not _check(_actor("chef", "x") == x + 2, "a tap with the run key held runs one step"):
 		return
 	await _align_to_step()
 	x = _actor("chef", "x")
@@ -197,6 +219,113 @@ func _coarse_frames() -> void:
 	if not _check(_actor("chef", "x") == x + 2, "a held key walks both steps of a slow frame"):
 		return
 	Input.action_release("survival_1_right")
+	await _frames(1)
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _frames(3)
+	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one slow frame walks one cell, not one per step"):
+		return
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _frames(1)
+	_same_frame_tap(KEY_D)
+	await _frames(3)
+	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive slow frames walk one cell each"):
+		return
+	Input.action_press("survival_1_left")
+	await _frames(2)
+	x = _actor("chef", "x")
+	Input.action_press("survival_1_right")
+	await _frames(1)
+	if not _check(_actor("chef", "x") == x - 2, "a second key pressed and kept down leaves the held direction walking"):
+		return
+	Input.action_release("survival_1_right")
+	_same_frame_tap(KEY_D)
+	await _frames(1)
+	x = _actor("chef", "x")
+	await _frames(1)
+	_check(_actor("chef", "x") == x, "a tap beside a held key walks one step of its frame and the held key the rest")
+	Input.action_release("survival_1_left")
+
+## `--fixed-fps` bypasses the engine's cap on `delta`, so this run must not use it.
+func _real_frames() -> void:
+	if not _check(not OS.get_cmdline_args().has("--fixed-fps"), "the real clock run has no fixed frame time"):
+		return
+	await _start(1)
+	await _one_frame("survival_1_travel")
+	await _delayed_frames(3, 2 * STEP_MS)
+	if not _check(_location("chef") == "city", "the party sets out on the real clock"):
+		return
+	for row: Vector2i in [Vector2i(30, 16), Vector2i(10, 200), Vector2i(3, 1000), Vector2i(1, 2500)]:
+		if not await _spends_real_time(row.x, row.y):
+			return
+	var x: int = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _delayed_frames(3, 250)
+	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one 250ms frame walks one cell"):
+		return
+	x = _actor("chef", "x")
+	_same_frame_tap(KEY_D)
+	await _delayed_frames(1, 250)
+	_same_frame_tap(KEY_D)
+	await _delayed_frames(3, 250)
+	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive 250ms frames walk one cell each"):
+		return
+	await _experiment_keeps_its_delivery()
+
+## The cap raised for survival's clock must not reach an experiment's rule ticks.
+func _experiment_keeps_its_delivery() -> void:
+	await _one_frame("menu")
+	await _frames(4)
+	await _one_frame("option_2")
+	await _frames(4)
+	await _one_frame("option_1")
+	await _frames(4)
+	var dodge: PanDodgeScene = scene.get_node_or_null("Experiment") as PanDodgeScene
+	if not _check(dodge != null, "the developer page mounts pan_dodge on the real clock"):
+		return
+	await _delayed_frames(1, 16)
+	var ticks: int = dodge.run_tick()
+	var physics: int = Engine.get_physics_frames()
+	await _delayed_frames(30, 16)
+	if not _check(dodge.run_tick() - ticks == Engine.get_physics_frames() - physics, "a frame under the limit loses no rule tick"):
+		return
+	await _delayed_frames(1, 200)
+	ticks = dodge.run_tick()
+	physics = Engine.get_physics_frames()
+	await _delayed_frames(5, 200)
+	if not _check(Engine.get_physics_frames() - physics > 5 * RULE_TICKS_PER_FRAME, "slow frames run more physics ticks than the limit"):
+		return
+	if not _check(dodge.run_tick() - ticks == 5 * RULE_TICKS_PER_FRAME, "pan_dodge runs its limit of rule ticks in each slow frame"):
+		return
+	await _delayed_frames(2, FIRST_HIT_TICK * 1000 / 120 + 500)
+	_check(dodge.outcome() == "playing", "a stall longer than the first hit leaves the idle player playing")
+
+## Exploration time matches the wall clock to within two steps over `count` frames.
+func _spends_real_time(count: int, delay_ms: int) -> bool:
+	await process_frame
+	var before: int = _int("remaining_ms")
+	var started: int = Time.get_ticks_msec()
+	await _delayed_frames(count, delay_ms)
+	await _frames(2)
+	var real_ms: int = Time.get_ticks_msec() - started
+	var spent_ms: int = before - _int("remaining_ms")
+	if delay_ms > DEFAULT_CAP_MS and not _check(real_ms >= count * delay_ms, "%d frames were slowed by %dms" % [count, delay_ms]):
+		return false
+	return _check(absi(real_ms - spent_ms) <= 2 * STEP_MS, "%d frames of %dms spend real time: real %dms, game %dms" % [count, delay_ms, real_ms, spent_ms])
+
+func _delayed_frames(count: int, delay_ms: int) -> void:
+	for frame: int in range(count):
+		OS.delay_msec(delay_ms)
+		await process_frame
+
+## Queues both key events for one frame, as a tap inside a long frame arrives.
+func _same_frame_tap(code: Key) -> void:
+	for pressed: bool in [true, false]:
+		var event: InputEventKey = InputEventKey.new()
+		event.physical_keycode = code
+		event.pressed = pressed
+		Input.parse_input_event(event)
 
 func _start(option: int) -> void:
 	await _one_frame("option_1")
