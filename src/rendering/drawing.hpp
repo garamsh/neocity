@@ -72,6 +72,11 @@ enum class Image : std::uint8_t {
   DoorColdStore,
   DoorBroken,
   AcidDrip,
+  Kiosk,
+  ColdStore,
+  Ferry,
+  Platform,
+  Bridge,
   TrainCarLit,
   TrainCarWrecked,
   FacadeTall,
@@ -150,11 +155,15 @@ public:
   [[nodiscard]] float text_width(const godot::String &text, int size) const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
+  /// Each colour is multiplied by `tint`.
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
-             float scale = 1.0F, bool mirrored = false) const;
-  /// Draws the `source` part of `image` into `destination`.
+             float scale = 1.0F, bool mirrored = false,
+             godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
+  /// Draws the `source` part of `image` into `destination`, each colour
+  /// multiplied by `tint`.
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
-                  godot::Rect2 destination) const;
+                  godot::Rect2 destination,
+                  godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
   /// Draws `image` as a frame filling `destination`: its `border`-pixel
   /// corners at their own size, its edges repeated along each side, and the
   /// middle filled with `fill`, the colour of the picture's face.

@@ -279,6 +279,8 @@ func _first_day() -> void:
 		return
 	if not _text_fits("the first city screen"):
 		return
+	if not _plates_apart("the first city screen"):
+		return
 	if not _check(_goal_shown(), "the city shows when escape checks begin"):
 		return
 	if not await _walk_to(5, 7):
@@ -368,6 +370,9 @@ func _exhaust_the_chef() -> void:
 	if not await _until("chef re-enters", func() -> bool: return _where("chef") == "city", 30):
 		return
 	if not _check(_spatula() == "intact", "the spatula starts intact"):
+		return
+	await _frames(2)
+	if not _plates_apart("the damaged city at acid %d" % _int("acid")):
 		return
 	if not await _walk_route(DRIP_ROUTE):
 		return
@@ -748,6 +753,9 @@ func _wrench_stops_setting_out_with_no_stock_behind() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef goes to the ladder anyway", func() -> bool: return _where("chef") == "city", 30):
 		return
+	await _frames(2)
+	if not _plates_apart("the city at acid %d" % _int("acid")):
+		return
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	if not _check(_next().contains("Nothing is within reach"), "beside the dead passage the line names no repair"):
@@ -975,6 +983,8 @@ func _two_players() -> void:
 		return
 	if not _text_fits("two players in the city"):
 		return
+	if not _plates_apart("two players in the city"):
+		return
 	await _tap(KEY_Q)
 	if not await _until("player one goes home", func() -> bool: return _where("chef") == "base", 30):
 		return
@@ -1170,6 +1180,24 @@ func _text_fits(where: String) -> bool:
 			overflowing.append(text)
 	var measured: bool = font.get_string_size(_next(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x > 0.0
 	return _check(measured and overflowing.is_empty(), "text fits on %s: %s" % [where, overflowing])
+
+## No word plate on the map covers another; the control is that the plates
+## read are the city's: more than a count and a name for each source shown.
+func _plates_apart(where: String) -> bool:
+	var plates: Array = scene.get_meta("map_plates", [])
+	var objects: Dictionary = scene.survival_status()["objects"]
+	var sources: int = 0
+	for source: String in scene.survival_status()["stock"]:
+		if objects.get(source, "dormant") != "dormant":
+			sources += 1
+	var covered: Array[String] = []
+	for first: int in range(plates.size()):
+		for second: int in range(first + 1, plates.size()):
+			var one: Rect2 = plates[first]
+			var other: Rect2 = plates[second]
+			if one.intersects(other):
+				covered.append("%s over %s" % [one, other])
+	return _check(sources > 0 and plates.size() > 2 * sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
 
 func _next_event_has(text: String) -> bool:
 	for event: String in _events():

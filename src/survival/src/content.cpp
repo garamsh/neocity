@@ -410,6 +410,17 @@ std::vector<Decoration> decorations() {
   };
 }
 
+std::vector<Landmark> landmarks() {
+  using enum LandmarkKind;
+  return {
+      {.object = KIOSK_WRECK, .kind = Kiosk},
+      {.object = COLD_STORE, .kind = ColdStore},
+      {.object = DRIFTED_FERRY, .kind = Ferry},
+      {.object = PIER, .kind = Platform},
+      {.object = ROTTEN_BRIDGE, .kind = Bridge},
+  };
+}
+
 std::vector<SourceStock> stock() {
   return {
       {.id = TOMATO_MACHINE,
@@ -495,6 +506,7 @@ Content temporary_content(std::uint32_t seed) {
       .map = {.width = 36, .height = 16},
       .ground = ground(),
       .decorations = decorations(),
+      .landmarks = landmarks(),
   };
 }
 

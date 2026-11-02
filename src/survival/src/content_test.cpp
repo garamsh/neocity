@@ -428,6 +428,29 @@ TEST(TemporaryContent, EveryDecorationKindStandsInsideTheMap) {
   EXPECT_EQ(kinds.size(), 8U);
 }
 
+TEST(TemporaryContent, EveryLandmarkPictureMarksOneObjectThatCanShowIt) {
+  const auto content = temporary_content(1);
+  std::map<LandmarkKind, std::uint32_t> pictures;
+  std::set<std::uint32_t> marked;
+  for (const auto &landmark : content.landmarks) {
+    const auto object = std::ranges::find(content.objects, landmark.object,
+                                          &ObjectDefinition::id);
+    ASSERT_NE(object, content.objects.end());
+    const bool building = landmark.kind == LandmarkKind::Kiosk ||
+                          landmark.kind == LandmarkKind::ColdStore;
+    EXPECT_EQ(object->kind,
+              building ? ObjectKind::Building : ObjectKind::Terrain)
+        << object_name(landmark.object);
+    EXPECT_TRUE(marked.insert(landmark.object.value).second)
+        << object_name(landmark.object);
+    ++pictures[landmark.kind];
+  }
+  EXPECT_EQ(pictures.size(), 5U);
+  for (const auto &[kind, count] : pictures) {
+    EXPECT_EQ(count, 1U);
+  }
+}
+
 TEST(TemporaryContent, EveryNameLookupRefusesAnIdentityItNeverIssued) {
   EXPECT_EQ(ingredient_name(IngredientId{1}), "Tomato");
   EXPECT_THROW((void)ingredient_name(IngredientId{999}), std::out_of_range);

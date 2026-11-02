@@ -1,5 +1,6 @@
 #include "survival.hpp"
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <algorithm>
@@ -10,6 +11,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iterator>
+#include <optional>
 #include <span>
 #include <string_view>
 
@@ -21,6 +23,7 @@ using godot::Vector2;
 using survival::Actor;
 using survival::DecorationKind;
 using survival::GroundKind;
+using survival::LandmarkKind;
 using survival::ObjectKind;
 using survival::ObjectSnapshot;
 using survival::ObjectState;
@@ -35,6 +38,12 @@ constexpr float SCREEN_HEIGHT = 720.0F;
 constexpr float ACID_LOW = MAP_Y + 14.0F * CELL;
 /// How far below the acid picture's top edge its surface lies.
 constexpr float ACID_SURFACE_DEPTH = 48.0F;
+/// Below its surface the acid fades to its deep colour over this many steps
+/// of this many pixels.
+constexpr int ACID_FADE_STEPS = 6;
+constexpr float ACID_FADE_STEP = 6.0F;
+/// The rows of a ground tile's top edge, which a player walks on.
+constexpr float GROUND_EDGE = 4.0F;
 /// The distant city's bottom edge, under the acid at acid 0.
 constexpr float CITY_BOTTOM = ACID_LOW + 48.0F;
 /// The part of the kitchen picture the workshop shows between the top bar and
@@ -56,6 +65,28 @@ constexpr float SHARED_CELL_TAG_SHIFT = 26.0F;
 /// How long after a step an actor still shows a walking frame; a walking step
 /// takes 100ms of world time.
 constexpr auto STRIDE = 150ms;
+/// Where the map's words may stand: below the top bar, above the actor cards.
+constexpr float LABEL_TOP = 62.0F;
+constexpr float LABEL_BOTTOM = 540.0F;
+/// Clear space kept between two plates.
+constexpr float PLATE_GAP = 2.0F;
+/// How far a plate looks sideways per step when its spot is taken.
+constexpr float PLATE_STEP = 16.0F;
+constexpr int PLATE_RINGS = 12;
+
+/// The scenery behind the play layer is darker and cooler than the play
+/// layer, so the ground and what stands on it read first.
+godot::Color throat_tint() { return color(80, 68, 114, 1.0F); }
+godot::Color city_tint() { return color(66, 74, 128, 1.0F); }
+godot::Color backdrop_tint() { return color(100, 92, 140, 1.0F); }
+/// The acid below its glowing surface, so a high sea does not flood the
+/// screen behind the map with bright green.
+godot::Color deep_acid_tint() { return color(32, 52, 48, 1.0F); }
+godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
+/// The ground is lifted above its own colours, and its walked-on top edge
+/// most of all.
+godot::Color ground_tint() { return {1.35F, 1.3F, 1.45F}; }
+godot::Color ground_edge_tint() { return {2.4F, 2.3F, 2.6F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -85,15 +116,93 @@ void stand(godot::Node2D &canvas, const Art &art, Image image,
                     box.position.y + box.size.y - size.y));
 }
 
-/// Text on an opaque plate, whose contrast no acid level can change.
-void plated_text(godot::Node2D &canvas, const Art &art, float x, float y,
-                 const godot::String &text, int size, godot::Color tint) {
+/// Words on an opaque plate, whose contrast no acid level can change.
+struct Plate {
+  godot::Rect2 box;
+  godot::String text;
+  int size = 0;
+  godot::Color tint;
+};
+
+/// The plate behind `text` at `size`, the left end of its baseline at `at`.
+godot::Rect2 plate_box(const Art &art, Vector2 at, const godot::String &text,
+                       int size) {
   const auto height = static_cast<float>(size);
-  canvas.draw_rect(rect(x - 2.0F, y - height, art.text_width(text, size) + 4.0F,
-                        height * 1.3F),
-                   color(14, 12, 26, 1.0F));
-  art.text(canvas, x, y, text, size, tint);
+  return {at.x - 2.0F, at.y - height, art.text_width(text, size) + 4.0F,
+          height * 1.3F};
 }
+
+void paint_plate(godot::Node2D &canvas, const Art &art, const Plate &plate) {
+  canvas.draw_rect(plate.box, color(14, 12, 26, 1.0F));
+  art.text(canvas, plate.box.position.x + 2.0F,
+           plate.box.position.y + static_cast<float>(plate.size), plate.text,
+           plate.size, plate.tint);
+}
+
+/// The map's words, none covering another: each takes the spot it asks for,
+/// or the nearest free one, looking farther away step by step.
+class Plates {
+public:
+  /// Keeps words off `area`.
+  void keep_clear(godot::Rect2 area) { clear.push_back(area); }
+
+  /// Places `text` with the left end of its baseline at `at`, or nearby.
+  void add(const Art &art, Vector2 at, const godot::String &text, int size,
+           godot::Color tint) {
+    const godot::Rect2 wanted = plate_box(art, at, text, size);
+    static constexpr std::array DIRECTIONS{
+        Vector2(0.0F, -1.0F), Vector2(0.0F, 1.0F),   Vector2(-1.0F, 0.0F),
+        Vector2(1.0F, 0.0F),  Vector2(-1.0F, -1.0F), Vector2(1.0F, -1.0F)};
+    const Vector2 pitch(PLATE_STEP, wanted.size.y + PLATE_GAP);
+    godot::Rect2 box = wanted;
+    for (int ring = 1; ring <= PLATE_RINGS && !vacant(box); ++ring) {
+      for (const Vector2 direction : DIRECTIONS) {
+        box = godot::Rect2(wanted.position +
+                               direction * pitch * static_cast<float>(ring),
+                           wanted.size);
+        if (vacant(box)) {
+          break;
+        }
+      }
+    }
+    if (!vacant(box)) {
+      box = wanted;
+    }
+    placed.push_back({.box = box, .text = text, .size = size, .tint = tint});
+  }
+
+  void paint(godot::Node2D &canvas, const Art &art) const {
+    for (const auto &plate : placed) {
+      paint_plate(canvas, art, plate);
+    }
+  }
+
+  [[nodiscard]] godot::Array boxes() const {
+    godot::Array boxes;
+    for (const auto &plate : placed) {
+      boxes.push_back(plate.box);
+    }
+    return boxes;
+  }
+
+private:
+  [[nodiscard]] bool vacant(const godot::Rect2 &box) const {
+    const godot::Rect2 room(0.0F, LABEL_TOP, SCREEN_WIDTH,
+                            LABEL_BOTTOM - LABEL_TOP);
+    const godot::Rect2 spaced = box.grow(PLATE_GAP);
+    return room.encloses(box) &&
+           std::ranges::none_of(placed,
+                                [&](const Plate &plate) {
+                                  return spaced.intersects(plate.box);
+                                }) &&
+           std::ranges::none_of(clear, [&](const godot::Rect2 &area) {
+             return box.intersects(area);
+           });
+  }
+
+  std::vector<godot::Rect2> clear;
+  std::vector<Plate> placed;
+};
 
 void dashed_frame(godot::Node2D &canvas, const godot::Rect2 &box,
                   godot::Color tint) {
@@ -149,28 +258,103 @@ bool visible(const ObjectSnapshot &object) {
   return object.state != ObjectState::Dormant;
 }
 
+/// The landmark picture `object` shows, if it has one.
+std::optional<LandmarkKind> landmark(const survival::Content &content,
+                                     survival::ObjectId object) {
+  const auto found =
+      std::ranges::find(content.landmarks, object, &survival::Landmark::object);
+  if (found == content.landmarks.end()) {
+    return std::nullopt;
+  }
+  return found->kind;
+}
+
+/// Whether a ground kind is walked on along its tile's top edge, which the
+/// screen lights; the taller tiles and the planks have no such edge.
+bool lit_edge(GroundKind kind) {
+  switch (kind) {
+  case GroundKind::Road:
+  case GroundKind::CrackedRoad:
+  case GroundKind::Pothole:
+  case GroundKind::RoadEndLeft:
+  case GroundKind::RoadEndRight:
+    return true;
+  case GroundKind::TiltedSlab:
+  case GroundKind::Rubble:
+  case GroundKind::PlankBridge:
+  case GroundKind::BuriedCar:
+    return false;
+  }
+  std::abort();
+}
+
+/// Draws a ground tile brighter than the scenery behind it, its top edge
+/// brightest when `edge`, so the walkable surface reads first.
+void paint_tile(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
+                bool edge) {
+  art.image(canvas, image, at, 1.0F, false, ground_tint());
+  if (edge) {
+    art.image_part(canvas, image, rect(0.0F, 0.0F, CELL, GROUND_EDGE),
+                   rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
+  }
+}
+
+/// Draws one ground cell of standing terrain, its tile rising over the row
+/// above when it is taller than its cell. A landmark's terrain shows its own
+/// picture: the pier's iron deck in place of the road, the rotten bridge's
+/// frame under its planks, and the ferry's hull, drawn whole, in place of
+/// every cell it covers.
+void paint_ground_cell(godot::Node2D &canvas, const Art &art,
+                       const survival::GroundCell &ground,
+                       std::optional<LandmarkKind> picture) {
+  const float x = cell_x(ground.cell.x);
+  const float top = cell_y(ground.cell.y);
+  if (picture) {
+    switch (*picture) {
+    case LandmarkKind::Ferry:
+      return;
+    case LandmarkKind::Platform:
+      paint_tile(canvas, art, Image::Platform, Vector2(x, top), true);
+      return;
+    case LandmarkKind::Bridge:
+      art.image(canvas, Image::Bridge, Vector2(x, top));
+      break;
+    case LandmarkKind::Kiosk:
+    case LandmarkKind::ColdStore:
+      break;
+    }
+  }
+  const Image image = ground_image(ground.kind);
+  // Planks span a gap level with the road surface, at the top of the cell.
+  paint_tile(canvas, art, image,
+             Vector2(x, ground.kind == GroundKind::PlankBridge
+                            ? top
+                            : top + CELL - art.size(image).y),
+             lit_edge(ground.kind));
+}
+
 /// Ground under standing terrain, row by row from the top, so a tile taller
 /// than its cell rises over the row above it.
 void paint_ground(godot::Node2D &canvas, const Art &art,
                   const survival::Content &content,
                   std::span<const ObjectSnapshot> objects) {
-  for (const auto &ground : content.ground) {
-    const bool standing = std::ranges::any_of(objects, [&](const auto &object) {
-      return object.kind == ObjectKind::Terrain &&
-             object.state == ObjectState::Intact &&
-             covers(object.area, ground.cell);
-    });
-    if (!standing) {
-      continue;
+  for (const auto &object : objects) {
+    if (object.kind == ObjectKind::Terrain &&
+        object.state == ObjectState::Intact &&
+        landmark(content, object.id) == LandmarkKind::Ferry) {
+      stand(canvas, art, Image::Ferry, area_rect(object.area));
     }
-    const Image image = ground_image(ground.kind);
-    const float x = cell_x(ground.cell.x);
-    const float top = cell_y(ground.cell.y);
-    // Planks span a gap level with the road surface, at the top of the cell.
-    art.image(canvas, image,
-              Vector2(x, ground.kind == GroundKind::PlankBridge
-                             ? top
-                             : top + CELL - art.size(image).y));
+  }
+  for (const auto &ground : content.ground) {
+    const auto standing =
+        std::ranges::find_if(objects, [&](const auto &object) {
+          return object.kind == ObjectKind::Terrain &&
+                 object.state == ObjectState::Intact &&
+                 covers(object.area, ground.cell);
+        });
+    if (standing != objects.end()) {
+      paint_ground_cell(canvas, art, ground, landmark(content, standing->id));
+    }
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -244,7 +428,7 @@ bool backdrop(DecorationKind kind) {
 /// by side, at least one, each centred in its share of the width.
 void paint_decoration(godot::Node2D &canvas, const Art &art,
                       const survival::Decoration &decoration,
-                      std::size_t ordinal) {
+                      std::size_t ordinal, godot::Color tint) {
   const auto images = decoration_images(decoration.kind);
   const auto box = area_rect(decoration.area);
   const float widest = art.size(images.front()).x;
@@ -260,10 +444,11 @@ void paint_decoration(godot::Node2D &canvas, const Art &art,
                     (share - size.x) / 2.0F;
     const float y =
         hangs(image) ? box.position.y : box.position.y + box.size.y - size.y;
-    art.image(canvas, image, Vector2(x, y));
+    art.image(canvas, image, Vector2(x, y), 1.0F, false, tint);
   }
 }
 
+/// The backdrop scenery is darkened with the scenery behind the map.
 void paint_decorations(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content, bool back) {
   std::array<std::size_t,
@@ -272,19 +457,43 @@ void paint_decorations(godot::Node2D &canvas, const Art &art,
   for (const auto &decoration : content.decorations) {
     auto &ordinal = seen.at(static_cast<std::size_t>(decoration.kind));
     if (backdrop(decoration.kind) == back) {
-      paint_decoration(canvas, art, decoration, ordinal);
+      paint_decoration(canvas, art, decoration, ordinal,
+                       back ? backdrop_tint() : untinted());
     }
     ++ordinal;
   }
 }
 
-/// A building is a wall of windows over its area, or rubble once destroyed. A
-/// building whose every cell is rubble ground is that rubble heap already.
+/// Whether a building's landmark picture stands in front of the ground: the
+/// kiosk wreck blocks the arcade road it stands on, while the cold store's
+/// floor runs into the store.
+bool stands_in_front(LandmarkKind kind) {
+  switch (kind) {
+  case LandmarkKind::Kiosk:
+    return true;
+  case LandmarkKind::ColdStore:
+  case LandmarkKind::Ferry:
+  case LandmarkKind::Platform:
+  case LandmarkKind::Bridge:
+    return false;
+  }
+  std::abort();
+}
+
+/// A building is a wall of windows over its area, its landmark picture
+/// standing in it, or rubble once destroyed. A building whose every cell is
+/// rubble ground is that rubble heap already. Only what stands in front of
+/// the ground is drawn when `front`, and only the rest otherwise.
 void paint_building(godot::Node2D &canvas, const Art &art,
                     const survival::Content &content,
-                    const ObjectSnapshot &object) {
+                    const ObjectSnapshot &object, bool front) {
   const auto box = area_rect(object.area);
   const auto &area = object.area;
+  const auto picture = landmark(content, object.id);
+  if (front != (object.state == ObjectState::Intact && picture &&
+                stands_in_front(*picture))) {
+    return;
+  }
   if (object.state == ObjectState::Destroyed) {
     for (std::int32_t x = area.x; x < area.x + area.width; x += TILE_CELLS) {
       const auto cells = std::min(TILE_CELLS, area.x + area.width - x);
@@ -294,6 +503,20 @@ void paint_building(godot::Node2D &canvas, const Art &art,
     }
     wreck_mark(canvas, box);
     return;
+  }
+  if (picture) {
+    switch (*picture) {
+    case LandmarkKind::Kiosk:
+      stand(canvas, art, Image::Kiosk, box);
+      return;
+    case LandmarkKind::ColdStore:
+      stand(canvas, art, Image::ColdStore, box);
+      return;
+    case LandmarkKind::Ferry:
+    case LandmarkKind::Platform:
+    case LandmarkKind::Bridge:
+      break;
+    }
   }
   const auto heap =
       std::ranges::count_if(content.ground, [&](const auto &cell) {
@@ -319,13 +542,6 @@ void paint_building(godot::Node2D &canvas, const Art &art,
   canvas.draw_rect(box, color(150, 112, 190, 1.0F), false, 2.0F);
 }
 
-void paint_building_name(godot::Node2D &canvas, const Art &art,
-                         const ObjectSnapshot &object) {
-  const auto box = area_rect(object.area);
-  plated_text(canvas, art, box.position.x + 4.0F, box.position.y + 14.0F,
-              from(survival::object_name(object.id)), 13, palette().muted);
-}
-
 void paint_passage(godot::Node2D &canvas, const Art &art,
                    const ObjectSnapshot &object, bool ladder) {
   const auto box = area_rect(object.area);
@@ -335,20 +551,16 @@ void paint_passage(godot::Node2D &canvas, const Art &art,
       art.image(canvas, Image::Ladder,
                 Vector2(box.position.x, cell_y(object.area.y + row)));
     }
-  } else {
-    Image image = Image::DoorColdStore;
-    if (ladder) {
-      image = Image::LadderBroken;
-    } else if (broken) {
-      image = Image::DoorBroken;
-    }
-    stand(canvas, art, image,
-          rect(box.position.x, box.position.y, CELL, box.size.y));
+    return;
   }
-  if (broken) {
-    plated_text(canvas, art, box.position.x + 36.0F, box.position.y + 21.0F,
-                "BROKEN", 13, color(255, 150, 150, 1.0F));
+  Image image = Image::DoorColdStore;
+  if (ladder) {
+    image = Image::LadderBroken;
+  } else if (broken) {
+    image = Image::DoorBroken;
   }
+  stand(canvas, art, image,
+        rect(box.position.x, box.position.y, CELL, box.size.y));
 }
 
 void paint_npc(godot::Node2D &canvas, const Art &art,
@@ -359,9 +571,6 @@ void paint_npc(godot::Node2D &canvas, const Art &art,
     return;
   }
   stand(canvas, art, Image::NoodleVendor, box);
-  plated_text(canvas, art, box.position.x - 32.0F,
-              box.position.y + CELL + 13.0F,
-              from(survival::object_name(object.id)), 13, palette().white);
 }
 
 const char *source_kind_name(SourceKind kind) {
@@ -413,10 +622,21 @@ struct Marker {
   bool promised = false;
 };
 
-/// A shop front is as tall as three cells, so it stands behind the ground.
+/// A shop front is as tall as three cells, so it stands behind the ground. A
+/// shop inside a standing building with a picture of its own has that
+/// building for its front.
 void paint_shop_front(godot::Node2D &canvas, const Art &art,
+                      const survival::Content &content,
+                      std::span<const ObjectSnapshot> objects,
                       const Marker &marker) {
-  if (marker.stock.kind == SourceKind::Shop) {
+  const survival::GridPosition cell{.x = marker.object.area.x,
+                                    .y = marker.object.area.y};
+  const bool pictured = std::ranges::any_of(objects, [&](const auto &object) {
+    return object.kind == ObjectKind::Building &&
+           object.state == ObjectState::Intact &&
+           landmark(content, object.id) && covers(object.area, cell);
+  });
+  if (marker.stock.kind == SourceKind::Shop && !pictured) {
     stand(canvas, art, Image::Shop, area_rect(marker.object.area));
   }
 }
@@ -438,32 +658,6 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
   }
 }
 
-void paint_source_name(godot::Node2D &canvas, const Art &art,
-                       const Marker &marker) {
-  const auto box = area_rect(marker.object.area).grow(-2.0F);
-  const auto tones = palette();
-  const float label_y = marker.object.area.y == 0 || marker.object.area.y == 13
-                            ? box.position.y + 44.0F
-                            : box.position.y - 4.0F;
-  const godot::String kind = source_kind_name(marker.stock.kind);
-  plated_text(canvas, art, box.position.x - 8.0F, label_y,
-              kind + godot::String(" ") + supply_name(marker.object) +
-                  (marker.stocked_open && !marker.walkable
-                       ? godot::String(": no way there")
-                       : godot::String()),
-              13, marker.promised ? tones.white : tones.muted);
-}
-
-/// The count comes last of all, so an actor never hides what is left.
-void paint_source_count(godot::Node2D &canvas, const Art &art,
-                        const Marker &marker) {
-  const auto box = area_rect(marker.object.area).grow(-2.0F);
-  const auto tones = palette();
-  plated_text(canvas, art, box.position.x + 9.0F, box.position.y + 21.0F,
-              godot::String::num_int64(marker.stock.remaining), 15,
-              marker.promised ? tones.white : tones.muted);
-}
-
 void paint_hazards(godot::Node2D &canvas, const Art &art,
                    const survival::Content &content) {
   for (const auto &area : content.hazards) {
@@ -472,9 +666,6 @@ void paint_hazards(godot::Node2D &canvas, const Art &art,
       stand(canvas, art, Image::AcidDrip,
             rect(cell_x(area.x + column), box.position.y, CELL, box.size.y));
     }
-    plated_text(canvas, art, box.position.x - 30.0F,
-                box.position.y + box.size.y + 14.0F, "ACID DRIP: -1 health", 13,
-                color(180, 255, 140, 1.0F));
   }
 }
 
@@ -515,13 +706,6 @@ void paint_actor(godot::Node2D &canvas, const Art &art,
             1.0F, motion.facing_left && !climbing);
 }
 
-void paint_tag(godot::Node2D &canvas, const Art &art,
-               survival::GridPosition position, const godot::String &tag,
-               float offset) {
-  plated_text(canvas, art, cell_x(position.x) + 6.0F + offset,
-              cell_y(position.y) - TAG_RISE, tag, 14, palette().cyan);
-}
-
 godot::String tag_of(survival::ControlMap control, Actor actor) {
   const auto keys = survival::key_set(control, actor);
   if (!keys) {
@@ -530,24 +714,136 @@ godot::String tag_of(survival::ControlMap control, Actor actor) {
   return "P" + godot::String::num_int64(static_cast<std::int64_t>(*keys) + 1);
 }
 
+/// Who is out in the city, and where each tag goes.
+struct Party {
+  bool chef_out = false;
+  bool appraiser_out = false;
+  /// Both actors stand on one cell.
+  bool shared = false;
+};
+
+/// Places the map's words in the order they claim a spot: each source's count
+/// in its own cell, then what stays put, then the actors' tags, which move.
+/// No word covers a source.
+Plates label_city(const Art &art, const survival::Content &content,
+                  const survival::GameView &view, survival::ControlMap control,
+                  const std::vector<Marker> &markers, const Party &party) {
+  const auto tones = palette();
+  const auto red = color(255, 150, 150, 1.0F);
+  Plates plates;
+  for (const auto &marker : markers) {
+    const auto box = area_rect(marker.object.area).grow(-2.0F);
+    plates.add(art, Vector2(box.position.x + 9.0F, box.position.y + 21.0F),
+               godot::String::num_int64(marker.stock.remaining), 15,
+               marker.promised ? tones.white : tones.muted);
+  }
+  for (const auto &marker : markers) {
+    plates.keep_clear(area_rect(marker.object.area));
+  }
+  const auto base = content.objects.front().area;
+  plates.add(art, Vector2(cell_x(base.x) + 18.0F, cell_y(base.y) + 22.0F),
+             "BASE", 18, tones.gold);
+  for (const auto &marker : markers) {
+    const auto box = area_rect(marker.object.area).grow(-2.0F);
+    const float label_y =
+        marker.object.area.y == 0 || marker.object.area.y == 13
+            ? box.position.y + 44.0F
+            : box.position.y - 4.0F;
+    plates.add(art, Vector2(box.position.x - 8.0F, label_y),
+               godot::String(source_kind_name(marker.stock.kind)) + " " +
+                   supply_name(marker.object) +
+                   (marker.stocked_open && !marker.walkable
+                        ? godot::String(": no way there")
+                        : godot::String()),
+               13, marker.promised ? tones.white : tones.muted);
+  }
+  for (const auto &object : view.world.objects) {
+    if (!visible(object)) {
+      continue;
+    }
+    const auto box = area_rect(object.area);
+    const bool broken = object.state == ObjectState::Destroyed;
+    switch (object.kind) {
+    case ObjectKind::Building:
+      plates.add(art, Vector2(box.position.x + 4.0F, box.position.y + 14.0F),
+                 from(survival::object_name(object.id)), 13, tones.muted);
+      break;
+    case ObjectKind::Npc:
+      if (!broken) {
+        plates.add(
+            art, Vector2(box.position.x - 32.0F, box.position.y + CELL + 13.0F),
+            from(survival::object_name(object.id)), 13, tones.white);
+      }
+      break;
+    case ObjectKind::Ladder:
+    case ObjectKind::Entrance:
+      if (broken) {
+        plates.add(art, Vector2(box.position.x + 36.0F, box.position.y + 21.0F),
+                   "BROKEN", 13, red);
+      }
+      break;
+    case ObjectKind::Terrain:
+    case ObjectKind::MaterialSource:
+      break;
+    }
+  }
+  for (const auto &area : content.hazards) {
+    const auto box = area_rect(area);
+    plates.add(
+        art,
+        Vector2(box.position.x - 30.0F, box.position.y + box.size.y + 14.0F),
+        "ACID DRIP: -1 health", 13, color(180, 255, 140, 1.0F));
+  }
+  const auto tag = [&](Actor actor, survival::GridPosition position,
+                       float offset) {
+    plates.add(art,
+               Vector2(cell_x(position.x) + 6.0F + offset,
+                       cell_y(position.y) - TAG_RISE),
+               tag_of(control, actor), 14, tones.cyan);
+  };
+  if (party.chef_out) {
+    tag(Actor::Chef, view.exploration.chef.position, 0.0F);
+  }
+  if (party.appraiser_out) {
+    tag(Actor::Appraiser, view.exploration.appraiser.position,
+        party.shared ? SHARED_CELL_TAG_SHIFT : 0.0F);
+  }
+  return plates;
+}
+
 } // namespace
 
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio) {
-  art.image(canvas, Image::Throat, Vector2(0.0F, 0.0F));
+  art.image(canvas, Image::Throat, Vector2(0.0F, 0.0F), 1.0F, false,
+            throat_tint());
   art.image(canvas, Image::City,
-            Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y));
-  // Dims the throat and the city behind the map, so the map reads over them.
-  canvas.draw_rect(rect(0.0F, MAP_Y, SCREEN_WIDTH, SCREEN_HEIGHT - MAP_Y),
-                   color(10, 6, 24, 0.45F));
+            Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), 1.0F, false,
+            city_tint());
   const float ratio = std::clamp(acid_ratio, 0.0F, 1.0F);
   const float surface = ACID_LOW - ratio * (ACID_LOW - MAP_Y);
   const Vector2 acid = art.size(Image::Acid);
   const float top = std::floor(surface - ACID_SURFACE_DEPTH);
-  art.image(canvas, Image::Acid, Vector2(0.0F, top));
+  const auto band = [&](float from, float height, godot::Color tint) {
+    art.image_part(canvas, Image::Acid, rect(0.0F, from, acid.x, height),
+                   rect(0.0F, top + from, acid.x, height), tint);
+  };
+  // The surface keeps the picture's glow; below it the sea sinks dark.
+  band(0.0F, ACID_SURFACE_DEPTH, untinted());
+  for (int step = 0; step < ACID_FADE_STEPS; ++step) {
+    band(ACID_SURFACE_DEPTH + static_cast<float>(step) * ACID_FADE_STEP,
+         ACID_FADE_STEP,
+         untinted().lerp(deep_acid_tint(),
+                         static_cast<float>(step + 1) /
+                             static_cast<float>(ACID_FADE_STEPS + 1)));
+  }
+  const float deep =
+      ACID_SURFACE_DEPTH + static_cast<float>(ACID_FADE_STEPS) * ACID_FADE_STEP;
+  band(deep, acid.y - deep, deep_acid_tint());
   const float bottom = top + acid.y;
   if (bottom < SCREEN_HEIGHT) {
     art.image_part(canvas, Image::Acid, rect(0.0F, acid.y - 1.0F, acid.x, 1.0F),
-                   rect(0.0F, bottom, SCREEN_WIDTH, SCREEN_HEIGHT - bottom));
+                   rect(0.0F, bottom, SCREEN_WIDTH, SCREEN_HEIGHT - bottom),
+                   deep_acid_tint());
   }
 }
 
@@ -579,14 +875,25 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                          .promised = stocked_open && walkable});
     }
   }
+  const auto &chef = view.exploration.chef.position;
+  const auto &appraiser = view.exploration.appraiser.position;
+  Party party{.chef_out =
+                  view.progression.chef.location == survival::Location::City,
+              .appraiser_out = view.progression.appraiser.location ==
+                               survival::Location::City};
+  party.shared = party.chef_out && party.appraiser_out && chef == appraiser;
   paint_decorations(canvas, art, content, true);
-  paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
-    paint_building(canvas, art, content, object);
-  });
+  const auto paint_buildings = [&](bool front) {
+    paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
+      paint_building(canvas, art, content, object, front);
+    });
+  };
+  paint_buildings(false);
   for (const auto &marker : markers) {
-    paint_shop_front(canvas, art, marker);
+    paint_shop_front(canvas, art, content, objects, marker);
   }
   paint_ground(canvas, art, content, objects);
+  paint_buildings(true);
   paint_hazards(canvas, art, content);
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {
     paint_passage(canvas, art, object, false);
@@ -595,46 +902,22 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     paint_passage(canvas, art, object, true);
   });
   paint_decorations(canvas, art, content, false);
-  paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
-    paint_building_name(canvas, art, object);
-  });
   paint_kind(ObjectKind::Npc, [&](const ObjectSnapshot &object) {
     paint_npc(canvas, art, object);
   });
   for (const auto &marker : markers) {
     paint_source(canvas, art, marker);
   }
-  const auto tones = palette();
-  const auto base = content.objects.front().area;
-  plated_text(canvas, art, cell_x(base.x) + 18.0F, cell_y(base.y) + 22.0F,
-              "BASE", 18, tones.gold);
-  const auto &chef = view.exploration.chef.position;
-  const auto &appraiser = view.exploration.appraiser.position;
-  const bool chef_out =
-      view.progression.chef.location == survival::Location::City;
-  const bool appraiser_out =
-      view.progression.appraiser.location == survival::Location::City;
-  const bool shared = chef_out && appraiser_out && chef == appraiser;
-  if (chef_out) {
+  if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, chef, 0.0F);
   }
-  if (appraiser_out) {
+  if (party.appraiser_out) {
     paint_actor(canvas, art, view, Actor::Appraiser, appraiser,
-                shared ? 10.0F : 0.0F);
+                party.shared ? 10.0F : 0.0F);
   }
-  for (const auto &marker : markers) {
-    paint_source_name(canvas, art, marker);
-  }
-  if (chef_out) {
-    paint_tag(canvas, art, chef, tag_of(control, Actor::Chef), 0.0F);
-  }
-  if (appraiser_out) {
-    paint_tag(canvas, art, appraiser, tag_of(control, Actor::Appraiser),
-              shared ? SHARED_CELL_TAG_SHIFT : 0.0F);
-  }
-  for (const auto &marker : markers) {
-    paint_source_count(canvas, art, marker);
-  }
+  const auto plates = label_city(art, content, view, control, markers, party);
+  plates.paint(canvas, art);
+  canvas.set_meta("map_plates", plates.boxes());
 }
 
 void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
@@ -654,7 +937,12 @@ void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
     canvas.draw_circle(FEED_BUCKET + Vector2(18.0F, -36.0F), 9.0F,
                        color(240, 240, 240, 0.4F));
   }
-  plated_text(canvas, art, 1110.0F, 300.0F, "MONSTER FEED", 18, palette().gold);
+  const godot::String feed = "MONSTER FEED";
+  paint_plate(canvas, art,
+              {.box = plate_box(art, Vector2(1110.0F, 300.0F), feed, 18),
+               .text = feed,
+               .size = 18,
+               .tint = palette().gold});
 }
 
 } // namespace neocity::rendering

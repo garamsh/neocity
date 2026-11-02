@@ -89,6 +89,16 @@ const char *path(Image image) {
     return "world/door_broken.png";
   case Image::AcidDrip:
     return "world/acid_drip.png";
+  case Image::Kiosk:
+    return "world/kiosk.png";
+  case Image::ColdStore:
+    return "world/cold_store.png";
+  case Image::Ferry:
+    return "world/ferry.png";
+  case Image::Platform:
+    return "world/platform.png";
+  case Image::Bridge:
+    return "world/bridge.png";
   case Image::TrainCarLit:
     return "decor/train_car_lit.png";
   case Image::TrainCarWrecked:
@@ -255,11 +265,12 @@ float Art::text_width(const godot::String &text, int size) const {
 }
 
 void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
-                float scale, bool mirrored) const {
+                float scale, bool mirrored, godot::Color tint) const {
   const Vector2 drawn = size(image) * scale;
   if (!mirrored) {
     canvas.draw_texture_rect(images.at(slot(image)),
-                             godot::Rect2(position.floor(), drawn), false);
+                             godot::Rect2(position.floor(), drawn), false,
+                             tint);
     return;
   }
   // A mirroring transform flips the picture in place; nothing else on the
@@ -267,13 +278,14 @@ void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
   canvas.draw_set_transform(position.floor() + Vector2(drawn.x, 0.0F), 0.0F,
                             Vector2(-1.0F, 1.0F));
   canvas.draw_texture_rect(images.at(slot(image)),
-                           godot::Rect2(Vector2(), drawn), false);
+                           godot::Rect2(Vector2(), drawn), false, tint);
   canvas.draw_set_transform(Vector2(), 0.0F, Vector2(1.0F, 1.0F));
 }
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
-                     godot::Rect2 destination) const {
-  canvas.draw_texture_rect_region(images.at(slot(image)), destination, source);
+                     godot::Rect2 destination, godot::Color tint) const {
+  canvas.draw_texture_rect_region(images.at(slot(image)), destination, source,
+                                  tint);
 }
 
 void Art::frame(godot::Node2D &canvas, Image image, godot::Rect2 destination,
