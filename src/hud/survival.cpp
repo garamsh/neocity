@@ -569,9 +569,10 @@ String city_step(const SurvivalFrame &frame, Actor actor,
   const auto *repair = offers.interact
                            ? std::get_if<survival::Repair>(&*offers.interact)
                            : nullptr;
-  const bool opens = repair != nullptr && survival::repair_opens_stock(
-                                              frame.content.get().companion,
-                                              actor, frame.view, repair->target);
+  const bool opens =
+      repair != nullptr &&
+      survival::repair_opens_stock(frame.content.get().companion, actor,
+                                   frame.view, repair->target);
   // A source passed on the way to what the party lacks would spend the clock,
   // a passage passed on the way is worth it only for stock out of reach
   // without it, and a repair with no errand left opens no way to stock.

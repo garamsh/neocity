@@ -18,7 +18,7 @@ const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
 const CELL: int = 32
 ## Ground cells of the first city frame with nothing but scenery in the cell
 ## above: the arcade, the rooftop and the market.
-const LEAD_CELLS: Array[Vector2i] = [Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1), Vector2i(8, 1), Vector2i(17, 2), Vector2i(18, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(6, 11), Vector2i(7, 11)]
+const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(21, 2), Vector2i(22, 2), Vector2i(8, 11), Vector2i(10, 11)]
 ## How much brighter, in mean luminance from 0 to 1, those ground cells read
 ## than the scenery in the cells above them.
 const GROUND_LEAD: float = 0.05
@@ -48,19 +48,19 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
-	await _walk(KEY_D, 6)
+	await _walk(KEY_D, 7)
 	if not _ground_leads(await _save_city("4-city-collect-prompt")):
 		return
-	await _walk(KEY_D, 10)
-	await _climb(5)
+	await _walk(KEY_D, 8)
+	_key(KEY_D, true)
+	_key(KEY_SPACE, true)
+	await _until_stance("airborne")
+	_key(KEY_SPACE, false)
+	await _frames(4)
+	await _save_city("27-city-jumping-the-rubble")
+	await _walk(KEY_D, 12)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
-	await _walk(KEY_D, 16)
-	await _walk_left(15)
-	await _save_city("23-city-facing-left")
-	await _walk(KEY_D, 16)
-	await _climb(4)
-	await _save_city("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _save("6-workshop-after-return")
 	await _until_next("Cook", 300)
@@ -76,6 +76,14 @@ func _run() -> void:
 	await _frames(20)
 	await _save("9-next-day")
 	await _tap(KEY_Q)
+	# The AI appraiser's collections spend day one's clock before the chef
+	# reaches the roof ladder, so the ladder frames are day two's.
+	await _walk(KEY_D, 16)
+	await _walk_left(15)
+	await _save_city("23-city-facing-left")
+	await _walk(KEY_D, 18)
+	await _climb(4)
+	await _save_city("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _frames(60)
 	await _tap(KEY_E)
@@ -167,25 +175,58 @@ func _follow_next() -> void:
 		await _tap(KEY_G)
 	elif line.contains("[E] "):
 		await _tap(KEY_E)
-	elif line.begins_with("Walk "):
+	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
 		if code != KEY_NONE:
 			_key(code, true)
+			if line.begins_with("Jump "):
+				_key(KEY_SPACE, true)
+				_key(KEY_SPACE, false)
+				await _until_stance("airborne")
+			else:
+				_key(code, false)
+				await _frames(STEP_FRAMES)
+				_key(code, _stance() == "airborne")
+			while _stance() == "airborne":
+				await process_frame
 			_key(code, false)
-		await _frames(STEP_FRAMES)
+		else:
+			await _frames(STEP_FRAMES)
 	else:
 		await _frames(STEP_FRAMES)
 
+## Runs with `code` until the chef stands on column `x` or right of it, jumping
+## whatever low block stops it.
 func _walk(code: Key, x: int) -> void:
 	_key(code, true)
-	for frame: int in range(240):
+	_key(KEY_SHIFT, true)
+	var last: int = -1
+	var stalled: int = 0
+	for frame: int in range(480):
 		var chef: Dictionary = scene.survival_status()["chef"]
 		var at: int = chef["x"]
-		if at >= x:
+		if at >= x and chef["stance"] != "airborne":
 			break
+		var sub_x: int = chef["sub_x"]
+		stalled = stalled + 1 if sub_x == last and chef["stance"] == "standing" else 0
+		last = sub_x
+		_key(KEY_SPACE, stalled > 6)
 		await process_frame
+	_key(KEY_SPACE, false)
 	_key(code, false)
+	_key(KEY_SHIFT, false)
 	await _frames(3)
+
+func _stance() -> String:
+	var chef: Dictionary = scene.survival_status().get("chef", {})
+	var stance: String = chef.get("stance", "")
+	return stance
+
+func _until_stance(stance: String) -> void:
+	for frame: int in range(60):
+		if _stance() == stance:
+			return
+		await process_frame
 
 ## Holds A until the chef stands on column `x` or left of it.
 func _walk_left(x: int) -> void:

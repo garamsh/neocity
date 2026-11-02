@@ -87,7 +87,7 @@ constexpr ObjectId EAST_RUBBLE{63};
 constexpr ObjectId UPPER_RAMP{64};
 constexpr ObjectId MARKET_LADDER{65};
 
-constexpr std::uint32_t BAG_STOCK = 14;
+constexpr std::uint32_t BAG_STOCK = 15;
 
 template <typename Id> struct Named {
   Id id;
