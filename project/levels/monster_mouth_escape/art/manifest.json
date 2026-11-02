@@ -38,8 +38,8 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), sheet pose 2, holding the spatula"
+   "colours": 15,
+   "depicts": "Chef (ART-CHAR-001), standing, arms down"
   },
   {
    "path": "characters/chef_walk_1.png",
@@ -48,8 +48,8 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), sheet pose 4, stepping with the spatula raised"
+   "colours": 15,
+   "depicts": "Chef (ART-CHAR-001), walk 1 of 4: right foot forward"
   },
   {
    "path": "characters/chef_walk_2.png",
@@ -58,8 +58,78 @@
     64
    ],
    "scale": 1,
+   "colours": 14,
+   "depicts": "Chef (ART-CHAR-001), walk 2 of 4: passing"
+  },
+  {
+   "path": "characters/chef_walk_3.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 14,
+   "depicts": "Chef (ART-CHAR-001), walk 3 of 4: left foot forward"
+  },
+  {
+   "path": "characters/chef_walk_4.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 13,
+   "depicts": "Chef (ART-CHAR-001), walk 4 of 4: passing"
+  },
+  {
+   "path": "characters/chef_run_1.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 14,
+   "depicts": "Chef (ART-CHAR-001), run 1 of 2: long stride, leaning forward"
+  },
+  {
+   "path": "characters/chef_run_2.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
    "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), sheet pose 7, stepping"
+   "depicts": "Chef (ART-CHAR-001), run 2 of 2: the other leg forward"
+  },
+  {
+   "path": "characters/chef_jump.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Chef (ART-CHAR-001), rising: knees tucked, arms up"
+  },
+  {
+   "path": "characters/chef_fall.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 15,
+   "depicts": "Chef (ART-CHAR-001), falling: legs down, arms up"
+  },
+  {
+   "path": "characters/chef_land.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 15,
+   "depicts": "Chef (ART-CHAR-001), landing: arms out for balance"
   },
   {
    "path": "characters/chef_climb.png",
@@ -68,8 +138,8 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), sheet pose 8, seen from behind"
+   "colours": 15,
+   "depicts": "Chef (ART-CHAR-001), climbing, seen from behind, one arm up"
   },
   {
    "path": "characters/appraiser_idle.png",
@@ -79,7 +149,7 @@
    ],
    "scale": 1,
    "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 1, standing with the magnifier"
+   "depicts": "Appraiser (ART-CHAR-002), standing with the magnifier"
   },
   {
    "path": "characters/appraiser_walk_1.png",
@@ -89,7 +159,7 @@
    ],
    "scale": 1,
    "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 3, striding and pointing"
+   "depicts": "Appraiser (ART-CHAR-002), walk 1 of 4: right foot forward"
   },
   {
    "path": "characters/appraiser_walk_2.png",
@@ -99,7 +169,77 @@
    ],
    "scale": 1,
    "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 4, stepping"
+   "depicts": "Appraiser (ART-CHAR-002), walk 2 of 4: passing"
+  },
+  {
+   "path": "characters/appraiser_walk_3.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), walk 3 of 4: left foot forward"
+  },
+  {
+   "path": "characters/appraiser_walk_4.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), walk 4 of 4: passing"
+  },
+  {
+   "path": "characters/appraiser_run_1.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), run 1 of 2: long stride"
+  },
+  {
+   "path": "characters/appraiser_run_2.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), run 2 of 2: the other leg forward"
+  },
+  {
+   "path": "characters/appraiser_jump.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), rising: both arms up, one magnifier"
+  },
+  {
+   "path": "characters/appraiser_fall.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), falling: legs down, arms up"
+  },
+  {
+   "path": "characters/appraiser_land.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), landing: knees bent"
   },
   {
    "path": "characters/appraiser_climb.png",
@@ -108,8 +248,8 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 8, seen from behind"
+   "colours": 14,
+   "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind, one arm up"
   },
   {
    "path": "world/platform.png",
@@ -118,7 +258,7 @@
     32
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
   },
   {
@@ -128,7 +268,7 @@
     32
    ],
    "scale": 1,
-   "colours": 23,
+   "colours": 12,
    "depicts": "Ladder tile: two rungs; tiles vertically"
   },
   {
@@ -138,7 +278,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 11,
    "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall"
   },
   {
@@ -148,7 +288,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Cold store door: riveted steel with a frosted window"
   },
   {
@@ -158,7 +298,7 @@
     64
    ],
    "scale": 1,
-   "colours": 23,
+   "colours": 12,
    "depicts": "Broken door: smashed and boarded"
   },
   {
@@ -168,7 +308,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
   },
   {
@@ -178,7 +318,7 @@
     48
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Broken red vending machine with jars behind cracked glass"
   },
   {
@@ -188,7 +328,7 @@
     96
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Corner shop front: shelves, crates, awning and lantern"
   },
   {
@@ -198,7 +338,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Street stall: noodle cart with canopy and lantern"
   },
   {
@@ -208,7 +348,7 @@
     48
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Noodle vendor NPC holding a ladle"
   },
   {
@@ -218,7 +358,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Wrecked kiosk with flesh slime on the roof"
   },
   {
@@ -228,7 +368,7 @@
     32
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Rotten bridge tile: dark planks; tiles horizontally"
   },
   {
@@ -238,7 +378,7 @@
     112
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Drifted ferry: rusty hull, lit cabin, lantern"
   },
   {
@@ -248,7 +388,7 @@
     52
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Washed-up bag: slimy backpack with a sparkle"
   },
   {
@@ -258,7 +398,7 @@
     34
    ],
    "scale": 1,
-   "colours": 19,
+   "colours": 10,
    "depicts": "Roof bag: roped duffel with a sparkle"
   },
   {
@@ -268,7 +408,7 @@
     128
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Cold store block in scaffolding with a steel door and lamp"
   },
   {
@@ -278,8 +418,128 @@
     96
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall"
+  },
+  {
+   "path": "walkway/deck.png",
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Walkway deck: riveted iron plates with a lit top edge, the feet line along its top; tiles horizontally"
+  },
+  {
+   "path": "walkway/deck_seam.png",
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Walkway deck variant: a plate seam"
+  },
+  {
+   "path": "walkway/deck_rivets.png",
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Walkway deck variant: a riveted joint"
+  },
+  {
+   "path": "walkway/deck_worn.png",
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Walkway deck variant: worn, rusted plates"
+  },
+  {
+   "path": "walkway/truss.png",
+   "size": [
+    32,
+    16
+   ],
+   "scale": 1,
+   "colours": 9,
+   "depicts": "Truss under the deck: an X-braced iron girder; tiles horizontally"
+  },
+  {
+   "path": "walkway/end_left.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Snapped left end of a walkway: torn plates, bent girder and dangling debris on its left"
+  },
+  {
+   "path": "walkway/end_right.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Snapped right end of a walkway: torn plates and bent rebar on its right"
+  },
+  {
+   "path": "walkway/scaffold.png",
+   "size": [
+    24,
+    32
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Support: an X-braced iron scaffold tower; tiles vertically"
+  },
+  {
+   "path": "walkway/pillar.png",
+   "size": [
+    20,
+    32
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Support: a cracked concrete pillar; tiles vertically"
+  },
+  {
+   "path": "walkway/column.png",
+   "size": [
+    24,
+    32
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Support: a bolted iron I-beam column; tiles vertically"
+  },
+  {
+   "path": "walkway/ramp.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Ramp: an iron plate slab rising left to right on a bracket; mirror it for the other way"
+  },
+  {
+   "path": "walkway/stairs.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 9,
+   "depicts": "Stairs: iron steps rising left to right on a stringer; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",
@@ -308,7 +568,7 @@
     48
    ],
    "scale": 1,
-   "colours": 10,
+   "colours": 9,
    "depicts": "Ingredient icon: kelp"
   },
   {
@@ -378,7 +638,7 @@
     48
    ],
    "scale": 1,
-   "colours": 12,
+   "colours": 11,
    "depicts": "Tool icon: wrench"
   },
   {
@@ -492,43 +752,13 @@
    "depicts": "Dish icon: surf and turf"
   },
   {
-   "path": "ui/panel_frame.png",
-   "size": [
-    96,
-    96
-   ],
-   "scale": 2,
-   "colours": 12,
-   "depicts": "Riveted grey steel panel frame for 9-slice"
-  },
-  {
-   "path": "ui/bar_frame.png",
-   "size": [
-    192,
-    56
-   ],
-   "scale": 2,
-   "colours": 12,
-   "depicts": "Riveted grey steel bar frame, empty inside"
-  },
-  {
-   "path": "ui/item_slot.png",
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "depicts": "Grey steel item slot frame"
-  },
-  {
    "path": "ui/heart_full.png",
    "size": [
     32,
     32
    ],
    "scale": 2,
-   "colours": 9,
+   "colours": 7,
    "depicts": "Heart, full, red"
   },
   {
@@ -542,33 +772,13 @@
    "depicts": "Heart, empty: the full heart's shape drained to dark grey"
   },
   {
-   "path": "ui/button.png",
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "depicts": "Button, normal, grey steel, blank face"
-  },
-  {
-   "path": "ui/button_highlight.png",
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "depicts": "Button, highlighted, yellow, blank face"
-  },
-  {
    "path": "ui/icon_day.png",
    "size": [
     32,
     32
    ],
    "scale": 2,
-   "colours": 12,
+   "colours": 9,
    "depicts": "Day icon: yellow sun"
   },
   {
@@ -578,7 +788,7 @@
     32
    ],
    "scale": 2,
-   "colours": 12,
+   "colours": 9,
    "depicts": "Clock icon: grey case, yellow face"
   },
   {
@@ -588,7 +798,7 @@
     32
    ],
    "scale": 2,
-   "colours": 10,
+   "colours": 7,
    "depicts": "Acid icon: green drop"
   },
   {
@@ -622,74 +832,14 @@
    "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
   },
   {
-   "path": "ground/road.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 16,
-   "depicts": "Intact road: asphalt with an orange lane dash over a concrete deck, in section; tiles horizontally, and every other ground tile meets it without a seam"
-  },
-  {
-   "path": "ground/road_cracked.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 19,
-   "depicts": "Cracked road: zigzag fissures through the asphalt and deck"
-  },
-  {
-   "path": "ground/pothole.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "depicts": "Pothole: a dark hole bitten into the asphalt"
-  },
-  {
-   "path": "ground/road_end_left.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 19,
-   "depicts": "Road end, left: the road breaks off at the tile's left edge with bent rebar; the road continues to the right"
-  },
-  {
-   "path": "ground/road_end_right.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "depicts": "Road end, right: the road breaks off at the tile's right edge with bent rebar; the road continues to the left"
-  },
-  {
-   "path": "ground/slab_tilted.png",
-   "size": [
-    32,
-    40
-   ],
-   "scale": 1,
-   "colours": 24,
-   "depicts": "Tilted slab: a loose piece of road tilted up to the right over the deck; 8 px taller than its cell"
-  },
-  {
    "path": "ground/rubble.png",
    "size": [
     32,
-    48
+    24
    ],
    "scale": 1,
-   "colours": 23,
-   "depicts": "Rubble: a heap of concrete blocks, bricks and rebar blocking the road; 16 px taller than its cell"
+   "colours": 12,
+   "depicts": "Rubble heap that blocks a walkway cell; stands on the deck"
   },
   {
    "path": "ground/bridge_plank.png",
@@ -698,18 +848,18 @@
     14
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally"
   },
   {
    "path": "ground/car_buried.png",
    "size": [
     32,
-    48
+    24
    ],
    "scale": 1,
-   "colours": 24,
-   "depicts": "Half-buried car: a rusty violet car nose-down in the cracked road, rear wheel up; 16 px taller than its cell"
+   "colours": 12,
+   "depicts": "Wrecked car sunk into a walkway; stands on the deck"
   },
   {
    "path": "decor/train_car_lit.png",
@@ -718,7 +868,7 @@
     80
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Tilted elevated train car, lit orange windows, bent bogies"
   },
   {
@@ -728,7 +878,7 @@
     75
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime"
   },
   {
@@ -738,7 +888,7 @@
     128
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar"
   },
   {
@@ -748,7 +898,7 @@
     104
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base"
   },
   {
@@ -758,7 +908,7 @@
     54
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Cable bundle sagging between two snapped stubs"
   },
   {
@@ -768,7 +918,7 @@
     60
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 11,
    "depicts": "Two cables hanging straight down with frayed ends and a spark"
   },
   {
@@ -778,7 +928,7 @@
     48
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Rusty pipe hanging at an angle from a broken end"
   },
   {
@@ -788,7 +938,7 @@
     59
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel"
   },
   {
@@ -798,7 +948,7 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain"
   },
   {
@@ -808,7 +958,7 @@
     100
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Dead neon blade sign: tall, unlit stripes and a star"
   },
   {
@@ -818,7 +968,7 @@
     84
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Flesh vines drooping from above, dripping"
   },
   {
@@ -828,7 +978,7 @@
     75
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Flesh tendril twisting up from a small base"
   },
   {
@@ -838,7 +988,7 @@
     46
    ],
    "scale": 1,
-   "colours": 15,
+   "colours": 11,
    "depicts": "Lumpy flesh growth with veins and pustules"
   },
   {
@@ -848,7 +998,7 @@
     51
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Cluster of three glossy flesh polyps"
   },
   {
@@ -858,7 +1008,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "Low rubble heap: concrete chunks, bricks and rebar"
   },
   {
@@ -868,7 +1018,7 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "depicts": "High rubble heap: blocks, a blank sign post and flesh slime"
   },
   {
@@ -878,7 +1028,7 @@
     69
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Overpass pillar snapped at the top, rebar bent out"
   },
   {
@@ -888,7 +1038,7 @@
     69
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Overpass pillar with a piece of deck still on top"
   },
   {
@@ -898,7 +1048,7 @@
     66
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Street lamp standing, dim amber bulb"
   },
   {
@@ -908,7 +1058,7 @@
     58
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "depicts": "Street lamp bent over, head hanging, bulb smashed"
   }
  ]

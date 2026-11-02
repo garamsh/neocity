@@ -217,176 +217,477 @@
    1
   ],
   [
-   "ground/road.png",
+   "walkway/scaffold.png",
+   4,
+   474,
+   1,
+   8
+  ],
+  [
+   "walkway/column.png",
+   324,
+   474,
+   1,
+   8
+  ],
+  [
+   "walkway/deck.png",
    0,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   0,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_rivets.png",
    32,
    448,
    1,
    1
   ],
   [
-   "ground/road_cracked.png",
+   "walkway/truss.png",
+   32,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
    64,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   64,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_seam.png",
    96,
    448,
    1,
    1
   ],
   [
-   "ground/pothole.png",
+   "walkway/truss.png",
+   96,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_worn.png",
    128,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   128,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
    160,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   160,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_rivets.png",
    192,
    448,
    1,
    1
   ],
   [
-   "ground/road_end_right.png",
+   "walkway/truss.png",
+   192,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
    224,
    448,
    1,
    1
   ],
   [
-   "ground/bridge_plank.png",
+   "walkway/truss.png",
+   224,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_seam.png",
    256,
    448,
    1,
    1
   ],
   [
-   "ground/bridge_plank.png",
+   "walkway/truss.png",
+   256,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_worn.png",
    288,
    448,
    1,
    1
   ],
   [
-   "ground/road_end_left.png",
+   "walkway/truss.png",
+   288,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
    320,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   320,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/end_right.png",
    352,
    448,
    1,
    1
   ],
   [
-   "ground/car_buried.png",
-   384,
-   432,
+   "walkway/scaffold.png",
+   516,
+   442,
    1,
-   1
+   8
   ],
   [
-   "ground/road_cracked.png",
-   416,
-   448,
+   "walkway/column.png",
+   676,
+   442,
    1,
-   1
+   8
   ],
   [
-   "ground/road.png",
-   448,
-   448,
-   1,
-   1
-  ],
-  [
-   "ground/slab_tilted.png",
-   480,
-   440,
-   1,
-   1
-  ],
-  [
-   "ground/road_end_left.png",
+   "walkway/end_left.png",
    512,
    416,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/deck.png",
    544,
    416,
    1,
    1
   ],
   [
-   "ground/road_cracked.png",
+   "walkway/truss.png",
+   544,
+   426,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_seam.png",
    576,
    416,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   576,
+   426,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_worn.png",
    608,
    416,
    1,
    1
   ],
   [
-   "ground/pothole.png",
+   "walkway/truss.png",
+   608,
+   426,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
    640,
    416,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/truss.png",
+   640,
+   426,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_rivets.png",
    672,
    416,
    1,
    1
   ],
   [
-   "ground/road_end_right.png",
+   "walkway/truss.png",
+   672,
+   426,
+   1,
+   1
+  ],
+  [
+   "walkway/end_right.png",
    704,
    416,
    1,
    1
   ],
   [
-   "ground/road_end_left.png",
+   "walkway/scaffold.png",
+   836,
+   410,
+   1,
+   8
+  ],
+  [
+   "walkway/column.png",
+   1028,
+   410,
+   1,
+   8
+  ],
+  [
+   "walkway/end_left.png",
    832,
    384,
    1,
    1
   ],
   [
-   "ground/road.png",
+   "walkway/deck.png",
    864,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   864,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_seam.png",
+   896,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   896,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_worn.png",
+   928,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   928,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
+   960,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   960,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_rivets.png",
+   992,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   992,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
+   1024,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   1024,
+   394,
+   1,
+   1
+  ],
+  [
+   "walkway/end_right.png",
+   1056,
+   384,
+   1,
+   1
+  ],
+  [
+   "walkway/scaffold.png",
+   1124,
+   474,
+   1,
+   8
+  ],
+  [
+   "walkway/column.png",
+   1220,
+   474,
+   1,
+   8
+  ],
+  [
+   "walkway/end_left.png",
+   1120,
+   448,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_rivets.png",
+   1152,
+   448,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   1152,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck.png",
+   1184,
+   448,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   1184,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_seam.png",
+   1216,
+   448,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   1216,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/deck_worn.png",
+   1248,
+   448,
+   1,
+   1
+  ],
+  [
+   "walkway/truss.png",
+   1248,
+   458,
+   1,
+   1
+  ],
+  [
+   "walkway/ramp.png",
+   480,
+   416,
+   1,
+   1
+  ],
+  [
+   "walkway/stairs.png",
+   768,
    384,
    1,
    1
@@ -394,76 +695,34 @@
   [
    "ground/rubble.png",
    896,
-   368,
-   1,
-   1
-  ],
-  [
-   "ground/road.png",
-   928,
-   384,
-   1,
-   1
-  ],
-  [
-   "ground/road_cracked.png",
-   960,
-   384,
-   1,
-   1
-  ],
-  [
-   "ground/road.png",
-   992,
-   384,
-   1,
-   1
-  ],
-  [
-   "ground/road.png",
-   1024,
-   384,
-   1,
-   1
-  ],
-  [
-   "ground/road_end_right.png",
-   1056,
-   384,
-   1,
-   1
-  ],
-  [
-   "ground/road_end_left.png",
-   1120,
-   448,
-   1,
-   1
-  ],
-  [
-   "ground/road.png",
-   1152,
-   448,
+   360,
    1,
    1
   ],
   [
    "ground/car_buried.png",
    1184,
-   432,
+   424,
    1,
    1
   ],
   [
-   "ground/road.png",
-   1216,
+   "ground/bridge_plank.png",
+   384,
    448,
    1,
    1
   ],
   [
-   "ground/road.png",
-   1248,
+   "ground/bridge_plank.png",
+   416,
+   448,
+   1,
+   1
+  ],
+  [
+   "ground/bridge_plank.png",
+   448,
    448,
    1,
    1
@@ -525,23 +784,30 @@
    1
   ],
   [
-   "characters/chef_walk_1.png",
-   300,
+   "decor/flesh_polyps.png",
+   1210,
+   397,
+   1,
+   1
+  ],
+  [
+   "characters/chef_run_1.png",
+   280,
    384,
    1,
    1
   ],
   [
-   "characters/appraiser_walk_2.png",
-   560,
+   "characters/appraiser_walk_1.png",
+   600,
    352,
    1,
    1
   ],
   [
-   "decor/flesh_polyps.png",
-   1210,
-   397,
+   "characters/chef_jump.png",
+   950,
+   290,
    1,
    1
   ],
@@ -554,12 +820,6 @@
   ]
  ],
  "sources": {
-  "chef_concept_sheet": {
-   "file": "docs/art/concept-art/characters/chef-sheet-v1.png"
-  },
-  "detective_concept_sheet": {
-   "file": "docs/art/concept-art/characters/detective-sheet-v1.png"
-  },
   "bg_throat": {
    "url": "https://img.recraft.ai/itV-ds6ITpj7bV6RQjwXUpDPfd2BBnZqd2bLljFU4Pc/raw:1/plain/abs://prod/images/f97f1a75-c0c3-4756-a4b7-e4004842c228"
   },
@@ -678,9 +938,6 @@
   "decor_rubble": {
    "url": "https://img.recraft.ai/i98M91pHg6wBQzOoVrkSv3PFt9f9fA8D4hUD1IEGalI/raw:1/plain/abs://prod/images/f006e13a-4354-4f02-9021-300e09613a0f"
   },
-  "ground_road": {
-   "url": "https://img.recraft.ai/Oh-6fr9cXsr1ILNN-bX86-26fxfgkz8Elh94VUj8aPQ/raw:1/plain/abs://prod/images/991a1e8a-2263-4f22-93bb-d6ae02d9e38b"
-  },
   "ground_broken": {
    "url": "https://img.recraft.ai/3RpGYBJRV2_NtsU3gYHkH5D58pHDPZR9fdOjMlaEjgA/raw:1/plain/abs://prod/images/fb4e07c2-3e13-4091-ae95-4ee297d33099",
    "edited_from": "ground_road"
@@ -688,6 +945,34 @@
   "ground_bridged": {
    "url": "https://img.recraft.ai/Gk59jsJnIKts63gRe0f5_KqtH4RLOP61ddED5noDjz8/raw:1/plain/abs://prod/images/42228a82-b511-48e3-b75a-85cc58e73d8a",
    "edited_from": "ground_broken"
+  },
+  "walkway": {
+   "url": "https://img.recraft.ai/IqanH3fXIfLariiyJP2-0Aze3WEgYQ0hSXJKn_wtS_U/raw:1/plain/abs://prod/images/a59fa887-33d2-4609-acdf-1cfb9c6801e5"
+  },
+  "walkway_ends": {
+   "url": "https://img.recraft.ai/b9XVm8gRNkI3BUdg9NfwrwFukndUq0K8h4NhP9CGJJU/raw:1/plain/abs://prod/images/464ba9a2-4c90-4072-9ec1-b58cbe51e279"
+  },
+  "supports": {
+   "url": "https://img.recraft.ai/IYyTb1ABebFoBt_Z_tZStDcChRcoBeJQ9EAWwA3iC2I/raw:1/plain/abs://prod/images/24062f0c-cda3-4e41-89b6-a5bbfa096460",
+   "alpha": true
+  },
+  "slopes": {
+   "url": "https://img.recraft.ai/FRBjR4lyvIKQZHo6rZLf50zyQKUQW1o2YTO20p98JFM/raw:1/plain/abs://prod/images/a83088ad-ec03-4a1b-86d6-358f60df44b8"
+  },
+  "chef_moves": {
+   "url": "https://img.recraft.ai/MjvxEZCO5M-JtfK711N5sS3B2E6zMVPUXvZuBoSRID0/raw:1/plain/abs://prod/images/753c2d65-3560-42f5-a8dc-c0f14d7fe324"
+  },
+  "chef_poses": {
+   "url": "https://img.recraft.ai/bktj0OVpjKemF6W8JbK-8GJvlxpLBQzQTrwVM-2HhtM/raw:1/plain/abs://prod/images/7709e732-f7a8-4119-98bd-d8f9f43b7768"
+  },
+  "appraiser_moves": {
+   "url": "https://img.recraft.ai/ISWEhy32sBeDmECE5sqkTHMqXu_VEQWvJ-KrjiCBXr0/raw:1/plain/abs://prod/images/57c047ed-bd67-4b03-a9b6-6561376f7e5c"
+  },
+  "appraiser_poses": {
+   "url": "https://img.recraft.ai/1ts8Lg9wKCW5nKdGpiuWiHiedNLn2X1p8GpD7bxmy1o/raw:1/plain/abs://prod/images/40bf408d-c0ad-44b7-b652-ae6038db7384"
+  },
+  "appraiser_fixes": {
+   "url": "https://img.recraft.ai/hoYbyEPBd4Ey131CLZGclIvF1pkZUTqRAwMU5Ku_CqY/raw:1/plain/abs://prod/images/648fd951-77a9-4e44-b116-c4e1dd6fca69"
   }
  },
  "assets": [
@@ -752,12 +1037,12 @@
   },
   {
    "path": "characters/chef_idle.png",
-   "source": "chef_concept_sheet",
+   "source": "chef_poses",
    "crop": [
-    155,
-    500,
-    220,
-    220
+    -20,
+    -38,
+    395,
+    395
    ],
    "size": [
     64,
@@ -765,22 +1050,22 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#2c3a46",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Chef (ART-CHAR-001), sheet pose 2, holding the spatula"
+   "depicts": "Chef (ART-CHAR-001), standing, arms down"
   },
   {
    "path": "characters/chef_walk_1.png",
-   "source": "chef_concept_sheet",
+   "source": "chef_moves",
    "crop": [
-    470,
-    500,
-    220,
-    220
+    -20,
+    -38,
+    395,
+    395
    ],
    "size": [
     64,
@@ -788,22 +1073,22 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#2c3a46",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Chef (ART-CHAR-001), sheet pose 4, stepping with the spatula raised"
+   "depicts": "Chef (ART-CHAR-001), walk 1 of 4: right foot forward"
   },
   {
    "path": "characters/chef_walk_2.png",
-   "source": "chef_concept_sheet",
+   "source": "chef_moves",
    "crop": [
-    1045,
-    500,
-    220,
-    220
+    315,
+    -38,
+    395,
+    395
    ],
    "size": [
     64,
@@ -811,22 +1096,183 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#2c3a46",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Chef (ART-CHAR-001), sheet pose 7, stepping"
+   "depicts": "Chef (ART-CHAR-001), walk 2 of 4: passing"
+  },
+  {
+   "path": "characters/chef_walk_3.png",
+   "source": "chef_moves",
+   "crop": [
+    662,
+    -38,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), walk 3 of 4: left foot forward"
+  },
+  {
+   "path": "characters/chef_walk_4.png",
+   "source": "chef_moves",
+   "crop": [
+    1002,
+    -38,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), walk 4 of 4: passing"
+  },
+  {
+   "path": "characters/chef_run_1.png",
+   "source": "chef_moves",
+   "crop": [
+    -11,
+    334,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), run 1 of 2: long stride, leaning forward"
+  },
+  {
+   "path": "characters/chef_run_2.png",
+   "source": "chef_moves",
+   "crop": [
+    333,
+    340,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), run 2 of 2: the other leg forward"
+  },
+  {
+   "path": "characters/chef_jump.png",
+   "source": "chef_moves",
+   "crop": [
+    665,
+    317,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), rising: knees tucked, arms up"
+  },
+  {
+   "path": "characters/chef_fall.png",
+   "source": "chef_moves",
+   "crop": [
+    1000,
+    357,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), falling: legs down, arms up"
+  },
+  {
+   "path": "characters/chef_land.png",
+   "source": "chef_poses",
+   "crop": [
+    315,
+    -38,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Chef (ART-CHAR-001), landing: arms out for balance"
   },
   {
    "path": "characters/chef_climb.png",
-   "source": "chef_concept_sheet",
+   "source": "chef_poses",
    "crop": [
-    1185,
-    500,
-    220,
-    220
+    680,
+    -15,
+    395,
+    395
    ],
    "size": [
     64,
@@ -834,22 +1280,22 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#2c3a46",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Chef (ART-CHAR-001), sheet pose 8, seen from behind"
+   "depicts": "Chef (ART-CHAR-001), climbing, seen from behind, one arm up"
   },
   {
    "path": "characters/appraiser_idle.png",
-   "source": "detective_concept_sheet",
+   "source": "appraiser_poses",
    "crop": [
-    0,
-    457,
-    220,
-    220
+    -15,
+    -55,
+    395,
+    395
    ],
    "size": [
     64,
@@ -857,22 +1303,22 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#213544",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 1, standing with the magnifier"
+   "depicts": "Appraiser (ART-CHAR-002), standing with the magnifier"
   },
   {
    "path": "characters/appraiser_walk_1.png",
-   "source": "detective_concept_sheet",
+   "source": "appraiser_moves",
    "crop": [
-    305,
-    457,
-    220,
-    220
+    -14,
+    -55,
+    395,
+    395
    ],
    "size": [
     64,
@@ -880,22 +1326,22 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#213544",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 3, striding and pointing"
+   "depicts": "Appraiser (ART-CHAR-002), walk 1 of 4: right foot forward"
   },
   {
    "path": "characters/appraiser_walk_2.png",
-   "source": "detective_concept_sheet",
+   "source": "appraiser_moves",
    "crop": [
-    455,
-    457,
-    220,
-    220
+    325,
+    -55,
+    395,
+    395
    ],
    "size": [
     64,
@@ -903,22 +1349,183 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#213544",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 4, stepping"
+   "depicts": "Appraiser (ART-CHAR-002), walk 2 of 4: passing"
+  },
+  {
+   "path": "characters/appraiser_walk_3.png",
+   "source": "appraiser_moves",
+   "crop": [
+    668,
+    -55,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), walk 3 of 4: left foot forward"
+  },
+  {
+   "path": "characters/appraiser_walk_4.png",
+   "source": "appraiser_moves",
+   "crop": [
+    1012,
+    -55,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), walk 4 of 4: passing"
+  },
+  {
+   "path": "characters/appraiser_run_1.png",
+   "source": "appraiser_moves",
+   "crop": [
+    1,
+    334,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), run 1 of 2: long stride"
+  },
+  {
+   "path": "characters/appraiser_run_2.png",
+   "source": "appraiser_moves",
+   "crop": [
+    336,
+    334,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), run 2 of 2: the other leg forward"
+  },
+  {
+   "path": "characters/appraiser_jump.png",
+   "source": "appraiser_fixes",
+   "crop": [
+    1013,
+    -55,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), rising: both arms up, one magnifier"
+  },
+  {
+   "path": "characters/appraiser_fall.png",
+   "source": "appraiser_moves",
+   "crop": [
+    1007,
+    340,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), falling: legs down, arms up"
+  },
+  {
+   "path": "characters/appraiser_land.png",
+   "source": "appraiser_poses",
+   "crop": [
+    324,
+    -55,
+    395,
+    395
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "edge": "lit",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Appraiser (ART-CHAR-002), landing: knees bent"
   },
   {
    "path": "characters/appraiser_climb.png",
-   "source": "detective_concept_sheet",
+   "source": "appraiser_fixes",
    "crop": [
-    1065,
-    457,
-    220,
-    220
+    1013,
+    352,
+    395,
+    395
    ],
    "size": [
     64,
@@ -926,13 +1533,13 @@
    ],
    "scale": 1,
    "colours": 16,
-   "outline": "#0a060e",
+   "edge": "lit",
    "largest_only": true,
    "key": {
-    "colour": "#213544",
-    "tolerance": 24
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Appraiser (ART-CHAR-002), sheet pose 8, seen from behind"
+   "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind, one arm up"
   },
   {
    "path": "world/platform.png",
@@ -948,9 +1555,10 @@
     32
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "seamless": "x",
-   "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
+   "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally",
+   "edge": "lit"
   },
   {
    "path": "world/ladder.png",
@@ -966,13 +1574,15 @@
     32
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
     "enclosed": true
    },
-   "depicts": "Ladder tile: two rungs; tiles vertically"
+   "depicts": "Ladder tile: two rungs; tiles vertically",
+   "edge": "lit",
+   "tile": true
   },
   {
    "path": "world/ladder_broken.png",
@@ -988,13 +1598,14 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
     "enclosed": true
    },
-   "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall"
+   "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall",
+   "edge": "lit"
   },
   {
    "path": "world/door_cold_store.png",
@@ -1010,11 +1621,12 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Cold store door: riveted steel with a frosted window"
+   "depicts": "Cold store door: riveted steel with a frosted window",
+   "edge": "lit"
   },
   {
    "path": "world/door_broken.png",
@@ -1030,11 +1642,12 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Broken door: smashed and boarded"
+   "depicts": "Broken door: smashed and boarded",
+   "edge": "lit"
   },
   {
    "path": "world/building_wall.png",
@@ -1050,9 +1663,10 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "seamless": "xy",
-   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
+   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions",
+   "edge": "lit"
   },
   {
    "path": "world/vending_machine.png",
@@ -1068,7 +1682,7 @@
     48
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "recolour": [
     {
      "hues": [
@@ -1082,7 +1696,8 @@
    "key": {
     "alpha": true
    },
-   "depicts": "Broken red vending machine with jars behind cracked glass"
+   "depicts": "Broken red vending machine with jars behind cracked glass",
+   "edge": "lit"
   },
   {
    "path": "world/shop.png",
@@ -1098,12 +1713,13 @@
     96
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Corner shop front: shelves, crates, awning and lantern"
+   "depicts": "Corner shop front: shelves, crates, awning and lantern",
+   "edge": "lit"
   },
   {
    "path": "world/vendor_cart.png",
@@ -1119,12 +1735,13 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Street stall: noodle cart with canopy and lantern"
+   "depicts": "Street stall: noodle cart with canopy and lantern",
+   "edge": "lit"
   },
   {
    "path": "world/noodle_vendor.png",
@@ -1140,12 +1757,13 @@
     48
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Noodle vendor NPC holding a ladle"
+   "depicts": "Noodle vendor NPC holding a ladle",
+   "edge": "lit"
   },
   {
    "path": "world/kiosk.png",
@@ -1161,11 +1779,12 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Wrecked kiosk with flesh slime on the roof"
+   "depicts": "Wrecked kiosk with flesh slime on the roof",
+   "edge": "lit"
   },
   {
    "path": "world/bridge.png",
@@ -1181,14 +1800,15 @@
     32
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "seamless": "x",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
     "enclosed": true
    },
-   "depicts": "Rotten bridge tile: dark planks; tiles horizontally"
+   "depicts": "Rotten bridge tile: dark planks; tiles horizontally",
+   "edge": "lit"
   },
   {
    "path": "world/ferry.png",
@@ -1204,12 +1824,13 @@
     112
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Drifted ferry: rusty hull, lit cabin, lantern"
+   "depicts": "Drifted ferry: rusty hull, lit cabin, lantern",
+   "edge": "lit"
   },
   {
    "path": "world/bag_washed_up.png",
@@ -1225,11 +1846,12 @@
     52
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Washed-up bag: slimy backpack with a sparkle"
+   "depicts": "Washed-up bag: slimy backpack with a sparkle",
+   "edge": "lit"
   },
   {
    "path": "world/bag_roof.png",
@@ -1245,11 +1867,12 @@
     34
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Roof bag: roped duffel with a sparkle"
+   "depicts": "Roof bag: roped duffel with a sparkle",
+   "edge": "lit"
   },
   {
    "path": "world/cold_store.png",
@@ -1265,11 +1888,12 @@
     128
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Cold store block in scaffolding with a steel door and lamp"
+   "depicts": "Cold store block in scaffolding with a steel door and lamp",
+   "edge": "lit"
   },
   {
    "path": "world/acid_drip.png",
@@ -1285,12 +1909,315 @@
     96
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall"
+   "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall",
+   "edge": "lit"
+  },
+  {
+   "path": "walkway/deck.png",
+   "source": "walkway",
+   "crop": [
+    155,
+    245,
+    466,
+    109
+   ],
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "x",
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Walkway deck: riveted iron plates with a lit top edge, the feet line along its top; tiles horizontally"
+  },
+  {
+   "path": "walkway/deck_seam.png",
+   "source": "walkway",
+   "crop": [
+    505,
+    245,
+    350,
+    109
+   ],
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "lr",
+    "width": 3
+   },
+   "depicts": "Walkway deck variant: a plate seam"
+  },
+  {
+   "path": "walkway/deck_rivets.png",
+   "source": "walkway",
+   "crop": [
+    855,
+    245,
+    350,
+    109
+   ],
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "lr",
+    "width": 3
+   },
+   "depicts": "Walkway deck variant: a riveted joint"
+  },
+  {
+   "path": "walkway/deck_worn.png",
+   "source": "walkway",
+   "crop": [
+    1180,
+    245,
+    350,
+    109
+   ],
+   "size": [
+    32,
+    10
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "lr",
+    "width": 3
+   },
+   "depicts": "Walkway deck variant: worn, rusted plates"
+  },
+  {
+   "path": "walkway/truss.png",
+   "source": "walkway",
+   "crop": [
+    155,
+    354,
+    466,
+    175
+   ],
+   "size": [
+    32,
+    16
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "x",
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "depicts": "Truss under the deck: an X-braced iron girder; tiles horizontally"
+  },
+  {
+   "path": "walkway/end_left.png",
+   "source": "walkway_ends",
+   "crop": [
+    736,
+    117,
+    350,
+    350
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "largest_only": true,
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "r",
+    "width": 3,
+    "top": true
+   },
+   "depicts": "Snapped left end of a walkway: torn plates, bent girder and dangling debris on its left"
+  },
+  {
+   "path": "walkway/end_right.png",
+   "source": "walkway_ends",
+   "crop": [
+    313,
+    119,
+    350,
+    350
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "largest_only": true,
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "l",
+    "width": 3,
+    "top": true
+   },
+   "depicts": "Snapped right end of a walkway: torn plates and bent rebar on its right"
+  },
+  {
+   "path": "walkway/scaffold.png",
+   "source": "supports",
+   "crop": [
+    30,
+    200,
+    300,
+    533
+   ],
+   "size": [
+    24,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "y",
+   "edge": "lit",
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Support: an X-braced iron scaffold tower; tiles vertically"
+  },
+  {
+   "path": "walkway/pillar.png",
+   "source": "supports",
+   "crop": [
+    400,
+    300,
+    230,
+    533
+   ],
+   "size": [
+    20,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "y",
+   "edge": "lit",
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Support: a cracked concrete pillar; tiles vertically"
+  },
+  {
+   "path": "walkway/column.png",
+   "source": "supports",
+   "crop": [
+    720,
+    200,
+    280,
+    533
+   ],
+   "size": [
+    24,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "y",
+   "edge": "lit",
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Support: a bolted iron I-beam column; tiles vertically"
+  },
+  {
+   "path": "walkway/ramp.png",
+   "source": "slopes",
+   "crop": [
+    40,
+    0,
+    700,
+    700
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "largest_only": true,
+   "depicts": "Ramp: an iron plate slab rising left to right on a bracket; mirror it for the other way"
+  },
+  {
+   "path": "walkway/stairs.png",
+   "source": "slopes",
+   "crop": [
+    770,
+    0,
+    766,
+    766
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "edge": "lit",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "largest_only": true,
+   "depicts": "Stairs: iron steps rising left to right on a stringer; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",
@@ -1790,96 +2717,6 @@
    "depicts": "Dish icon: surf and turf"
   },
   {
-   "path": "ui/panel_frame.png",
-   "source": "ui",
-   "crop": [
-    17,
-    35,
-    340,
-    340
-   ],
-   "size": [
-    96,
-    96
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      190,
-      345
-     ],
-     "saturation": 0.2
-    }
-   ],
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Riveted grey steel panel frame for 9-slice"
-  },
-  {
-   "path": "ui/bar_frame.png",
-   "source": "ui",
-   "crop": [
-    341,
-    127,
-    662,
-    196
-   ],
-   "size": [
-    192,
-    56
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      190,
-      345
-     ],
-     "saturation": 0.2
-    }
-   ],
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Riveted grey steel bar frame, empty inside"
-  },
-  {
-   "path": "ui/item_slot.png",
-   "source": "ui",
-   "crop": [
-    18,
-    381,
-    339,
-    339
-   ],
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      190,
-      345
-     ],
-     "saturation": 0.2
-    }
-   ],
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Grey steel item slot frame"
-  },
-  {
    "path": "ui/heart_full.png",
    "source": "ui",
    "crop": [
@@ -1940,57 +2777,6 @@
     "alpha": true
    },
    "depicts": "Heart, empty: the full heart's shape drained to dark grey"
-  },
-  {
-   "path": "ui/button.png",
-   "source": "ui",
-   "crop": [
-    22,
-    761,
-    198,
-    198
-   ],
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      190,
-      345
-     ],
-     "saturation": 0.2
-    }
-   ],
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Button, normal, grey steel, blank face"
-  },
-  {
-   "path": "ui/button_highlight.png",
-   "source": "ui",
-   "crop": [
-    227,
-    767,
-    189,
-    189
-   ],
-   "size": [
-    64,
-    64
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Button, highlighted, yellow, blank face"
   },
   {
    "path": "ui/icon_day.png",
@@ -2121,178 +2907,26 @@
    "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
   },
   {
-   "path": "ground/road.png",
-   "source": "ground_road",
-   "crop": [
-    0,
-    264,
-    321,
-    241
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 16,
-   "seamless": "x",
-   "depicts": "Intact road: asphalt with an orange lane dash over a concrete deck, in section; tiles horizontally, and every other ground tile meets it without a seam"
-  },
-  {
-   "path": "ground/road_cracked.png",
-   "source": "ground_road",
-   "crop": [
-    1190,
-    264,
-    241,
-    241
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "lr",
-    "width": 8
-   },
-   "depicts": "Cracked road: zigzag fissures through the asphalt and deck"
-  },
-  {
-   "path": "ground/pothole.png",
-   "source": "ground_broken",
-   "crop": [
-    170,
-    248,
-    300,
-    226
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "lr",
-    "width": 8
-   },
-   "depicts": "Pothole: a dark hole bitten into the asphalt"
-  },
-  {
-   "path": "ground/road_end_left.png",
-   "source": "ground_broken",
-   "crop": [
-    786,
-    248,
-    226,
-    226
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "r",
-    "width": 8
-   },
-   "depicts": "Road end, left: the road breaks off at the tile's left edge with bent rebar; the road continues to the right"
-  },
-  {
-   "path": "ground/road_end_right.png",
-   "source": "ground_broken",
-   "crop": [
-    500,
-    248,
-    226,
-    226
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 20,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "l",
-    "width": 8
-   },
-   "depicts": "Road end, right: the road breaks off at the tile's right edge with bent rebar; the road continues to the left"
-  },
-  {
-   "path": "ground/slab_tilted.png",
-   "source": "ground_bridged",
-   "crop": [
-    150,
-    185,
-    280,
-    288
-   ],
-   "size": [
-    32,
-    40
-   ],
-   "scale": 1,
-   "colours": 24,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "lr",
-    "width": 8
-   },
-   "depicts": "Tilted slab: a loose piece of road tilted up to the right over the deck; 8 px taller than its cell"
-  },
-  {
    "path": "ground/rubble.png",
    "source": "ground_bridged",
    "crop": [
     1015,
     132,
     300,
-    341
+    200
    ],
    "size": [
     32,
-    48
+    24
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "lr",
-    "width": 8
-   },
-   "depicts": "Rubble: a heap of concrete blocks, bricks and rebar blocking the road; 16 px taller than its cell"
+   "depicts": "Rubble heap that blocks a walkway cell; stands on the deck",
+   "edge": "lit"
   },
   {
    "path": "ground/bridge_plank.png",
@@ -2308,12 +2942,13 @@
     14
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally"
+   "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally",
+   "edge": "lit"
   },
   {
    "path": "ground/car_buried.png",
@@ -2322,24 +2957,20 @@
     1040,
     132,
     300,
-    341
+    200
    ],
    "size": [
     32,
-    48
+    24
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "match": {
-    "path": "ground/road.png",
-    "sides": "lr",
-    "width": 8
-   },
-   "depicts": "Half-buried car: a rusty violet car nose-down in the cracked road, rear wheel up; 16 px taller than its cell"
+   "depicts": "Wrecked car sunk into a walkway; stands on the deck",
+   "edge": "lit"
   },
   {
    "path": "decor/train_car_lit.png",
@@ -2355,12 +2986,13 @@
     80
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Tilted elevated train car, lit orange windows, bent bogies"
+   "depicts": "Tilted elevated train car, lit orange windows, bent bogies",
+   "edge": "lit"
   },
   {
    "path": "decor/train_car_wrecked.png",
@@ -2376,12 +3008,13 @@
     75
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime"
+   "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime",
+   "edge": "lit"
   },
   {
    "path": "decor/facade_tall.png",
@@ -2397,13 +3030,14 @@
     128
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar"
+   "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar",
+   "edge": "lit"
   },
   {
    "path": "decor/facade_low.png",
@@ -2419,13 +3053,14 @@
     104
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base"
+   "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base",
+   "edge": "lit"
   },
   {
    "path": "decor/cables_sagging.png",
@@ -2441,12 +3076,13 @@
     54
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Cable bundle sagging between two snapped stubs"
+   "depicts": "Cable bundle sagging between two snapped stubs",
+   "edge": "lit"
   },
   {
    "path": "decor/cables_hanging.png",
@@ -2462,11 +3098,12 @@
     60
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "key": {
     "alpha": true
    },
-   "depicts": "Two cables hanging straight down with frayed ends and a spark"
+   "depicts": "Two cables hanging straight down with frayed ends and a spark",
+   "edge": "lit"
   },
   {
    "path": "decor/pipe_bent.png",
@@ -2482,12 +3119,13 @@
     48
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Rusty pipe hanging at an angle from a broken end"
+   "depicts": "Rusty pipe hanging at an angle from a broken end",
+   "edge": "lit"
   },
   {
    "path": "decor/pipes_valve.png",
@@ -2503,12 +3141,13 @@
     59
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel"
+   "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel",
+   "edge": "lit"
   },
   {
    "path": "decor/neon_box.png",
@@ -2524,7 +3163,7 @@
     64
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "recolour": [
     {
@@ -2540,7 +3179,8 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain"
+   "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain",
+   "edge": "lit"
   },
   {
    "path": "decor/neon_blade.png",
@@ -2556,7 +3196,7 @@
     100
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "recolour": [
     {
@@ -2572,7 +3212,8 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Dead neon blade sign: tall, unlit stripes and a star"
+   "depicts": "Dead neon blade sign: tall, unlit stripes and a star",
+   "edge": "lit"
   },
   {
    "path": "decor/flesh_vines.png",
@@ -2588,12 +3229,13 @@
     84
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Flesh vines drooping from above, dripping"
+   "depicts": "Flesh vines drooping from above, dripping",
+   "edge": "lit"
   },
   {
    "path": "decor/flesh_tendril.png",
@@ -2609,12 +3251,13 @@
     75
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Flesh tendril twisting up from a small base"
+   "depicts": "Flesh tendril twisting up from a small base",
+   "edge": "lit"
   },
   {
    "path": "decor/flesh_tumor.png",
@@ -2630,12 +3273,13 @@
     46
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Lumpy flesh growth with veins and pustules"
+   "depicts": "Lumpy flesh growth with veins and pustules",
+   "edge": "lit"
   },
   {
    "path": "decor/flesh_polyps.png",
@@ -2651,12 +3295,13 @@
     51
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "alpha": true
    },
-   "depicts": "Cluster of three glossy flesh polyps"
+   "depicts": "Cluster of three glossy flesh polyps",
+   "edge": "lit"
   },
   {
    "path": "decor/rubble_low.png",
@@ -2672,13 +3317,14 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Low rubble heap: concrete chunks, bricks and rebar"
+   "depicts": "Low rubble heap: concrete chunks, bricks and rebar",
+   "edge": "lit"
   },
   {
    "path": "decor/rubble_high.png",
@@ -2694,13 +3340,14 @@
     64
    ],
    "scale": 1,
-   "colours": 24,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "High rubble heap: blocks, a blank sign post and flesh slime"
+   "depicts": "High rubble heap: blocks, a blank sign post and flesh slime",
+   "edge": "lit"
   },
   {
    "path": "decor/pillar_snapped.png",
@@ -2716,7 +3363,7 @@
     69
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "recolour": [
     {
@@ -2732,7 +3379,8 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Overpass pillar snapped at the top, rebar bent out"
+   "depicts": "Overpass pillar snapped at the top, rebar bent out",
+   "edge": "lit"
   },
   {
    "path": "decor/pillar_deck.png",
@@ -2748,7 +3396,7 @@
     69
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "recolour": [
     {
@@ -2764,7 +3412,8 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Overpass pillar with a piece of deck still on top"
+   "depicts": "Overpass pillar with a piece of deck still on top",
+   "edge": "lit"
   },
   {
    "path": "decor/lamp_standing.png",
@@ -2780,13 +3429,14 @@
     66
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Street lamp standing, dim amber bulb"
+   "depicts": "Street lamp standing, dim amber bulb",
+   "edge": "lit"
   },
   {
    "path": "decor/lamp_bent.png",
@@ -2802,12 +3452,13 @@
     58
    ],
    "scale": 1,
-   "colours": 16,
+   "colours": 12,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Street lamp bent over, head hanging, bulb smashed"
+   "depicts": "Street lamp bent over, head hanging, bulb smashed",
+   "edge": "lit"
   }
  ]
 }

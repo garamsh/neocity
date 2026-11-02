@@ -52,6 +52,20 @@ const char *path(Image image) {
     return "characters/chef_walk_1.png";
   case Image::ChefWalk2:
     return "characters/chef_walk_2.png";
+  case Image::ChefWalk3:
+    return "characters/chef_walk_3.png";
+  case Image::ChefWalk4:
+    return "characters/chef_walk_4.png";
+  case Image::ChefRun1:
+    return "characters/chef_run_1.png";
+  case Image::ChefRun2:
+    return "characters/chef_run_2.png";
+  case Image::ChefJump:
+    return "characters/chef_jump.png";
+  case Image::ChefFall:
+    return "characters/chef_fall.png";
+  case Image::ChefLand:
+    return "characters/chef_land.png";
   case Image::ChefClimb:
     return "characters/chef_climb.png";
   case Image::AppraiserIdle:
@@ -60,20 +74,46 @@ const char *path(Image image) {
     return "characters/appraiser_walk_1.png";
   case Image::AppraiserWalk2:
     return "characters/appraiser_walk_2.png";
+  case Image::AppraiserWalk3:
+    return "characters/appraiser_walk_3.png";
+  case Image::AppraiserWalk4:
+    return "characters/appraiser_walk_4.png";
+  case Image::AppraiserRun1:
+    return "characters/appraiser_run_1.png";
+  case Image::AppraiserRun2:
+    return "characters/appraiser_run_2.png";
+  case Image::AppraiserJump:
+    return "characters/appraiser_jump.png";
+  case Image::AppraiserFall:
+    return "characters/appraiser_fall.png";
+  case Image::AppraiserLand:
+    return "characters/appraiser_land.png";
   case Image::AppraiserClimb:
     return "characters/appraiser_climb.png";
-  case Image::Road:
-    return "ground/road.png";
-  case Image::CrackedRoad:
-    return "ground/road_cracked.png";
-  case Image::Pothole:
-    return "ground/pothole.png";
-  case Image::RoadEndLeft:
-    return "ground/road_end_left.png";
-  case Image::RoadEndRight:
-    return "ground/road_end_right.png";
-  case Image::TiltedSlab:
-    return "ground/slab_tilted.png";
+  case Image::Deck:
+    return "walkway/deck.png";
+  case Image::DeckSeam:
+    return "walkway/deck_seam.png";
+  case Image::DeckRivets:
+    return "walkway/deck_rivets.png";
+  case Image::DeckWorn:
+    return "walkway/deck_worn.png";
+  case Image::Truss:
+    return "walkway/truss.png";
+  case Image::EndLeft:
+    return "walkway/end_left.png";
+  case Image::EndRight:
+    return "walkway/end_right.png";
+  case Image::Scaffold:
+    return "walkway/scaffold.png";
+  case Image::Pillar:
+    return "walkway/pillar.png";
+  case Image::Column:
+    return "walkway/column.png";
+  case Image::Ramp:
+    return "walkway/ramp.png";
+  case Image::Stairs:
+    return "walkway/stairs.png";
   case Image::Rubble:
     return "ground/rubble.png";
   case Image::PlankBridge:
@@ -409,19 +449,35 @@ Vector2 Art::size(Image image) const {
   return images.at(slot(image))->get_size();
 }
 
-Motion Art::track(survival::Actor actor, survival::GridPosition cell,
+Motion Art::track(survival::Actor actor, const survival::Body &body,
                   std::chrono::microseconds world_time) const {
   auto &trail = trails.at(static_cast<std::size_t>(actor));
   if (world_time < trail.seen_at || trail.seen_at.count() < 0) {
-    trail.motion = {.cell = cell, .moved_at = std::chrono::microseconds{-1}};
-  } else if (cell != trail.motion.cell) {
-    if (cell.x != trail.motion.cell.x) {
-      trail.motion.facing_left = cell.x < trail.motion.cell.x;
-    }
-    trail.motion.second_step = !trail.motion.second_step;
-    trail.motion.cell = cell;
-    trail.motion.moved_at = world_time;
+    trail = {.motion = {},
+             .x = body.position.x,
+             .x_at = world_time,
+             .stance = body.stance,
+             .seen_at = world_time};
+    return trail.motion;
   }
+  // Movement comes in whole units of several physics steps, so the speed is
+  // the distance of a change of position over the time since the last one.
+  if (body.position.x != trail.x && world_time > trail.x_at) {
+    const auto steps =
+        static_cast<float>((world_time - trail.x_at).count()) /
+        static_cast<float>(
+            std::chrono::microseconds(survival::PHYSICS.tick).count());
+    trail.motion.speed =
+        static_cast<float>(std::abs(body.position.x - trail.x)) / steps;
+    trail.motion.moved_at = world_time;
+    trail.x = body.position.x;
+    trail.x_at = world_time;
+  }
+  if (trail.stance == survival::Stance::Airborne &&
+      body.stance == survival::Stance::Standing) {
+    trail.motion.landed_at = world_time;
+  }
+  trail.stance = body.stance;
   trail.seen_at = world_time;
   return trail.motion;
 }

@@ -16,12 +16,17 @@ const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up"
 ## The map's top-left corner on screen and its cell size, as the city draws it.
 const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
 const CELL: int = 32
-## Ground cells of the first city frame with nothing but scenery in the cell
-## above: the arcade, the rooftop and the market.
+## Ground cells of the first city frame with nothing but scenery in them: the
+## arcade, the rooftop and the market. Each walkway's deck runs under its
+## cell's floor line, where an actor's feet are.
 const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(21, 2), Vector2i(22, 2), Vector2i(8, 11), Vector2i(10, 11)]
-## How much brighter, in mean luminance from 0 to 1, those ground cells read
-## than the scenery in the cells above them.
+## How much brighter, in mean luminance from 0 to 1, the deck under those
+## cells reads than the scenery in the cells, above the deck.
 const GROUND_LEAD: float = 0.05
+## The rows of a deck under its floor line, as the city draws it.
+const DECK_ROWS: int = 10
+## How far one 100ms movement unit carries a running actor, in sub-cells.
+const RUN_UNIT: int = 50
 ## Longer than the screen's longest eased motion.
 const SETTLE_MSEC: int = 400
 
@@ -51,6 +56,22 @@ func _run() -> void:
 	await _walk(KEY_D, 7)
 	if not _ground_leads(await _save_city("4-city-collect-prompt")):
 		return
+	# A jump in place on the flat street comes down where it rose.
+	_key(KEY_SPACE, true)
+	await _until_stance("airborne")
+	_key(KEY_SPACE, false)
+	await _until_falling()
+	await _save_city("28-city-falling")
+	await _until_stance("standing")
+	await _save_city("29-city-landing")
+	_key(KEY_SHIFT, true)
+	_key(KEY_A, true)
+	# The first unit after standing still reads as a walk; the second as a run.
+	await _until_moved(-2 * RUN_UNIT)
+	await _save_city("30-city-running")
+	_key(KEY_A, false)
+	_key(KEY_SHIFT, false)
+	await _frames(3)
 	await _walk(KEY_D, 8)
 	_key(KEY_D, true)
 	_key(KEY_SPACE, true)
@@ -228,6 +249,30 @@ func _until_stance(stance: String) -> void:
 			return
 		await process_frame
 
+## Waits until the chef has moved `distance` sub-cells sideways or further,
+## signed, from where it stands now.
+func _until_moved(distance: int) -> void:
+	var start: int = scene.survival_status()["chef"]["sub_x"]
+	for frame: int in range(60):
+		var now: int = scene.survival_status()["chef"]["sub_x"]
+		if (now - start) * signi(distance) >= absi(distance):
+			return
+		await process_frame
+	_fail("the chef did not move %d sub-cells" % distance)
+
+## Waits until the chef, in the air, is lower than the highest it has been
+## since: it is coming down.
+func _until_falling() -> void:
+	var top: int = scene.survival_status()["chef"]["sub_y"]
+	for frame: int in range(60):
+		var chef: Dictionary = scene.survival_status()["chef"]
+		var now: int = chef["sub_y"]
+		if chef["stance"] == "airborne" and now > top:
+			return
+		top = mini(top, now)
+		await process_frame
+	_fail("the chef never came down from the jump")
+
 ## Holds A until the chef stands on column `x` or left of it.
 func _walk_left(x: int) -> void:
 	_key(KEY_A, true)
@@ -307,14 +352,14 @@ func _save_city(screen: String) -> Image:
 	city_frames += 1
 	return frame
 
-## Whether the ground's mean luminance leads the scenery right above it by
+## Whether the deck's mean luminance leads the scenery right above it by
 ## GROUND_LEAD; the control is that the scenery is not black.
 func _ground_leads(frame: Image) -> bool:
 	var ground: float = 0.0
 	var behind: float = 0.0
 	for cell: Vector2i in LEAD_CELLS:
-		ground += _luminance(frame, cell)
-		behind += _luminance(frame, cell + Vector2i.UP)
+		ground += _luminance(frame, MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL, DECK_ROWS)
+		behind += _luminance(frame, MAP_ORIGIN + cell * CELL, CELL)
 	ground /= LEAD_CELLS.size()
 	behind /= LEAD_CELLS.size()
 	print("Capture: the ground leads the scenery above it by %.3f (ground %.3f, scenery %.3f, at least %.3f)." % [ground - behind, ground, behind, GROUND_LEAD])
@@ -323,13 +368,13 @@ func _ground_leads(frame: Image) -> bool:
 		return false
 	return true
 
-func _luminance(frame: Image, cell: Vector2i) -> float:
-	var corner: Vector2i = MAP_ORIGIN + cell * CELL
+## The mean luminance of a cell-wide band of rows whose top-left is corner.
+func _luminance(frame: Image, corner: Vector2i, rows: int) -> float:
 	var total: float = 0.0
-	for y: int in range(CELL):
+	for y: int in range(rows):
 		for x: int in range(CELL):
 			total += frame.get_pixelv(corner + Vector2i(x, y)).get_luminance()
-	return total / (CELL * CELL)
+	return total / (CELL * rows)
 
 func _fail(message: String) -> void:
 	push_error(message)

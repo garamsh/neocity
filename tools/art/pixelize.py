@@ -10,6 +10,9 @@ Subcommands, all driven by assets.json beside this file:
   sheet RAW_DIR ART CONCEPT_DIR OUT
                          write the review sheet: the concept images, a mock frame, 8x close-ups
                          (sheet poses beside sprites, plain renders beside processed), every asset
+  check ART              measure every runtime PNG in ART's manifest and exit 1 when one breaks a
+                         clean-art rule: lone pixels, its folder's colour limit, and for world and
+                         character sprites the lit outline and the light from above
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -31,6 +34,29 @@ SPEC = pathlib.Path(__file__).with_name("assets.json")
 REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
 GRID_CONFIDENCE = 4.0
 NOISE_DISTANCE = 80**2 * 3
+# The share of an asset's opaque pixels that may be lone: of a colour no 8-neighbour shares.
+# The check allows LONE_LIMIT; merge_lone keeps LONE_KEEP of contrasting ones such as eyes.
+LONE_LIMIT = 0.01
+LONE_KEEP = 0.004
+# The most colours an asset may use, by its folder: characters 16, every other sprite 12, the
+# full-screen layers 32 and the logo 16.
+COLOUR_LIMITS = {
+    "characters": 16,
+    "world": 12,
+    "walkway": 12,
+    "ground": 12,
+    "decor": 12,
+    "icons": 12,
+    "ui": 12,
+    "backgrounds": 32,
+    "workshop": 32,
+    "title": 32,
+}
+LOGO_COLOURS = 16
+# Folders of the world and character sprites, which keep the lit outline and the light from above.
+SPRITE_FOLDERS = ("characters", "world", "walkway", "ground", "decor")
+# The share of side and bottom edge pixels that must be no lighter than the pixel inside them.
+EDGE_SHARE = 0.95
 
 
 def read_png(path):
@@ -108,8 +134,18 @@ def write_png(path, rows):
 
 
 def crop(rows, box):
+    """The box of rows; what lies outside the image is clear white, which every key treats as background."""
     x, y, w, h = box
-    return [row[x : x + w] for row in rows[y : y + h]]
+    height, width = len(rows), len(rows[0])
+    clear = (255, 255, 255, 0)
+    out = []
+    for yy in range(y, y + h):
+        if not 0 <= yy < height:
+            out.append([clear] * w)
+            continue
+        row = rows[yy]
+        out.append([clear] * max(0, -x) + row[max(0, x) : min(width, x + w)] + [clear] * max(0, x + w - width))
+    return out
 
 
 def wrap_x(rows):
@@ -475,17 +511,109 @@ def outline(cells, index):
     ]
 
 
-def match_edges(cells, base, sides, width):
+def luminance(colour):
+    return 0.299 * colour[0] + 0.587 * colour[1] + 0.114 * colour[2]
+
+
+def lone(cells, x, y):
+    """Whether the opaque cell at x, y has no 8-neighbour of its own colour."""
+    return cells[y][x] is not None and cells[y][x] not in neighbours(cells, x, y, True)
+
+
+def merge_lone(cells, palette):
+    """Replaces each lone pixel by the colour most common around it, so the asset is drawn in clusters.
+
+    The lone pixels that contrast most with what is around them, such as an eye, are kept, up to
+    LONE_KEEP of the opaque pixels.
+    """
+    opaque = sum(value is not None for row in cells for value in row)
+    found = []
+    for y, row in enumerate(cells):
+        for x, value in enumerate(row):
+            if lone(cells, x, y):
+                common = most_common(neighbours(cells, x, y, True))
+                if common is not None:
+                    found.append((redmean(palette[value], palette[common]), x, y, common))
+    found.sort(key=lambda item: (-item[0], item[2], item[1]))
+    allowed = int(opaque * LONE_KEEP)
+    out = [list(row) for row in cells]
+    for rank, (contrast, x, y, common) in enumerate(found):
+        if rank >= allowed or contrast < NOISE_DISTANCE * 4:
+            out[y][x] = common
+    return out
+
+
+def facing(cells, x, y, tile):
+    """The sides of the opaque cell at x, y that face clear space: "up", or "side" for any other.
+
+    A tile continues past its own border, so its border faces nothing.
+    """
+    height, width = len(cells), len(cells[0])
+
+    def clear(nx, ny):
+        if 0 <= nx < width and 0 <= ny < height:
+            return cells[ny][nx] is None
+        return not tile
+
+    up = clear(x, y - 1)
+    side = clear(x - 1, y) or clear(x + 1, y) or clear(x, y + 1)
+    return up, side
+
+
+def lit_edges(cells, palette, tile):
+    """The one outline rule: a selective outline lit from above.
+
+    An edge facing up shows the colour under it, without a dark line; every other edge takes a
+    darker colour of the asset's own, near 45% of the darker of itself and the pixel inside it.
+    """
+    kept = sorted({i for row in cells for i in row if i is not None})
+    height, width = len(cells), len(cells[0])
+
+    def shade(index):
+        darker = [k for k in kept if luminance(palette[k]) <= luminance(palette[index])]
+        target = tuple(c * 0.45 for c in palette[index])
+        return min(darker, key=lambda k: (redmean(palette[k], target), k))
+
+    def inner(x, y):
+        """The opaque pixel opposite the first clear 4-neighbour of a side or bottom edge."""
+        for dx, dy in ((-1, 0), (1, 0), (0, 1)):
+            nx, ny, ix, iy = x + dx, y + dy, x - dx, y - dy
+            if 0 <= nx < width and 0 <= ny < height and cells[ny][nx] is None:
+                if 0 <= ix < width and 0 <= iy < height:
+                    return cells[iy][ix]
+                return None
+        return None
+
+    out = [list(row) for row in cells]
+    for y, row in enumerate(cells):
+        for x, value in enumerate(row):
+            if value is None:
+                continue
+            up, side = facing(cells, x, y, tile)
+            below = cells[y + 1][x] if y + 1 < height else None
+            if up and below is not None and luminance(palette[below]) > luminance(palette[value]):
+                out[y][x] = below
+            elif side and not up:
+                inside = inner(x, y)
+                darkest = value
+                if inside is not None and luminance(palette[inside]) < luminance(palette[value]):
+                    darkest = inside
+                out[y][x] = shade(darkest)
+    return out
+
+
+def match_edges(cells, base, sides, width, top=False):
     """Gives cells the outer columns of base on each side named, so the two tiles meet without a seam.
 
-    base is aligned to the bottom of cells. Each row copies base up to a cut that varies from row to
-    row between half of width and width, so the join is ragged rather than a straight line.
+    base is aligned to the bottom of cells, or to the top with top. Each row copies base up to a cut
+    that varies from row to row between half of width and width, so the join is ragged rather than a
+    straight line.
     """
     height, tile_w, base_w = len(cells), len(cells[0]), len(base[0])
     out = [list(row) for row in cells]
     for by, base_row in enumerate(base):
-        y = height - len(base) + by
-        if y < 0:
+        y = by if top else height - len(base) + by
+        if y < 0 or y >= height:
             continue
         cut = width // 2 + (by * 5) % (width - width // 2 + 1)
         for c in range(cut):
@@ -569,11 +697,16 @@ def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
     match = asset.get("match")
     base = done[match["path"]] if match else None
     fixed = sorted({i for row in base for i in row if i is not None}) if base else ()
-    cells = clean(limit_colours(cells, palette, asset["colours"], edge, fixed), palette)
+    cells = merge_lone(clean(limit_colours(cells, palette, asset["colours"], edge, fixed), palette), palette)
     if edge is not None:
         cells = outline(cells, edge)
+    elif asset.get("edge") == "lit":
+        tile = bool(seamless or match or asset.get("tile"))
+        cells = lit_edges(cells, palette, tile)
     if match:
-        cells = match_edges(cells, base, match["sides"], match["width"])
+        cells = match_edges(cells, base, match["sides"], match["width"], match.get("top", False))
+    # The outline and the joins leave some pixels lone again.
+    cells = merge_lone(cells, palette)
     if done is not None:
         done[asset["path"]] = cells
     used = {i for row in cells for i in row if i is not None}
@@ -631,6 +764,87 @@ def process(raw_dir, art_dir):
     text = json.dumps({"generated_by": "tools/art/pixelize.py process", "files": manifest}, indent=1)
     (pathlib.Path(art_dir) / "manifest.json").write_text(text + "\n")
     print(f"wrote {len(manifest)} runtime PNGs listed in {SPEC.name} and manifest.json under {art_dir}")
+
+
+def measure(rows, scale):
+    """The clean-art measures of one runtime PNG, read on its own pixel grid.
+
+    Returns the share of lone pixels, the colour count, the share of side and bottom edge pixels
+    no lighter than the pixel inside them (None without such edges), and the mean luminance of
+    what faces up and what faces down: the up- and down-facing edges, or for an asset with no
+    clear pixel its top and bottom quarter.
+    """
+    cells_rgba = [row[::scale] for row in rows[::scale]]
+    colours = {}
+    cells = [[None if a == 0 else colours.setdefault((r, g, b), len(colours)) for r, g, b, a in row] for row in cells_rgba]
+    palette = list(colours)
+    height, width = len(cells), len(cells[0])
+    opaque = [(x, y) for y in range(height) for x in range(width) if cells[y][x] is not None]
+    lone_count = sum(lone(cells, x, y) for x, y in opaque)
+    dark, judged, up_lums, down_lums = 0, 0, [], []
+    for x, y in opaque:
+        up, side = facing(cells, x, y, True)
+        lum = luminance(palette[cells[y][x]])
+        if up:
+            up_lums.append(lum)
+        if y + 1 < height and cells[y + 1][x] is None:
+            down_lums.append(lum)
+        if not side or up:
+            continue
+        for dx, dy in ((-1, 0), (1, 0), (0, 1)):
+            nx, ny, ix, iy = x + dx, y + dy, x - dx, y - dy
+            if 0 <= nx < width and 0 <= ny < height and cells[ny][nx] is None:
+                if 0 <= ix < width and 0 <= iy < height and cells[iy][ix] is not None:
+                    judged += 1
+                    dark += lum <= luminance(palette[cells[iy][ix]])
+                break
+    if not up_lums or not down_lums:
+        quarter = max(1, height // 4)
+        up_lums = [luminance(palette[cells[y][x]]) for x, y in opaque if y < quarter]
+        down_lums = [luminance(palette[cells[y][x]]) for x, y in opaque if y >= height - quarter]
+    return {
+        "lone": lone_count / max(1, len(opaque)),
+        "colours": len(colours),
+        "edge": dark / judged if judged else None,
+        "lit": sum(up_lums) / max(1, len(up_lums)),
+        "shaded": sum(down_lums) / max(1, len(down_lums)),
+    }
+
+
+def problems(path, rows, scale):
+    """The clean-art rules one runtime PNG at path breaks, each as a sentence."""
+    folder = path.split("/")[0]
+    limit = LOGO_COLOURS if path == "title/logo.png" else COLOUR_LIMITS.get(folder)
+    found = []
+    m = measure(rows, scale)
+    if m["lone"] > LONE_LIMIT:
+        found.append(f"{m['lone']:.2%} lone pixels, over {LONE_LIMIT:.0%}")
+    if limit is None or m["colours"] > limit:
+        found.append(f"{m['colours']} colours, over the {folder} limit of {limit}")
+    if folder in SPRITE_FOLDERS:
+        if m["edge"] is not None and m["edge"] < EDGE_SHARE:
+            found.append(f"{m['edge']:.0%} of side and bottom edges darker than inside, under {EDGE_SHARE:.0%}")
+        if m["lit"] < m["shaded"]:
+            found.append(f"lit from below: up-facing {m['lit']:.0f} under down-facing {m['shaded']:.0f}")
+    return found, m
+
+
+def check(art_dir):
+    """Measures every runtime PNG in the manifest and exits 1 when one breaks a clean-art rule."""
+    art_dir = pathlib.Path(art_dir)
+    files = json.loads((art_dir / "manifest.json").read_text())["files"]
+    failed = 0
+    for entry in files:
+        found, m = problems(entry["path"], read_png(art_dir / entry["path"])[2], entry["scale"])
+        edge = "-" if m["edge"] is None else f"{m['edge']:.0%}"
+        print(
+            f"{entry['path']}: lone {m['lone']:.2%}, {m['colours']} colours, edges darker {edge}, "
+            f"up {m['lit']:.0f} / down {m['shaded']:.0f}" + ("" if not found else " FAILS: " + "; ".join(found))
+        )
+        failed += bool(found)
+    print(f"checked {len(files)} PNGs listed in {art_dir / 'manifest.json'}: {failed} break a rule")
+    if failed:
+        sys.exit(1)
 
 
 def fit(rows, max_w, max_h):
@@ -741,7 +955,7 @@ def sheet(raw_dir, art_dir, concept_dir, out):
 
 
 def main(argv):
-    commands = {"fetch": (fetch, 1), "process": (process, 2), "sheet": (sheet, 4)}
+    commands = {"fetch": (fetch, 1), "process": (process, 2), "sheet": (sheet, 4), "check": (check, 1)}
     if len(argv) < 2 or argv[1] not in commands or len(argv) - 2 != commands[argv[1]][1]:
         sys.exit(__doc__)
     command, _ = commands[argv[1]]
