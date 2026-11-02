@@ -71,8 +71,7 @@ constexpr ObjectId WASHED_BAG_6{46};
 constexpr ObjectId WASHED_BAG_7{47};
 constexpr ObjectId WASHED_BAG_8{48};
 
-constexpr std::uint32_t BAG_SURVIVES = 30;
-constexpr std::uint32_t BAG_STOCK = 12;
+constexpr std::uint32_t BAG_STOCK = 14;
 
 template <typename Id> struct Named {
   Id id;
@@ -190,15 +189,15 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   return object;
 }
 
-/// A bag the tide brings in once the run has spent `arrival` exploring or acid
-/// reaches `flood`, so a party with nothing left to walk to still gets one. The
-/// acid carries it off again once it stands `BAG_SURVIVES` above `flood`.
+/// A bag the tide brings in once the run has spent `arrival` exploring. Acid
+/// never brings one: it carries the bag off at `gone`, or sinks it before it
+/// lands, so rising acid only takes supply away.
 ObjectDefinition washed_up(ObjectId id, GridPosition cell,
                            IngredientId ingredient,
-                           std::chrono::seconds arrival, std::uint32_t flood) {
-  return destroyed(exposed(ingredient_source(id, cell, ingredient),
-                           {.elapsed = arrival, .acid = AcidLevel{flood}}),
-                   {.acid = AcidLevel{flood + BAG_SURVIVES}});
+                           std::chrono::seconds arrival, std::uint32_t gone) {
+  return destroyed(
+      exposed(ingredient_source(id, cell, ingredient), {.elapsed = arrival}),
+      {.acid = AcidLevel{gone}});
 }
 
 ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
@@ -206,7 +205,9 @@ ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
 }
 
 std::vector<ObjectDefinition> city() {
-  const WorldThreshold ferry_arrives{.elapsed = 800s, .acid = AcidLevel{30}};
+  constexpr auto ferry_time = 800s;
+  const WorldThreshold ferry_arrives{.elapsed = ferry_time,
+                                     .acid = AcidLevel{30}};
   return {
       terrain(BASE_DOCK, {.x = 0, .y = 5, .width = 4, .height = 5}),
       terrain(MAIN_STREET, {.x = 4, .y = 6, .width = 17, .height = 3}),
@@ -259,15 +260,15 @@ std::vector<ObjectDefinition> city() {
       ingredient_source(ROOF_BAG, {.x = 33, .y = 1}, TRUFFLE),
       exposed(owned(ingredient_source(FERRY_BAG, {.x = 23, .y = 12}, KELP),
                     DRIFTED_FERRY),
-              ferry_arrives),
-      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 200s, 10),
-      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 380s, 20),
-      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 560s, 30),
-      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 740s, 40),
-      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 920s, 50),
-      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 1100s, 60),
-      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 1280s, 70),
-      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 1460s, 80),
+              {.elapsed = ferry_time}),
+      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 120s, 40),
+      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 250s, 50),
+      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 380s, 55),
+      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 510s, 60),
+      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 640s, 65),
+      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 980s, 75),
+      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 1160s, 85),
+      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 770s, 70),
   };
 }
 
