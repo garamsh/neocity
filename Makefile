@@ -26,6 +26,7 @@ CONFIGURE := $(CMAKE) -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_MAKE_PROGRAM=$(TOOLS
 CPP_FILES := git ls-files --cached --others --exclude-standard -- 'src/*.cpp' 'src/*.hpp'
 CPP_UNITS := git ls-files --cached --others --exclude-standard -- 'src/*.cpp'
 CLANG_TIDY_CHECKS := -*,bugprone-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-bugprone-easily-swappable-parameters,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-union-access,-misc-include-cleaner,-modernize-use-trailing-return-type,-portability-avoid-pragma-once,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-trailing-comma
+GODOT_SCRIPTS := git ls-files --cached --others --exclude-standard -- '$(PROJECT_DIR)/tests/*.gd' '$(PROJECT_DIR)/e2e/*.gd'
 CLANG_TIDY_JOBS := $(shell getconf _NPROCESSORS_ONLN)
 CLANG_TIDY_FLAGS := -p $(BUILD_DIR) --quiet --checks='$(CLANG_TIDY_CHECKS)' --warnings-as-errors='*' --header-filter='$(CURDIR)/src/'
 ifeq ($(shell uname -s),Darwin)
@@ -64,10 +65,19 @@ build: $(TOOLS_STAMP)
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
+# A --main-loop harness that fails to parse raises a dialog and waits on it even
+# with --headless; --check-only answers with its exit status instead.
 test: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
 	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/gameplay/CMakeLists.txt, src/experiment/pan_dodge/CMakeLists.txt and src/survival/CMakeLists.txt"
-	"$(GODOT)" --headless --path $(PROJECT_DIR) --script res://tests/godot_startup.gd --check-only
+	@files=$$($(GODOT_SCRIPTS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
+	test "$$count" -gt 0 || { echo "no GDScript harness was read" >&2; exit 1; }; \
+	log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	for file in $$files; do \
+		"$(GODOT)" --headless --path $(PROJECT_DIR) --script "res://$${file#$(PROJECT_DIR)/}" --check-only > "$$log" 2>&1 || { \
+			cat "$$log"; echo "GDScript parse check failed: $$file" >&2; exit 1; }; \
+	done; \
+	echo "Godot parse-checked $$count GDScript files, selected by: $(GODOT_SCRIPTS)"
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
