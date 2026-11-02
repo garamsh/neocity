@@ -302,6 +302,132 @@ TEST(TemporaryContent, ConstructsEveryFeatureWithinTheMap) {
   }
 }
 
+/// Every cell `area` covers.
+std::set<std::pair<std::int32_t, std::int32_t>>
+cells_of(const WorldArea &area) {
+  std::set<std::pair<std::int32_t, std::int32_t>> cells;
+  for (auto x = area.x; x < area.x + area.width; ++x) {
+    for (auto y = area.y; y < area.y + area.height; ++y) {
+      cells.insert({x, y});
+    }
+  }
+  return cells;
+}
+
+std::map<std::pair<std::int32_t, std::int32_t>, GroundKind>
+ground_of(const Content &content) {
+  std::map<std::pair<std::int32_t, std::int32_t>, GroundKind> ground;
+  for (const auto &cell : content.ground) {
+    EXPECT_TRUE(ground.insert({{cell.cell.x, cell.cell.y}, cell.kind}).second)
+        << cell.cell.x << ", " << cell.cell.y;
+  }
+  return ground;
+}
+
+TEST(TemporaryContent, GroundNamesTheSurfaceOfEveryTerrainCellAndNoOther) {
+  const auto content = temporary_content(1);
+  std::set<std::pair<std::int32_t, std::int32_t>> terrain;
+  for (const auto &object : content.objects) {
+    if (object.kind == ObjectKind::Terrain) {
+      terrain.merge(cells_of(object.area));
+    }
+  }
+  std::set<std::pair<std::int32_t, std::int32_t>> ground;
+  for (const auto &[cell, kind] : ground_of(content)) {
+    ground.insert(cell);
+  }
+  EXPECT_EQ(ground, terrain);
+}
+
+TEST(TemporaryContent, RubbleBlocksItsCellForTheWholeRun) {
+  const auto content = temporary_content(1);
+  const auto ground = ground_of(content);
+  World world(content.objects);
+  const auto rubble_blocks = [&] {
+    std::size_t rubble = 0;
+    for (const auto &[cell, kind] : ground) {
+      if (kind == GroundKind::Rubble) {
+        ++rubble;
+        EXPECT_EQ(
+            cell_at(world.snapshot(), {.x = cell.first, .y = cell.second}),
+            Cell::Blocked)
+            << cell.first << ", " << cell.second;
+      }
+    }
+    return rubble;
+  };
+  EXPECT_GT(rubble_blocks(), 0U);
+  ASSERT_EQ(world.update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{100}}),
+            WorldUpdateResult::Applied);
+  EXPECT_GT(rubble_blocks(), 0U);
+}
+
+TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
+  const auto ground = ground_of(temporary_content(1));
+  std::size_t ends = 0;
+  for (const auto &[cell, kind] : ground) {
+    const auto [x, y] = cell;
+    if (kind == GroundKind::RoadEndLeft) {
+      ++ends;
+      EXPECT_FALSE(ground.contains({x - 1, y})) << x << ", " << y;
+    }
+    if (kind == GroundKind::RoadEndRight) {
+      ++ends;
+      EXPECT_FALSE(ground.contains({x + 1, y})) << x << ", " << y;
+    }
+  }
+  EXPECT_GT(ends, 0U);
+}
+
+TEST(TemporaryContent, NoStraightRunOfGroundIsLongerThanAThirdOfTheMap) {
+  const auto content = temporary_content(1);
+  const auto ground = ground_of(content);
+  const auto longest = content.map.width / 3;
+  for (std::int32_t y = 0; y < content.map.height; ++y) {
+    std::int32_t run = 0;
+    for (std::int32_t x = 0; x < content.map.width; ++x) {
+      run = ground.contains({x, y}) ? run + 1 : 0;
+      EXPECT_LE(run, longest) << "row " << y << " at " << x;
+    }
+  }
+}
+
+TEST(TemporaryContent, AcidDrownsLowGroundAndWhatStandsOnItFirst) {
+  const auto content = temporary_content(1);
+  std::vector<std::pair<std::int32_t, std::uint32_t>> drowning;
+  std::size_t terrain = 0;
+  for (const auto &object : content.objects) {
+    const auto &threshold = object.destroyed_after;
+    if (threshold && threshold->acid && !threshold->elapsed) {
+      drowning.emplace_back(object.area.y + object.area.height - 1,
+                            threshold->acid->value);
+      terrain += object.kind == ObjectKind::Terrain ? 1U : 0U;
+    }
+  }
+  EXPECT_GT(terrain, 0U);
+  for (const auto &[low, low_acid] : drowning) {
+    for (const auto &[high, high_acid] : drowning) {
+      if (low > high) {
+        EXPECT_LE(low_acid, high_acid)
+            << "row " << low << " drowns after row " << high;
+      }
+    }
+  }
+}
+
+TEST(TemporaryContent, EveryDecorationKindStandsInsideTheMap) {
+  const auto content = temporary_content(1);
+  std::set<DecorationKind> kinds;
+  for (const auto &decoration : content.decorations) {
+    kinds.insert(decoration.kind);
+    EXPECT_GE(decoration.area.x, 0);
+    EXPECT_GE(decoration.area.y, 0);
+    EXPECT_LE(decoration.area.x + decoration.area.width, content.map.width);
+    EXPECT_LE(decoration.area.y + decoration.area.height, content.map.height);
+  }
+  EXPECT_EQ(kinds.size(), 8U);
+}
+
 TEST(TemporaryContent, EveryNameLookupRefusesAnIdentityItNeverIssued) {
   EXPECT_EQ(ingredient_name(IngredientId{1}), "Tomato");
   EXPECT_THROW((void)ingredient_name(IngredientId{999}), std::out_of_range);
@@ -691,7 +817,7 @@ TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
 
 TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
   Game game(temporary_content(1));
-  const auto plaza = object_named(game.world().snapshot(), "Supply Crate").area;
+  const auto plaza = object_named(game.world().snapshot(), "East Plaza").area;
   ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), plaza));
 
   ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{40}}),
