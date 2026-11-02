@@ -331,14 +331,21 @@ func _arriving_holds_interact() -> void:
 		return
 	if not _check(_int("remaining_ms") == 0 and _str("dish_offered") != "", "time runs out with a dish the chef can cook"):
 		return
+	# The return's step ran on the frame just read, so each press below lands
+	# half a step before the step that reads it: the first, third, and fourth
+	# after the return.
 	await _one_frame("survival_1_interact")
-	await _frames(2 * STEP_FRAMES)
+	await _frames(2 * STEP_FRAMES - 2)
 	if not _check(_int("foods") == 0, "E pressed just after the time-out return does not cook"):
 		return
-	await _frames(2 * STEP_FRAMES)
+	await _frames(STEP_FRAMES / 2)
 	await _one_frame("survival_1_interact")
-	await _frames(2 * STEP_FRAMES)
-	if not _check(_int("foods") == 1, "E pressed once the hold is over cooks"):
+	await _frames(STEP_FRAMES - 2)
+	if not _check(_int("foods") == 0, "E read in the hold's last step does not cook"):
+		return
+	await _one_frame("survival_1_interact")
+	await _frames(STEP_FRAMES - 2)
+	if not _check(_int("foods") == 1, "E read in the step after the hold cooks"):
 		return
 	await _leave_run()
 	await _frames(4)
