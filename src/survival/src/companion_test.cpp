@@ -371,8 +371,8 @@ TEST(Companion, AnErrandInTheAirIsPlannedFromWhereTheDropLands) {
       .stance = Stance::Airborne};
   const auto errand = companion_with().errand(Actor::Chef, view);
   ASSERT_TRUE(errand.has_value());
-  EXPECT_EQ(errand->target, SOURCE);
-  EXPECT_EQ(errand->step, Move::Right);
+  EXPECT_EQ(errand.value_or(Errand{}).target, SOURCE);
+  EXPECT_EQ(errand.value_or(Errand{}).step, Move::Right);
 }
 
 TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {

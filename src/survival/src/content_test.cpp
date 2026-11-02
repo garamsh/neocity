@@ -405,7 +405,7 @@ TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
 
 TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
   const auto content = temporary_content(1);
-  World world(content.objects);
+  const World world(content.objects);
   const auto every_way = cells_reached(content, world.snapshot());
   const auto walking =
       cells_reached(content, world.snapshot(), {Move::Left, Move::Right});

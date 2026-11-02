@@ -55,8 +55,9 @@ ObjectDefinition floor_at(ObjectId id, std::int32_t x, std::int32_t row,
 
 /// Exploration over `objects` entered by the chef at `entry`; the acid lies
 /// below the lowest object.
-struct Course {
-  Course(std::vector<ObjectDefinition> objects, GridPosition entry)
+class Course {
+public:
+  Course(const std::vector<ObjectDefinition> &objects, GridPosition entry)
       : simulation({.exploration_budget = 30s, .seed = 0}), world(objects),
         exploration(simulation, world,
                     {.base = BASE,
@@ -82,6 +83,12 @@ struct Course {
     return simulation.snapshot().chef.location;
   }
 
+  /// Advances no time at `acid`, so the world changes it brings apply.
+  [[nodiscard]] Result acid(AcidLevel acid) {
+    return exploration.advance({}, {}, acid);
+  }
+
+private:
   Simulation simulation;
   World world;
   Exploration exploration;
@@ -279,8 +286,7 @@ TEST(Exploration, ABuildingStopsBothAWalkAndAJumpUntilItFalls) {
                     .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}}},
                   ENTRY);
     if (fallen) {
-      ASSERT_EQ(course.exploration.advance({}, {}, AcidLevel{1}),
-                Result::Applied);
+      ASSERT_EQ(course.acid(AcidLevel{1}), Result::Applied);
     }
     course.press(300ms, RIGHT);
     course.press(100ms, JUMP_RIGHT);
@@ -331,8 +337,7 @@ TEST(Exploration, ALadderIsClimbedBetweenItsEndsAndLeftOntoAFloor) {
                     .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}}},
                   {.x = 2, .y = 4});
     if (broken) {
-      ASSERT_EQ(course.exploration.advance({}, {}, AcidLevel{1}),
-                Result::Applied);
+      ASSERT_EQ(course.acid(AcidLevel{1}), Result::Applied);
     }
     course.press(100ms, UP);
     if (broken) {
