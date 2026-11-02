@@ -1,17 +1,31 @@
 class_name SurvivalCapture
 extends SceneTree
-## Captures real rendered frames of a played survival run into user://survival/.
+## Captures real rendered frames of a played survival run into user://survival/,
+## and fails when a city frame's ground does not read over the scenery behind it
+## or one of its word plates covers another.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
+## Half the acid that ends the run, to the nearest unfed day's rise.
+const MIDDLE_ACID: int = 48
 ## Following NEXT on this seed escapes; `G` alone only ever loses.
 const ESCAPE_SEED: int = 7
 const DAY_LIMIT: int = 120
 const STEP_FRAMES: int = 6
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
+## The map's top-left corner on screen and its cell size, as the city draws it.
+const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
+const CELL: int = 32
+## Ground cells of the first city frame with nothing but scenery in the cell
+## above: the arcade, the rooftop and the market.
+const LEAD_CELLS: Array[Vector2i] = [Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1), Vector2i(8, 1), Vector2i(17, 2), Vector2i(18, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(6, 11), Vector2i(7, 11)]
+## How much brighter, in mean luminance from 0 to 1, those ground cells read
+## than the scenery in the cells above them.
+const GROUND_LEAD: float = 0.05
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
+var city_frames: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -33,17 +47,18 @@ func _run() -> void:
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 6)
-	await _save("4-city-collect-prompt")
+	if not _ground_leads(await _save_city("4-city-collect-prompt")):
+		return
 	await _walk(KEY_D, 10)
 	await _climb(5)
 	await _frames(30)
-	await _save("5-city-after-drip")
+	await _save_city("5-city-after-drip")
 	await _walk(KEY_D, 16)
 	await _walk_left(15)
-	await _save("23-city-facing-left")
+	await _save_city("23-city-facing-left")
 	await _walk(KEY_D, 16)
 	await _climb(4)
-	await _save("24-city-on-ladder")
+	await _save_city("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _save("6-workshop-after-return")
 	await _until_next("Cook", 300)
@@ -76,7 +91,16 @@ func _run() -> void:
 	await _frames(40)
 	await _walk(KEY_D, 8)
 	await _frames(60)
-	await _save("11-city-damaged")
+	await _save_city("11-city-damaged")
+	await _tap(KEY_Q)
+	await _until_phase("workshop")
+	while _int("acid") < MIDDLE_ACID:
+		await _tap(KEY_G)
+		await _frames(12)
+	await _tap(KEY_Q)
+	await _frames(40)
+	await _walk(KEY_D, 6)
+	await _save_city("26-city-middle-acid")
 	await _tap(KEY_Q)
 	await _until_phase("workshop")
 	while _int("acid") < HIGH_ACID:
@@ -85,7 +109,7 @@ func _run() -> void:
 	await _tap(KEY_Q)
 	await _frames(40)
 	await _walk(KEY_D, 6)
-	await _save("17-city-high-acid")
+	await _save_city("17-city-high-acid")
 	await _tap(KEY_ESCAPE)
 	await _save("18-pause-one-player")
 	await _tap(KEY_M)
@@ -107,7 +131,7 @@ func _run() -> void:
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
 	await _frames(12)
-	await _save("16-two-players-city")
+	await _save_city("16-two-players-city")
 	await _tap(KEY_ESCAPE)
 	await _save("21-pause-two-players")
 	await _tap(KEY_ESCAPE)
@@ -124,6 +148,7 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
+	print("Capture: no map plate covers another in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 
@@ -202,14 +227,66 @@ func _int(field: String) -> int:
 	var value: int = scene.survival_status().get(field, 0)
 	return value
 
-func _save(screen: String) -> void:
+func _save(screen: String) -> Image:
 	await RenderingServer.frame_post_draw
 	var destination: String = ProjectSettings.globalize_path("user://survival/" + screen + ".png")
-	if root.get_texture().get_image().save_png(destination) != OK:
-		push_error("Could not save " + destination)
-		quit(1)
-		return
+	var frame: Image = root.get_texture().get_image()
+	if frame.save_png(destination) != OK:
+		_fail("Could not save " + destination)
+		return frame
 	print("Capture: ", destination)
+	return frame
+
+## Saves a city frame and fails it when one word plate covers another, or when
+## it drew fewer plates than a count and a name for each source shown.
+func _save_city(screen: String) -> Image:
+	var frame: Image = await _save(screen)
+	var plates: Array = scene.get_meta("map_plates", [])
+	var objects: Dictionary = scene.survival_status()["objects"]
+	var sources: int = 0
+	for source: String in scene.survival_status()["stock"]:
+		if objects.get(source, "dormant") != "dormant":
+			sources += 1
+	for first: int in range(plates.size()):
+		for second: int in range(first + 1, plates.size()):
+			var one: Rect2 = plates[first]
+			var other: Rect2 = plates[second]
+			if one.intersects(other):
+				_fail("%s: the plate at %s covers the plate at %s" % [screen, one, other])
+				return frame
+	if sources == 0 or plates.size() <= 2 * sources:
+		_fail("%s: %d plates for %d sources" % [screen, plates.size(), sources])
+		return frame
+	city_frames += 1
+	return frame
+
+## Whether the ground's mean luminance leads the scenery right above it by
+## GROUND_LEAD; the control is that the scenery is not black.
+func _ground_leads(frame: Image) -> bool:
+	var ground: float = 0.0
+	var behind: float = 0.0
+	for cell: Vector2i in LEAD_CELLS:
+		ground += _luminance(frame, cell)
+		behind += _luminance(frame, cell + Vector2i.UP)
+	ground /= LEAD_CELLS.size()
+	behind /= LEAD_CELLS.size()
+	print("Capture: the ground leads the scenery above it by %.3f (ground %.3f, scenery %.3f, at least %.3f)." % [ground - behind, ground, behind, GROUND_LEAD])
+	if behind <= 0.0 or ground - behind < GROUND_LEAD:
+		_fail("the ground does not read over the scenery behind it")
+		return false
+	return true
+
+func _luminance(frame: Image, cell: Vector2i) -> float:
+	var corner: Vector2i = MAP_ORIGIN + cell * CELL
+	var total: float = 0.0
+	for y: int in range(CELL):
+		for x: int in range(CELL):
+			total += frame.get_pixelv(corner + Vector2i(x, y)).get_luminance()
+	return total / (CELL * CELL)
+
+func _fail(message: String) -> void:
+	push_error(message)
+	quit(1)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

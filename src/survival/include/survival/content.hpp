@@ -53,6 +53,22 @@ struct Decoration {
   WorldArea area;
 };
 
+/// A picture of its own that one building or terrain object shows; no rule
+/// reads it.
+enum class LandmarkKind : std::uint8_t {
+  Kiosk,
+  ColdStore,
+  Ferry,
+  Platform,
+  Bridge
+};
+
+/// The object that shows one landmark picture.
+struct Landmark {
+  ObjectId object;
+  LandmarkKind kind = LandmarkKind::Kiosk;
+};
+
 /// One run's temporary data: the map, ingredients, recipes, tools and tuning.
 /// Every value makes the prototype playable and none is final balance.
 struct Content {
@@ -66,6 +82,8 @@ struct Content {
   std::vector<GroundCell> ground;
   /// Scenery placed on the map; no rule reads it.
   std::vector<Decoration> decorations;
+  /// Objects drawn with a picture of their own; no rule reads it.
+  std::vector<Landmark> landmarks;
 };
 
 /// Builds the temporary game for one run seed.
