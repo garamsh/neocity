@@ -93,7 +93,7 @@ struct WorldSnapshot {
 enum class WorldUpdateResult : std::uint8_t { Applied, DecreasingTime };
 
 /// Expected repair refusals never change the world. Exploration adds the last
-/// three, for what World cannot see.
+/// four, for what World cannot see.
 enum class RepairResult : std::uint8_t {
   Applied,
   UnknownObject,
@@ -102,7 +102,8 @@ enum class RepairResult : std::uint8_t {
   WrongTool,
   NotExploring,
   OutOfRange,
-  ToolNotCarried
+  ToolNotCarried,
+  Busy
 };
 
 /// Persistent city deterioration and repair, without exploration

@@ -71,6 +71,21 @@ std::uint32_t stamina_of(const survival::ExplorationSnapshot &snapshot,
   std::abort();
 }
 
+/// How long the collection under way still holds `actor`; zero with none.
+std::chrono::microseconds
+collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
+  const auto held = [&] {
+    switch (actor) {
+    case Actor::Chef:
+      return snapshot.chef.collecting;
+    case Actor::Appraiser:
+      return snapshot.appraiser.collecting;
+    }
+    std::abort();
+  }();
+  return held ? held->remaining : std::chrono::microseconds{};
+}
+
 bool in_hazard(const survival::Content &content, GridPosition position) {
   return std::ranges::any_of(content.hazards,
                              [position](const survival::WorldArea &area) {
@@ -203,6 +218,10 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("stance", stance_name(body.stance));
   status.set("health", state.health);
   status.set("stamina", stamina_of(view.exploration, actor));
+  status.set("collecting_ms",
+             std::chrono::duration_cast<std::chrono::milliseconds>(
+                 collecting_of(view.exploration, actor))
+                 .count());
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
   status.set("tools", static_cast<std::int64_t>(state.tools.size()));
   status.set("exhaustions", state.exhaustions);

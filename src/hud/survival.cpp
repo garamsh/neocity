@@ -284,6 +284,18 @@ std::uint32_t stamina_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
+/// The collection holding this actor, if one is under way.
+const std::optional<survival::Collecting> &collecting_of(const GameView &view,
+                                                         Actor actor) {
+  switch (actor) {
+  case Actor::Chef:
+    return view.exploration.chef.collecting;
+  case Actor::Appraiser:
+    return view.exploration.appraiser.collecting;
+  }
+  std::abort();
+}
+
 GridPosition position_of(const GameView &view, Actor actor) {
   switch (actor) {
   case Actor::Chef:
@@ -340,6 +352,14 @@ String clock(std::chrono::microseconds remaining) {
   const auto whole = static_cast<std::uint64_t>(seconds.count());
   return number(whole / 60) + (whole % 60 < 10 ? ":0" : ":") +
          number(whole % 60);
+}
+
+/// A short span in seconds to a tenth, rounded up: 2.5s.
+String seconds(std::chrono::microseconds span) {
+  using Tenths = std::chrono::duration<std::int64_t, std::deci>;
+  const auto tenths =
+      static_cast<std::uint64_t>(std::chrono::ceil<Tenths>(span).count());
+  return number(tenths / 10) + "." + number(tenths % 10) + "s";
 }
 
 bool carried(const GameView &view, survival::ToolId tool) {
@@ -563,7 +583,7 @@ String set_out_keys(const SurvivalFrame &frame) {
 }
 
 String collection_clock(const SurvivalFrame &frame) {
-  return clock(frame.content.get().companion.exploration.collection_time);
+  return seconds(frame.content.get().companion.exploration.collection_time);
 }
 
 String city_step(const SurvivalFrame &frame, Actor actor,
@@ -580,13 +600,16 @@ String city_step(const SurvivalFrame &frame, Actor actor,
       repair != nullptr &&
       survival::repair_opens_stock(frame.content.get().companion, actor,
                                    frame.view, repair->target);
-  // A source passed on the way to what the party lacks would spend the clock,
+  if (const auto &held = collecting_of(frame.view, actor)) {
+    return "Collecting from " + from(survival::object_name(held->source)) +
+           ": " + seconds(held->remaining) + " left.";
+  }
+  // A source passed on the way to what the party lacks would hold the actor,
   // a passage passed on the way is worth it only for stock out of reach
   // without it, and a repair with no errand left opens no way to stock.
   if (offers.interact && offers.errand && (!walking || opens)) {
     return offered_step(*offers.interact, keys) +
-           (collecting ? " (spends " + collection_clock(frame) + ")"
-                       : String());
+           (collecting ? " (takes " + collection_clock(frame) + ")" : String());
   }
   if (!offers.errand) {
     return "Nothing is within reach for now. " + from(keys.travel) +
@@ -1015,7 +1038,7 @@ void paint_pack(godot::Node2D &canvas, const rendering::Art &drawing,
     column += pitch;
   }
   drawing.text(canvas, left, CARD_Y + CARD_HEIGHT - CARD_PAD - 2.0F,
-               "Each collection spends " + collection_clock(frame), 13,
+               "Each collection takes " + collection_clock(frame), 13,
                tones.muted, CHANGING);
 }
 
@@ -1032,8 +1055,12 @@ String interact_label(const SurvivalFrame &frame, Actor actor,
   return key(keys.interact) + verb;
 }
 
-/// What the interact key would act on, under its button; empty with none.
+/// What the interact key would act on, under its button, or how long the
+/// collection under way still holds the actor; empty with neither.
 String interact_target(const SurvivalFrame &frame, Actor actor) {
+  if (const auto &held = collecting_of(frame.view, actor)) {
+    return "Collecting: " + seconds(held->remaining);
+  }
   const auto &offer = frame.offers.at(index_of(actor)).interact;
   if (!offer) {
     return {};
@@ -1492,6 +1519,8 @@ String refusal_text(survival::Result result) {
     return "No exploration time left today.";
   case survival::Result::NotExploring:
     return "The way out is blocked.";
+  case survival::Result::Busy:
+    return "Finish collecting first.";
   case survival::Result::InvalidElapsed:
   case survival::Result::NotInWorkshop:
   case survival::Result::MissingIngredients:
@@ -1512,6 +1541,8 @@ String refusal_text(survival::CollectionResult result) {
     return "That source is gone.";
   case survival::CollectionResult::OutOfRange:
     return "Move closer.";
+  case survival::CollectionResult::Busy:
+    return "Finish collecting first.";
   case survival::CollectionResult::NotExploring:
   case survival::CollectionResult::UnknownSource:
     return "That cannot be done now.";
@@ -1528,6 +1559,8 @@ String refusal_text(survival::RepairResult result) {
   case survival::RepairResult::ToolNotCarried:
   case survival::RepairResult::WrongTool:
     return "That repair needs the right tool.";
+  case survival::RepairResult::Busy:
+    return "Finish collecting first.";
   case survival::RepairResult::UnknownObject:
   case survival::RepairResult::NotDamaged:
   case survival::RepairResult::NotRepairable:
@@ -2127,8 +2160,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
     lines.push_back(
         fitted(describe(event), EVENT_SIZE, LOG_WIDTH - 2.0F * CARD_PAD));
   }
-  lines.push_back(fitted("Each collection spends " + collection_clock(frame),
-                         13, PACK_WIDTH - 2.0F * INSET));
+  lines.push_back(fitted("Each collection takes " + collection_clock(frame), 13,
+                         PACK_WIDTH - 2.0F * INSET));
   // The city's action card: a lone human's row, or each of two humans' rows.
   const auto players = humans(frame);
   const float action_inner = ACTION_WIDTH - 2.0F * CARD_PAD;

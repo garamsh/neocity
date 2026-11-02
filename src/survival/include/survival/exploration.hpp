@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <vector>
 
 namespace neocity::survival {
@@ -168,8 +169,8 @@ struct SourceStock {
 };
 
 /// Temporary tuning: stamina is spent and recovered per 100ms movement unit.
-/// `collection_distance` also bounds repairs. `collection_time` is the shared
-/// exploration time one collection spends, ingredient or tool.
+/// `collection_distance` also bounds repairs. `collection_time` is how long
+/// one collection, ingredient or tool, holds the collecting actor.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
@@ -179,10 +180,19 @@ struct ExplorationConfig {
   std::chrono::microseconds collection_time{};
 };
 
+/// A collection under way: the actor already holds the item and takes no
+/// command and no movement until `remaining` exploration time has passed.
+struct Collecting {
+  ObjectId source;
+  std::chrono::microseconds remaining{};
+  friend bool operator==(const Collecting &, const Collecting &) = default;
+};
+
 /// Detailed body and tick-based stamina; base has no movement or stamina use.
 struct ExplorerSnapshot {
   Body body;
   std::uint32_t stamina = 0;
+  std::optional<Collecting> collecting = std::nullopt;
   friend bool operator==(const ExplorerSnapshot &,
                          const ExplorerSnapshot &) = default;
 };
@@ -203,7 +213,8 @@ enum class CollectionResult : std::uint8_t {
   UnknownSource,
   Unavailable,
   OutOfRange,
-  Depleted
+  Depleted,
+  Busy
 };
 
 /// Coordinates existing progression/world commands; owns neither dependency.
@@ -215,7 +226,8 @@ public:
   Exploration(Simulation &progression, World &city, ExplorationConfig settings);
   /// Starts at the configured entry with fresh stamina and no partial movement.
   [[nodiscard]] Result enter(Actor actor);
-  /// Synchronizes the detailed base position while preserving run state.
+  /// Synchronizes the detailed base position while preserving run state;
+  /// refused with `Result::Busy` while the actor is collecting.
   [[nodiscard]] Result return_to_base(Actor actor);
   /// Applies one health-slot hit and synchronizes any exhaustion return.
   [[nodiscard]] Result damage(Actor actor);
@@ -228,12 +240,12 @@ public:
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);
   /// Checks identity, supply, distance and shared stock before recording the
-  /// source's ingredient or tool, then spends `collection_time` of the shared
-  /// clock, or what is left of it: a collection that runs the clock out keeps
-  /// its item and returns everyone.
+  /// source's ingredient or tool, then holds the actor for `collection_time`
+  /// while the shared clock runs on. Expiry, a fall or exhaustion ends the
+  /// hold, and the item is kept.
   [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
   /// Repairs from within interaction distance with a tool this actor carries;
-  /// the tool is kept.
+  /// the tool is kept. Refused while the actor is collecting.
   [[nodiscard]] RepairResult repair(Actor actor, ObjectId target, ToolId tool);
   /// Returns independent values; requests are never retained in this snapshot.
   [[nodiscard]] ExplorationSnapshot snapshot() const;
@@ -245,6 +257,7 @@ private:
   };
 
   Explorer &explorer(Actor actor);
+  [[nodiscard]] bool collecting(Actor actor);
   void synchronize();
   void tick(Actor actor, ExplorationInput input);
   void advance_world(AcidLevel acid);
