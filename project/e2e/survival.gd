@@ -35,6 +35,8 @@ const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2
 ## From the entrance up the ramp, over the overpass and up the roof ladder to
 ## the roof bag.
 const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(16, 5), Vector2i(16, 3), Vector2i(22, 3)]
+## The weight the screen draws every changing line in.
+const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Inter-SemiBold.ttf"
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -117,6 +119,8 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
+		return
+	if not _check(_screen_shows("Pause, keys"), "the top band names Esc as the way to the keys"):
 		return
 	await _tap(KEY_ESCAPE)
 	if not _check(_str("interruption") == "paused", "Esc pauses the run"):
@@ -283,7 +287,11 @@ func _first_day() -> void:
 		return
 	if not _check(_goal_shown(), "the city shows when escape checks begin"):
 		return
+	if not _check(_screen_shows("[E] Use") and not _screen_shows("[E] Collect") and _screen_shows("[Q] Return to base") and _screen_shows("WASD move  Shift run"), "away from a source the action card shows E unlit, Q home and the move keys"):
+		return
 	if not await _walk_to(5, 7):
+		return
+	if not _check(_screen_shows("[E] Collect") and _screen_shows("Tomato Machine") and not _screen_shows("[E] Use"), "at a source the action card offers E to collect from it"):
 		return
 	if not _check(_next().begins_with("Walk "), "the screen walks past a kind the party already took"):
 		return
@@ -874,7 +882,7 @@ func _appraiser_run() -> void:
 		return
 	if not _check(_next().contains("Tool Bag") and _next().contains("(spends 0:12)"), "the screen offers the wrench in reach and its cost in time"):
 		return
-	if not _check(_screen_says("Each collection spends 0:12"), "the key line says what every collection spends"):
+	if not _check(_screen_says("Each collection spends 0:12"), "the pack says what every collection spends"):
 		return
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "tools") == 1, "the human collects a tool"):
@@ -935,7 +943,7 @@ func _human_repairs_the_ladder() -> void:
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	await _until("the screen offers the repair", func() -> bool: return _next().contains("Repair Roof Ladder"), 30)
-	if not _check(_next().contains("Repair Roof Ladder"), "the screen offers the repair in reach"):
+	if not _check(_next().contains("Repair Roof Ladder") and _screen_shows("[E] Repair") and _screen_shows("Roof Ladder"), "the screen offers the repair in reach"):
 		return
 	_key(KEY_W, true)
 	await _frames(24)
@@ -964,7 +972,7 @@ func _two_players() -> void:
 		return
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: [U] Set out into the city"), "the player left at base is told to set out: %s" % _next()):
 		return
-	if not _check(_screen_says("U set out") and not _screen_says("U return to base"), "the key line names U as setting out for player two at base"):
+	if not _check(_screen_shows("[U] Set out") and not _screen_shows("[U] Return to base") and _screen_shows("[Q] Return to base"), "the action card names U as setting out for player two at base"):
 		return
 	if not _text_fits("one player out and one at base"):
 		return
@@ -1161,6 +1169,13 @@ func _result_says(words: String) -> bool:
 func _goal_shown() -> bool:
 	return _str("goal") == "Escape checks from day 30" and _screen_says("Escape checks from day 30")
 
+## Whether one changing line reads exactly `words`, as a button's label does.
+func _screen_shows(words: String) -> bool:
+	for line: Dictionary in _changing_text():
+		if line["text"] == words:
+			return true
+	return false
+
 func _screen_says(words: String) -> bool:
 	for line: Dictionary in _changing_text():
 		var text: String = line["text"]
@@ -1168,9 +1183,9 @@ func _screen_says(words: String) -> bool:
 			return true
 	return false
 
-## Measures every changing line in the font the screen draws with.
+## Measures every changing line in the font and weight the screen draws it with.
 func _text_fits(where: String) -> bool:
-	var font: Font = ThemeDB.fallback_font
+	var font: Font = load(CHANGING_FONT)
 	var overflowing: Array[String] = []
 	for line: Dictionary in _changing_text():
 		var text: String = line["text"]
@@ -1178,7 +1193,7 @@ func _text_fits(where: String) -> bool:
 		var width: float = line["width"]
 		if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
 			overflowing.append(text)
-	var measured: bool = font.get_string_size(_next(), HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x > 0.0
+	var measured: bool = font.get_string_size(_next(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x > 0.0
 	return _check(measured and overflowing.is_empty(), "text fits on %s: %s" % [where, overflowing])
 
 ## No word plate on the map covers another; the control is that the plates

@@ -15,25 +15,55 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <vector>
 
 namespace neocity::rendering {
 
 godot::Color color(std::uint8_t r, std::uint8_t g, std::uint8_t b, float a);
 godot::Rect2 rect(float x, float y, float w, float h);
+/// Fills `area` on `canvas` with `fill`, its corners rounded by `radius`.
+void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
+             godot::Color fill);
+/// Draws an opaque flat panel filling `area`: rounded, with a soft shadow and
+/// a one-pixel edge.
+void panel(godot::Node2D &canvas, godot::Rect2 area);
+/// Draws a flat button filling `area`, in the accent when `marked`.
+void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
 
-/// Text and accent colors shared by the world and the HUD.
+/// The colour tokens of the world's labels and the interface.
 struct Palette {
+  /// Primary text.
   godot::Color white;
+  /// Secondary text.
   godot::Color muted;
+  /// Information: a human's controller, a place, a ready dish.
   godot::Color cyan;
+  /// The accent: titles' marks, a marked button, a promise of stock.
   godot::Color gold;
-  /// Words on a highlighted button.
+  /// Words on the accent.
   godot::Color ink;
+  /// The veil behind an overlay.
+  godot::Color background;
+  /// A panel.
+  godot::Color surface;
+  /// A row, slot, chip or idle button on a panel.
+  godot::Color raised;
+  /// The one-pixel edge of a panel or an idle button.
+  godot::Color outline;
+  /// The soft shadow under a panel.
+  godot::Color shadow;
+  /// The least important text.
+  godot::Color faint;
+  godot::Color danger;
+  godot::Color success;
 };
 
-/// How far a panel's words stay inside its edge, clear of its steel frame.
-inline constexpr float PANEL_INSET = 20.0F;
+/// How far a panel's words stay inside its edge.
+inline constexpr float PANEL_INSET = 16.0F;
+
+/// The interface font's weights, lightest first.
+enum class Weight : std::uint8_t { Medium, SemiBold, Bold };
 
 Palette palette();
 
@@ -97,11 +127,6 @@ enum class Image : std::uint8_t {
   PillarDeck,
   LampStanding,
   LampBent,
-  PanelFrame,
-  BarFrame,
-  ItemSlot,
-  Button,
-  ButtonHighlight,
   HeartFull,
   HeartEmpty,
   IconDay,
@@ -146,13 +171,14 @@ struct Motion {
 /// remembers how each actor moved between frames.
 class Art {
 public:
-  /// Loads every picture of the art set and Godot's fallback font.
+  /// Loads every picture of the art set and the interface font's weights.
   static Art load();
 
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
-            int size, godot::Color tint) const;
-  /// How wide `text` draws at `size`.
-  [[nodiscard]] float text_width(const godot::String &text, int size) const;
+            int size, godot::Color tint, Weight weight = Weight::Medium) const;
+  /// How wide `text` draws at `size` in `weight`.
+  [[nodiscard]] float text_width(const godot::String &text, int size,
+                                 Weight weight = Weight::Medium) const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
   /// Each colour is multiplied by `tint`.
@@ -164,15 +190,13 @@ public:
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
-  /// Draws `image` as a frame filling `destination`: its `border`-pixel
-  /// corners at their own size, its edges repeated along each side, and the
-  /// middle filled with `fill`, the colour of the picture's face.
-  void frame(godot::Node2D &canvas, Image image, godot::Rect2 destination,
-             float border, godot::Color fill) const;
-  /// Draws the UI kit's opaque steel panel filling `area`.
-  void panel(godot::Node2D &canvas, godot::Rect2 area) const;
-  /// Draws a UI kit button filling `area`, yellow when `marked`.
-  void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) const;
+  /// Eases from the value `name` last showed toward `target` whenever the
+  /// target changes; a value missing from the last drawn frame starts at its
+  /// target.
+  [[nodiscard]] float glide(const godot::String &name, float target) const;
+  /// How far, from 0 to 1 and eased, `name` has come in since it appeared;
+  /// one missing from the last drawn frame appears afresh.
+  [[nodiscard]] float entrance(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Records `actor` at `cell` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.
@@ -186,13 +210,28 @@ private:
     std::chrono::microseconds seen_at{-1};
   };
 
+  /// What `glide` and `entrance` keep for one value: times in microseconds of
+  /// the real clock, and the drawn frame that last showed it.
+  struct Tween {
+    float from = 0.0F;
+    float to = 0.0F;
+    std::uint64_t started = 0;
+    std::uint64_t seen = 0;
+    std::uint64_t frame = 0;
+  };
+
   Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-      godot::Ref<godot::Font> fallback_font);
+      std::array<godot::Ref<godot::Font>, 3> weights);
+
+  /// The tween of `name`, restarted when it was not drawn for a moment.
+  Tween &tween(const godot::String &name, float target) const;
 
   std::vector<godot::Ref<godot::Texture2D>> images;
-  godot::Ref<godot::Font> font;
-  /// Painting is const; the trails are what the screen saw, not art.
+  std::array<godot::Ref<godot::Font>, 3> fonts;
+  /// Painting is const; the trails and tweens are what the screen saw, not
+  /// art.
   mutable std::array<Trail, 2> trails{};
+  mutable std::map<godot::String, Tween> tweens;
 };
 
 } // namespace neocity::rendering

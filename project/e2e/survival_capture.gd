@@ -22,6 +22,8 @@ const LEAD_CELLS: Array[Vector2i] = [Vector2i(5, 1), Vector2i(6, 1), Vector2i(7,
 ## How much brighter, in mean luminance from 0 to 1, those ground cells read
 ## than the scenery in the cells above them.
 const GROUND_LEAD: float = 0.05
+## Longer than the screen's longest eased motion.
+const SETTLE_MSEC: int = 400
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -227,7 +229,11 @@ func _int(field: String) -> int:
 	var value: int = scene.survival_status().get(field, 0)
 	return value
 
+## Waits on the real clock first: --fixed-fps runs frames faster than real time,
+## and the screen's eased motion runs on the real clock.
 func _save(screen: String) -> Image:
+	OS.delay_msec(SETTLE_MSEC)
+	await process_frame
 	await RenderingServer.frame_post_draw
 	var destination: String = ProjectSettings.globalize_path("user://survival/" + screen + ".png")
 	var frame: Image = root.get_texture().get_image()

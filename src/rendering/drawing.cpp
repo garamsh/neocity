@@ -1,12 +1,16 @@
 #include "drawing.hpp"
 
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/theme_db.hpp>
 #include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/variant/packed_vector2_array.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <numbers>
 #include <utility>
 
 namespace neocity::rendering {
@@ -15,9 +19,20 @@ namespace {
 
 using godot::Vector2;
 
-/// The corner sizes of the kit's frames, whole multiples of their pixel grid.
-constexpr float PANEL_BORDER = 24.0F;
-constexpr float BUTTON_BORDER = 12.0F;
+constexpr float PANEL_RADIUS = 12.0F;
+constexpr float BUTTON_RADIUS = 10.0F;
+/// How far a panel's shadow falls below it.
+constexpr float SHADOW_DROP = 4.0F;
+/// The darker lip along a marked button's bottom edge.
+constexpr float LIP = 4.0F;
+/// Points on each rounded corner.
+constexpr int CORNER_STEPS = 6;
+constexpr std::uint64_t GLIDE_MICROSECONDS = 280000;
+constexpr std::uint64_t ENTRANCE_MICROSECONDS = 220000;
+
+/// The interface font's weights, in `Weight` order.
+constexpr std::array FONT_FILES{"Inter-Medium.ttf", "Inter-SemiBold.ttf",
+                                "Inter-Bold.ttf"};
 
 constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
 
@@ -139,16 +154,6 @@ const char *path(Image image) {
     return "decor/lamp_standing.png";
   case Image::LampBent:
     return "decor/lamp_bent.png";
-  case Image::PanelFrame:
-    return "ui/panel_frame.png";
-  case Image::BarFrame:
-    return "ui/bar_frame.png";
-  case Image::ItemSlot:
-    return "ui/item_slot.png";
-  case Image::Button:
-    return "ui/button.png";
-  case Image::ButtonHighlight:
-    return "ui/button_highlight.png";
   case Image::HeartFull:
     return "ui/heart_full.png";
   case Image::HeartEmpty:
@@ -218,6 +223,42 @@ godot::Ref<godot::Texture2D> load_texture(const godot::String &path) {
 
 std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
 
+/// The outline of `area` with its corners rounded by `radius`, clockwise from
+/// the top-left corner.
+godot::PackedVector2Array rounded_outline(godot::Rect2 area, float radius) {
+  const float r = std::min(radius, std::min(area.size.x, area.size.y) / 2.0F);
+  const Vector2 far = area.position + area.size;
+  constexpr float QUARTER = std::numbers::pi_v<float> / 2.0F;
+  const std::array<std::pair<Vector2, float>, 4> corners{
+      {{Vector2(area.position.x + r, area.position.y + r), 2.0F * QUARTER},
+       {Vector2(far.x - r, area.position.y + r), 3.0F * QUARTER},
+       {Vector2(far.x - r, far.y - r), 0.0F},
+       {Vector2(area.position.x + r, far.y - r), QUARTER}}};
+  godot::PackedVector2Array points;
+  for (const auto &[centre, start] : corners) {
+    for (int step = 0; step <= CORNER_STEPS; ++step) {
+      const float angle = start + QUARTER * static_cast<float>(step) /
+                                      static_cast<float>(CORNER_STEPS);
+      points.push_back(centre + Vector2(std::cos(angle), std::sin(angle)) * r);
+    }
+  }
+  return points;
+}
+
+/// Ease-out cubic: fast at first, settling at 1.
+float ease_out(float progress) {
+  const float rest = 1.0F - std::clamp(progress, 0.0F, 1.0F);
+  return 1.0F - rest * rest * rest;
+}
+
+/// Microseconds of a steady real clock; it drives only how the screen moves.
+std::uint64_t now() {
+  return static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now().time_since_epoch())
+          .count());
+}
+
 } // namespace
 
 godot::Color color(std::uint8_t r, std::uint8_t g, std::uint8_t b, float a) {
@@ -227,22 +268,61 @@ godot::Color color(std::uint8_t r, std::uint8_t g, std::uint8_t b, float a) {
 
 godot::Rect2 rect(float x, float y, float w, float h) { return {x, y, w, h}; }
 
+void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
+             godot::Color fill) {
+  canvas.draw_colored_polygon(rounded_outline(area, radius), fill);
+}
+
+void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
+  const auto tones = palette();
+  if (!marked) {
+    rounded(canvas, area, BUTTON_RADIUS, tones.outline);
+    rounded(canvas, area.grow(-1.0F), BUTTON_RADIUS - 1.0F, tones.raised);
+    return;
+  }
+  rounded(canvas, area, BUTTON_RADIUS, color(204, 136, 28, 1.0F));
+  rounded(canvas, godot::Rect2(area.position, area.size - Vector2(0.0F, LIP)),
+          BUTTON_RADIUS, tones.gold);
+}
+
+void panel(godot::Node2D &canvas, godot::Rect2 area) {
+  const auto tones = palette();
+  rounded(canvas,
+          godot::Rect2(area.position + Vector2(0.0F, SHADOW_DROP), area.size),
+          PANEL_RADIUS, tones.shadow);
+  rounded(canvas, area, PANEL_RADIUS, tones.outline);
+  rounded(canvas, area.grow(-1.0F), PANEL_RADIUS - 1.0F, tones.surface);
+}
+
 Palette palette() {
-  return {.white = color(228, 234, 255, 1.0F),
-          .muted = color(144, 159, 195, 1.0F),
-          .cyan = color(91, 244, 219, 1.0F),
-          .gold = color(255, 192, 83, 1.0F),
-          .ink = color(33, 29, 68, 1.0F)};
+  return {.white = color(240, 241, 250, 1.0F),
+          .muted = color(166, 174, 204, 1.0F),
+          .cyan = color(91, 226, 238, 1.0F),
+          .gold = color(255, 196, 70, 1.0F),
+          .ink = color(28, 22, 12, 1.0F),
+          .background = color(9, 10, 20, 1.0F),
+          .surface = color(21, 24, 40, 1.0F),
+          .raised = color(36, 40, 64, 1.0F),
+          .outline = color(60, 66, 100, 1.0F),
+          .shadow = color(0, 0, 0, 0.45F),
+          .faint = color(122, 130, 164, 1.0F),
+          .danger = color(255, 104, 104, 1.0F),
+          .success = color(140, 235, 92, 1.0F)};
 }
 
 Art::Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-         godot::Ref<godot::Font> fallback_font)
-    : images(std::move(pictures)), font(std::move(fallback_font)) {}
+         std::array<godot::Ref<godot::Font>, 3> weights)
+    : images(std::move(pictures)), fonts(std::move(weights)) {}
 
 Art Art::load() {
-  godot::Ref<godot::Font> font =
-      godot::ThemeDB::get_singleton()->get_fallback_font();
-  CRASH_COND_MSG(font.is_null(), "Godot fallback font must be available");
+  std::array<godot::Ref<godot::Font>, 3> fonts;
+  for (std::size_t weight = 0; weight < FONT_FILES.size(); ++weight) {
+    const godot::String file =
+        godot::String("res://levels/monster_mouth_escape/fonts/") +
+        FONT_FILES.at(weight);
+    fonts.at(weight) = godot::ResourceLoader::get_singleton()->load(file);
+    CRASH_COND_MSG(fonts.at(weight).is_null(), "Font must load: " + file);
+  }
   std::vector<godot::Ref<godot::Texture2D>> pictures;
   pictures.reserve(IMAGE_COUNT);
   for (std::size_t image = 0; image < IMAGE_COUNT; ++image) {
@@ -250,17 +330,20 @@ Art Art::load() {
         load_texture(godot::String("res://levels/monster_mouth_escape/art/") +
                      path(static_cast<Image>(image))));
   }
-  return {std::move(pictures), std::move(font)};
+  return {std::move(pictures), std::move(fonts)};
 }
 
 void Art::text(godot::Node2D &canvas, float x, float y,
-               const godot::String &text, int size, godot::Color tint) const {
-  canvas.draw_string(font, Vector2(x, y), text,
-                     godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint);
+               const godot::String &text, int size, godot::Color tint,
+               Weight weight) const {
+  canvas.draw_string(fonts.at(static_cast<std::size_t>(weight)), Vector2(x, y),
+                     text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint);
 }
 
-float Art::text_width(const godot::String &text, int size) const {
-  return font->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size)
+float Art::text_width(const godot::String &text, int size,
+                      Weight weight) const {
+  return fonts.at(static_cast<std::size_t>(weight))
+      ->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size)
       .x;
 }
 
@@ -288,55 +371,38 @@ void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                                   tint);
 }
 
-void Art::frame(godot::Node2D &canvas, Image image, godot::Rect2 destination,
-                float border, godot::Color fill) const {
-  const Vector2 whole = size(image);
-  const Vector2 middle = whole - Vector2(2.0F, 2.0F) * border;
-  const Vector2 at = destination.position.floor();
-  const Vector2 span =
-      (destination.size.floor() - Vector2(2.0F, 2.0F) * border).max(Vector2());
-  const Vector2 far = at + Vector2(border, border) + span;
-  canvas.draw_rect(godot::Rect2(at + Vector2(border, border), span), fill);
-  // Edges repeat whole source pixels; the last piece is cut, not squeezed.
-  for (int tile = 0; static_cast<float>(tile) * middle.x < span.x; ++tile) {
-    const float done = static_cast<float>(tile) * middle.x;
-    const float piece = std::min(middle.x, span.x - done);
-    const float x = at.x + border + done;
-    image_part(canvas, image, rect(border, 0.0F, piece, border),
-               rect(x, at.y, piece, border));
-    image_part(canvas, image, rect(border, whole.y - border, piece, border),
-               rect(x, far.y, piece, border));
+Art::Tween &Art::tween(const godot::String &name, float target) const {
+  const auto time = now();
+  const auto frame = static_cast<std::uint64_t>(
+      godot::Engine::get_singleton()->get_frames_drawn());
+  auto &kept = tweens[name];
+  // A value missing from the last drawn frame was off screen: it starts over.
+  if (kept.seen == 0 || frame > kept.frame + 1) {
+    kept = {.from = target, .to = target, .started = time};
   }
-  for (int tile = 0; static_cast<float>(tile) * middle.y < span.y; ++tile) {
-    const float done = static_cast<float>(tile) * middle.y;
-    const float piece = std::min(middle.y, span.y - done);
-    const float y = at.y + border + done;
-    image_part(canvas, image, rect(0.0F, border, border, piece),
-               rect(at.x, y, border, piece));
-    image_part(canvas, image, rect(whole.x - border, border, border, piece),
-               rect(far.x, y, border, piece));
-  }
-  const Vector2 corner(border, border);
-  image_part(canvas, image, godot::Rect2(Vector2(), corner),
-             godot::Rect2(at, corner));
-  image_part(canvas, image,
-             godot::Rect2(Vector2(whole.x - border, 0.0F), corner),
-             godot::Rect2(Vector2(far.x, at.y), corner));
-  image_part(canvas, image,
-             godot::Rect2(Vector2(0.0F, whole.y - border), corner),
-             godot::Rect2(Vector2(at.x, far.y), corner));
-  image_part(canvas, image, godot::Rect2(whole - corner, corner),
-             godot::Rect2(far, corner));
+  kept.seen = time;
+  kept.frame = frame;
+  return kept;
 }
 
-void Art::panel(godot::Node2D &canvas, godot::Rect2 area) const {
-  frame(canvas, Image::PanelFrame, area, PANEL_BORDER, color(35, 36, 48, 1.0F));
+float Art::glide(const godot::String &name, float target) const {
+  auto &kept = tween(name, target);
+  const auto progress = [&kept] {
+    return ease_out(static_cast<float>(kept.seen - kept.started) /
+                    static_cast<float>(GLIDE_MICROSECONDS));
+  };
+  if (target != kept.to) {
+    kept.from += (kept.to - kept.from) * progress();
+    kept.to = target;
+    kept.started = kept.seen;
+  }
+  return kept.from + (kept.to - kept.from) * progress();
 }
 
-void Art::button(godot::Node2D &canvas, godot::Rect2 area, bool marked) const {
-  frame(canvas, marked ? Image::ButtonHighlight : Image::Button, area,
-        BUTTON_BORDER,
-        marked ? color(245, 202, 55, 1.0F) : color(95, 87, 125, 1.0F));
+float Art::entrance(const godot::String &name) const {
+  const auto &kept = tween(name, 0.0F);
+  return ease_out(static_cast<float>(kept.seen - kept.started) /
+                  static_cast<float>(ENTRANCE_MICROSECONDS));
 }
 
 Vector2 Art::size(Image image) const {
