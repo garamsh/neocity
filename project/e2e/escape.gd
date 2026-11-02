@@ -10,6 +10,8 @@ const ENDING: String = "res://levels/monster_mouth_escape/cinematics/ending/endi
 const WORKING: String = "res://e2e/cinematic_fixture.tscn"
 const UNSIGNED: String = "res://e2e/cinematic_unsigned_fixture.tscn"
 const NODE3D: String = "res://e2e/cinematic_node3d_fixture.tscn"
+const FINISHES_IN_ENTER_TREE: String = "res://e2e/cinematic_enter_tree_fixture.tscn"
+const FINISHES_IN_READY: String = "res://e2e/cinematic_ready_fixture.tscn"
 const CARD_FRAME_MARGIN: int = 12
 const INTRO_CARD_FRAMES: int = 240
 const ENDING_CARD_FRAMES: int = 360
@@ -51,11 +53,11 @@ func _run() -> void:
 			print("Escape slow frames: ", checks, " live checks passed.")
 			quit(0)
 		return
-	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _menu_leaves_a_cinematic, _scene_ending]:
+	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]:
 		await part.call()
 		if failed:
 			return
-	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu).")
+	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).")
 	quit(0)
 
 ## No intro asset exists, so a real run opens on the card, blocked, until it times out.
@@ -172,6 +174,31 @@ func _scene_ending() -> void:
 	if not await _until("the ending scene reports its end", func() -> bool: return scene.screen_name() == "main", 120):
 		return
 	_check(not _mounted() and scene.survival_status().is_empty(), "the ending scene returns to the main menu")
+
+## A scene reporting its end while the host adds it closes. A crash here ends
+## the process, which `make test` reads as a failure.
+func _instant_intro(fixture: String) -> void:
+	_stand_in(load(fixture), INTRO)
+	await _start()
+	if not await _until("an instant intro closes unskipped", func() -> bool: return _str("cinematic") == "", 30):
+		return
+	if not _check(not _mounted() and scene.screen_name() == "survival" and _int("day") == 1, "an instant intro hands over to day one"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the game takes input after an instant intro", func() -> bool: return _where("chef") == "city", 30):
+		return
+	await _leave()
+
+func _instant_ending(fixture: String) -> void:
+	_stand_in(load(fixture), ENDING)
+	await _start()
+	await _tap(KEY_E)
+	while scene.screen_name() != "main" and _int("day") < DAY_LIMIT:
+		var day: int = _int("day")
+		await _tap(KEY_G)
+		if not await _until("the day ends or the ending closes", func() -> bool: return scene.screen_name() == "main" or _int("day") == day + 1, 30):
+			return
+	_check(scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 
 ## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
 ## would run in the frame that escaped.
