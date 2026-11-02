@@ -224,8 +224,22 @@ std::optional<Route> route_to(const WorldSnapshot &world, GridPosition start,
   return std::nullopt;
 }
 
+/// Whether repairing `passage` alone brings a goal into reach from `from`.
+bool opens_a_way(const WorldSnapshot &world, const Goal &passage,
+                 const std::vector<Goal> &goals, GridPosition from,
+                 std::uint32_t range) {
+  auto repaired = world;
+  for (auto &object : repaired.objects) {
+    if (object.id == passage.target) {
+      object.traversable = true;
+    }
+  }
+  return route_to(repaired, from, goals, range).has_value();
+}
+
 /// Collection comes first, what the party lacks before anything else; repair is
-/// the fallback when nothing is collectable.
+/// the fallback when nothing is collectable, and only of a passage that opens
+/// the way to stock.
 std::optional<Route> next_errand(const CompanionConfig &config,
                                  const GameView &view, Actor actor,
                                  GridPosition from) {
@@ -239,7 +253,13 @@ std::optional<Route> next_errand(const CompanionConfig &config,
   if (auto errand = route_to(view.world, from, goals, range)) {
     return errand;
   }
-  return route_to(view.world, from, repair_goals(view, actor), range);
+  std::vector<Goal> repairs;
+  std::ranges::copy_if(repair_goals(view, actor), std::back_inserter(repairs),
+                       [&](const Goal &passage) {
+                         return opens_a_way(view.world, passage, goals, from,
+                                            range);
+                       });
+  return route_to(view.world, from, repairs, range);
 }
 
 std::optional<IngredientId> first_unidentified(const GameView &view) {
@@ -379,14 +399,6 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
     command.action = EndDayUnfed{config.unfed_penalty};
   }
   return command;
-}
-
-bool worth_entering(const CompanionConfig &config, Actor actor,
-                    const GameView &view) {
-  const auto entry = config.exploration.entry;
-  return view.progression.remaining_exploration.count() > 0 &&
-         cell_at(view.world, entry) == Cell::Supported &&
-         next_errand(config, view, actor, entry).has_value();
 }
 
 ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
@@ -541,6 +553,14 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
         return run(exploration, workshop, actor, command);
       },
       action);
+}
+
+bool worth_entering(const CompanionConfig &config, Actor actor,
+                    const GameView &view) {
+  const auto entry = config.exploration.entry;
+  return view.progression.remaining_exploration.count() > 0 &&
+         cell_at(view.world, entry) == Cell::Supported &&
+         next_errand(config, view, actor, entry).has_value();
 }
 
 Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}

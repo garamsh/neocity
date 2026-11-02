@@ -39,6 +39,8 @@ public:
 
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
             int size, godot::Color tint) const;
+  /// How wide `text` draws at `size`.
+  [[nodiscard]] float text_width(const godot::String &text, int size) const;
   void sprite(godot::Node2D &canvas, std::size_t index,
               godot::Rect2 destination, bool flip) const;
 

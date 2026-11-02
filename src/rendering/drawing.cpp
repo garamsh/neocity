@@ -88,6 +88,11 @@ void AscentDrawing::text(godot::Node2D &canvas, float x, float y,
                      godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint);
 }
 
+float AscentDrawing::text_width(const godot::String &text, int size) const {
+  return font->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size)
+      .x;
+}
+
 void AscentDrawing::sprite(godot::Node2D &canvas, std::size_t index,
                            godot::Rect2 destination, bool flip) const {
   // Source rectangles are measured from the untouched atlas, which is not a

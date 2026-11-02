@@ -2,6 +2,9 @@ class_name SurvivalCapture
 extends SceneTree
 ## Captures real rendered frames of a played survival run into user://survival/.
 
+## One unfed day short of the acid that ends the run.
+const HIGH_ACID: int = 84
+
 var scene: AscentScene
 var held: Dictionary[Key, bool] = {}
 
@@ -57,14 +60,26 @@ func _run() -> void:
 	await _tap(KEY_Q)
 	await _frames(40)
 	await _walk(KEY_D, 8)
-	await _frames(240)
+	await _frames(60)
 	await _save("11-city-damaged")
 	await _tap(KEY_Q)
 	await _until_phase("workshop")
-	while scene.survival_status()["phase"] != "escaped":
+	while _int("acid") < HIGH_ACID:
 		await _tap(KEY_G)
-	await _frames(2)
-	await _save("13-ending-card")
+		await _frames(12)
+	await _tap(KEY_Q)
+	await _frames(40)
+	await _walk(KEY_D, 6)
+	await _save("17-city-high-acid")
+	await _tap(KEY_M)
+	await _tap(KEY_1)
+	await _tap(KEY_3)
+	await _tap(KEY_E)
+	await _save("15-two-players-workshop")
+	await _tap(KEY_Q)
+	await _tap(KEY_U)
+	await _frames(12)
+	await _save("16-two-players-city")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 

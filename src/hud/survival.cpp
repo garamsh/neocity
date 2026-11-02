@@ -40,7 +40,26 @@ constexpr float CARD_HEIGHT = 84.0F;
 constexpr float NEXT_Y = 674.0F;
 constexpr float PANEL_Y = 318.0F;
 constexpr float PANEL_HEIGHT = 348.0F;
-constexpr float PANEL_WIDTH = 414.0F;
+constexpr float APPRAISE_X = 10.0F;
+constexpr float APPRAISE_WIDTH = 368.0F;
+constexpr float COOK_X = 387.0F;
+constexpr float COOK_WIDTH = 496.0F;
+constexpr float FEED_X = 892.0F;
+constexpr float FEED_WIDTH = 378.0F;
+constexpr float PANEL_TEXT_MARGIN = 14.0F;
+constexpr int PANEL_JOB_SIZE = 17;
+constexpr float COOK_STATUS_X = 160.0F;
+constexpr float COOK_EATEN_X = 410.0F;
+constexpr float COOK_TASTE_X = 460.0F;
+constexpr int COOK_STATUS_SIZE = 15;
+constexpr int COOK_NAME_SIZE = 18;
+constexpr float NEXT_TEXT_X = 70.0F;
+constexpr int NEXT_SIZE = 18;
+constexpr float LEGEND_X = 14.0F;
+constexpr int LEGEND_SIZE = 14;
+constexpr float SCREEN_EDGE = 1272.0F;
+constexpr float CARD_TEXT_X = 72.0F;
+constexpr int CARD_TOOLS_SIZE = 13;
 /// The workshop's event log, kept above the monster's bowl at y 157.
 constexpr float EVENT_Y = 64.0F;
 constexpr float EVENT_HEIGHT = 90.0F;
@@ -126,6 +145,16 @@ std::uint32_t stamina_of(const GameView &view, Actor actor) {
     return view.exploration.chef.stamina;
   case Actor::Appraiser:
     return view.exploration.appraiser.stamina;
+  }
+  std::abort();
+}
+
+GridPosition position_of(const GameView &view, Actor actor) {
+  switch (actor) {
+  case Actor::Chef:
+    return view.exploration.chef.position;
+  case Actor::Appraiser:
+    return view.exploration.appraiser.position;
   }
   std::abort();
 }
@@ -228,60 +257,26 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
       action);
 }
 
-/// Where `actor` has something to do: a stocked source that is supplying, or a
-/// broken passage it carries the tool for.
-std::vector<survival::WorldArea> errand_areas(const SurvivalFrame &frame,
-                                              Actor actor) {
-  const auto &view = frame.view;
-  std::vector<survival::WorldArea> areas;
-  const auto &objects = view.world.objects;
-  for (const auto &stock : view.exploration.sources) {
-    const auto object =
-        std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
-    if (stock.remaining > 0 && object != objects.end() &&
-        object->material_available) {
-      areas.push_back(object->area);
-    }
-  }
-  const auto &tools = state_of(view, actor).tools;
-  for (const auto &object : objects) {
-    if (object.state == survival::ObjectState::Destroyed &&
-        object.repair_with &&
-        std::ranges::find(tools, *object.repair_with) != tools.end()) {
-      areas.push_back(object.area);
-    }
-  }
-  return areas;
-}
+using Cells = std::set<std::pair<std::int32_t, std::int32_t>>;
 
-/// Searches outward from `from` over the cells movement allows.
-bool errand_in_reach(const SurvivalFrame &frame, Actor actor,
-                     GridPosition from) {
-  const auto areas = errand_areas(frame, actor);
-  const auto range =
-      frame.content.get().companion.exploration.collection_distance;
-  std::set<std::pair<std::int32_t, std::int32_t>> seen{{from.x, from.y}};
+/// Adds to `seen` every cell movement allows from `from`.
+void add_walkable(Cells &seen, const survival::WorldSnapshot &world,
+                  GridPosition from) {
+  seen.insert({from.x, from.y});
   std::deque<GridPosition> frontier{from};
   while (!frontier.empty()) {
     const auto cell = frontier.front();
     frontier.pop_front();
-    if (std::ranges::any_of(areas, [cell, range](const auto &area) {
-          return survival::distance(cell, area) <= range;
-        })) {
-      return true;
-    }
     for (const auto next : {GridPosition{.x = cell.x - 1, .y = cell.y},
                             GridPosition{.x = cell.x + 1, .y = cell.y},
                             GridPosition{.x = cell.x, .y = cell.y - 1},
                             GridPosition{.x = cell.x, .y = cell.y + 1}}) {
-      if (survival::cell_at(frame.view.world, next) ==
-              survival::Cell::Supported &&
+      if (survival::cell_at(world, next) == survival::Cell::Supported &&
           seen.insert({next.x, next.y}).second) {
         frontier.push_back(next);
       }
     }
   }
-  return false;
 }
 
 const char *direction_word(survival::Direction direction) {
@@ -308,9 +303,12 @@ bool worth_setting_out(const SurvivalFrame &frame) {
     return survival::key_set(frame.control, actor).has_value();
   });
   return human != ACTORS.end() &&
-         frame.view.progression.remaining_exploration.count() > 0 &&
-         errand_in_reach(frame, *human,
-                         frame.content.get().companion.exploration.entry);
+         survival::worth_entering(frame.content.get().companion, *human,
+                                  frame.view);
+}
+
+String collection_clock(const SurvivalFrame &frame) {
+  return clock(frame.content.get().companion.exploration.collection_time);
 }
 
 String city_step(const SurvivalFrame &frame, Actor actor,
@@ -321,13 +319,11 @@ String city_step(const SurvivalFrame &frame, Actor actor,
       std::holds_alternative<survival::Collect>(*offers.interact);
   const bool walking =
       offers.errand && offers.errand->step != survival::Direction::Idle;
-  // A source passed on the way to what the party lacks would spend the clock.
-  if (offers.interact && !(collecting && walking)) {
+  // A source passed on the way to what the party lacks would spend the clock,
+  // and a repair with no errand left opens no way to stock.
+  if (offers.interact && offers.errand && !(collecting && walking)) {
     return offered_step(*offers.interact, keys) +
-           (collecting ? " (" +
-                             clock(frame.content.get()
-                                       .companion.exploration.collection_time) +
-                             ")"
+           (collecting ? " (spends " + collection_clock(frame) + ")"
                        : String());
   }
   if (!offers.errand) {
@@ -472,6 +468,19 @@ void paint_hearts(godot::Node2D &canvas, float x, float y,
   }
 }
 
+String spare_tools(const survival::ActorSnapshot &state) {
+  std::map<std::uint32_t, std::uint32_t> spares;
+  for (const auto spare : state.tools) {
+    ++spares[spare.value];
+  }
+  String tools;
+  for (const auto &[value, count] : spares) {
+    tools += from(survival::tool_name(survival::ToolId{value})) +
+             (count > 1 ? " x" + number(count) + "  " : String("  "));
+  }
+  return spares.empty() ? String("No spare tools") : tools;
+}
+
 void paint_actor_card(godot::Node2D &canvas,
                       const rendering::AscentDrawing &drawing,
                       const SurvivalFrame &frame, Actor actor, float x) {
@@ -501,18 +510,8 @@ void paint_actor_card(godot::Node2D &canvas,
                tool == survival::ToolState::Intact
                    ? tones.muted
                    : color(255, 120, 110, 1.0F));
-  std::map<std::uint32_t, std::uint32_t> spares;
-  for (const auto spare : state.tools) {
-    ++spares[spare.value];
-  }
-  String tools;
-  for (const auto &[value, count] : spares) {
-    tools += from(survival::tool_name(survival::ToolId{value})) +
-             (count > 1 ? " x" + number(count) + "  " : String("  "));
-  }
-  drawing.text(canvas, x + 72.0F, CARD_Y + 77.0F,
-               spares.empty() ? String("No spare tools") : tools, 12,
-               tones.muted);
+  drawing.text(canvas, x + CARD_TEXT_X, CARD_Y + 77.0F, spare_tools(state),
+               CARD_TOOLS_SIZE, tones.muted);
 }
 
 void paint_pack(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
@@ -558,6 +557,8 @@ void paint_events(godot::Node2D &canvas,
 
 String key_legend(const SurvivalFrame &frame) {
   const bool city = frame.view.progression.phase == Phase::Exploration;
+  const String collecting =
+      city ? "    Each collection spends " + collection_clock(frame) : String();
   const auto legend = [city](const KeyLabels &keys, bool chef) {
     if (city) {
       return from(keys.move) + " move  " + from(keys.run) + " run  " +
@@ -574,11 +575,11 @@ String key_legend(const SurvivalFrame &frame) {
   const auto appraiser = survival::key_set(frame.control, Actor::Appraiser);
   if (chef && appraiser) {
     return "P1  " + legend(KEY_LABELS.at(0), true) + "    P2  " +
-           legend(KEY_LABELS.at(1), false);
+           legend(KEY_LABELS.at(1), false) + collecting;
   }
   const auto &keys = KEY_LABELS.at(0);
   return legend(keys, chef.has_value()) + "   " + from(keys.switch_actor) +
-         " swap actor";
+         " swap actor" + collecting;
 }
 
 void paint_next_step(godot::Node2D &canvas,
@@ -588,9 +589,9 @@ void paint_next_step(godot::Node2D &canvas,
   canvas.draw_rect(rect(0.0F, NEXT_Y, 1280.0F, 720.0F - NEXT_Y),
                    color(14, 12, 26, 1.0F));
   drawing.text(canvas, 14.0F, NEXT_Y + 22.0F, "NEXT", 18, tones.cyan);
-  drawing.text(canvas, 70.0F, NEXT_Y + 22.0F, next_step(frame), 18,
+  drawing.text(canvas, NEXT_TEXT_X, NEXT_Y + 22.0F, next_step(frame), NEXT_SIZE,
                tones.white);
-  drawing.text(canvas, 14.0F, NEXT_Y + 40.0F, key_legend(frame), 14,
+  drawing.text(canvas, LEGEND_X, NEXT_Y + 40.0F, key_legend(frame), LEGEND_SIZE,
                tones.muted);
 }
 
@@ -598,8 +599,8 @@ void paint_next_step(godot::Node2D &canvas,
 void paint_panel_job(godot::Node2D &canvas,
                      const rendering::AscentDrawing &drawing, float x,
                      const String &job) {
-  drawing.text(canvas, x + 14.0F, PANEL_Y + PANEL_HEIGHT - 16.0F, job, 17,
-               rendering::palette().cyan);
+  drawing.text(canvas, x + PANEL_TEXT_MARGIN, PANEL_Y + PANEL_HEIGHT - 16.0F,
+               job, PANEL_JOB_SIZE, rendering::palette().cyan);
 }
 
 void paint_appraise_panel(godot::Node2D &canvas,
@@ -607,12 +608,8 @@ void paint_appraise_panel(godot::Node2D &canvas,
                           const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
-  const auto keys = survival::key_set(frame.control, Actor::Appraiser);
-  frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(canvas, drawing, x,
-                  keys ? key(KEY_LABELS.at(*keys).interact) +
-                             "Appraise the next unknown ingredient"
-                       : String("The AI appraiser works here."));
+  frame_box(canvas, x, PANEL_Y, APPRAISE_WIDTH, PANEL_HEIGHT);
+  paint_panel_job(canvas, drawing, x, appraise_job(frame));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "APPRAISE", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                String("Magnifier ") +
@@ -675,12 +672,26 @@ void list_ingredients(String &text, const char *verb,
 }
 
 /// Names what a recipe still lacks; empty when it can be cooked now.
-String recipe_status(const GameView &view, const survival::Recipe &recipe) {
-  const auto needs = recipe_needs(view, recipe);
+String needs_text(const RecipeNeeds &needs) {
   String status;
   list_ingredients(status, "need", needs.missing);
   list_ingredients(status, "identify", needs.unidentified);
   return status;
+}
+
+/// The needs when the bits of `held` and `known` say which ingredients are
+/// carried and identified.
+RecipeNeeds needs_given(const std::vector<IngredientId> &ingredients,
+                        std::size_t held, std::size_t known) {
+  RecipeNeeds needs;
+  for (std::size_t index = 0; index < ingredients.size(); ++index) {
+    if ((held >> index & 1U) == 0) {
+      needs.missing.push_back(ingredients.at(index));
+    } else if ((known >> index & 1U) == 0) {
+      needs.unidentified.push_back(ingredients.at(index));
+    }
+  }
+  return needs;
 }
 
 /// The cook panel's last line: what the chef's key would really cook.
@@ -707,19 +718,20 @@ void paint_cook_panel(godot::Node2D &canvas,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
-  frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
+  frame_box(canvas, x, PANEL_Y, COOK_WIDTH, PANEL_HEIGHT);
   paint_panel_job(canvas, drawing, x, cook_job(frame));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "COOK", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                String("Spatula ") +
                    tool_condition(role_tool_state(view, Actor::Chef)),
                16, tones.muted);
-  drawing.text(canvas, x + 362.0F, PANEL_Y + 30.0F, "Taste", 14, tones.muted);
+  drawing.text(canvas, x + COOK_TASTE_X - 10.0F, PANEL_Y + 30.0F, "Taste", 14,
+               tones.muted);
   float y = PANEL_Y + 60.0F;
   const auto offered = offered_dish(frame);
   const auto &tuning = frame.content.get().companion.workshop;
   for (const auto &recipe : tuning.recipes) {
-    const auto missing = recipe_status(view, recipe);
+    const auto missing = needs_text(recipe_needs(view, recipe));
     if (offered == recipe.food) {
       drawing.text(canvas, x + 3.0F, y, ">", 18, tones.gold);
     }
@@ -728,16 +740,18 @@ void paint_cook_panel(godot::Node2D &canvas,
     const bool repeat = std::ranges::find(eaten, recipe.food) != eaten.end();
     const bool hated =
         std::ranges::find(rejected, recipe.food) != rejected.end();
-    drawing.text(canvas, x + 14.0F, y, from(survival::food_name(recipe.food)),
-                 18, tones.white);
-    drawing.text(canvas, x + 170.0F, y,
-                 missing.is_empty() ? String("ready") : missing, 16,
+    drawing.text(canvas, x + PANEL_TEXT_MARGIN, y,
+                 from(survival::food_name(recipe.food)), COOK_NAME_SIZE,
+                 tones.white);
+    drawing.text(canvas, x + COOK_STATUS_X, y,
+                 missing.is_empty() ? String("ready") : missing,
+                 COOK_STATUS_SIZE,
                  missing.is_empty() ? tones.cyan : tones.muted);
     if (repeat) {
-      drawing.text(canvas, x + 324.0F, y, hated ? "hated" : "eaten", 16,
+      drawing.text(canvas, x + COOK_EATEN_X, y, hated ? "hated" : "eaten", 16,
                    tones.gold);
     }
-    drawing.text(canvas, x + 372.0F, y,
+    drawing.text(canvas, x + COOK_TASTE_X, y,
                  number(survival::taste_of(recipe, tuning)), 16, tones.muted);
     y += 25.0F;
   }
@@ -757,19 +771,21 @@ const char *reaction_text(survival::MonsterReaction reaction) {
   std::abort();
 }
 
+String feed_job(const SurvivalFrame &frame) {
+  const auto &keys = KEY_LABELS.at(0);
+  return key(keys.feed) + "Feed   " + key(keys.end_day) +
+         "End the day unfed: acid +" +
+         number(frame.content.get().companion.unfed_penalty.value);
+}
+
 void paint_feed_panel(godot::Node2D &canvas,
                       const rendering::AscentDrawing &drawing,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
-  const auto &keys = KEY_LABELS.at(0);
-  frame_box(canvas, x, PANEL_Y, PANEL_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(
-      canvas, drawing, x,
-      key(keys.feed) + "Feed   " + key(keys.end_day) +
-          "End the day unfed: acid +" +
-          number(frame.content.get().companion.unfed_penalty.value));
+  frame_box(canvas, x, PANEL_Y, FEED_WIDTH, PANEL_HEIGHT);
+  paint_panel_job(canvas, drawing, x, feed_job(frame));
   drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "FEED", 24, tones.gold);
   drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
                "Needs a score of " + number(tuning.satisfying_score), 16,
@@ -812,9 +828,9 @@ void paint_workshop_screen(godot::Node2D &canvas,
                            const SurvivalFrame &frame) {
   rendering::paint_workshop(canvas, drawing,
                             !frame.view.workshop.foods.empty());
-  paint_appraise_panel(canvas, drawing, frame, 10.0F);
-  paint_cook_panel(canvas, drawing, frame, 433.0F);
-  paint_feed_panel(canvas, drawing, frame, 856.0F);
+  paint_appraise_panel(canvas, drawing, frame, APPRAISE_X);
+  paint_cook_panel(canvas, drawing, frame, COOK_X);
+  paint_feed_panel(canvas, drawing, frame, FEED_X);
   paint_events(canvas, drawing, frame, 840.0F, EVENT_Y, EVENT_HEIGHT);
 }
 
@@ -822,7 +838,7 @@ void paint_city_screen(godot::Node2D &canvas,
                        const rendering::AscentDrawing &drawing,
                        const SurvivalFrame &frame) {
   rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                        frame.control);
+                        frame.control, out_of_reach(frame));
   paint_actor_card(canvas, drawing, frame, Actor::Chef, 8.0F);
   paint_actor_card(canvas, drawing, frame, Actor::Appraiser, 290.0F);
   paint_pack(canvas, drawing, frame.view, 572.0F);
@@ -946,6 +962,10 @@ String done_text(const ActionEvent &event) {
       event.action);
 }
 
+FittedText fitted(const String &text, int size, float width) {
+  return {.text = text, .size = size, .width = width};
+}
+
 } // namespace
 
 void paint_survival_setup(godot::Node2D &canvas,
@@ -1065,6 +1085,83 @@ String next_step(const SurvivalFrame &frame) {
   }
   return line.is_empty() ? String("Waiting for the party to reach base.")
                          : line;
+}
+
+String appraise_job(const SurvivalFrame &frame) {
+  const auto keys = survival::key_set(frame.control, Actor::Appraiser);
+  if (!keys) {
+    return "The AI appraiser works here.";
+  }
+  return has_unidentified(frame.view)
+             ? key(KEY_LABELS.at(*keys).interact) +
+                   "Appraise the next unknown ingredient"
+             : String("Nothing to appraise.");
+}
+
+std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
+  const auto &view = frame.view;
+  const auto &exploration = frame.content.get().companion.exploration;
+  Cells cells;
+  for (const auto actor : ACTORS) {
+    if (survival::key_set(frame.control, actor)) {
+      add_walkable(cells, view.world,
+                   state_of(view, actor).location == Location::City
+                       ? position_of(view, actor)
+                       : exploration.entry);
+    }
+  }
+  std::vector<survival::ObjectId> stranded;
+  const auto &objects = view.world.objects;
+  for (const auto &stock : view.exploration.sources) {
+    const auto object =
+        std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
+    if (stock.remaining == 0 || object == objects.end() ||
+        !object->material_available) {
+      continue;
+    }
+    const bool reached = std::ranges::any_of(cells, [&](const auto &cell) {
+      return survival::distance({.x = cell.first, .y = cell.second},
+                                object->area) <=
+             exploration.collection_distance;
+    });
+    if (!reached) {
+      stranded.push_back(stock.id);
+    }
+  }
+  return stranded;
+}
+
+std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
+  const float job_inset = 2.0F * PANEL_TEXT_MARGIN;
+  std::vector<FittedText> lines;
+  lines.push_back(
+      fitted(next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X));
+  lines.push_back(
+      fitted(key_legend(frame), LEGEND_SIZE, SCREEN_EDGE - LEGEND_X));
+  lines.push_back(
+      fitted(appraise_job(frame), PANEL_JOB_SIZE, APPRAISE_WIDTH - job_inset));
+  lines.push_back(
+      fitted(cook_job(frame), PANEL_JOB_SIZE, COOK_WIDTH - job_inset));
+  lines.push_back(
+      fitted(feed_job(frame), PANEL_JOB_SIZE, FEED_WIDTH - job_inset));
+  for (const auto actor : ACTORS) {
+    lines.push_back(fitted(spare_tools(state_of(frame.view, actor)),
+                           CARD_TOOLS_SIZE, CARD_WIDTH - CARD_TEXT_X));
+  }
+  for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
+    lines.push_back(fitted(from(survival::food_name(recipe.food)),
+                           COOK_NAME_SIZE,
+                           COOK_STATUS_X - PANEL_TEXT_MARGIN - 2.0F));
+    const auto subsets = std::size_t{1} << recipe.ingredients.size();
+    for (std::size_t held = 0; held < subsets; ++held) {
+      for (std::size_t known = 0; known < subsets; ++known) {
+        lines.push_back(
+            fitted(needs_text(needs_given(recipe.ingredients, held, known)),
+                   COOK_STATUS_SIZE, COOK_EATEN_X - COOK_STATUS_X - 4.0F));
+      }
+    }
+  }
+  return lines;
 }
 
 String describe(const Event &event) {

@@ -70,6 +70,13 @@ struct SurvivalFrame {
   std::vector<Event> events;
 };
 
+/// A line whose words change with play, and the width its place gives it.
+struct FittedText {
+  godot::String text;
+  int size = 0;
+  float width = 0.0F;
+};
+
 /// The authored moments of a run: its start and each way it can end.
 enum class Cinematic : std::uint8_t { Intro, Ending, Loss };
 
@@ -92,6 +99,15 @@ void paint_cinematic(godot::Node2D &canvas,
                                 const survival::Recipe &recipe);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
+/// The appraise panel's last line.
+[[nodiscard]] godot::String appraise_job(const SurvivalFrame &frame);
+/// Stocked, supplying sources no human can walk to: a human in the city from
+/// where they stand, one at base from the entrance.
+[[nodiscard]] std::vector<survival::ObjectId>
+out_of_reach(const SurvivalFrame &frame);
+/// Every changing line of this frame, with the cook panel's status in each form
+/// any pack could give it.
+[[nodiscard]] std::vector<FittedText> changing_text(const SurvivalFrame &frame);
 /// The sentence the event log shows for `event`.
 [[nodiscard]] godot::String describe(const Event &event);
 
