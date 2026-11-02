@@ -332,6 +332,10 @@ def grid_crop(rows, box, logical):
     even = (box, w / logical[0], h / logical[1])
     if min(conf_x, conf_y) < GRID_CONFIDENCE:
         return even
+    # An asset drawn coarser than the generation's grid takes a whole multiple of it, so the box
+    # still covers the figure instead of shrinking to its centre.
+    px *= max(1, round(w / (logical[0] * px)))
+    py *= max(1, round(h / (logical[1] * py)))
     new_w, new_h = logical[0] * px, logical[1] * py
     left = x + phase_x + round((w - new_w) / 2 / px) * px
     top = y + phase_y + round((h - new_h) / 2 / py) * py
