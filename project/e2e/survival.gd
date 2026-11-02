@@ -18,23 +18,26 @@ const MENU_PRESSES: int = 12
 const COOK_ATTEMPTS: int = 12
 const STEP_FRAMES: int = 6
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
-## Left, right, up and down of the first key set, then of the second.
-const WALK_KEYS: Array[Key] = [KEY_A, KEY_D, KEY_W, KEY_S, KEY_J, KEY_L, KEY_I, KEY_K]
+## Left, right, up, down and jump of the first key set, then of the second.
+const WALK_KEYS: Array[Key] = [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE, KEY_J, KEY_L, KEY_I, KEY_K, KEY_SEMICOLON]
 ## Five unfed days raise acid to 60: acid has taken every landed ingredient
 ## source west of the ferry, and the run is far from lost.
 const UNFED_DAYS: int = 5
-## From the entrance up the north stairs to the supply crate at the arcade's
+## From the entrance up the north ladder to the supply crate at the arcade's
 ## west end.
-const CRATE_ROUTE: Array[Vector2i] = [Vector2i(7, 7), Vector2i(7, 2), Vector2i(3, 2)]
-## From the entrance down the south stairs into the market, by the tool bag.
-const MARKET_ROUTE: Array[Vector2i] = [Vector2i(8, 7), Vector2i(8, 12), Vector2i(13, 12)]
-## Up and back down through the drip: two burns, with the third one step up.
-const DRIP_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(10, 7)]
+const CRATE_ROUTE: Array[Vector2i] = [Vector2i(2, 8), Vector2i(2, 2)]
+## From the entrance down the market ladder into the market, by the tool bag.
+const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
+## From the entrance down the market ladder to the tomato machine.
+const TOMATO_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(6, 11)]
+## The drip stands on the ramp's first step: up and back down through it burns
+## twice, and the third burn is one step back down.
+const DRIP_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(10, 7), Vector2i(11, 6)]
 ## From the entrance up the ramp to the foot of the roof ladder on the overpass.
-const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(16, 5)]
+const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5)]
 ## From the entrance up the ramp, over the overpass and up the roof ladder to
 ## the roof bag.
-const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(16, 5), Vector2i(16, 3), Vector2i(22, 3)]
+const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5), Vector2i(18, 2), Vector2i(23, 2)]
 ## The weight the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Inter-SemiBold.ttf"
 
@@ -166,7 +169,7 @@ func _hand_off_shows_the_keys_left() -> void:
 		return
 	await _tap(KEY_ESCAPE)
 	var keys: String = str(_lines("pause_keys"))
-	for row: String in ["Run: Shift / H", "Hand your actor to AI: X / N", "Swap actor, once one player is left: Tab / none", "Move: WASD or arrows / IJKL"]:
+	for row: String in ["Run: Shift / H", "Jump: Space / ;", "Hand your actor to AI: X / N", "Swap actor, once one player is left: Tab / none", "Move: WASD or arrows / IJKL"]:
 		if not _check(keys.contains(row), "the pause screen for two lists %s" % row):
 			return
 	if not _text_fits("the pause screen for two players"):
@@ -289,18 +292,22 @@ func _first_day() -> void:
 		return
 	if not _check(_screen_shows("[E] Use") and not _screen_shows("[E] Collect") and _screen_shows("[Q] Return to base") and _screen_shows("WASD move  Shift run"), "away from a source the action card shows E unlit, Q home and the move keys"):
 		return
-	if not await _walk_to(5, 7):
+	await _run_east()
+	if failed:
 		return
-	if not _check(_screen_shows("[E] Collect") and _screen_shows("Tomato Machine") and not _screen_shows("[E] Use"), "at a source the action card offers E to collect from it"):
+	if not await _walk_to(7, 8):
 		return
-	if not _check(_next().begins_with("Walk "), "the screen walks past a kind the party already took"):
+	if not await _until("the AI appraiser takes the cart's fish", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
+		return
+	if not _check(_screen_shows("[E] Collect") and _screen_shows("Vendor Cart") and not _screen_shows("[E] Use"), "at a source the action card offers E to collect from it"):
+		return
+	if not _check(not _next().begins_with("[E] ") and _next().contains(" to Tomato Machine"), "the screen moves past a kind the party already took: %s" % _next()):
+		return
+	if not await _walk_route(TOMATO_ROUTE):
 		return
 	var stock: int = _stock("Tomato Machine")
 	await _tap(KEY_E)
 	if not _check(_actor("chef", "ingredients") == 1 and _stock("Tomato Machine") < stock, "E collects into the pack and spends shared stock"):
-		return
-	await _run_east()
-	if failed:
 		return
 	var remaining: int = _int("remaining_ms")
 	if not await _until("time expires", func() -> bool: return _str("phase") == "workshop", DAY_FRAMES):
@@ -311,40 +318,44 @@ func _first_day() -> void:
 		return
 	_check(_events().has("Time is up: everyone is back at base."), "the screen reports the timed return")
 
+## Runs east along the main street towards the market ladder.
 func _run_east() -> void:
 	var stamina: int = _actor("chef", "stamina")
 	_key(KEY_SHIFT, true)
 	_key(KEY_D, true)
-	await _until("running reaches the ramp", func() -> bool: return _actor("chef", "x") >= 7, 240)
+	await _until("running reaches the market ladder", func() -> bool: return _actor("chef", "x") >= 6, 240)
 	_key(KEY_D, false)
 	_key(KEY_SHIFT, false)
 	if failed:
 		return
 	if not _check(_actor("chef", "stamina") < stamina, "running spends stamina"):
 		return
-	if not await _walk_to(10, 7):
-		return
 	var line: String = _next()
 	var target: String = line.get_slice(" to ", 1).get_slice(".", 0)
 	var objects: Dictionary = scene.survival_status()["objects"]
-	_check(line.begins_with("Walk ") and objects.has(target), "the screen names the object to walk to")
+	_check(line.contains(" to ") and objects.has(target), "the screen names the object to move to: %s" % line)
 
 ## Stops before anything is collected, so the fall leaves time on the clock.
 func _third_day_falls() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef sets out to the drip", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not await _walk_route([Vector2i(10, 7), Vector2i(10, 5)]):
+	if not await _walk_route([Vector2i(10, 7), Vector2i(11, 6)]):
 		return
 	if not _check(_actor("chef", "health") == 2 and _next_event_has("burned"), "the acid drip costs one health slot"):
 		return
-	await _walk_to(11, 5)
+	if not await _walk_to(18, 5):
+		return
 	var remaining: int = _int("remaining_ms")
 	var pack: int = _actor("chef", "ingredients")
-	_key(KEY_W, true)
-	var fell: bool = await _until("chef reaches the edge", func() -> bool: return _where("chef") == "base", 60)
-	_key(KEY_W, false)
-	if not fell:
+	# Let go once off the edge: held, the key would carry the fall onto the
+	# fallen slab beyond the gap.
+	_key(KEY_D, true)
+	var off: bool = await _until("chef walks off the overpass's east end", func() -> bool: return _stance("chef") == "airborne", 120)
+	_key(KEY_D, false)
+	if not off:
+		return
+	if not await _until("chef falls into the acid", func() -> bool: return _where("chef") == "base", 120):
 		return
 	if not _check(_actor("chef", "health") == 3 and _actor("chef", "ingredients") == pack, "a fall returns to base with health restored and the pack kept"):
 		return
@@ -386,9 +397,9 @@ func _exhaust_the_chef() -> void:
 		return
 	if not _check(_actor("chef", "health") == 1, "two more drips leave one slot"):
 		return
-	_key(KEY_W, true)
+	_key(KEY_A, true)
 	var exhausted: bool = await _until("the third drip", func() -> bool: return _actor("chef", "exhaustions") == 1, 60)
-	_key(KEY_W, false)
+	_key(KEY_A, false)
 	if not exhausted:
 		return
 	if not _check(_where("chef") == "base" and _actor("chef", "health") == 3, "exhaustion carries the chef to base at full health"):
@@ -422,9 +433,9 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 		return
 	if not await _walk_route(DRIP_ROUTE):
 		return
-	_key(KEY_W, true)
+	_key(KEY_A, true)
 	var exhausted: bool = await _until("the chef is exhausted on day one", func() -> bool: return _actor("chef", "exhaustions") == 1, 60)
-	_key(KEY_W, false)
+	_key(KEY_A, false)
 	if not exhausted:
 		return
 	if not await _until("AI comes back after the chef's exhaustion", func() -> bool: return _str("phase") == "workshop", 120):
@@ -804,19 +815,33 @@ func _follow_next() -> void:
 		await _tap(KEY_G)
 	elif line.contains("[E] "):
 		await _tap(KEY_E)
-	elif line.begins_with("Walk "):
+	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		await _walk_a_cell(line)
 	else:
 		await _frames(12)
 
-## Walks one cell the way NEXT names: a press and release in one frame walks one
-## step at any frame length.
+## Moves the way NEXT names: a press and release in one frame walks or climbs
+## one step at any frame length. A jump, or a step off an edge, holds its way
+## until it lands, as the route it was planned on does.
 func _walk_a_cell(line: String) -> void:
 	var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
-	if code != KEY_NONE:
+	if code == KEY_NONE:
+		await _frames(STEP_FRAMES)
+		return
+	if line.begins_with("Jump "):
+		_key(code, true)
+		_key(KEY_SPACE, true)
+		_key(KEY_SPACE, false)
+		await _until("the jump takes off", func() -> bool: return _stance(walker) == "airborne", 30)
+	else:
 		_key(code, true)
 		_key(code, false)
-	await _frames(STEP_FRAMES)
+		await _frames(STEP_FRAMES)
+		if _stance(walker) != "airborne":
+			return
+		_key(code, true)
+	await _until("the move lands", func() -> bool: return _stance(walker) != "airborne", 120)
+	_key(code, false)
 
 func _acid_changes_the_city() -> void:
 	if not _check(_object("Noodle Vendor") == "intact" and _object("Drifted Ferry") == "dormant", "the vendor stands and the ferry is away"):
@@ -851,9 +876,9 @@ func _collect_from_the_tomato_machine() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out for the machine", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not await _walk_to(5, 7):
+	if not await _walk_route(TOMATO_ROUTE):
 		return
-	# The machine is two cells in, closer than the hold on E after setting out.
+	# Let go of E held since setting out before pressing it at the machine.
 	await _frames(2 * STEP_FRAMES)
 	var pack: int = _actor("chef", "ingredients")
 	var left: int = _int("remaining_ms")
@@ -949,7 +974,7 @@ func _human_repairs_the_ladder() -> void:
 	await _frames(24)
 	_key(KEY_W, false)
 	await _frames(12)
-	if not _check(_actor("appraiser", "y") == 5, "a broken ladder blocks the way up"):
+	if not _check(_actor("appraiser", "y") == 5 and _stance("appraiser") == "standing", "a broken ladder blocks the way up"):
 		return
 	await _tap(KEY_E)
 	if not _check(_object("Roof Ladder") == "intact" and _actor("appraiser", "tools") == 1, "E repairs with the carried wrench and keeps it"):
@@ -1015,18 +1040,18 @@ func _two_players() -> void:
 func _a_hated_dish_is_not_fed_again() -> void:
 	await _start_two_players()
 	walker = "chef"
-	if not await _collect_along([Vector2i(8, 7), Vector2i(8, 12), Vector2i(6, 12), Vector2i(6, 13), Vector2i(4, 13)], 2):
+	if not await _collect_along([Vector2i(7, 8), Vector2i(7, 11), Vector2i(0, 12)], 2):
 		return
-	if not await _collect_along([Vector2i(7, 13)], 1):
+	if not await _collect_along([Vector2i(2, 12)], 1):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes home", func() -> bool: return _str("phase") == "workshop", 120)
 	await _tap(KEY_G)
 	if not await _until("the first gathering day ends", func() -> bool: return _int("day") == 2, 30):
 		return
-	if not await _collect_along([Vector2i(8, 7), Vector2i(8, 12), Vector2i(6, 12), Vector2i(6, 13), Vector2i(7, 13)], 2):
+	if not await _collect_along([Vector2i(7, 8), Vector2i(7, 11), Vector2i(2, 12)], 2):
 		return
-	if not await _collect_along([Vector2i(6, 13), Vector2i(6, 12), Vector2i(8, 12), Vector2i(8, 7), Vector2i(5, 7)], 1):
+	if not await _collect_along([Vector2i(6, 11)], 1):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes home again", func() -> bool: return _str("phase") == "workshop", 120)
@@ -1264,22 +1289,39 @@ func _walk_route(waypoints: Array) -> bool:
 			return false
 	return true
 
-## Walks the human in a straight line: every leg here runs along one axis.
+## Walks the human sideways along its floor, stairs and steps included, to
+## column x, jumping whatever low block stops it, then climbs to row y. It runs
+## while the column is more than two cells away: the AI partner's collections
+## spend the shared clock fast.
 func _walk_to(x: int, y: int) -> bool:
-	var first: int = 4 * _actor(walker, "key_set")
-	for frame: int in range(240):
+	var first: int = 5 * _actor(walker, "key_set")
+	var run: Key = KEY_SHIFT if first == 0 else KEY_H
+	var stalled: int = 0
+	var last: int = _actor(walker, "sub_x")
+	for frame: int in range(900):
 		var at_x: int = _actor(walker, "x")
 		var at_y: int = _actor(walker, "y")
-		if at_x == x and at_y == y:
+		if at_x == x and at_y == y and _stance(walker) != "airborne":
 			_release()
 			return true
-		_key(WALK_KEYS[first], x < at_x)
-		_key(WALK_KEYS[first + 1], x > at_x)
-		_key(WALK_KEYS[first + 2], x == at_x and y < at_y)
-		_key(WALK_KEYS[first + 3], x == at_x and y > at_y)
+		var sideways: bool = at_x != x
+		_key(WALK_KEYS[first], sideways and x < at_x)
+		_key(WALK_KEYS[first + 1], sideways and x > at_x)
+		_key(WALK_KEYS[first + 2], not sideways and y < at_y)
+		_key(WALK_KEYS[first + 3], not sideways and y > at_y)
+		_key(run, absi(x - at_x) > 2)
+		var sub_x: int = _actor(walker, "sub_x")
+		stalled = stalled + 1 if sideways and sub_x == last and _stance(walker) == "standing" else 0
+		last = sub_x
+		_key(WALK_KEYS[first + 4], stalled > 6)
 		await process_frame
 	_release()
 	return _check(false, "%s walks to %d, %d" % [walker, x, y])
+
+func _stance(who: String) -> String:
+	var actor: Dictionary = scene.survival_status()[who]
+	var stance: String = actor["stance"]
+	return stance
 
 func _until(name: String, condition: Callable, limit: int) -> bool:
 	for frame: int in range(limit):

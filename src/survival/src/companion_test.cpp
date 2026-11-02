@@ -363,6 +363,18 @@ TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
   EXPECT_EQ(sealed.simulation().snapshot().day, 2U);
   EXPECT_EQ(hurdle.simulation().snapshot().chef.location, Location::City);
 }
+TEST(Companion, AnErrandInTheAirIsPlannedFromWhereTheDropLands) {
+  auto view = city_view(ENTRY);
+  add_source(view, SOURCE, 8);
+  view.exploration.chef.body = {
+      .position = {.x = standing_in({.x = 5}).x, .y = -2 * SUBCELLS},
+      .stance = Stance::Airborne};
+  const auto errand = companion_with().errand(Actor::Chef, view);
+  ASSERT_TRUE(errand.has_value());
+  EXPECT_EQ(errand->target, SOURCE);
+  EXPECT_EQ(errand->step, Move::Right);
+}
+
 TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {
   auto view = city_view({.x = 2});
   add_source(view, SOURCE, 9);
@@ -402,6 +414,19 @@ TEST(Companion, ARepairIsAnErrandOnlyWhileItOpensTheWayToStock) {
   view.exploration.sources.front().remaining = 0;
   EXPECT_FALSE(companion_with().errand(Actor::Chef, view).has_value());
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{ReturnToBase{}});
+}
+
+TEST(Companion, ARepairOpensStockOnlyWhereItBringsNewStockIntoReach) {
+  const CompanionConfig config{.exploration = tuning({}),
+                               .workshop = kitchen(),
+                               .unfed_penalty = UNFED_PENALTY};
+  auto view = view_with_broken_door({.x = 3});
+  add_source(view, SOURCE, 5);
+  EXPECT_FALSE(repair_opens_stock(config, Actor::Chef, view, DOOR));
+  add_source(view, FAR_SOURCE, 0);
+  EXPECT_TRUE(repair_opens_stock(config, Actor::Chef, view, DOOR));
+  view.exploration.sources.back().remaining = 0;
+  EXPECT_FALSE(repair_opens_stock(config, Actor::Chef, view, DOOR));
 }
 
 TEST(Companion, AHumanStillRepairsAPassageThatOpensNothing) {

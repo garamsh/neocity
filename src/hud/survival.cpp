@@ -566,9 +566,16 @@ String city_step(const SurvivalFrame &frame, Actor actor,
       offers.interact &&
       std::holds_alternative<survival::Collect>(*offers.interact);
   const bool walking = offers.errand && offers.errand->step.has_value();
+  const auto *repair = offers.interact
+                           ? std::get_if<survival::Repair>(&*offers.interact)
+                           : nullptr;
+  const bool opens = repair != nullptr && survival::repair_opens_stock(
+                                              frame.content.get().companion,
+                                              actor, frame.view, repair->target);
   // A source passed on the way to what the party lacks would spend the clock,
-  // and a repair with no errand left opens no way to stock.
-  if (offers.interact && offers.errand && !(collecting && walking)) {
+  // a passage passed on the way is worth it only for stock out of reach
+  // without it, and a repair with no errand left opens no way to stock.
+  if (offers.interact && offers.errand && (!walking || opens)) {
     return offered_step(*offers.interact, keys) +
            (collecting ? " (spends " + collection_clock(frame) + ")"
                        : String());
@@ -1051,8 +1058,7 @@ bool travel_asked(const SurvivalFrame &frame, Actor actor) {
 
 /// The movement keys a lone human reads beside its travel button.
 String move_hint(const KeyLabels &keys) {
-  return from(keys.move) + " move  " + from(keys.run) + " run  " +
-         from(keys.jump) + " jump";
+  return from(keys.move) + " move  " + from(keys.run) + " run";
 }
 
 /// The humans in the city phase, chef first, with their key sets.

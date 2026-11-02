@@ -13,6 +13,9 @@ const DEFAULT_CAP_MS: int = 133
 const TWO_PLAYERS: int = 3
 ## Frames in one 100ms step at the 480 frames a second this part runs at.
 const STEP_FRAMES: int = 48
+## Sub-cell units one walking step moves, and one running step.
+const WALK: int = 25
+const RUN: int = 50
 
 var scene: MainScene
 var checks: int = 0
@@ -63,32 +66,40 @@ func _fine_frames() -> void:
 	if not _check(_int("remaining_ms") == before - 1000, "one second of frames spends one second, neither lost nor doubled"):
 		return
 	await _align_to_step()
-	var x: int = _actor("chef", "x")
+	var x: int = _actor("chef", "sub_x")
 	await _one_frame("survival_1_right")
 	await _frames(60)
-	if not _check(_actor("chef", "x") == x + 1, "a one-frame direction tap walks exactly one cell"):
+	if not _check(_actor("chef", "sub_x") == x + WALK, "a one-frame direction tap walks exactly one step"):
 		return
 	await _align_to_step()
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	_same_frame_tap(KEY_D)
 	await _frames(60)
-	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one frame walks exactly one cell"):
+	if not _check(_actor("chef", "sub_x") == x + WALK, "a press and release inside one frame walks exactly one step"):
 		return
 	await _align_to_step()
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	Input.action_press("survival_1_run")
 	_same_frame_tap(KEY_D)
 	await _frames(60)
 	Input.action_release("survival_1_run")
-	if not _check(_actor("chef", "x") == x + 2, "a tap with the run key held runs one step"):
+	if not _check(_actor("chef", "sub_x") == x + RUN, "a tap with the run key held runs one step"):
 		return
 	await _align_to_step()
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	Input.action_press("survival_1_right")
 	await _frames(72)
 	Input.action_release("survival_1_right")
 	await _frames(96)
-	if not _check(_actor("chef", "x") == x + 1, "a key held across one step and released mid-step walks one cell"):
+	if not _check(_actor("chef", "sub_x") == x + WALK, "a key held across one step and released mid-step walks one step"):
+		return
+	await _align_to_step()
+	await _one_frame("survival_1_jump")
+	await _frames(STEP_FRAMES + 12)
+	if not _check(_stance("chef") == "airborne", "a one-frame jump tap between steps is retained"):
+		return
+	await _frames(10 * STEP_FRAMES)
+	if not _check(_stance("chef") == "standing", "one jump press jumps once"):
 		return
 	await _pause_holds_the_run()
 	if failed:
@@ -119,14 +130,14 @@ func _pause_holds_the_run() -> void:
 	await _frames(480)
 	if not _check(_int("remaining_ms") == before and _int("elapsed_ms") == elapsed, "a second paused spends neither clock"):
 		return
-	var at: int = _actor("chef", "x")
+	var at: int = _actor("chef", "sub_x")
 	Input.action_press("survival_1_right")
 	Input.action_press("survival_1_travel")
 	await _frames(60)
 	Input.action_release("survival_1_right")
 	Input.action_release("survival_1_travel")
 	await _frames(1)
-	if not _check(_actor("chef", "x") == at and _location("chef") == "city", "keys pressed while paused apply no command"):
+	if not _check(_actor("chef", "sub_x") == at and _location("chef") == "city", "keys pressed while paused apply no command"):
 		return
 	await _one_frame("pause")
 	if not _check(_interruption() == "", "the pause key continues the run"):
@@ -143,20 +154,20 @@ func _keys_do_not_cross_a_pause() -> void:
 	Input.action_press("survival_1_right")
 	await _frames(1)
 	await _one_frame("pause")
-	var x: int = _actor("chef", "x")
+	var x: int = _actor("chef", "sub_x")
 	var before: int = _int("remaining_ms")
 	await _one_frame("pause")
 	if not _check(_interruption() == "resuming", "a held key keeps the run waiting"):
 		return
 	await _frames(240)
-	if not _check(_actor("chef", "x") == x and _int("remaining_ms") == before, "the run waits on a held key without moving or spending time"):
+	if not _check(_actor("chef", "sub_x") == x and _int("remaining_ms") == before, "the run waits on a held key without moving or spending time"):
 		return
 	Input.action_release("survival_1_right")
 	await _frames(2)
 	if not _check(_interruption() == "", "the run continues once the key is up"):
 		return
 	await _frames(96)
-	if not _check(_actor("chef", "x") == x, "a key held across a pause walks nothing"):
+	if not _check(_actor("chef", "sub_x") == x, "a key held across a pause walks nothing"):
 		return
 	await _align_to_step()
 	Input.action_press("survival_1_travel")
@@ -169,7 +180,7 @@ func _keys_do_not_cross_a_pause() -> void:
 		return
 	await _one_frame("survival_1_right")
 	await _frames(60)
-	_check(_actor("chef", "x") == x + 1, "a fresh press walks after a pause")
+	_check(_actor("chef", "sub_x") == x + WALK, "a fresh press walks after a pause")
 
 ## M asks first, and cancelling changes nothing.
 func _confirmation_leaves_the_run_as_it_was() -> void:
@@ -392,40 +403,40 @@ func _coarse_frames() -> void:
 	if not _check(_location("chef") == "city", "a slow frame still carries a tap"):
 		return
 	var before: int = _int("remaining_ms")
-	var x: int = _actor("chef", "x")
+	var x: int = _actor("chef", "sub_x")
 	Input.action_press("survival_1_right")
 	await _frames(1)
 	if not _check(_int("remaining_ms") == before - 2 * STEP_MS, "a 200ms frame spends two 100ms steps"):
 		return
-	if not _check(_actor("chef", "x") == x + 2, "a held key walks both steps of a slow frame"):
+	if not _check(_actor("chef", "sub_x") == x + 2 * WALK, "a held key walks both steps of a slow frame"):
 		return
 	Input.action_release("survival_1_right")
 	await _frames(1)
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	_same_frame_tap(KEY_D)
 	await _frames(3)
-	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one slow frame walks one cell, not one per step"):
+	if not _check(_actor("chef", "sub_x") == x + WALK, "a press and release inside one slow frame walks one step, not one per step"):
 		return
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	_same_frame_tap(KEY_D)
 	await _frames(1)
 	_same_frame_tap(KEY_D)
 	await _frames(3)
-	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive slow frames walk one cell each"):
+	if not _check(_actor("chef", "sub_x") == x + 2 * WALK, "same-direction taps in consecutive slow frames walk one step each"):
 		return
 	Input.action_press("survival_1_left")
 	await _frames(2)
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	Input.action_press("survival_1_right")
 	await _frames(1)
-	if not _check(_actor("chef", "x") == x - 2, "a second key pressed and kept down leaves the held direction walking"):
+	if not _check(_actor("chef", "sub_x") == x - 2 * WALK, "a second key pressed and kept down leaves the held direction walking"):
 		return
 	Input.action_release("survival_1_right")
 	_same_frame_tap(KEY_D)
 	await _frames(1)
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	await _frames(1)
-	_check(_actor("chef", "x") == x, "a tap beside a held key walks one step of its frame and the held key the rest")
+	_check(_actor("chef", "sub_x") == x, "a tap beside a held key walks one step of its frame and the held key the rest")
 	Input.action_release("survival_1_left")
 	if failed:
 		return
@@ -461,17 +472,17 @@ func _real_frames() -> void:
 	for row: Vector2i in [Vector2i(30, 16), Vector2i(10, 200), Vector2i(3, 1000), Vector2i(1, 2500)]:
 		if not await _spends_real_time(row.x, row.y):
 			return
-	var x: int = _actor("chef", "x")
+	var x: int = _actor("chef", "sub_x")
 	_same_frame_tap(KEY_D)
 	await _delayed_frames(3, 250)
-	if not _check(_actor("chef", "x") == x + 1, "a press and release inside one 250ms frame walks one cell"):
+	if not _check(_actor("chef", "sub_x") == x + WALK, "a press and release inside one 250ms frame walks one step"):
 		return
-	x = _actor("chef", "x")
+	x = _actor("chef", "sub_x")
 	_same_frame_tap(KEY_D)
 	await _delayed_frames(1, 250)
 	_same_frame_tap(KEY_D)
 	await _delayed_frames(3, 250)
-	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive 250ms frames walk one cell each"):
+	if not _check(_actor("chef", "sub_x") == x + 2 * WALK, "same-direction taps in consecutive 250ms frames walk one step each"):
 		return
 	await _pause_ignores_the_real_clock()
 
@@ -560,6 +571,11 @@ func _until_workshop() -> void:
 		var phase: String = scene.survival_status()["phase"]
 		if phase == "workshop":
 			return
+
+func _stance(who: String) -> String:
+	var actor: Dictionary = scene.survival_status()[who]
+	var stance: String = actor["stance"]
+	return stance
 
 func _location(who: String) -> String:
 	var actor: Dictionary = scene.survival_status()[who]

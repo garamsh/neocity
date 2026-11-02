@@ -132,6 +132,12 @@ struct Errand {
 [[nodiscard]] bool worth_entering(const CompanionConfig &config, Actor actor,
                                   const GameView &view);
 
+/// Whether repairing `passage` brings stock into `actor`'s reach that is out
+/// of reach without it, so a repair passed on the way is worth stopping for.
+[[nodiscard]] bool repair_opens_stock(const CompanionConfig &config,
+                                      Actor actor, const GameView &view,
+                                      ObjectId passage);
+
 /// Turns a view into the next command for either kind of controller. Holds no
 /// game state and no random state, so one input gives one command.
 class Companion {
@@ -144,7 +150,8 @@ public:
                                      const PlayerInput &input,
                                      const GameView &view) const;
   /// The errand AI would run in this actor's place, for telling a human the
-  /// same way. Empty when nothing is in reach.
+  /// same way; in the air, from where a straight drop lands. Empty when
+  /// nothing is in reach.
   [[nodiscard]] std::optional<Errand> errand(Actor actor,
                                              const GameView &view) const;
 

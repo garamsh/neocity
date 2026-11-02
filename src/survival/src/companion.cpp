@@ -56,6 +56,17 @@ GridPosition cell_of_actor(const GameView &view, Actor actor) {
   return cell_of(body_of(view, actor).position);
 }
 
+/// Where an errand is planned from: the actor's cell, or in the air the cell a
+/// straight drop lands in, so the way holds through a jump or a fall.
+GridPosition landing_cell(const GameView &view, Actor actor) {
+  const CellMap map(view.world);
+  auto cell = cell_of_actor(view, actor);
+  while (!holds(map, cell) && !map.below(cell)) {
+    ++cell.y;
+  }
+  return cell;
+}
+
 WorkshopTool role_tool(Actor actor) {
   switch (actor) {
   case Actor::Chef:
@@ -536,6 +547,28 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
       action);
 }
 
+bool repair_opens_stock(const CompanionConfig &config, Actor actor,
+                        const GameView &view, ObjectId passage) {
+  const auto from = landing_cell(view, actor);
+  const auto range = config.exploration.collection_distance;
+  const auto goals = collection_goals(view);
+  const auto in_reach = [&](const WorldSnapshot &world) {
+    const auto cells = reachable_cells(CellMap(world), from);
+    return std::ranges::count_if(goals, [&](const Goal &goal) {
+      return std::ranges::any_of(cells, [&](GridPosition cell) {
+        return distance(cell, goal.area) <= range;
+      });
+    });
+  };
+  auto repaired = view.world;
+  for (auto &object : repaired.objects) {
+    if (object.id == passage) {
+      object.traversable = true;
+    }
+  }
+  return in_reach(repaired) > in_reach(view.world);
+}
+
 bool worth_entering(const CompanionConfig &config, Actor actor,
                     const GameView &view) {
   const auto entry = config.exploration.entry;
@@ -549,7 +582,7 @@ Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}
 std::optional<Errand> Companion::errand(Actor actor,
                                         const GameView &view) const {
   const auto route =
-      next_errand(config, view, actor, cell_of_actor(view, actor));
+      next_errand(config, view, actor, landing_cell(view, actor));
   if (!route) {
     return std::nullopt;
   }
