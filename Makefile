@@ -90,6 +90,10 @@ test: build
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Experiments: 18 live checks passed (menus, mount, move, sway, loss, win, spawn, despawn, direct launch).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop KeyCoverageCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 32 live checks passed (ascent, pan_dodge, survival player one, survival player two).' "$$log"
+
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SessionTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Session: 3 integration checks passed (discard time, accumulate time, retain edge).' "$$log"
 

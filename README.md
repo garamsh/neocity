@@ -61,7 +61,7 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rule libraries and extension, pinned Godot version, and resource import.
-- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 18 live checks of both menus and the `pan_dodge` experiment, three session integration checks for partial-tick time and input edges, the survival fixed-step checks at two frame rates, and live checks playing the survival game with real key events.
+- `make test`: every rule library's unit tests through CTest, configured main-scene readiness, ascent move/jump/retry input checks, 32 live checks pressing Escape, the arrow keys, and player two's keys, 18 live checks of both menus and the `pan_dodge` experiment, three session integration checks for partial-tick time and input edges, the survival fixed-step checks at two frame rates, and live checks playing the survival game with real key events.
 - `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed (see below), from the repository root:
 
 ```sh
