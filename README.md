@@ -8,7 +8,7 @@ On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, 
 
 `play.command` builds and imports the release library on the first run. For development, run `make run` to rebuild before playing. On other development systems, provide a C++20 compiler, Python 3 with `venv`, and standard Godot 4.7.2 on PATH, then use `make run`. Linux x86_64 with GCC 14.2 and Clang 19.1 is verified locally; other platforms, macOS included, are not.
 
-The game opens on the main menu: **1** starts Monster Mouth Escape, **2** opens the developer page, and **3** plays the earlier ascent prototype below. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level. Release held keys after a menu choice before giving the next input.
+The game opens on the main menu: **1** starts Monster Mouth Escape, **2** opens the developer page, **3** plays the earlier ascent prototype below, and **4** quits. The developer page lists playable experiments by number; each is a plain prototype for trying an idea, not the main game. M goes back one level; during a survival run it asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
 
 In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the appraiser and AI plays the other, or choose two local players. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. New and delicious food holds the acid back; anything else raises it, and rising acid and time wreck the city and take the stock left in it. Each actor carries home 2 ingredients a day. If the acid fills, the run is lost. From day 30, each finished day has a 20% chance that the party escapes. Either way the run then plays its ending and returns to the main menu, and the E key skips it. The opening, ending, and loss scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
 
@@ -24,6 +24,8 @@ In Monster Mouth Escape a monster has swallowed the city. Choose the chef or the
 | End the day unfed | G | ] |
 | Swap actor, playing alone | Tab | none |
 | Hand your actor to AI, playing together | X | N |
+| Pause or continue, listing every key | Esc | Esc |
+| Leave the run for the main menu | M, then Enter; Esc cancels | M, then Enter; Esc cancels |
 
 | Experiment | Try it |
 |---|---|

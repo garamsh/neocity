@@ -135,7 +135,8 @@ func _one_player() -> bool:
 	if not await _held_result("survival_1_down", func() -> bool: return _actor("chef", "y") > 7, 60, "%s walks player one down" % _name("survival_1_down")):
 		return false
 	await _tap(KEY_M)
-	return _check(scene.screen_name() == "main", "M ends the run")
+	await _tap(KEY_ENTER)
+	return _check(scene.screen_name() == "main", "M then Enter ends the run")
 
 ## Two humans: player two plays the appraiser on the second key set.
 func _two_players() -> bool:

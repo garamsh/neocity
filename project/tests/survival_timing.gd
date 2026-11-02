@@ -91,6 +91,15 @@ func _fine_frames() -> void:
 	await _frames(96)
 	if not _check(_actor("chef", "x") == x + 1, "a key held across one step and released mid-step walks one cell"):
 		return
+	await _pause_holds_the_run()
+	if failed:
+		return
+	await _keys_do_not_cross_a_pause()
+	if failed:
+		return
+	await _confirmation_leaves_the_run_as_it_was()
+	if failed:
+		return
 	await _menu_drops_input()
 	if failed:
 		return
@@ -99,11 +108,110 @@ func _fine_frames() -> void:
 		return
 	await _one_end_of_day_per_step()
 
+## Esc stops the clock and keeps the part of a step already played.
+func _pause_holds_the_run() -> void:
+	await _align_to_step()
+	var before: int = _int("remaining_ms")
+	var elapsed: int = _int("elapsed_ms")
+	await _frames(30)
+	await _one_frame("pause")
+	if not _check(_interruption() == "paused", "the pause key pauses a survival run"):
+		return
+	await _frames(480)
+	if not _check(_int("remaining_ms") == before and _int("elapsed_ms") == elapsed, "a second paused spends neither clock"):
+		return
+	var at: int = _actor("chef", "x")
+	Input.action_press("survival_1_right")
+	Input.action_press("survival_1_travel")
+	await _frames(60)
+	Input.action_release("survival_1_right")
+	Input.action_release("survival_1_travel")
+	await _frames(1)
+	if not _check(_actor("chef", "x") == at and _location("chef") == "city", "keys pressed while paused apply no command"):
+		return
+	await _one_frame("pause")
+	if not _check(_interruption() == "", "the pause key continues the run"):
+		return
+	await _frames(8)
+	if not _check(_int("remaining_ms") == before, "the paused time is not spent on resuming"):
+		return
+	await _frames(16)
+	_check(_int("remaining_ms") == before - STEP_MS, "the part of a step played before the pause still counts")
+
+## A key held across a pause, or pressed just before it, does nothing on resuming.
+func _keys_do_not_cross_a_pause() -> void:
+	await _align_to_step()
+	Input.action_press("survival_1_right")
+	await _frames(1)
+	await _one_frame("pause")
+	var x: int = _actor("chef", "x")
+	var before: int = _int("remaining_ms")
+	await _one_frame("pause")
+	if not _check(_interruption() == "resuming", "a held key keeps the run waiting"):
+		return
+	await _frames(240)
+	if not _check(_actor("chef", "x") == x and _int("remaining_ms") == before, "the run waits on a held key without moving or spending time"):
+		return
+	Input.action_release("survival_1_right")
+	await _frames(2)
+	if not _check(_interruption() == "", "the run continues once the key is up"):
+		return
+	await _frames(96)
+	if not _check(_actor("chef", "x") == x, "a key held across a pause walks nothing"):
+		return
+	await _align_to_step()
+	Input.action_press("survival_1_travel")
+	await _frames(1)
+	Input.action_release("survival_1_travel")
+	await _one_frame("pause")
+	await _one_frame("pause")
+	await _frames(96)
+	if not _check(_location("chef") == "city", "a press still pending when the pause opens is dropped"):
+		return
+	await _one_frame("survival_1_right")
+	await _frames(60)
+	_check(_actor("chef", "x") == x + 1, "a fresh press walks after a pause")
+
+## M asks first, and cancelling changes nothing.
+func _confirmation_leaves_the_run_as_it_was() -> void:
+	await _align_to_step()
+	await _frames(30)
+	var before: Dictionary = scene.survival_status()
+	var remaining: int = _int("remaining_ms")
+	await _one_frame("menu")
+	if not _check(_interruption() == "confirm_leave" and scene.screen_name() == "survival", "M mid-run asks before leaving"):
+		return
+	var prompt: Array = scene.survival_status()["prompt"]
+	if not _check(str(prompt).contains("not saved"), "the question says progress is not saved"):
+		return
+	await _frames(480)
+	if not _check(_int("remaining_ms") == remaining, "the question holds the clock"):
+		return
+	await _one_frame("menu")
+	if not _check(_interruption() == "confirm_leave", "a second M does not answer the question"):
+		return
+	await _one_frame("pause")
+	if not _check(_interruption() == "" and scene.survival_status() == before, "cancelling leaves every value as it was"):
+		return
+	await _frames(24)
+	if not _check(_int("remaining_ms") == remaining - STEP_MS, "the run goes on after cancelling"):
+		return
+	await _one_frame("pause")
+	await _one_frame("confirm")
+	if not _check(_interruption() == "paused", "Enter answers nothing on the pause screen"):
+		return
+	await _one_frame("menu")
+	if not _check(_interruption() == "confirm_leave", "M on the pause screen asks before leaving"):
+		return
+	await _one_frame("pause")
+	if not _check(_interruption() == "paused", "cancelling from the pause screen returns to it"):
+		return
+	await _one_frame("pause")
+	_check(_interruption() == "", "the run continues from the pause screen")
+
 ## A travel press still pending when the menu opens does not reach the next run.
 func _menu_drops_input() -> void:
-	Input.action_press("menu")
-	await _frames(2)
-	Input.action_release("menu")
+	await _leave_run()
 	await _frames(4)
 	await _start(1)
 	await _frames(1)
@@ -112,9 +220,7 @@ func _menu_drops_input() -> void:
 	Input.action_press("survival_1_travel")
 	await _frames(1)
 	Input.action_release("survival_1_travel")
-	Input.action_press("menu")
-	await _frames(2)
-	Input.action_release("menu")
+	await _leave_run()
 	await _frames(4)
 	await _start(1)
 	await _frames(96)
@@ -139,9 +245,7 @@ func _expiry_leaves_nothing_behind() -> void:
 	_check(_int("remaining_ms") == BUDGET_MS, "the workshop keeps the new budget")
 
 func _one_end_of_day_per_step() -> void:
-	Input.action_press("menu")
-	await _frames(2)
-	Input.action_release("menu")
+	await _leave_run()
 	await _frames(4)
 	await _start(3)
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players hold one key set each"):
@@ -191,9 +295,7 @@ func _switch_and_leave() -> void:
 
 ## Two humans leaving in one step still leave one human.
 func _both_leave() -> void:
-	Input.action_press("menu")
-	await _frames(2)
-	Input.action_release("menu")
+	await _leave_run()
 	await _frames(4)
 	await _start(3)
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "a new run has two humans"):
@@ -248,6 +350,27 @@ func _coarse_frames() -> void:
 	await _frames(1)
 	_check(_actor("chef", "x") == x, "a tap beside a held key walks one step of its frame and the held key the rest")
 	Input.action_release("survival_1_left")
+	if failed:
+		return
+	await _frames(1)
+	await _pause_on_slow_frames()
+
+## The frame of the press was played and spends its time; the paused ones do not.
+func _pause_on_slow_frames() -> void:
+	for round: int in range(3):
+		var before: int = _int("remaining_ms")
+		await _one_frame("pause")
+		if not _check(_interruption() == "paused" and _int("remaining_ms") == before - 2 * STEP_MS, "a slow frame that pauses spends itself once"):
+			return
+		await _frames(5)
+		if not _check(_int("remaining_ms") == before - 2 * STEP_MS, "slow paused frames spend nothing"):
+			return
+		await _one_frame("pause")
+		if not _check(_interruption() == "" and _int("remaining_ms") == before - 2 * STEP_MS, "resuming on a slow frame spends nothing"):
+			return
+		await _frames(1)
+		if not _check(_int("remaining_ms") == before - 4 * STEP_MS, "the next slow frame spends itself once"):
+			return
 
 ## `--fixed-fps` bypasses the engine's cap on `delta`, so this run must not use it.
 func _real_frames() -> void:
@@ -273,11 +396,25 @@ func _real_frames() -> void:
 	await _delayed_frames(3, 250)
 	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive 250ms frames walk one cell each"):
 		return
+	if not await _pause_ignores_the_real_clock():
+		return
 	await _experiment_keeps_its_delivery()
+
+## Real time passing under a pause reaches neither clock.
+func _pause_ignores_the_real_clock() -> bool:
+	await _one_frame("pause")
+	var before: int = _int("remaining_ms")
+	await _delayed_frames(4, 250)
+	if not _check(_interruption() == "paused" and _int("remaining_ms") == before, "a second of real time paused spends nothing"):
+		return false
+	await _one_frame("pause")
+	if not _check(_interruption() == "" and before - _int("remaining_ms") <= 2 * STEP_MS, "resuming spends no paused time"):
+		return false
+	return await _spends_real_time(3, 250)
 
 ## The cap raised for survival's clock must not reach an experiment's rule ticks.
 func _experiment_keeps_its_delivery() -> void:
-	await _one_frame("menu")
+	await _leave_run()
 	await _frames(4)
 	await _one_frame("option_2")
 	await _frames(4)
@@ -335,6 +472,15 @@ func _start(option: int) -> void:
 	await _one_frame("option_" + str(option))
 	await _frames(4)
 	await _one_frame("survival_1_interact")
+
+## M asks first mid-run; Enter accepts.
+func _leave_run() -> void:
+	await _one_frame("menu")
+	await _one_frame("confirm")
+
+func _interruption() -> String:
+	var name: String = scene.survival_status().get("interruption", "")
+	return name
 
 func _one_frame(action: String) -> void:
 	Input.action_press(action)

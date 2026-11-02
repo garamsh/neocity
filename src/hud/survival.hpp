@@ -71,6 +71,8 @@ struct SurvivalFrame {
   std::array<Offers, 2> offers;
   /// An AI chef has base work to do on its next step.
   bool ai_chef_working = false;
+  /// The run opened with two humans, so a lone human now means a hand-off.
+  bool started_together = false;
   /// How many city objects changed during the last finished day, the acid it
   /// raised included.
   std::uint32_t last_day_map_changes = 0;
@@ -88,6 +90,23 @@ struct FittedText {
 /// The authored moments of a run: its start and each way it can end.
 enum class Cinematic : std::uint8_t { Intro, Ending, Loss };
 
+/// What holds a running survival run: the run takes no key and no time.
+/// `Resuming` waits for every key to come up before the run continues.
+enum class Interruption : std::uint8_t {
+  Paused,
+  ConfirmLeave,
+  ConfirmLeaveFromPause,
+  Resuming
+};
+
+/// One action on the pause screen, with its key for each player; `second` is
+/// empty playing alone.
+struct KeyRow {
+  godot::String action;
+  godot::String first;
+  godot::String second;
+};
+
 /// Draws the choice of who plays which actor.
 void paint_survival_setup(godot::Node2D &canvas,
                           const rendering::AscentDrawing &drawing);
@@ -95,6 +114,10 @@ void paint_survival_setup(godot::Node2D &canvas,
 void paint_survival(godot::Node2D &canvas,
                     const rendering::AscentDrawing &drawing,
                     const SurvivalFrame &frame);
+/// Draws what holds the run over the frozen survival screen.
+void paint_interruption(godot::Node2D &canvas,
+                        const rendering::AscentDrawing &drawing,
+                        Interruption interruption, const SurvivalFrame &frame);
 /// Draws the dark stage under a cinematic scene or, with `fallback`, the
 /// placeholder card that stands in when no scene can play.
 void paint_cinematic(godot::Node2D &canvas,
@@ -105,6 +128,13 @@ void paint_cinematic(godot::Node2D &canvas,
 /// identified.
 [[nodiscard]] bool recipe_ready(const survival::GameView &view,
                                 const survival::Recipe &recipe);
+/// Every key of the current number of players, for the pause screen.
+[[nodiscard]] std::vector<KeyRow> key_rows(const SurvivalFrame &frame);
+/// The title, the explanation, and the keys of what holds the run.
+[[nodiscard]] std::array<godot::String, 3>
+interruption_text(Interruption interruption);
+/// Which keys the player left after a hand-off now uses; empty otherwise.
+[[nodiscard]] godot::String hand_off_notice(const SurvivalFrame &frame);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// When the escape checks begin, on every survival screen.

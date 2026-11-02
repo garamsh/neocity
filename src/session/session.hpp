@@ -36,6 +36,10 @@ struct Command {
   /// Menu option pressed this frame, numbered from 1.
   std::optional<std::size_t> option;
   bool menu = false;
+  /// The survival pause key; the ascent game reads its own in `ascent`.
+  bool pause = false;
+  /// The key that accepts a question on screen.
+  bool confirm = false;
   bool controls_held = false;
   gameplay::PlayerCommand ascent;
   /// Each actor's sampled keys, chef first, while a survival run is open.
@@ -101,6 +105,8 @@ private:
   void enter(Screen destination);
   void choose(std::size_t option);
   void start_run(survival::ControlMap control);
+  void advance_run(SurvivalRun &open, double delta, const Command &command);
+  void advance_interruption(hud::Interruption open, const Command &command);
   void tick_ascent(double delta);
   void play(hud::Cinematic cinematic);
   void advance_cinematic(Playback &open, double delta, const Command &command);
@@ -115,6 +121,7 @@ private:
   Mount mount;
   CinematicStage stage;
   std::optional<Playback> playback;
+  std::optional<hud::Interruption> interruption;
   Screen screen = Screen::Main;
   experiment::Entry active;
   bool waiting_for_release = true;

@@ -29,8 +29,9 @@ void paint_main_menu(godot::Node2D &canvas,
   drawing.text(canvas, 230.0F, 570.0F,
                "The earlier prototype. Original controls and art.", 22,
                colors.muted);
-  drawing.text(canvas, 130.0F, 650.0F,
-               "Press 1, 2 or 3.   M returns here from a game.", 22,
+  drawing.text(canvas, 150.0F, 625.0F, "4   QUIT", 30, colors.gold);
+  drawing.text(canvas, 130.0F, 685.0F,
+               "Press 1, 2, 3 or 4.   M returns here from a game.", 22,
                colors.white);
 }
 
