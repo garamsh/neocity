@@ -25,7 +25,7 @@ The agreement between the host and the opening and ending art of [#29](https://g
 - **Location:** `project/levels/monster_mouth_escape/cinematics/intro/intro.tscn` and `project/levels/monster_mouth_escape/cinematics/ending/ending.tscn`, each scene with its assets in its own folder. Neither exists yet.
 - **Scene:** the root is a `CanvasItem`, such as a `Node2D` or a `Control`, because the host paints an opaque dark stage that would hide a 3D root. It declares a `finished` signal with no arguments and emits it once when playback is done; with arguments the host cannot receive it and stays on the scene. The host adds the root as a child of the game scene.
 - **Request:** session plays the intro when a run starts and the ending when the run escapes.
-- **End:** on `finished` the host closes the scene.
+- **End:** on `finished` the host closes the scene, by the end of that frame. The signal may fire from `_enter_tree` on, `_ready` included; the host connects it only after instantiating, so one fired in `_init` is not heard.
 - **Skip:** the interact key of any human closes the scene at once, so a scene cannot rely on reaching its own end.
 - **Input block:** while a cinematic is open the run takes no key and no time, and the skip does not reach it. M still leaves for the main menu and ends the run.
 - **Return:** the intro hands over to day one at base. The ending closes the run and returns to the main menu.

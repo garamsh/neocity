@@ -158,8 +158,11 @@ bool AscentScene::play_cinematic(const godot::String &scene) {
     return false;
   }
   cinematic->set_name(CINEMATIC_NODE);
+  // Connected before add_child to hear a scene that finishes while entering the
+  // tree, and deferred because add_child cannot survive removing that node.
   cinematic->connect(CINEMATIC_FINISHED,
-                     callable_mp(this, &AscentScene::stop_cinematic));
+                     callable_mp(this, &AscentScene::stop_cinematic),
+                     godot::Object::CONNECT_DEFERRED);
   add_child(cinematic);
   return true;
 }
