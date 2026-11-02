@@ -687,10 +687,11 @@ Image figure(Actor actor, bool climbing, bool walking, bool second_step) {
 /// 100ms step so it moves smoothly between them.
 Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
   const bool chef = actor == Actor::Chef;
+  constexpr float PIXELS = CELL / static_cast<float>(survival::SUBCELLS);
   return {art.glide(chef ? "chef_feet_x" : "appraiser_feet_x",
-                    MAP_X + static_cast<float>(body.position.x)),
+                    MAP_X + static_cast<float>(body.position.x) * PIXELS),
           art.glide(chef ? "chef_feet_y" : "appraiser_feet_y",
-                    MAP_Y + static_cast<float>(body.position.y))};
+                    MAP_Y + static_cast<float>(body.position.y) * PIXELS)};
 }
 
 /// Draws an actor taller than its cell, its frame's bottom edge on its feet:
