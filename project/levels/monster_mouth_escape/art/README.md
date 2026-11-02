@@ -6,7 +6,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 ## Use
 
-- No file here is loaded by the game yet. The empty `.gdignore` is temporary: it keeps Godot from importing this folder until #92 loads the art, deletes it, and commits the `.import` files Godot then writes.
+- Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder.
 - Folders: `backgrounds/`, `characters/`, `world/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
 - The map grid is 36×16 cells of 32 px on a 1280×720 screen. World tiles are one cell; `platform.png` and `bridge.png` repeat horizontally and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 screen pixels. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.

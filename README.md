@@ -39,7 +39,7 @@ On macOS, install the project-local tools once with `./scripts/setup-macos.sh`, 
 
 - `src/survival` owns the rules of Monster Mouth Escape and its temporary content, with no Godot dependency.
 - `src/session` owns the title screen, its controls page, and run timing. `src/input`, `src/rendering`, and `src/hud` own input translation, resources and canvas drawing, and the HUD and menus; `src/scene.cpp` remains the composition root and `src/register_types.cpp` the extension entry point. They depend only on the rules library's public commands and value snapshots. Custom engine and screen orchestration are C++; Godot still supplies window, input, and canvas services. No standalone GPU backend is claimed.
-- `project/` is the Godot project: the host scene `main.tscn`, the extension's `bin/neocity.gdextension`, the character atlas the survival screen draws from in `levels/ascent/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
+- `project/` is the Godot project: the host scene `main.tscn`, the extension's `bin/neocity.gdextension`, the game's art set in `levels/monster_mouth_escape/art/`, and the GDScript checks. Open `project/project.godot` in the editor after `make build`.
 - [Architecture](docs/architecture/README.md) records package boundaries. [Art direction](docs/art/README.md) identifies the selected concepts, production-source provenance, and remaining decisions.
 
 ## Checks and toolchains

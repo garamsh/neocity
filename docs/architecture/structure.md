@@ -23,7 +23,7 @@ This rule governs over `docs/convention/simplicity.md` §Rules, "A division is a
 ## Repository layout
 
 - `src/` holds the C++ sources, one folder per purpose, with `register_types.cpp` and `scene.*` at its root.
-- `project/` is the Godot project and holds every Godot resource. `project.godot`, the host scene `main.tscn`, and the extension's `bin/neocity.gdextension` sit in `project/` itself. A level's resources sit under `project/levels/<level>/`: the game's cinematic scenes belong in `project/levels/monster_mouth_escape/`, and `project/levels/ascent/` holds only the atlas the survival screen draws its characters from.
+- `project/` is the Godot project and holds every Godot resource. `project.godot`, the host scene `main.tscn`, and the extension's `bin/neocity.gdextension` sit in `project/` itself. A level's resources sit under `project/levels/<level>/`: the game's art set and cinematic scenes belong in `project/levels/monster_mouth_escape/`.
 - The GDScript verification harnesses sit in `project/tests/` and `project/e2e/`, outside the C++ source tree.
 - `tools/art/` holds the offline asset tool that regenerates the art under `project/levels/monster_mouth_escape/art/` from its sources. It is outside the game build: neither `make ci` nor the game runs or loads it.
 
