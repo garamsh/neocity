@@ -25,6 +25,8 @@ const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7,
 const GROUND_LEAD: float = 0.05
 ## The rows of a deck under its floor line, as the city draws it.
 const DECK_ROWS: int = 10
+## How far one 100ms movement unit carries a running actor, in sub-cells.
+const RUN_UNIT: int = 50
 ## Longer than the screen's longest eased motion.
 const SETTLE_MSEC: int = 400
 
@@ -64,7 +66,8 @@ func _run() -> void:
 	await _save_city("29-city-landing")
 	_key(KEY_SHIFT, true)
 	_key(KEY_A, true)
-	await _frames(8)
+	# The first unit after standing still reads as a walk; the second as a run.
+	await _until_moved(-2 * RUN_UNIT)
 	await _save_city("30-city-running")
 	_key(KEY_A, false)
 	_key(KEY_SHIFT, false)
@@ -245,6 +248,17 @@ func _until_stance(stance: String) -> void:
 		if _stance() == stance:
 			return
 		await process_frame
+
+## Waits until the chef has moved `distance` sub-cells sideways or further,
+## signed, from where it stands now.
+func _until_moved(distance: int) -> void:
+	var start: int = scene.survival_status()["chef"]["sub_x"]
+	for frame: int in range(60):
+		var now: int = scene.survival_status()["chef"]["sub_x"]
+		if (now - start) * signi(distance) >= absi(distance):
+			return
+		await process_frame
+	_fail("the chef did not move %d sub-cells" % distance)
 
 ## Waits until the chef, in the air, is lower than the highest it has been
 ## since: it is coming down.
