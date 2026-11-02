@@ -9,6 +9,7 @@
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -58,6 +59,8 @@ public:
   [[nodiscard]] godot::String screen_name() const;
   /// Reports the open survival run for host integration assertions.
   [[nodiscard]] godot::Dictionary survival_status() const;
+  /// The controls page's rows, each as "action: first / second".
+  [[nodiscard]] static godot::PackedStringArray controls_keys();
   /// Pins the seed of every later survival run, for repeatable host checks.
   void pin_survival_seed(std::int64_t seed);
 

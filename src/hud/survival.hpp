@@ -107,8 +107,16 @@ struct KeyRow {
   godot::String second;
 };
 
-/// Draws the choice of who plays which actor.
-void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing);
+/// Who plays which actor, as the choice of players offers it.
+enum class SetupEntry : std::uint8_t { Chef, Appraiser, TwoPlayers };
+
+/// The choices top to bottom; number key n chooses entry n.
+inline constexpr std::array SETUP_ENTRIES{
+    SetupEntry::Chef, SetupEntry::Appraiser, SetupEntry::TwoPlayers};
+
+/// Draws the choice of who plays which actor with `selected` marked.
+void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
+                          SetupEntry selected);
 /// Draws the city or the workshop, whichever the phase opens, with the HUD.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame);
@@ -126,6 +134,13 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                                 const survival::Recipe &recipe);
 /// Every key of the current number of players, for the pause screen.
 [[nodiscard]] std::vector<KeyRow> key_rows(const SurvivalFrame &frame);
+/// The pause screen's rows for two players, then the pause and leave keys,
+/// for the controls page.
+[[nodiscard]] std::vector<KeyRow> control_rows();
+/// Draws `rows` as actions and their keys, from baseline `top`.
+void paint_key_rows(godot::Node2D &canvas, const rendering::Art &drawing,
+                    const std::vector<KeyRow> &rows, float top,
+                    float row_height);
 /// The title, the explanation, and the keys of what holds the run.
 [[nodiscard]] std::array<godot::String, 3>
 interruption_text(Interruption interruption);

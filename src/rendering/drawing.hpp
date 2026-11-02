@@ -28,7 +28,12 @@ struct Palette {
   godot::Color muted;
   godot::Color cyan;
   godot::Color gold;
+  /// Words on a highlighted button.
+  godot::Color ink;
 };
+
+/// How far a panel's words stay inside its edge, clear of its steel frame.
+inline constexpr float PANEL_INSET = 20.0F;
 
 Palette palette();
 
@@ -86,7 +91,40 @@ enum class Image : std::uint8_t {
   PillarSnapped,
   PillarDeck,
   LampStanding,
-  LampBent
+  LampBent,
+  PanelFrame,
+  BarFrame,
+  ItemSlot,
+  Button,
+  ButtonHighlight,
+  HeartFull,
+  HeartEmpty,
+  IconDay,
+  IconAcid,
+  IconClock,
+  IngredientTomato,
+  IngredientFish,
+  IngredientKelp,
+  IngredientMushroom,
+  IngredientPickles,
+  IngredientMeat,
+  IngredientTruffle,
+  ToolMagnifier,
+  ToolSpatula,
+  ToolWrench,
+  DishMushroomSoup,
+  DishFishStew,
+  DishKelpWrap,
+  DishMeatSkewer,
+  DishTruffleRoast,
+  DishPickleSurprise,
+  DishSeaSalad,
+  DishFishPie,
+  DishMeatStew,
+  DishTruffleSoup,
+  DishSurfAndTurf,
+  TitleKeyArt,
+  TitleLogo
 };
 
 /// How an actor has moved, as the screen last saw it.
@@ -117,6 +155,15 @@ public:
   /// Draws the `source` part of `image` into `destination`.
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination) const;
+  /// Draws `image` as a frame filling `destination`: its `border`-pixel
+  /// corners at their own size, its edges repeated along each side, and the
+  /// middle filled with `fill`, the colour of the picture's face.
+  void frame(godot::Node2D &canvas, Image image, godot::Rect2 destination,
+             float border, godot::Color fill) const;
+  /// Draws the UI kit's opaque steel panel filling `area`.
+  void panel(godot::Node2D &canvas, godot::Rect2 area) const;
+  /// Draws a UI kit button filling `area`, yellow when `marked`.
+  void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Records `actor` at `cell` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.

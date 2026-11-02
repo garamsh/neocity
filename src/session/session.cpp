@@ -75,6 +75,16 @@ const char *interruption_name(hud::Interruption interruption) {
   std::abort();
 }
 
+/// Moves `cursor` through `count` entries, wrapping at both ends.
+void move_cursor(std::size_t &cursor, std::size_t count,
+                 std::optional<MenuStep> step) {
+  if (step == MenuStep::Up) {
+    cursor = (cursor + count - 1) % count;
+  } else if (step == MenuStep::Down) {
+    cursor = (cursor + 1) % count;
+  }
+}
+
 /// Ends the application; the running host's main loop is always its SceneTree.
 void quit_game() {
   auto *tree = godot::Object::cast_to<godot::SceneTree>(
@@ -109,12 +119,8 @@ void Session::choose(std::size_t option) {
     }
     return;
   case Screen::SurvivalSetup:
-    if (option == 1) {
-      start_run(survival::single_player(survival::Actor::Chef));
-    } else if (option == 2) {
-      start_run(survival::single_player(survival::Actor::Appraiser));
-    } else if (option == 3) {
-      start_run(survival::two_players());
+    if (option >= 1 && option <= hud::SETUP_ENTRIES.size()) {
+      select(hud::SETUP_ENTRIES.at(option - 1));
     }
     return;
   case Screen::Controls:
@@ -139,17 +145,33 @@ void Session::select(hud::TitleEntry entry) {
   std::abort();
 }
 
-// The cursor wraps at both ends; a step and Enter in one frame select the
-// entry stepped to.
-void Session::advance_title(const Command &command) {
-  constexpr std::size_t count = hud::TITLE_ENTRIES.size();
-  if (command.step == MenuStep::Up) {
-    cursor = (cursor + count - 1) % count;
-  } else if (command.step == MenuStep::Down) {
-    cursor = (cursor + 1) % count;
+void Session::select(hud::SetupEntry entry) {
+  switch (entry) {
+  case hud::SetupEntry::Chef:
+    start_run(survival::single_player(survival::Actor::Chef));
+    return;
+  case hud::SetupEntry::Appraiser:
+    start_run(survival::single_player(survival::Actor::Appraiser));
+    return;
+  case hud::SetupEntry::TwoPlayers:
+    start_run(survival::two_players());
+    return;
   }
+  std::abort();
+}
+
+// A step and Enter in one frame select the entry stepped to.
+void Session::advance_title(const Command &command) {
+  move_cursor(cursor, hud::TITLE_ENTRIES.size(), command.step);
   if (command.confirm) {
     select(hud::TITLE_ENTRIES.at(cursor));
+  }
+}
+
+void Session::advance_setup(const Command &command) {
+  move_cursor(setup_cursor, hud::SETUP_ENTRIES.size(), command.step);
+  if (command.confirm) {
+    select(hud::SETUP_ENTRIES.at(setup_cursor));
   }
 }
 
@@ -235,6 +257,10 @@ void Session::advance(double delta, Command command) {
     advance_title(command);
     return;
   }
+  if (screen == Screen::SurvivalSetup) {
+    advance_setup(command);
+    return;
+  }
   if (playback) {
     advance_cinematic(*playback, delta, command);
     return;
@@ -314,7 +340,8 @@ void Session::paint(godot::Node2D &canvas,
     hud::paint_controls(canvas, drawing);
     return;
   case Screen::SurvivalSetup:
-    hud::paint_survival_setup(canvas, drawing);
+    hud::paint_survival_setup(canvas, drawing,
+                              hud::SETUP_ENTRIES.at(setup_cursor));
     return;
   case Screen::Survival:
     if (playback && run) {

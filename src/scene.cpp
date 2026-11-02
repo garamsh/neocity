@@ -1,5 +1,6 @@
 #include "scene.hpp"
 
+#include "hud/survival.hpp"
 #include "input/menu.hpp"
 
 #include <godot_cpp/classes/canvas_item.hpp>
@@ -55,6 +56,8 @@ void MainScene::_bind_methods() {
                               &MainScene::screen_name);
   godot::ClassDB::bind_method(godot::D_METHOD("survival_status"),
                               &MainScene::survival_status);
+  godot::ClassDB::bind_static_method(
+      "MainScene", godot::D_METHOD("controls_keys"), &MainScene::controls_keys);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_survival_seed", "seed"),
                               &MainScene::pin_survival_seed);
 }
@@ -87,6 +90,15 @@ godot::String MainScene::screen_name() const { return session.screen_name(); }
 
 godot::Dictionary MainScene::survival_status() const {
   return session.survival_status();
+}
+
+godot::PackedStringArray MainScene::controls_keys() {
+  godot::PackedStringArray rows;
+  for (const auto &row : hud::control_rows()) {
+    rows.push_back(row.action + godot::String(": ") + row.first +
+                   godot::String(" / ") + row.second);
+  }
+  return rows;
 }
 
 void MainScene::pin_survival_seed(std::int64_t seed) {
