@@ -250,17 +250,16 @@ struct Marker {
   survival::SourceStock stock;
   bool stocked_open = false;
   bool walkable = false;
-
   /// A gold frame is a promise that a player can walk there.
-  [[nodiscard]] bool promised() const { return stocked_open && walkable; }
+  bool promised = false;
 };
 
 void paint_source(godot::Node2D &canvas, const Marker &marker) {
   const auto box = area_rect(marker.object.area).grow(-2.0F);
   const auto tones = palette();
-  canvas.draw_rect(box, marker.promised() ? source_tint(marker.stock.kind)
-                                          : color(60, 58, 66, 1.0F));
-  if (marker.promised()) {
+  canvas.draw_rect(box, marker.promised ? source_tint(marker.stock.kind)
+                                        : color(60, 58, 66, 1.0F));
+  if (marker.promised) {
     canvas.draw_rect(box.grow(2.0F), tones.gold, false, 2.0F);
   } else if (marker.stocked_open) {
     dashed_frame(canvas, box.grow(2.0F), tones.white);
@@ -283,7 +282,7 @@ void paint_source_name(godot::Node2D &canvas, const AscentDrawing &drawing,
                   (marker.stocked_open && !marker.walkable
                        ? godot::String(": no way there")
                        : godot::String()),
-              13, marker.promised() ? tones.white : tones.muted);
+              13, marker.promised ? tones.white : tones.muted);
 }
 
 /// The count comes last of all, so an actor never hides what is left.
@@ -293,7 +292,7 @@ void paint_source_count(godot::Node2D &canvas, const AscentDrawing &drawing,
   const auto tones = palette();
   plated_text(canvas, drawing, box.position.x + 9.0F, box.position.y + 21.0F,
               godot::String::num_int64(marker.stock.remaining), 15,
-              marker.promised() ? tones.white : tones.muted);
+              marker.promised ? tones.white : tones.muted);
 }
 
 void paint_hazards(godot::Node2D &canvas, const AscentDrawing &drawing,
@@ -401,12 +400,15 @@ void paint_city(godot::Node2D &canvas, const AscentDrawing &drawing,
     const auto object =
         std::ranges::find(objects, stock.id, &ObjectSnapshot::id);
     if (object != objects.end() && object->state != ObjectState::Dormant) {
-      markers.push_back(
-          {.object = *object,
-           .stock = stock,
-           .stocked_open = object->material_available && stock.remaining > 0,
-           .walkable = std::ranges::find(out_of_reach, stock.id) ==
-                       out_of_reach.end()});
+      const bool stocked_open =
+          object->material_available && stock.remaining > 0;
+      const bool walkable =
+          std::ranges::find(out_of_reach, stock.id) == out_of_reach.end();
+      markers.push_back({.object = *object,
+                         .stock = stock,
+                         .stocked_open = stocked_open,
+                         .walkable = walkable,
+                         .promised = stocked_open && walkable});
     }
   }
   for (const auto &marker : markers) {

@@ -962,6 +962,10 @@ String done_text(const ActionEvent &event) {
       event.action);
 }
 
+FittedText fitted(const String &text, int size, float width) {
+  return {.text = text, .size = size, .width = width};
+}
+
 } // namespace
 
 void paint_survival_setup(godot::Node2D &canvas,
@@ -1129,25 +1133,31 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
 
 std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   const float job_inset = 2.0F * PANEL_TEXT_MARGIN;
-  std::vector<FittedText> lines{
-      {next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X},
-      {key_legend(frame), LEGEND_SIZE, SCREEN_EDGE - LEGEND_X},
-      {appraise_job(frame), PANEL_JOB_SIZE, APPRAISE_WIDTH - job_inset},
-      {cook_job(frame), PANEL_JOB_SIZE, COOK_WIDTH - job_inset},
-      {feed_job(frame), PANEL_JOB_SIZE, FEED_WIDTH - job_inset}};
+  std::vector<FittedText> lines;
+  lines.push_back(
+      fitted(next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X));
+  lines.push_back(
+      fitted(key_legend(frame), LEGEND_SIZE, SCREEN_EDGE - LEGEND_X));
+  lines.push_back(
+      fitted(appraise_job(frame), PANEL_JOB_SIZE, APPRAISE_WIDTH - job_inset));
+  lines.push_back(
+      fitted(cook_job(frame), PANEL_JOB_SIZE, COOK_WIDTH - job_inset));
+  lines.push_back(
+      fitted(feed_job(frame), PANEL_JOB_SIZE, FEED_WIDTH - job_inset));
   for (const auto actor : ACTORS) {
-    lines.push_back({spare_tools(state_of(frame.view, actor)), CARD_TOOLS_SIZE,
-                     CARD_WIDTH - CARD_TEXT_X});
+    lines.push_back(fitted(spare_tools(state_of(frame.view, actor)),
+                           CARD_TOOLS_SIZE, CARD_WIDTH - CARD_TEXT_X));
   }
   for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
-    lines.push_back({from(survival::food_name(recipe.food)), COOK_NAME_SIZE,
-                     COOK_STATUS_X - PANEL_TEXT_MARGIN - 2.0F});
+    lines.push_back(fitted(from(survival::food_name(recipe.food)),
+                           COOK_NAME_SIZE,
+                           COOK_STATUS_X - PANEL_TEXT_MARGIN - 2.0F));
     const auto subsets = std::size_t{1} << recipe.ingredients.size();
     for (std::size_t held = 0; held < subsets; ++held) {
       for (std::size_t known = 0; known < subsets; ++known) {
         lines.push_back(
-            {needs_text(needs_given(recipe.ingredients, held, known)),
-             COOK_STATUS_SIZE, COOK_EATEN_X - COOK_STATUS_X - 4.0F});
+            fitted(needs_text(needs_given(recipe.ingredients, held, known)),
+                   COOK_STATUS_SIZE, COOK_EATEN_X - COOK_STATUS_X - 4.0F));
       }
     }
   }
