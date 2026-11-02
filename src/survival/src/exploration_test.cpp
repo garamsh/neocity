@@ -6,6 +6,7 @@
 #include <chrono>
 #include <limits>
 #include <stdexcept>
+#include <vector>
 
 namespace neocity::survival {
 namespace {
@@ -24,8 +25,9 @@ constexpr std::array<ExplorationInput, 2> RUN{
     ExplorationInput{.direction = Direction::Right, .running = true},
     ExplorationInput{.direction = Direction::Right, .running = true}};
 
+/// A one-row walkway from x = 0 to 19 with a source at x = 1.
 std::vector<ObjectDefinition> city() {
-  return {{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 20, .height = 3}},
+  return {{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 20}},
           {.id = SOURCE,
            .kind = ObjectKind::MaterialSource,
            .area = {.x = 1},
@@ -40,6 +42,65 @@ ExplorationConfig tuning() {
           .sources = {{.id = SOURCE}}};
 }
 
+/// The cell an explorer's feet stand in.
+GridPosition at(const ExplorerSnapshot &explorer) {
+  return cell_of(explorer.body.position);
+}
+
+/// One-row floor `width` cells wide from `x` on `row`.
+ObjectDefinition floor_at(ObjectId id, std::int32_t x, std::int32_t row,
+                          std::int32_t width) {
+  return {.id = id, .area = {.x = x, .y = row, .width = width}};
+}
+
+/// Exploration over `objects` entered by the chef at `entry`; the acid lies
+/// below the lowest object.
+class Course {
+public:
+  Course(const std::vector<ObjectDefinition> &objects, GridPosition entry)
+      : simulation({.exploration_budget = 30s, .seed = 0}), world(objects),
+        exploration(simulation, world,
+                    {.base = BASE,
+                     .entry = entry,
+                     .maximum_stamina = 2,
+                     .sources = {}}) {
+    if (exploration.enter(Actor::Chef) != Result::Applied) {
+      throw std::logic_error("course entry refused");
+    }
+  }
+
+  /// Advances with the chef pressing `input` and the appraiser at base.
+  void press(std::chrono::milliseconds elapsed, ExplorationInput input) {
+    if (exploration.advance(elapsed, {input, {}}, {}) != Result::Applied) {
+      throw std::logic_error("course advance refused");
+    }
+  }
+
+  [[nodiscard]] ExplorerSnapshot chef() const {
+    return exploration.snapshot().chef;
+  }
+  [[nodiscard]] Location location() const {
+    return simulation.snapshot().chef.location;
+  }
+
+  /// Advances no time at `acid`, so the world changes it brings apply.
+  [[nodiscard]] Result acid(AcidLevel acid) {
+    return exploration.advance({}, {}, acid);
+  }
+
+private:
+  Simulation simulation;
+  World world;
+  Exploration exploration;
+};
+
+constexpr ExplorationInput RIGHT{.direction = Direction::Right};
+constexpr ExplorationInput LEFT{.direction = Direction::Left};
+constexpr ExplorationInput UP{.direction = Direction::Up};
+constexpr ExplorationInput DOWN{.direction = Direction::Down};
+constexpr ExplorationInput JUMP_RIGHT{.direction = Direction::Right,
+                                      .jump = true};
+
 TEST(Exploration, BothRolesMoveIdenticallyAndShareOneClock) {
   Simulation simulation({.exploration_budget = 5s, .seed = 9});
   World world(city());
@@ -47,7 +108,7 @@ TEST(Exploration, BothRolesMoveIdenticallyAndShareOneClock) {
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(exploration.advance(200ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
   EXPECT_EQ(exploration.snapshot().chef, exploration.snapshot().appraiser);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4800ms);
   EXPECT_EQ(world.snapshot().progression.elapsed, 200ms);
@@ -63,13 +124,13 @@ TEST(Exploration,
   ASSERT_EQ(exploration.advance(60ms, WALK, {}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4940ms);
   EXPECT_EQ(world.snapshot().progression.elapsed, 60ms);
-  EXPECT_EQ(exploration.snapshot().chef.position, ENTRY);
+  EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(exploration.advance(40ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 1}));
-  EXPECT_EQ(exploration.snapshot().appraiser.position, ENTRY);
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
+  EXPECT_EQ(at(exploration.snapshot().appraiser), ENTRY);
   ASSERT_EQ(exploration.advance(60ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().appraiser.position, (GridPosition{.x = 1}));
+  EXPECT_EQ(at(exploration.snapshot().appraiser), (GridPosition{.x = 1}));
 }
 
 TEST(Exploration, RunningExhaustsStaminaThenWalksAndRecoversForBothRoles) {
@@ -79,18 +140,18 @@ TEST(Exploration, RunningExhaustsStaminaThenWalksAndRecoversForBothRoles) {
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(exploration.advance(200ms, RUN, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 4}));
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 3}));
   EXPECT_EQ(exploration.snapshot().chef.stamina, 0U);
   EXPECT_EQ(exploration.snapshot().chef, exploration.snapshot().appraiser);
   ASSERT_EQ(exploration.advance(100ms, RUN, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 5}));
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 4}));
   EXPECT_EQ(exploration.snapshot().chef.stamina, 1U);
   ASSERT_EQ(exploration.advance(300ms, IDLE, {}), Result::Applied);
   EXPECT_EQ(exploration.snapshot().chef.stamina, 2U);
   EXPECT_EQ(exploration.snapshot().chef, exploration.snapshot().appraiser);
 }
 
-TEST(Exploration, RunningChecksThinBuildingsAndBrokenPassagesCellByCell) {
+TEST(Exploration, BuildingsAndBrokenEntrancesBlockButABrokenLadderDoesNot) {
   for (const auto kind :
        {ObjectKind::Building, ObjectKind::Ladder, ObjectKind::Entrance}) {
     auto definitions = city();
@@ -105,15 +166,16 @@ TEST(Exploration, RunningChecksThinBuildingsAndBrokenPassagesCellByCell) {
     ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
     ASSERT_EQ(exploration.advance(100ms, RUN, {}), Result::Applied);
     if (kind == ObjectKind::Building) {
-      EXPECT_EQ(exploration.snapshot().chef.position, ENTRY);
+      EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
       ASSERT_EQ(exploration.advance(100ms, RUN, {1}), Result::Applied);
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+      EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
     } else {
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
-      const std::array<ExplorationInput, 2> left{
-          ExplorationInput{.direction = Direction::Left, .running = true}, {}};
+      EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
+      const std::array<ExplorationInput, 2> left{LEFT, {}};
       ASSERT_EQ(exploration.advance(100ms, left, {1}), Result::Applied);
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+      const auto expected = kind == ObjectKind::Ladder ? GridPosition{.x = 1}
+                                                       : GridPosition{.x = 2};
+      EXPECT_EQ(at(exploration.snapshot().chef), expected);
     }
   }
 }
@@ -139,38 +201,174 @@ TEST(Exploration,
       Exploration exploration(simulation, world, tuning());
       ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
       ASSERT_EQ(exploration.advance(100ms, RUN, {}), Result::Applied);
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
-      const std::array<ExplorationInput, 2> left{
-          ExplorationInput{.direction = Direction::Left, .running = true}, {}};
+      EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
+      const std::array<ExplorationInput, 2> left{LEFT, {}};
       ASSERT_EQ(exploration.advance(100ms, left, {1}), Result::Applied);
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+      EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
       ASSERT_EQ(world.repair(ObjectId{21}, ToolId{1}), RepairResult::Applied);
       ASSERT_EQ(exploration.advance(100ms, left, {1}), Result::Applied);
-      EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 1}));
+      EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
     }
   }
 }
 
-TEST(Exploration, LiveLadderAndEntranceSupportVerticalMovementOverEmptySpace) {
+TEST(Exploration, GravityDropsAWalkerOffAnEdgeOntoTheFloorBelow) {
+  Course course({floor_at(FLOOR, 0, 0, 3), floor_at(OWNER, 0, 3, 10)}, ENTRY);
+  course.press(1s, RIGHT);
+  EXPECT_EQ(course.location(), Location::City);
+  EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(at(course.chef()).y, 3);
+  EXPECT_GT(at(course.chef()).x, 2);
+}
+
+TEST(Exploration, AJumpClearsATwoCellGapButNotAThreeCellGap) {
+  for (const std::int32_t gap : {2, 3}) {
+    const std::int32_t far = 4 + gap;
+    Course course({floor_at(FLOOR, 0, 0, 4), floor_at(OWNER, far, 0, 4)},
+                  {.x = 3});
+    course.press(100ms, JUMP_RIGHT);
+    course.press(300ms, RIGHT);
+    course.press(200ms, {});
+    if (gap == 2) {
+      EXPECT_EQ(course.location(), Location::City);
+      EXPECT_EQ(at(course.chef()), (GridPosition{.x = far}));
+    } else {
+      EXPECT_EQ(course.location(), Location::Base);
+    }
+  }
+}
+
+TEST(Exploration, AJumpLandsOneRowUpButNeverTwo) {
+  for (const std::int32_t rows : {1, 2}) {
+    Course course({floor_at(FLOOR, 0, 2, 4), floor_at(OWNER, 5, 2 - rows, 4)},
+                  {.x = 3, .y = 2});
+    course.press(100ms, JUMP_RIGHT);
+    course.press(200ms, RIGHT);
+    course.press(200ms, {});
+    if (rows == 1) {
+      EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+      EXPECT_EQ(at(course.chef()), (GridPosition{.x = 5, .y = 1}));
+    } else {
+      EXPECT_EQ(course.location(), Location::Base);
+    }
+  }
+}
+
+TEST(Exploration, AJumpPassesUpThroughAFloorAndLandsOnIt) {
+  Course course({floor_at(FLOOR, 0, 2, 6), floor_at(OWNER, 0, 1, 6)},
+                {.x = 1, .y = 2});
+  course.press(100ms, {.jump = true});
+  course.press(400ms, {});
+  EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(at(course.chef()), (GridPosition{.x = 1, .y = 1}));
+}
+
+TEST(Exploration, AJumpPressedInTheAirTakesOnLandingWithinItsUnit) {
+  for (const bool on_landing : {false, true}) {
+    Course course({floor_at(FLOOR, 0, 2, 6)}, {.x = 1, .y = 2});
+    course.press(100ms, {.jump = true});
+    course.press(100ms, {});
+    // Airborne for this whole unit, so its press is lost.
+    course.press(100ms, {.jump = !on_landing});
+    // Lands on this unit's fourth tick and jumps on its fifth.
+    course.press(100ms, {.jump = on_landing});
+    EXPECT_EQ(course.chef().body.stance,
+              on_landing ? Stance::Airborne : Stance::Standing);
+  }
+}
+
+TEST(Exploration, ABuildingStopsBothAWalkAndAJumpUntilItFalls) {
+  for (const bool fallen : {false, true}) {
+    Course course({floor_at(FLOOR, 0, 0, 8),
+                   {.id = OWNER,
+                    .kind = ObjectKind::Building,
+                    .area = {.x = 2, .y = -1, .height = 2},
+                    .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}}},
+                  ENTRY);
+    if (fallen) {
+      ASSERT_EQ(course.acid(AcidLevel{1}), Result::Applied);
+    }
+    course.press(300ms, RIGHT);
+    course.press(100ms, JUMP_RIGHT);
+    course.press(400ms, RIGHT);
+    if (fallen) {
+      EXPECT_GT(at(course.chef()).x, 2);
+    } else {
+      EXPECT_EQ(at(course.chef()), (GridPosition{.x = 1}));
+    }
+  }
+}
+
+TEST(Exploration, ALowBlockIsAHurdleToJumpOntoAndStepDownFrom) {
+  Course course({floor_at(FLOOR, 0, 1, 8),
+                 {.id = OWNER,
+                  .kind = ObjectKind::Building,
+                  .area = {.x = 2, .y = 1, .width = 2}}},
+                {.x = 1, .y = 1});
+  course.press(300ms, RIGHT);
+  ASSERT_EQ(at(course.chef()), (GridPosition{.x = 1, .y = 1}));
+  course.press(100ms, JUMP_RIGHT);
+  course.press(200ms, RIGHT);
+  EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(at(course.chef()), (GridPosition{.x = 3, .y = 0}));
+  course.press(100ms, RIGHT);
+  EXPECT_EQ(at(course.chef()), (GridPosition{.x = 4, .y = 1}));
+}
+
+TEST(Exploration, StairsAreWalkedUpAndDownAStepAtATime) {
+  Course course({floor_at(FLOOR, 0, 3, 3), floor_at(ObjectId{2}, 3, 2, 1),
+                 floor_at(ObjectId{3}, 4, 1, 1), floor_at(OWNER, 5, 0, 4)},
+                {.x = 0, .y = 3});
+  course.press(600ms, RIGHT);
+  EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(at(course.chef()), (GridPosition{.x = 5, .y = 0}));
+  course.press(600ms, LEFT);
+  EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(at(course.chef()), (GridPosition{.x = 0, .y = 3}));
+}
+
+TEST(Exploration, ALadderIsClimbedBetweenItsEndsAndLeftOntoAFloor) {
+  for (const bool broken : {false, true}) {
+    Course course({floor_at(FLOOR, 0, 4, 6),
+                   floor_at(ObjectId{2}, 2, 1, 4),
+                   {.id = OWNER,
+                    .kind = ObjectKind::Ladder,
+                    .area = {.x = 2, .y = 1, .height = 4},
+                    .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}}},
+                  {.x = 2, .y = 4});
+    if (broken) {
+      ASSERT_EQ(course.acid(AcidLevel{1}), Result::Applied);
+    }
+    course.press(100ms, UP);
+    if (broken) {
+      EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+      EXPECT_EQ(at(course.chef()), (GridPosition{.x = 2, .y = 4}));
+      continue;
+    }
+    const auto partway = course.chef().body;
+    EXPECT_EQ(partway.stance, Stance::Climbing);
+    course.press(300ms, {});
+    EXPECT_EQ(course.chef().body, partway);
+    course.press(1s, UP);
+    EXPECT_EQ(course.chef().body.position, standing_in({.x = 2, .y = 1}));
+    course.press(100ms, RIGHT);
+    EXPECT_EQ(course.chef().body.stance, Stance::Standing);
+    EXPECT_EQ(at(course.chef()), (GridPosition{.x = 3, .y = 1}));
+    course.press(100ms, LEFT);
+    course.press(1s, DOWN);
+    EXPECT_EQ(course.chef().body.position, standing_in({.x = 2, .y = 4}));
+  }
+}
+
+TEST(Exploration, ACityPastTheMovementLimitIsRefused) {
   auto definitions = city();
-  definitions.front().area.height = 1;
+  ASSERT_NO_THROW(CellMap(World(definitions).snapshot()));
   definitions.push_back(
-      {.id = OWNER, .kind = ObjectKind::Ladder, .area = {.x = 0, .y = -1}});
-  definitions.push_back({.id = ObjectId{21},
-                         .kind = ObjectKind::Entrance,
-                         .area = {.x = 0, .y = -2}});
+      {.id = OWNER, .area = {.x = MAP_LIMIT - 1, .width = 2}});
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(definitions);
-  Exploration exploration(simulation, world, tuning());
-  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  const std::array<ExplorationInput, 2> up{
-      ExplorationInput{.direction = Direction::Up}, {}};
-  ASSERT_EQ(exploration.advance(200ms, up, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.y = -2}));
-  EXPECT_EQ(simulation.snapshot().chef.location, Location::City);
-  ASSERT_EQ(exploration.advance(100ms, up, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, BASE);
-  EXPECT_EQ(simulation.snapshot().chef.health, 3U);
+  EXPECT_THROW(CellMap(world.snapshot()), std::invalid_argument);
+  EXPECT_THROW(Exploration(simulation, world, tuning()), std::invalid_argument);
 }
 
 TEST(Exploration, FallPreservesCollectedItemsAndTimeAndAllowsFreshEntry) {
@@ -183,20 +381,21 @@ TEST(Exploration, FallPreservesCollectedItemsAndTimeAndAllowsFreshEntry) {
   ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.damage(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.advance(150ms, RUN, {}), Result::Applied);
+  ASSERT_EQ(exploration.advance(1s, RUN, {}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
   EXPECT_EQ(simulation.snapshot().chef.health, 3U);
   EXPECT_EQ(simulation.snapshot().chef.inventory,
             (std::vector{IngredientId{70}}));
-  EXPECT_EQ(exploration.snapshot().chef.position, BASE);
-  EXPECT_EQ(simulation.snapshot().remaining_exploration, 4900ms);
+  EXPECT_EQ(at(exploration.snapshot().chef), BASE);
+  // Off the edge in the first unit, below the floor on the second.
+  EXPECT_EQ(simulation.snapshot().remaining_exploration, 4800ms);
   EXPECT_EQ(simulation.snapshot().seed, 19U);
   EXPECT_EQ(simulation.snapshot().day, 1U);
   EXPECT_EQ(exploration.snapshot().sources.front().remaining, 0U);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, ENTRY);
+  EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
   ASSERT_EQ(exploration.advance(50ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, ENTRY);
+  EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
 }
 
 TEST(Exploration, ManualAndHealthReturnsClearPositionAndPartialMovementOnly) {
@@ -209,7 +408,7 @@ TEST(Exploration, ManualAndHealthReturnsClearPositionAndPartialMovementOnly) {
     ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
               CollectionResult::Applied);
     ASSERT_EQ(exploration.advance(150ms, WALK, {}), Result::Applied);
-    EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 1}));
+    EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
     const auto persistent_world = world.snapshot();
     if (exhausted) {
       for (int hit = 0; hit < 3; ++hit) {
@@ -218,7 +417,7 @@ TEST(Exploration, ManualAndHealthReturnsClearPositionAndPartialMovementOnly) {
     } else {
       ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
     }
-    EXPECT_EQ(exploration.snapshot().chef.position, BASE);
+    EXPECT_EQ(at(exploration.snapshot().chef), BASE);
     EXPECT_EQ(simulation.snapshot().chef.health, 3U);
     EXPECT_EQ(simulation.snapshot().chef.inventory,
               (std::vector{IngredientId{70}}));
@@ -227,9 +426,8 @@ TEST(Exploration, ManualAndHealthReturnsClearPositionAndPartialMovementOnly) {
     EXPECT_EQ(world.snapshot(), persistent_world);
     ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
     ASSERT_EQ(exploration.advance(50ms, WALK, {}), Result::Applied);
-    EXPECT_EQ(exploration.snapshot().chef.position, ENTRY);
-    EXPECT_EQ(exploration.snapshot().appraiser.position,
-              (GridPosition{.x = 2}));
+    EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
+    EXPECT_EQ(at(exploration.snapshot().appraiser), (GridPosition{.x = 2}));
     EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
               CollectionResult::Depleted);
   }
@@ -242,12 +440,12 @@ TEST(Exploration, ExpiryStopsBothActorsBeforeMovementOrCollectionBeyondBudget) {
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(exploration.advance(100ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 1}));
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
   ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(10s, RUN, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, BASE);
-  EXPECT_EQ(exploration.snapshot().appraiser.position, BASE);
+  EXPECT_EQ(at(exploration.snapshot().chef), BASE);
+  EXPECT_EQ(at(exploration.snapshot().appraiser), BASE);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 0us);
   EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
   EXPECT_EQ(world.snapshot().progression.elapsed, 150ms);
@@ -305,7 +503,7 @@ TEST(Exploration,
             CollectionResult::NotExploring);
   EXPECT_EQ(exploration.snapshot(), at_base);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.advance(300ms, WALK, {}), Result::Applied);
+  ASSERT_EQ(exploration.advance(400ms, WALK, {}), Result::Applied);
   const auto before = simulation.snapshot();
   const auto stock = exploration.snapshot();
   EXPECT_EQ(exploration.collect(Actor::Chef, ObjectId{999}),
@@ -356,8 +554,7 @@ TEST(Exploration, SupplyTracksDormantDestroyedAndOwnerDestroyedWorldObjects) {
   }
 }
 
-TEST(Exploration,
-     WorldDeteriorationReturnsUnsupportedActorsWithoutResettingHistory) {
+TEST(Exploration, AFloorThatBreaksDropsItsWalkerIntoTheAcidKeepingHistory) {
   auto definitions = city();
   definitions.front().destroyed_after = WorldThreshold{.elapsed = 150ms};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
@@ -367,16 +564,20 @@ TEST(Exploration,
   ASSERT_EQ(exploration.advance(100ms, IDLE, {}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().chef.location, Location::City);
   ASSERT_EQ(exploration.advance(50ms, IDLE, {2}), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
-  EXPECT_EQ(exploration.snapshot().chef.position, BASE);
   EXPECT_EQ(world.snapshot().objects.front().state, ObjectState::Destroyed);
+  EXPECT_EQ(simulation.snapshot().chef.location, Location::City);
+  ASSERT_EQ(exploration.advance(1s, IDLE, {}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().chef.health, 3U);
+  EXPECT_EQ(at(exploration.snapshot().chef), BASE);
   EXPECT_EQ(world.snapshot().peak_acid, (AcidLevel{2}));
   EXPECT_EQ(simulation.snapshot().acid, AcidLevel{});
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::NotExploring);
   const auto before = simulation.snapshot();
+  const auto settled = world.snapshot().progression.elapsed;
   ASSERT_EQ(exploration.advance(1s, IDLE, {}), Result::Applied);
   EXPECT_EQ(simulation.snapshot(), before);
-  EXPECT_EQ(world.snapshot().progression.elapsed, 150ms);
+  EXPECT_EQ(world.snapshot().progression.elapsed, settled);
   EXPECT_EQ(world.snapshot().peak_acid, (AcidLevel{2}));
 }
 
@@ -396,7 +597,7 @@ TEST(Exploration, NegativeElapsedAndRefusedBaseCommandsChangeNothing) {
   EXPECT_EQ(world.snapshot(), before_world);
   EXPECT_EQ(exploration.snapshot(), before_exploration);
   ASSERT_EQ(exploration.advance(50ms, WALK, {}), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 1}));
+  EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
 }
 
 TEST(Exploration,
@@ -492,12 +693,11 @@ TEST(Exploration, ToolsSurviveAFallAndAnExhaustionAndStockStaysSpent) {
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(toolbox_city());
   Exploration exploration(simulation, world, toolbox_tuning());
-  const std::array<ExplorationInput, 2> up{
-      ExplorationInput{.direction = Direction::Up}, {}};
+  const std::array<ExplorationInput, 2> off_the_edge{LEFT, {}};
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.collect(Actor::Chef, TOOL_SOURCE),
             CollectionResult::Applied);
-  ASSERT_EQ(exploration.advance(100ms, up, {}), Result::Applied);
+  ASSERT_EQ(exploration.advance(100ms, off_the_edge, {}), Result::Applied);
   ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
   EXPECT_EQ(simulation.snapshot().chef.tools, (std::vector<ToolId>{WRENCH}));
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
@@ -567,7 +767,7 @@ TEST(Exploration, RepairIsRefusedFromBaseOutOfRangeAndForUnknownObjects) {
   EXPECT_EQ(exploration.repair(Actor::Appraiser, LADDER, WRENCH),
             RepairResult::NotExploring);
   ASSERT_EQ(exploration.advance(200ms, WALK, AcidLevel{1}), Result::Applied);
-  ASSERT_EQ(exploration.snapshot().chef.position, (GridPosition{.x = 2}));
+  ASSERT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 2}));
   EXPECT_EQ(exploration.repair(Actor::Chef, LADDER, WRENCH),
             RepairResult::Applied);
 }
@@ -659,7 +859,7 @@ TEST(Exploration,
   EXPECT_EQ(snapshot.phase, Phase::Workshop);
   EXPECT_EQ(snapshot.chef.location, Location::Base);
   EXPECT_EQ(snapshot.appraiser.location, Location::Base);
-  EXPECT_EQ(exploration.snapshot().appraiser.position, settings.base);
+  EXPECT_EQ(at(exploration.snapshot().appraiser), settings.base);
   EXPECT_EQ(snapshot.appraiser.inventory.size(), 1U);
   EXPECT_EQ(world.snapshot().progression.elapsed, 5s);
 }

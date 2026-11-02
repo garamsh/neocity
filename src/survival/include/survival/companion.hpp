@@ -120,17 +120,23 @@ struct CompanionConfig {
   AcidLevel unfed_penalty;
 };
 
-/// What AI would walk to next, and the first step on the way there: idle once
+/// What AI would go to next, and the first move on the way there: none once
 /// the target works from where the actor stands.
 struct Errand {
   ObjectId target;
-  Direction step = Direction::Idle;
+  std::optional<Move> step = std::nullopt;
 };
 
 /// Whether setting out now gives `actor` an errand, by the search `errand`
 /// runs, from the entrance.
 [[nodiscard]] bool worth_entering(const CompanionConfig &config, Actor actor,
                                   const GameView &view);
+
+/// Whether repairing `passage` brings stock into `actor`'s reach that is out
+/// of reach without it, so a repair passed on the way is worth stopping for.
+[[nodiscard]] bool repair_opens_stock(const CompanionConfig &config,
+                                      Actor actor, const GameView &view,
+                                      ObjectId passage);
 
 /// Turns a view into the next command for either kind of controller. Holds no
 /// game state and no random state, so one input gives one command.
@@ -139,12 +145,13 @@ public:
   explicit Companion(CompanionConfig settings);
   /// Translates `input` for a human; AI ignores it. Read a fresh view for each
   /// actor after applying the other's action, and advance at most one 100ms
-  /// movement tick between commands, since `movement` is valid for one cell.
+  /// movement unit between commands, since AI steers from where it stands.
   [[nodiscard]] ActorCommand command(Actor actor, ControlMap control,
                                      const PlayerInput &input,
                                      const GameView &view) const;
   /// The errand AI would run in this actor's place, for telling a human the
-  /// same way. Empty when nothing is in reach.
+  /// same way; in the air, from where a straight drop lands. Empty when
+  /// nothing is in reach.
   [[nodiscard]] std::optional<Errand> errand(Actor actor,
                                              const GameView &view) const;
 

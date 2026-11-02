@@ -40,7 +40,7 @@ constexpr ObjectId BASE_DOCK{1};
 constexpr ObjectId MAIN_STREET{2};
 constexpr ObjectId ROTTEN_BRIDGE{3};
 constexpr ObjectId EAST_PLAZA{4};
-constexpr ObjectId NORTH_STAIRS{5};
+constexpr ObjectId NORTH_LADDER{5};
 constexpr ObjectId ARCADE{6};
 constexpr ObjectId SOUTH_STAIRS{7};
 constexpr ObjectId MARKET{8};
@@ -81,11 +81,13 @@ constexpr ObjectId COLD_STORE_FLOOR{57};
 constexpr ObjectId MARKET_SHALLOWS{58};
 constexpr ObjectId TILTED_CAR{59};
 constexpr ObjectId PIER{60};
-constexpr ObjectId PLAZA_STEPS{61};
+constexpr ObjectId PLAZA_LADDER{61};
 constexpr ObjectId WEST_RUBBLE{62};
 constexpr ObjectId EAST_RUBBLE{63};
+constexpr ObjectId UPPER_RAMP{64};
+constexpr ObjectId MARKET_LADDER{65};
 
-constexpr std::uint32_t BAG_STOCK = 14;
+constexpr std::uint32_t BAG_STOCK = 15;
 
 template <typename Id> struct Named {
   Id id;
@@ -127,7 +129,7 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = MAIN_STREET, .name = "Main Street"},
     Named<ObjectId>{.id = ROTTEN_BRIDGE, .name = "Rotten Bridge"},
     Named<ObjectId>{.id = EAST_PLAZA, .name = "East Plaza"},
-    Named<ObjectId>{.id = NORTH_STAIRS, .name = "North Stairs"},
+    Named<ObjectId>{.id = NORTH_LADDER, .name = "North Ladder"},
     Named<ObjectId>{.id = ARCADE, .name = "Arcade"},
     Named<ObjectId>{.id = SOUTH_STAIRS, .name = "South Stairs"},
     Named<ObjectId>{.id = MARKET, .name = "Market"},
@@ -168,9 +170,11 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = MARKET_SHALLOWS, .name = "Market Shallows"},
     Named<ObjectId>{.id = TILTED_CAR, .name = "Tilted Car"},
     Named<ObjectId>{.id = PIER, .name = "Pier"},
-    Named<ObjectId>{.id = PLAZA_STEPS, .name = "Plaza Steps"},
+    Named<ObjectId>{.id = PLAZA_LADDER, .name = "Plaza Ladder"},
     Named<ObjectId>{.id = WEST_RUBBLE, .name = "West Rubble"},
     Named<ObjectId>{.id = EAST_RUBBLE, .name = "East Rubble"},
+    Named<ObjectId>{.id = UPPER_RAMP, .name = "Upper Ramp"},
+    Named<ObjectId>{.id = MARKET_LADDER, .name = "Market Ladder"},
 };
 
 template <typename Id, std::size_t Size>
@@ -235,83 +239,92 @@ ObjectDefinition building(ObjectId id, WorldArea area) {
   return {.id = id, .kind = ObjectKind::Building, .area = area};
 }
 
-/// A broken road across the gullet: low ground drowns first, so every
-/// acid-only threshold rises with height.
+/// A ladder nothing breaks.
+ObjectDefinition ladder(ObjectId id, WorldArea area) {
+  return {.id = id, .kind = ObjectKind::Ladder, .area = area};
+}
+
+/// A broken road across the gullet, seen from the side: every walkway is one
+/// row, and floors meet only by ladder, stairs, ramp, or a jump. Low ground
+/// drowns first, so every acid-only threshold rises with height.
 std::vector<ObjectDefinition> city() {
   constexpr auto ferry_time = 800s;
   const WorldThreshold ferry_arrives{.elapsed = ferry_time,
                                      .acid = AcidLevel{30}};
   return {
-      terrain(BASE_DOCK, {.x = 0, .y = 6, .width = 4, .height = 4}),
-      terrain(MAIN_STREET, {.x = 4, .y = 7, .width = 6, .height = 2}),
-      terrain(CRACKED_RAMP, {.x = 10, .y = 5, .height = 3}),
-      terrain(OVERPASS_STUB, {.x = 11, .y = 5, .width = 6}),
-      terrain(FALLEN_SLAB, {.x = 16, .y = 6, .width = 2}),
-      terrain(EAST_AVENUE, {.x = 17, .y = 7, .width = 5}),
-      destroyed(terrain(SUNKEN_ASPHALT, {.x = 20, .y = 8, .width = 2}),
+      terrain(BASE_DOCK, {.x = 0, .y = 8, .width = 4}),
+      terrain(MAIN_STREET, {.x = 4, .y = 8, .width = 6}),
+      terrain(CRACKED_RAMP, {.x = 10, .y = 7}),
+      terrain(UPPER_RAMP, {.x = 11, .y = 6}),
+      terrain(OVERPASS_STUB, {.x = 12, .y = 5, .width = 7}),
+      terrain(FALLEN_SLAB, {.x = 20, .y = 6, .width = 2}),
+      terrain(EAST_AVENUE, {.x = 22, .y = 7, .width = 3}),
+      destroyed(terrain(SUNKEN_ASPHALT, {.x = 25, .y = 8, .width = 2}),
                 {.acid = AcidLevel{55}}),
-      destroyed(terrain(ROTTEN_BRIDGE, {.x = 22, .y = 8, .width = 4}),
+      destroyed(terrain(ROTTEN_BRIDGE, {.x = 27, .y = 8, .width = 2}),
                 {.elapsed = 1080s, .acid = AcidLevel{40}}),
-      terrain(EAST_PLAZA, {.x = 26, .y = 6, .width = 5, .height = 4}),
-      terrain(COLD_STORE_FLOOR, {.x = 31, .y = 7, .width = 2}),
-      terrain(NORTH_STAIRS, {.x = 7, .y = 3, .height = 4}),
-      terrain(ARCADE, {.x = 2, .y = 1, .width = 9, .height = 2}),
-      terrain(NEON_LEDGE, {.x = 10, .y = 3, .width = 5}),
-      terrain(SOUTH_STAIRS, {.x = 8, .y = 9, .height = 2}),
-      terrain(MARKET, {.x = 6, .y = 11, .width = 9, .height = 2}),
-      destroyed(terrain(MARKET_SHALLOWS, {.x = 3, .y = 13, .width = 6}),
+      terrain(EAST_PLAZA, {.x = 29, .y = 7, .width = 4}),
+      terrain(COLD_STORE_FLOOR, {.x = 33, .y = 7, .width = 3}),
+      ladder(NORTH_LADDER, {.x = 2, .y = 2, .height = 7}),
+      terrain(ARCADE, {.x = 1, .y = 2, .width = 10}),
+      terrain(NEON_LEDGE, {.x = 11, .y = 3, .width = 4}),
+      ladder(MARKET_LADDER, {.x = 7, .y = 8, .height = 4}),
+      terrain(MARKET, {.x = 4, .y = 11, .width = 9}),
+      destroyed(terrain(MARKET_SHALLOWS, {.x = 0, .y = 12, .width = 4}),
                 {.acid = AcidLevel{45}}),
+      terrain(SOUTH_STAIRS, {.x = 13, .y = 12}),
       terrain(TILTED_CAR, {.x = 14, .y = 13, .width = 4}),
-      exposed(
-          terrain(DRIFTED_FERRY, {.x = 18, .y = 12, .width = 5, .height = 2}),
-          ferry_arrives),
-      terrain(PIER, {.x = 23, .y = 12, .width = 3}),
-      terrain(PLAZA_STEPS, {.x = 26, .y = 10, .height = 3}),
-      terrain(ROOFTOP, {.x = 16, .y = 2, .width = 7, .height = 2}),
-      destroyed(passage(ROOF_LADDER, ObjectKind::Ladder, {.x = 16, .y = 4}),
+      exposed(terrain(DRIFTED_FERRY, {.x = 20, .y = 13, .width = 10}),
+              ferry_arrives),
+      terrain(PIER, {.x = 31, .y = 12, .width = 5}),
+      ladder(PLAZA_LADDER, {.x = 31, .y = 7, .height = 6}),
+      terrain(ROOFTOP, {.x = 18, .y = 2, .width = 6}),
+      destroyed(passage(ROOF_LADDER, ObjectKind::Ladder,
+                        {.x = 18, .y = 2, .height = 4}),
                 {.elapsed = 240s, .acid = AcidLevel{10}}),
       destroyed(passage(COLD_STORE_DOOR, ObjectKind::Entrance,
-                        {.x = 30, .y = 7, .width = 3}),
+                        {.x = 33, .y = 7, .width = 3}),
                 {.elapsed = 400s, .acid = AcidLevel{20}}),
-      destroyed(building(CORNER_SHOP, {.x = 12, .y = 6, .width = 4}),
-                {.elapsed = 600s, .acid = AcidLevel{25}}),
-      building(COLD_STORE, {.x = 30, .y = 6, .width = 5, .height = 3}),
+      destroyed(
+          building(CORNER_SHOP, {.x = 13, .y = 6, .width = 3, .height = 2}),
+          {.elapsed = 600s, .acid = AcidLevel{25}}),
+      building(COLD_STORE, {.x = 33, .y = 5, .width = 3, .height = 3}),
       destroyed(
           building(KIOSK_WRECK, {.x = 9, .y = 1, .width = 2, .height = 2}),
           {.elapsed = 360s}),
-      building(WEST_RUBBLE, {.x = 6, .y = 8}),
-      building(EAST_RUBBLE, {.x = 29, .y = 9, .width = 2}),
+      building(WEST_RUBBLE, {.x = 9, .y = 8}),
+      building(EAST_RUBBLE, {.x = 30, .y = 7}),
       destroyed({.id = NOODLE_VENDOR,
                  .kind = ObjectKind::Npc,
-                 .area = {.x = 9, .y = 7}},
+                 .area = {.x = 8, .y = 8}},
                 {.elapsed = 480s, .acid = AcidLevel{20}}),
-      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 5, .y = 8}, TOMATO),
+      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 11}, TOMATO),
                 {.acid = AcidLevel{50}}),
-      owned(ingredient_source(VENDOR_CART, {.x = 9, .y = 8}, FISH),
+      owned(ingredient_source(VENDOR_CART, {.x = 8, .y = 8}, FISH),
             NOODLE_VENDOR),
-      owned(ingredient_source(SHOP_SHELF, {.x = 13, .y = 6}, KELP),
+      owned(ingredient_source(SHOP_SHELF, {.x = 14, .y = 6}, KELP),
             CORNER_SHOP),
-      destroyed(ingredient_source(LOST_BASKET, {.x = 7, .y = 13}, MUSHROOM),
+      destroyed(ingredient_source(LOST_BASKET, {.x = 2, .y = 12}, MUSHROOM),
                 {.acid = AcidLevel{40}}),
-      tool_source(TOOL_BAG, {.x = 13, .y = 12}, WRENCH),
-      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 4, .y = 13}, PICKLES),
+      tool_source(TOOL_BAG, {.x = 11, .y = 11}, WRENCH),
+      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 0, .y = 12}, PICKLES),
                 {.acid = AcidLevel{35}}),
-      tool_source(ARCADE_BAG, {.x = 13, .y = 3}, MAGNIFIER),
-      tool_source(SUPPLY_CRATE, {.x = 3, .y = 2}, SPATULA),
-      owned(ingredient_source(COLD_LOCKER, {.x = 33, .y = 7}, MEAT),
+      tool_source(ARCADE_BAG, {.x = 14, .y = 3}, MAGNIFIER),
+      tool_source(SUPPLY_CRATE, {.x = 1, .y = 2}, SPATULA),
+      owned(ingredient_source(COLD_LOCKER, {.x = 35, .y = 7}, MEAT),
             COLD_STORE),
-      ingredient_source(ROOF_BAG, {.x = 22, .y = 2}, TRUFFLE),
-      exposed(owned(ingredient_source(FERRY_BAG, {.x = 20, .y = 12}, KELP),
+      ingredient_source(ROOF_BAG, {.x = 23, .y = 2}, TRUFFLE),
+      exposed(owned(ingredient_source(FERRY_BAG, {.x = 25, .y = 13}, KELP),
                     DRIFTED_FERRY),
               {.elapsed = ferry_time}),
-      washed_up(WASHED_BAG_1, {.x = 5, .y = 13}, FISH, 120s, 40),
-      washed_up(WASHED_BAG_2, {.x = 10, .y = 12}, MUSHROOM, 250s, 50),
-      washed_up(WASHED_BAG_3, {.x = 7, .y = 8}, TOMATO, 380s, 55),
-      washed_up(WASHED_BAG_4, {.x = 28, .y = 8}, PICKLES, 510s, 60),
-      washed_up(WASHED_BAG_5, {.x = 18, .y = 7}, KELP, 640s, 65),
-      washed_up(WASHED_BAG_6, {.x = 15, .y = 5}, MEAT, 980s, 75),
-      washed_up(WASHED_BAG_7, {.x = 4, .y = 1}, TRUFFLE, 1160s, 85),
-      washed_up(WASHED_BAG_8, {.x = 27, .y = 6}, TOMATO, 770s, 70),
+      washed_up(WASHED_BAG_1, {.x = 1, .y = 12}, FISH, 120s, 40),
+      washed_up(WASHED_BAG_2, {.x = 9, .y = 11}, MUSHROOM, 250s, 50),
+      washed_up(WASHED_BAG_3, {.x = 4, .y = 8}, TOMATO, 380s, 55),
+      washed_up(WASHED_BAG_4, {.x = 32, .y = 7}, PICKLES, 510s, 60),
+      washed_up(WASHED_BAG_5, {.x = 22, .y = 7}, KELP, 640s, 65),
+      washed_up(WASHED_BAG_6, {.x = 16, .y = 5}, MEAT, 980s, 75),
+      washed_up(WASHED_BAG_7, {.x = 5, .y = 2}, TRUFFLE, 1160s, 85),
+      washed_up(WASHED_BAG_8, {.x = 24, .y = 7}, TOMATO, 770s, 70),
   };
 }
 
@@ -320,19 +333,19 @@ std::vector<ObjectDefinition> city() {
 /// % rubble, _ planks, c buried car, and . no ground.
 constexpr std::array<std::string_view, 16> GROUND_ROWS{
     "....................................",
-    "..<=~=o~=~>.........................",
-    "..<~=c~=~=>.....<=~=o~>.............",
-    "......./..<~o~>.<~==~o>.............",
-    "......./............................",
-    "......./../=~o=~>...................",
-    "<=~>.../../.....//........<=~o=.....",
-    "=~==~c=~o=/......~=o~>....=~c=~=~...",
-    "=~=o=~%=~>..........<o____~=o=~.....",
-    "=~o>..../.................=~=%%.....",
-    "......../................./.........",
-    "......<=~o=c~=>.........../.........",
-    "......<~=~o=~=>..._____~o~/.........",
-    "...<~o=~>...../ccc_____.............",
+    "....................................",
+    ".<=~=c~=o=>.......<=~o=>............",
+    "...........<~o>.....................",
+    "....................................",
+    "............=~=o~=>.................",
+    ".........../........//..............",
+    "........../...........=~>....<%=~=~=",
+    "=~=c~o=~=%...............o~__.......",
+    "....................................",
+    "....................................",
+    "....<=~o=c~=>.......................",
+    "=~o>........./.................=~o=~",
+    "............../ccc..__________......",
     "....................................",
     "....................................",
 };
@@ -382,31 +395,31 @@ std::vector<GroundCell> ground() {
 std::vector<Decoration> decorations() {
   using enum DecorationKind;
   return {
-      {.kind = TiltedTrain, .area = {.x = 24, .y = 3, .width = 3}},
-      {.kind = TiltedTrain, .area = {.x = 28, .y = 2, .width = 4}},
-      {.kind = TiltedTrain, .area = {.x = 23, .y = 14, .width = 4}},
+      {.kind = TiltedTrain, .area = {.x = 25, .y = 3, .width = 3}},
+      {.kind = TiltedTrain, .area = {.x = 29, .y = 2, .width = 4}},
+      {.kind = TiltedTrain, .area = {.x = 27, .y = 14, .width = 4}},
       {.kind = BuildingShell,
-       .area = {.x = 0, .y = 1, .width = 2, .height = 4}},
+       .area = {.x = 0, .y = 3, .width = 2, .height = 4}},
       {.kind = BuildingShell,
-       .area = {.x = 11, .y = 8, .width = 5, .height = 3}},
+       .area = {.x = 9, .y = 9, .width = 4, .height = 2}},
       {.kind = BuildingShell,
-       .area = {.x = 31, .y = 9, .width = 4, .height = 4}},
-      {.kind = HangingCables, .area = {.x = 11, .y = 4, .width = 5}},
-      {.kind = HangingCables, .area = {.x = 22, .y = 6, .width = 4}},
-      {.kind = DeadNeonSign, .area = {.x = 3, .y = 4, .width = 2, .height = 2}},
-      {.kind = DeadNeonSign, .area = {.x = 29, .y = 4, .width = 2}},
-      {.kind = FleshGrowth, .area = {.x = 0, .y = 10, .width = 3, .height = 3}},
-      {.kind = FleshGrowth, .area = {.x = 34, .y = 9, .width = 2, .height = 5}},
+       .area = {.x = 31, .y = 9, .width = 4, .height = 3}},
+      {.kind = HangingCables, .area = {.x = 12, .y = 4, .width = 5}},
+      {.kind = HangingCables, .area = {.x = 22, .y = 5, .width = 4}},
+      {.kind = DeadNeonSign, .area = {.x = 5, .y = 4, .width = 2, .height = 2}},
+      {.kind = DeadNeonSign, .area = {.x = 30, .y = 4, .width = 2}},
+      {.kind = FleshGrowth, .area = {.x = 0, .y = 13, .width = 3, .height = 2}},
       {.kind = FleshGrowth,
-       .area = {.x = 15, .y = 10, .width = 3, .height = 2}},
+       .area = {.x = 33, .y = 13, .width = 3, .height = 2}},
+      {.kind = FleshGrowth, .area = {.x = 15, .y = 9, .width = 3, .height = 2}},
       {.kind = RubblePile, .area = {.x = 9, .y = 13, .width = 4}},
       {.kind = RubblePile, .area = {.x = 19, .y = 9, .width = 3, .height = 2}},
-      {.kind = BrokenPillar, .area = {.x = 12, .y = 7}},
-      {.kind = BrokenPillar, .area = {.x = 23, .y = 9, .height = 3}},
-      {.kind = BrokenPillar, .area = {.x = 17, .y = 8, .height = 2}},
-      {.kind = StreetLamp, .area = {.x = 4, .y = 6}},
-      {.kind = StreetLamp, .area = {.x = 18, .y = 6}},
-      {.kind = StreetLamp, .area = {.x = 27, .y = 5}},
+      {.kind = BrokenPillar, .area = {.x = 17, .y = 6, .height = 3}},
+      {.kind = BrokenPillar, .area = {.x = 24, .y = 8, .height = 4}},
+      {.kind = BrokenPillar, .area = {.x = 28, .y = 9, .height = 3}},
+      {.kind = StreetLamp, .area = {.x = 3, .y = 7}},
+      {.kind = StreetLamp, .area = {.x = 24, .y = 6}},
+      {.kind = StreetLamp, .area = {.x = 32, .y = 6}},
   };
 }
 
@@ -485,8 +498,8 @@ Content temporary_content(std::uint32_t seed) {
               .seed = seed,
               .full_acid = AcidLevel{100}},
       .objects = city(),
-      .companion = {.exploration = {.base = {.x = 1, .y = 7},
-                                    .entry = {.x = 3, .y = 7},
+      .companion = {.exploration = {.base = {.x = 1, .y = 8},
+                                    .entry = {.x = 3, .y = 8},
                                     .maximum_stamina = 20,
                                     .collection_distance = 1,
                                     .sources = stock(),
@@ -502,7 +515,7 @@ Content temporary_content(std::uint32_t seed) {
                                  .flavors = flavors(),
                                  .fine_dish_score = 30},
                     .unfed_penalty = AcidLevel{12}},
-      .hazards = {{.x = 10, .y = 6}},
+      .hazards = {{.x = 10, .y = 7}},
       .map = {.width = 36, .height = 16},
       .ground = ground(),
       .decorations = decorations(),

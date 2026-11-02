@@ -143,6 +143,11 @@ survival_1_leave={
 "events":[Object(InputEventKey,"physical_keycode":88)]
 }
 
+survival_1_jump={
+"deadzone":0.2,
+"events":[Object(InputEventKey,"physical_keycode":32)]
+}
+
 survival_2_left={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":74)]
@@ -201,4 +206,9 @@ survival_2_switch={
 survival_2_leave={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":78)]
+}
+
+survival_2_jump={
+"deadzone":0.2,
+"events":[Object(InputEventKey,"physical_keycode":59)]
 }
