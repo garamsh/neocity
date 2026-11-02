@@ -6,7 +6,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 ## Use
 
-- Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the UI kit (`ui/`), the item icons (`icons/`) and the title art (`title/`) from it.
+- Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the hearts and status icons from `ui/`, the item icons (`icons/`) and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
 - The map grid is 36×16 cells of 32 px on a 1280×720 screen. World tiles are one cell; `platform.png` and `bridge.png` repeat horizontally and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 screen pixels. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
