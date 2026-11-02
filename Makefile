@@ -20,6 +20,7 @@ CLANG_FORMAT := $(TOOLS)/bin/clang-format
 CLANG_TIDY := $(TOOLS)/bin/clang-tidy
 BUILD_DIR := build
 PROJECT_DIR := project
+ART_DIR := $(PROJECT_DIR)/levels/monster_mouth_escape/art
 CONFIGURE := $(CMAKE) -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_MAKE_PROGRAM=$(TOOLS)/bin/ninja -DCMAKE_BUILD_TYPE=Release -DPython3_EXECUTABLE=$(TOOLS)/bin/python
 
 CPP_FILES := git ls-files --cached --others --exclude-standard -- 'src/*.cpp' 'src/*.hpp'
@@ -77,6 +78,12 @@ test: build
 			cat "$$log"; echo "GDScript parse check failed: $$file" >&2; exit 1; }; \
 	done; \
 	echo "Godot parse-checked $$count GDScript files, selected by: $(GODOT_SCRIPTS)"
+	@$(PYTHON) -m unittest discover -s tools/art -p '*_test.py'
+	@echo "unittest ran the tests listed above, selected by: discovery of tools/art/*_test.py"
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	$(PYTHON) tools/art/pixelize.py check $(ART_DIR) > "$$log" 2>&1 || { cat "$$log"; exit 1; }; \
+	tail -n 1 "$$log"
+	@echo "pixelize.py check measured the PNGs listed in $(ART_DIR)/manifest.json"
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
