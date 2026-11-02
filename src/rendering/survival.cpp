@@ -65,6 +65,20 @@ constexpr float SHARED_CELL_TAG_SHIFT = 26.0F;
 /// How long after a step an actor still shows a walking frame; a walking step
 /// takes 100ms of world time.
 constexpr auto STRIDE = 150ms;
+/// How long an actor shows its landing frame after it comes down.
+constexpr auto LANDING = 120ms;
+/// The walk and the run show their next frame every this many sub-cells, so
+/// the feet keep pace with the ground; the climb every this many upward.
+constexpr std::int32_t WALK_STRIDE = 16;
+constexpr std::int32_t RUN_STRIDE = 24;
+constexpr std::int32_t CLIMB_STRIDE = 16;
+/// Faster than this, in sub-cells per physics step, is running.
+constexpr float RUN_SPEED =
+    static_cast<float>(survival::PHYSICS.walk + survival::PHYSICS.run) / 2.0F;
+/// A walkway has a support under every this many cells between its ends.
+constexpr std::int32_t SUPPORT_SPACING = 4;
+/// How far the ferry's hull sinks below its floor line, so its deck is there.
+constexpr float FERRY_SINK = 64.0F;
 /// Where the map's words may stand: below the top bar, above the actor cards.
 constexpr float LABEL_TOP = 62.0F;
 constexpr float LABEL_BOTTOM = 540.0F;
@@ -79,14 +93,17 @@ constexpr int PLATE_RINGS = 12;
 godot::Color throat_tint() { return color(80, 68, 114, 1.0F); }
 godot::Color city_tint() { return color(66, 74, 128, 1.0F); }
 godot::Color backdrop_tint() { return color(100, 92, 140, 1.0F); }
+/// The supports under the walkways stand between the backdrop and the play
+/// layer.
+godot::Color support_tint() { return color(150, 140, 190, 1.0F); }
 /// The acid below its glowing surface, so a high sea does not flood the
 /// screen behind the map with bright green.
 godot::Color deep_acid_tint() { return color(32, 52, 48, 1.0F); }
 godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// The ground is lifted above its own colours, and its walked-on top edge
 /// most of all.
-godot::Color ground_tint() { return {1.35F, 1.3F, 1.45F}; }
-godot::Color ground_edge_tint() { return {2.4F, 2.3F, 2.6F}; }
+godot::Color ground_tint() { return {1.15F, 1.1F, 1.2F}; }
+godot::Color ground_edge_tint() { return {1.6F, 1.5F, 1.7F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -230,30 +247,6 @@ void wreck_mark(godot::Node2D &canvas, const godot::Rect2 &box) {
   cross(canvas, box.grow(-4.0F), red);
 }
 
-Image ground_image(GroundKind kind) {
-  switch (kind) {
-  case GroundKind::Road:
-    return Image::Road;
-  case GroundKind::CrackedRoad:
-    return Image::CrackedRoad;
-  case GroundKind::Pothole:
-    return Image::Pothole;
-  case GroundKind::RoadEndLeft:
-    return Image::RoadEndLeft;
-  case GroundKind::RoadEndRight:
-    return Image::RoadEndRight;
-  case GroundKind::TiltedSlab:
-    return Image::TiltedSlab;
-  case GroundKind::Rubble:
-    return Image::Rubble;
-  case GroundKind::PlankBridge:
-    return Image::PlankBridge;
-  case GroundKind::BuriedCar:
-    return Image::BuriedCar;
-  }
-  std::abort();
-}
-
 bool visible(const ObjectSnapshot &object) {
   return object.state != ObjectState::Dormant;
 }
@@ -269,82 +262,154 @@ std::optional<LandmarkKind> landmark(const survival::Content &content,
   return found->kind;
 }
 
-/// Whether a ground kind is walked on along its tile's top edge, which the
-/// screen lights; the taller tiles and the planks have no such edge.
-bool lit_edge(GroundKind kind) {
-  switch (kind) {
+/// The floor line of a cell's row: the feet of an actor standing in it, and
+/// the top of the walkway under it.
+float floor_y(std::int32_t y) { return cell_y(y + 1); }
+
+/// Whether the map has ground at `cell`.
+bool has_ground(std::span<const survival::GroundCell> cells,
+                survival::GridPosition cell) {
+  return std::ranges::any_of(
+      cells, [&](const auto &ground) { return ground.cell == cell; });
+}
+
+/// The deck picture of a whole walkway cell; plain road varies along the row
+/// so no plate repeats across the screen.
+Image deck_image(const survival::GroundCell &ground) {
+  static constexpr std::array PLAIN{Image::Deck, Image::DeckRivets, Image::Deck,
+                                    Image::DeckSeam};
+  switch (ground.kind) {
   case GroundKind::Road:
-  case GroundKind::CrackedRoad:
-  case GroundKind::Pothole:
-  case GroundKind::RoadEndLeft:
-  case GroundKind::RoadEndRight:
-    return true;
-  case GroundKind::TiltedSlab:
   case GroundKind::Rubble:
-  case GroundKind::PlankBridge:
   case GroundKind::BuriedCar:
-    return false;
+    return PLAIN.at(
+        static_cast<std::size_t>(ground.cell.x * 3 + ground.cell.y) %
+        PLAIN.size());
+  case GroundKind::CrackedRoad:
+    return Image::DeckWorn;
+  case GroundKind::Pothole:
+    return Image::DeckSeam;
+  case GroundKind::RoadEndLeft:
+    return Image::EndLeft;
+  case GroundKind::RoadEndRight:
+    return Image::EndRight;
+  case GroundKind::TiltedSlab:
+  case GroundKind::PlankBridge:
+    break;
   }
   std::abort();
 }
 
-/// Draws a ground tile brighter than the scenery behind it, its top edge
-/// brightest when `edge`, so the walkable surface reads first.
-void paint_tile(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
-                bool edge) {
-  art.image(canvas, image, at, 1.0F, false, ground_tint());
-  if (edge) {
+/// Draws a walkway's lit picture: brighter than the scenery behind it, its
+/// top edge brightest, so the surface a player walks on reads first.
+void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
+                   Vector2 at, bool mirrored = false) {
+  art.image(canvas, image, at, 1.0F, mirrored, ground_tint());
+  if (!mirrored) {
     art.image_part(canvas, image, rect(0.0F, 0.0F, CELL, GROUND_EDGE),
                    rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
   }
 }
 
-/// Draws one ground cell of standing terrain, its tile rising over the row
-/// above when it is taller than its cell. A landmark's terrain shows its own
-/// picture: the pier's iron deck in place of the road, the rotten bridge's
-/// frame under its planks, and the ferry's hull, drawn whole, in place of
-/// every cell it covers.
+/// A deck on its truss with its top on the floor line of `ground`'s cell.
+void paint_deck(godot::Node2D &canvas, const Art &art,
+                const survival::GroundCell &ground) {
+  const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
+  const Image deck = deck_image(ground);
+  if (deck != Image::EndLeft && deck != Image::EndRight) {
+    art.image(canvas, Image::Truss, at + Vector2(0.0F, art.size(deck).y), 1.0F,
+              false, ground_tint());
+  }
+  paint_surface(canvas, art, deck, at);
+}
+
+/// A step between floors: a ramp where it rises to the right, stairs where it
+/// rises to the left, each spanning from the floor line of its own cell down
+/// to the row below. A step with no step or floor on a diagonal is level.
+void paint_step(godot::Node2D &canvas, const Art &art,
+                std::span<const survival::GroundCell> cells,
+                const survival::GroundCell &ground) {
+  const auto [x, y] = ground.cell;
+  const bool rises_right = has_ground(cells, {.x = x - 1, .y = y + 1}) ||
+                           has_ground(cells, {.x = x + 1, .y = y - 1});
+  const bool rises_left = has_ground(cells, {.x = x + 1, .y = y + 1}) ||
+                          has_ground(cells, {.x = x - 1, .y = y - 1});
+  const Vector2 at(cell_x(x), floor_y(y));
+  if (rises_right) {
+    paint_surface(canvas, art, Image::Ramp, at);
+  } else if (rises_left) {
+    paint_surface(canvas, art, Image::Stairs, at, true);
+  } else {
+    paint_deck(canvas, art,
+               {.cell = ground.cell, .kind = GroundKind::CrackedRoad});
+  }
+}
+
+/// Draws one ground cell of standing terrain under the floor line of its
+/// cell. A landmark's terrain shows its own picture: the pier's iron deck in
+/// place of the walkway, the rotten bridge's frame under its planks, and the
+/// ferry's hull, drawn whole, in place of every cell it covers.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
+                       std::span<const survival::GroundCell> cells,
                        const survival::GroundCell &ground,
                        std::optional<LandmarkKind> picture) {
-  const float x = cell_x(ground.cell.x);
-  const float top = cell_y(ground.cell.y);
+  const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
   if (picture) {
     switch (*picture) {
     case LandmarkKind::Ferry:
       return;
     case LandmarkKind::Platform:
-      paint_tile(canvas, art, Image::Platform, Vector2(x, top), true);
+      paint_surface(canvas, art, Image::Platform, at);
       return;
     case LandmarkKind::Bridge:
-      art.image(canvas, Image::Bridge, Vector2(x, top));
+      art.image(canvas, Image::Bridge, at);
       break;
     case LandmarkKind::Kiosk:
     case LandmarkKind::ColdStore:
       break;
     }
   }
-  const Image image = ground_image(ground.kind);
-  // Planks span a gap level with the road surface, at the top of the cell.
-  paint_tile(canvas, art, image,
-             Vector2(x, ground.kind == GroundKind::PlankBridge
-                            ? top
-                            : top + CELL - art.size(image).y),
-             lit_edge(ground.kind));
+  const auto standing_on = [&](Image image, float sink) {
+    art.image(canvas, image, Vector2(at.x, at.y + sink - art.size(image).y),
+              1.0F, false, ground_tint());
+  };
+  switch (ground.kind) {
+  case GroundKind::TiltedSlab:
+    paint_step(canvas, art, cells, ground);
+    return;
+  case GroundKind::PlankBridge:
+    art.image(canvas, Image::PlankBridge, at, 1.0F, false, ground_tint());
+    return;
+  case GroundKind::Rubble:
+    paint_deck(canvas, art, ground);
+    standing_on(Image::Rubble, 0.0F);
+    return;
+  case GroundKind::BuriedCar:
+    paint_deck(canvas, art, ground);
+    standing_on(Image::BuriedCar, 0.0F);
+    return;
+  case GroundKind::Road:
+  case GroundKind::CrackedRoad:
+  case GroundKind::Pothole:
+  case GroundKind::RoadEndLeft:
+  case GroundKind::RoadEndRight:
+    paint_deck(canvas, art, ground);
+    return;
+  }
+  std::abort();
 }
 
-/// Ground under standing terrain, row by row from the top, so a tile taller
-/// than its cell rises over the row above it.
-void paint_ground(godot::Node2D &canvas, const Art &art,
-                  const survival::Content &content,
-                  std::span<const ObjectSnapshot> objects) {
-  for (const auto &object : objects) {
-    if (object.kind == ObjectKind::Terrain &&
-        object.state == ObjectState::Intact &&
-        landmark(content, object.id) == LandmarkKind::Ferry) {
-      stand(canvas, art, Image::Ferry, area_rect(object.area));
-    }
-  }
+/// The cells of standing terrain whose ground is drawn, with the landmark
+/// picture each shows.
+struct Standing {
+  survival::GroundCell ground;
+  std::optional<LandmarkKind> picture;
+};
+
+std::vector<Standing> standing_ground(const survival::Content &content,
+                                      std::span<const ObjectSnapshot> objects) {
+  std::vector<Standing> found;
+  found.reserve(content.ground.size());
   for (const auto &ground : content.ground) {
     const auto standing =
         std::ranges::find_if(objects, [&](const auto &object) {
@@ -353,8 +418,86 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
                  covers(object.area, ground.cell);
         });
     if (standing != objects.end()) {
-      paint_ground_cell(canvas, art, ground, landmark(content, standing->id));
+      found.push_back(
+          {.ground = ground, .picture = landmark(content, standing->id)});
     }
+  }
+  return found;
+}
+
+/// The supports under a walkway: a column under each end of every run of
+/// walkway and under every SUPPORT_SPACING-th cell between, from under the
+/// truss down to the next walkway below or out of the map, into the acid.
+/// Each run takes the next support picture in turn.
+void paint_supports(godot::Node2D &canvas, const Art &art,
+                    const std::vector<Standing> &ground, float map_bottom) {
+  static constexpr std::array SUPPORTS{Image::Scaffold, Image::Column,
+                                       Image::Pillar};
+  const auto walkway = [&](const Standing &cell) {
+    return !cell.picture && cell.ground.kind != GroundKind::PlankBridge &&
+           cell.ground.kind != GroundKind::TiltedSlab;
+  };
+  std::size_t run = 0;
+  for (std::size_t index = 0; index < ground.size(); ++index) {
+    const auto &cell = ground.at(index);
+    if (!walkway(cell)) {
+      continue;
+    }
+    const auto [x, y] = cell.ground.cell;
+    const bool starts = index == 0 || !walkway(ground.at(index - 1)) ||
+                        ground.at(index - 1).ground.cell !=
+                            survival::GridPosition{.x = x - 1, .y = y};
+    const bool ends = index + 1 == ground.size() ||
+                      !walkway(ground.at(index + 1)) ||
+                      ground.at(index + 1).ground.cell !=
+                          survival::GridPosition{.x = x + 1, .y = y};
+    if (starts) {
+      ++run;
+    }
+    const bool broken = cell.ground.kind == GroundKind::RoadEndLeft ||
+                        cell.ground.kind == GroundKind::RoadEndRight;
+    const bool spaced = x % SUPPORT_SPACING == 0;
+    if (broken || (!starts && !ends && !spaced)) {
+      continue;
+    }
+    const Image image = SUPPORTS.at(run % SUPPORTS.size());
+    const Vector2 size = art.size(image);
+    const float top =
+        floor_y(y) + art.size(Image::Deck).y + art.size(Image::Truss).y;
+    float bottom = map_bottom;
+    for (const auto &below : ground) {
+      if (below.ground.cell.x == x && below.ground.cell.y > y) {
+        bottom = std::min(bottom, floor_y(below.ground.cell.y));
+      }
+    }
+    const float left = cell_x(x) + (CELL - size.x) / 2.0F;
+    const auto pieces = static_cast<int>(std::ceil((bottom - top) / size.y));
+    for (int piece = 0; piece < pieces; ++piece) {
+      const float at = top + static_cast<float>(piece) * size.y;
+      const float height = std::min(size.y, bottom - at);
+      art.image_part(canvas, image, rect(0.0F, 0.0F, size.x, height),
+                     rect(left, at, size.x, height), support_tint());
+    }
+  }
+}
+
+/// The ferry's hull, then each walkway of standing terrain on its floor line.
+void paint_ground(godot::Node2D &canvas, const Art &art,
+                  const survival::Content &content,
+                  std::span<const ObjectSnapshot> objects,
+                  const std::vector<Standing> &ground) {
+  for (const auto &object : objects) {
+    if (object.kind == ObjectKind::Terrain &&
+        object.state == ObjectState::Intact &&
+        landmark(content, object.id) == LandmarkKind::Ferry) {
+      const auto box = area_rect(object.area);
+      stand(canvas, art, Image::Ferry,
+            godot::Rect2(box.position.x, box.position.y, box.size.x,
+                         box.size.y + FERRY_SINK));
+    }
+  }
+  for (const auto &cell : ground) {
+    paint_ground_cell(canvas, art, content.ground, cell.ground, cell.picture);
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -669,18 +812,86 @@ void paint_hazards(godot::Node2D &canvas, const Art &art,
   }
 }
 
-Image figure(Actor actor, bool climbing, bool walking, bool second_step) {
-  const bool chef = actor == Actor::Chef;
-  if (climbing) {
-    return chef ? Image::ChefClimb : Image::AppraiserClimb;
+/// One actor's animation frames.
+struct Frames {
+  Image idle;
+  std::array<Image, 4> walk;
+  std::array<Image, 2> run;
+  Image jump;
+  Image fall;
+  Image land;
+  Image climb;
+};
+
+const Frames &frames(Actor actor) {
+  static const Frames chef{.idle = Image::ChefIdle,
+                           .walk = {Image::ChefWalk1, Image::ChefWalk2,
+                                    Image::ChefWalk3, Image::ChefWalk4},
+                           .run = {Image::ChefRun1, Image::ChefRun2},
+                           .jump = Image::ChefJump,
+                           .fall = Image::ChefFall,
+                           .land = Image::ChefLand,
+                           .climb = Image::ChefClimb};
+  static const Frames appraiser{
+      .idle = Image::AppraiserIdle,
+      .walk = {Image::AppraiserWalk1, Image::AppraiserWalk2,
+               Image::AppraiserWalk3, Image::AppraiserWalk4},
+      .run = {Image::AppraiserRun1, Image::AppraiserRun2},
+      .jump = Image::AppraiserJump,
+      .fall = Image::AppraiserFall,
+      .land = Image::AppraiserLand,
+      .climb = Image::AppraiserClimb};
+  switch (actor) {
+  case Actor::Chef:
+    return chef;
+  case Actor::Appraiser:
+    return appraiser;
   }
-  if (!walking) {
-    return chef ? Image::ChefIdle : Image::AppraiserIdle;
+  std::abort();
+}
+
+/// The frame an actor shows and whether it is mirrored.
+struct Pose {
+  Image image{};
+  bool mirrored = false;
+};
+
+/// On the ground: landing for a moment after it comes down, then running,
+/// walking or standing, the stride frames advancing with distance.
+Pose ground_pose(const Frames &set, const survival::Body &body,
+                 const Motion &motion, std::chrono::microseconds now) {
+  const bool left = body.heading == survival::Direction::Left;
+  if (motion.landed_at >= 0us && now - motion.landed_at <= LANDING) {
+    return {.image = set.land, .mirrored = left};
   }
-  if (second_step) {
-    return chef ? Image::ChefWalk2 : Image::AppraiserWalk2;
+  if (motion.moved_at < 0us || now - motion.moved_at > STRIDE) {
+    return {.image = set.idle, .mirrored = left};
   }
-  return chef ? Image::ChefWalk1 : Image::AppraiserWalk1;
+  const auto x = static_cast<std::size_t>(std::abs(body.position.x));
+  if (motion.speed > RUN_SPEED) {
+    return {.image = set.run.at(x / RUN_STRIDE % set.run.size()),
+            .mirrored = left};
+  }
+  return {.image = set.walk.at(x / WALK_STRIDE % set.walk.size()),
+          .mirrored = left};
+}
+
+/// Faces the way the actor last moved sideways; a climber, seen from
+/// behind, swaps its reaching arm every CLIMB_STRIDE sub-cells.
+Pose pose(Actor actor, const survival::Body &body, const Motion &motion,
+          std::chrono::microseconds now) {
+  const auto &set = frames(actor);
+  switch (body.stance) {
+  case survival::Stance::Climbing:
+    return {.image = set.climb,
+            .mirrored = std::abs(body.position.y) / CLIMB_STRIDE % 2 != 0};
+  case survival::Stance::Airborne:
+    return {.image = body.fall_speed < 0 ? set.jump : set.fall,
+            .mirrored = body.heading == survival::Direction::Left};
+  case survival::Stance::Standing:
+    return ground_pose(set, body, motion, now);
+  }
+  std::abort();
 }
 
 /// Where an actor's feet are drawn: its sub-cell position, eased across each
@@ -694,25 +905,18 @@ Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
                     MAP_Y + static_cast<float>(body.position.y) * PIXELS)};
 }
 
-/// Draws an actor taller than its cell, its frame's bottom edge on its feet:
-/// climbing on a ladder, walking for a moment after each step and while in
-/// the air, and facing the way it last moved sideways.
+/// Draws an actor taller than its cell, its frame's bottom edge on its feet,
+/// in the pose its body and its motion call for.
 void paint_actor(godot::Node2D &canvas, const Art &art,
                  const survival::GameView &view, Actor actor,
                  const survival::Body &body, float offset) {
-  const auto motion = art.track(actor, survival::cell_of(body.position),
-                                view.progression.world_time);
-  const bool climbing = body.stance == survival::Stance::Climbing;
-  const bool walking =
-      body.stance == survival::Stance::Airborne ||
-      (motion.moved_at >= 0us &&
-       view.progression.world_time - motion.moved_at <= STRIDE);
-  const Image image = figure(actor, climbing, walking, motion.second_step);
-  const Vector2 size = art.size(image);
+  const auto now = view.progression.world_time;
+  const auto shown = pose(actor, body, art.track(actor, body, now), now);
+  const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
-  art.image(canvas, image,
+  art.image(canvas, shown.image,
             Vector2(feet.x - size.x / 2.0F + offset, feet.y - size.y), 1.0F,
-            body.heading == survival::Direction::Left && !climbing);
+            shown.mirrored);
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -893,7 +1097,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   party.shared =
       party.chef_out && party.appraiser_out &&
       survival::cell_of(chef.position) == survival::cell_of(appraiser.position);
+  const auto ground = standing_ground(content, objects);
   paint_decorations(canvas, art, content, true);
+  paint_supports(canvas, art, ground, cell_y(content.map.height));
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
       paint_building(canvas, art, content, object, front);
@@ -903,7 +1109,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   for (const auto &marker : markers) {
     paint_shop_front(canvas, art, content, objects, marker);
   }
-  paint_ground(canvas, art, content, objects);
+  paint_ground(canvas, art, content, objects, ground);
   paint_buildings(true);
   paint_hazards(canvas, art, content);
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {

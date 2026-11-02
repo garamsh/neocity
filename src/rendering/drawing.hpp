@@ -76,17 +76,37 @@ enum class Image : std::uint8_t {
   ChefIdle,
   ChefWalk1,
   ChefWalk2,
+  ChefWalk3,
+  ChefWalk4,
+  ChefRun1,
+  ChefRun2,
+  ChefJump,
+  ChefFall,
+  ChefLand,
   ChefClimb,
   AppraiserIdle,
   AppraiserWalk1,
   AppraiserWalk2,
+  AppraiserWalk3,
+  AppraiserWalk4,
+  AppraiserRun1,
+  AppraiserRun2,
+  AppraiserJump,
+  AppraiserFall,
+  AppraiserLand,
   AppraiserClimb,
-  Road,
-  CrackedRoad,
-  Pothole,
-  RoadEndLeft,
-  RoadEndRight,
-  TiltedSlab,
+  Deck,
+  DeckSeam,
+  DeckRivets,
+  DeckWorn,
+  Truss,
+  EndLeft,
+  EndRight,
+  Scaffold,
+  Pillar,
+  Column,
+  Ramp,
+  Stairs,
   Rubble,
   PlankBridge,
   BuriedCar,
@@ -159,12 +179,13 @@ enum class Image : std::uint8_t {
 
 /// How an actor has moved, as the screen last saw it.
 struct Motion {
-  survival::GridPosition cell;
-  /// World time of the last change of cell.
-  std::chrono::microseconds moved_at{};
-  bool facing_left = false;
-  /// Flips with every change of cell, so the walk alternates its frames.
-  bool second_step = false;
+  /// Sideways speed of the last move, in sub-cells per physics step.
+  float speed = 0.0F;
+  /// World time of the last sideways move; negative before the first.
+  std::chrono::microseconds moved_at{-1};
+  /// World time the actor last came down from the air; negative before it
+  /// has.
+  std::chrono::microseconds landed_at{-1};
 };
 
 /// Draws text and the monster-mouth escape art onto a Godot canvas, and
@@ -198,15 +219,19 @@ public:
   /// one missing from the last drawn frame appears afresh.
   [[nodiscard]] float entrance(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
-  /// Records `actor` at `cell` at `world_time` and returns how it has moved.
+  /// Records `actor`'s `body` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.
-  Motion track(survival::Actor actor, survival::GridPosition cell,
+  Motion track(survival::Actor actor, const survival::Body &body,
                std::chrono::microseconds world_time) const;
 
 private:
   /// What `track` keeps for one actor.
   struct Trail {
     Motion motion;
+    /// The last sideways position and the world time it was reached.
+    std::int32_t x = 0;
+    std::chrono::microseconds x_at{};
+    survival::Stance stance = survival::Stance::Standing;
     std::chrono::microseconds seen_at{-1};
   };
 
