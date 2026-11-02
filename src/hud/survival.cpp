@@ -496,8 +496,7 @@ void frame_box(godot::Node2D &canvas, float x, float y, float width,
                    2.0F);
 }
 
-void paint_top_bar(godot::Node2D &canvas,
-                   const rendering::AscentDrawing &drawing,
+void paint_top_bar(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
@@ -546,8 +545,7 @@ String spare_tools(const survival::ActorSnapshot &state) {
   return spares.empty() ? String("No spare tools") : tools;
 }
 
-void paint_actor_card(godot::Node2D &canvas,
-                      const rendering::AscentDrawing &drawing,
+void paint_actor_card(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame, Actor actor, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
@@ -558,8 +556,10 @@ void paint_actor_card(godot::Node2D &canvas,
       static_cast<float>(
           frame.content.get().companion.exploration.maximum_stamina);
   frame_box(canvas, x, CARD_Y, CARD_WIDTH, CARD_HEIGHT);
-  drawing.sprite(canvas, actor == Actor::Chef ? 0 : 2,
-                 rect(x + 4.0F, CARD_Y + 6.0F, 62.0F, 72.0F), false);
+  drawing.image(canvas,
+                actor == Actor::Chef ? rendering::Image::ChefIdle
+                                     : rendering::Image::AppraiserIdle,
+                godot::Vector2(x + 4.0F, CARD_Y + 10.0F));
   const String who = keys ? "P" + number(*keys + 1) : String("AI");
   drawing.text(canvas, x + 72.0F, CARD_Y + 22.0F,
                String(actor_name(actor)) + "  " + who, 18, tones.white);
@@ -579,7 +579,7 @@ void paint_actor_card(godot::Node2D &canvas,
                CARD_TOOLS_SIZE, tones.muted);
 }
 
-void paint_pack(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
+void paint_pack(godot::Node2D &canvas, const rendering::Art &drawing,
                 const GameView &view, float x) {
   const auto tones = rendering::palette();
   frame_box(canvas, x, CARD_Y, 276.0F, CARD_HEIGHT);
@@ -605,8 +605,7 @@ void paint_pack(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
   }
 }
 
-void paint_events(godot::Node2D &canvas,
-                  const rendering::AscentDrawing &drawing,
+void paint_events(godot::Node2D &canvas, const rendering::Art &drawing,
                   const SurvivalFrame &frame, float x, float y, float height) {
   const auto tones = rendering::palette();
   if (frame.events.empty()) {
@@ -650,8 +649,7 @@ String key_legend(const SurvivalFrame &frame) {
          " swap actor" + collecting;
 }
 
-void paint_next_step(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing,
+void paint_next_step(godot::Node2D &canvas, const rendering::Art &drawing,
                      const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   canvas.draw_rect(rect(0.0F, NEXT_Y, 1280.0F, 720.0F - NEXT_Y),
@@ -664,15 +662,13 @@ void paint_next_step(godot::Node2D &canvas,
 }
 
 /// The panel's last line: whose job it is, in the keys of the player doing it.
-void paint_panel_job(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing, float x,
-                     const String &job) {
+void paint_panel_job(godot::Node2D &canvas, const rendering::Art &drawing,
+                     float x, const String &job) {
   drawing.text(canvas, x + PANEL_TEXT_MARGIN, PANEL_Y + PANEL_HEIGHT - 16.0F,
                job, PANEL_JOB_SIZE, rendering::palette().cyan);
 }
 
-void paint_appraise_panel(godot::Node2D &canvas,
-                          const rendering::AscentDrawing &drawing,
+void paint_appraise_panel(godot::Node2D &canvas, const rendering::Art &drawing,
                           const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
@@ -809,8 +805,7 @@ std::optional<survival::FoodId> offered_dish(const SurvivalFrame &frame) {
   return cook != nullptr ? std::optional{cook->food} : std::nullopt;
 }
 
-void paint_cook_panel(godot::Node2D &canvas,
-                      const rendering::AscentDrawing &drawing,
+void paint_cook_panel(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
@@ -876,8 +871,7 @@ String feed_job(const SurvivalFrame &frame) {
          number(frame.content.get().companion.unfed_penalty.value);
 }
 
-void paint_feed_panel(godot::Node2D &canvas,
-                      const rendering::AscentDrawing &drawing,
+void paint_feed_panel(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
@@ -914,8 +908,7 @@ void paint_feed_panel(godot::Node2D &canvas,
 }
 
 /// Draws over the kitchen and reads only snapshots, so no clock or key waits.
-void paint_day_result(godot::Node2D &canvas,
-                      const rendering::AscentDrawing &drawing,
+void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame) {
   const auto lines = day_result(frame);
   if (lines.empty()) {
@@ -931,8 +924,7 @@ void paint_day_result(godot::Node2D &canvas,
   }
 }
 
-void paint_workshop_screen(godot::Node2D &canvas,
-                           const rendering::AscentDrawing &drawing,
+void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                            const SurvivalFrame &frame) {
   rendering::paint_workshop(canvas, drawing,
                             !frame.view.workshop.foods.empty());
@@ -943,8 +935,7 @@ void paint_workshop_screen(godot::Node2D &canvas,
   paint_events(canvas, drawing, frame, 840.0F, EVENT_Y, EVENT_HEIGHT);
 }
 
-void paint_city_screen(godot::Node2D &canvas,
-                       const rendering::AscentDrawing &drawing,
+void paint_city_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame) {
   rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
                         frame.control, out_of_reach(frame));
@@ -1075,8 +1066,7 @@ FittedText fitted(const String &text, int size, float width) {
   return {.text = text, .size = size, .width = width};
 }
 
-void paint_pause_keys(godot::Node2D &canvas,
-                      const rendering::AscentDrawing &drawing,
+void paint_pause_keys(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   float y = PAUSE_ROWS_Y;
@@ -1094,22 +1084,26 @@ void paint_pause_keys(godot::Node2D &canvas,
 } // namespace
 
 void paint_survival_setup(godot::Node2D &canvas,
-                          const rendering::AscentDrawing &drawing) {
+                          const rendering::Art &drawing) {
   const auto tones = rendering::palette();
-  rendering::paint_mouth(canvas, 0.1F);
+  rendering::paint_mouth(canvas, drawing, 0.1F);
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
   drawing.text(canvas, 130.0F, 170.0F, "WHO IS PLAYING?", 46, tones.white);
-  drawing.sprite(canvas, 0, rect(130.0F, 220.0F, 130.0F, 150.0F), false);
+  drawing.image(canvas, rendering::Image::ChefIdle,
+                godot::Vector2(130.0F, 220.0F), 2.0F);
   drawing.text(canvas, 130.0F, 410.0F, "1   CHEF", 32, tones.gold);
   drawing.text(canvas, 130.0F, 444.0F, "You cook. AI appraises.", 20,
                tones.white);
-  drawing.sprite(canvas, 2, rect(530.0F, 220.0F, 130.0F, 150.0F), false);
+  drawing.image(canvas, rendering::Image::AppraiserIdle,
+                godot::Vector2(530.0F, 220.0F), 2.0F);
   drawing.text(canvas, 530.0F, 410.0F, "2   APPRAISER", 32,
                color(150, 255, 120, 1.0F));
   drawing.text(canvas, 530.0F, 444.0F, "You appraise. AI cooks.", 20,
                tones.white);
-  drawing.sprite(canvas, 0, rect(890.0F, 220.0F, 104.0F, 120.0F), false);
-  drawing.sprite(canvas, 2, rect(1000.0F, 220.0F, 104.0F, 120.0F), false);
+  drawing.image(canvas, rendering::Image::ChefIdle,
+                godot::Vector2(890.0F, 220.0F), 2.0F);
+  drawing.image(canvas, rendering::Image::AppraiserIdle,
+                godot::Vector2(1000.0F, 220.0F), 2.0F);
   drawing.text(canvas, 890.0F, 410.0F, "3   TWO PLAYERS", 32, tones.cyan);
   drawing.text(canvas, 890.0F, 444.0F, "P1 chef (WASD), P2 appraiser (IJKL).",
                20, tones.white);
@@ -1121,11 +1115,10 @@ void paint_survival_setup(godot::Node2D &canvas,
                tones.muted);
 }
 
-void paint_survival(godot::Node2D &canvas,
-                    const rendering::AscentDrawing &drawing,
+void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame) {
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, acid_ratio(frame));
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame));
   if (progression.phase == Phase::Exploration) {
     paint_city_screen(canvas, drawing, frame);
   } else {
@@ -1135,8 +1128,7 @@ void paint_survival(godot::Node2D &canvas,
   paint_next_step(canvas, drawing, frame);
 }
 
-void paint_interruption(godot::Node2D &canvas,
-                        const rendering::AscentDrawing &drawing,
+void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
@@ -1163,8 +1155,7 @@ void paint_interruption(godot::Node2D &canvas,
                INTERRUPTION_LINE_SIZE, tones.cyan);
 }
 
-void paint_cinematic(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing,
+void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame) {
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(8, 6, 16, 1.0F));
@@ -1173,10 +1164,12 @@ void paint_cinematic(godot::Node2D &canvas,
   }
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, acid_ratio(frame));
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame));
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
-  drawing.sprite(canvas, 0, rect(130.0F, 300.0F, 130.0F, 150.0F), false);
-  drawing.sprite(canvas, 2, rect(280.0F, 300.0F, 130.0F, 150.0F), false);
+  drawing.image(canvas, rendering::Image::ChefIdle,
+                godot::Vector2(130.0F, 300.0F), 2.0F);
+  drawing.image(canvas, rendering::Image::AppraiserIdle,
+                godot::Vector2(280.0F, 300.0F), 2.0F);
   switch (cinematic) {
   case Cinematic::Intro:
     drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 46, tones.white);

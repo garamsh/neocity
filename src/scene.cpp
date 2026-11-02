@@ -63,7 +63,7 @@ void MainScene::_ready() {
   if (in_editor()) {
     return;
   }
-  drawing = rendering::AscentDrawing::load();
+  drawing = rendering::Art::load();
   godot::UtilityFunctions::print(
       "Host: title screen and Monster Mouth Escape ready.");
 }

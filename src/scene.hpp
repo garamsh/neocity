@@ -75,7 +75,7 @@ private:
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
-  std::optional<rendering::AscentDrawing> drawing;
+  std::optional<rendering::Art> drawing;
 };
 
 } // namespace neocity

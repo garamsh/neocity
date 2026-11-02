@@ -6,7 +6,7 @@ The current visual direction of the monster-mouth escape game, source images, an
 
 The current game is the monster-mouth escape game of [parent #21](https://github.com/garamsh/neocity/issues/21): a monster swallows a city, and a yellow chef and a green appraiser gather ingredients, feed it, and look for a way out. The [game baseline](../design/monster-mouth-escape.md) holds its decisions. The concept images #21 cites, kept in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape), are its visual target, and #21 states that their drawn UI, numbers, keys, and layout are not requirements. No final art for this game is approved.
 
-The production art set of [#90](https://github.com/garamsh/neocity/issues/90) follows that target. It lives in `project/levels/monster_mouth_escape/art/`, whose [manifest](../../project/levels/monster_mouth_escape/art/manifest.json) lists every file and its colour count, and the game does not load it yet. [#98](https://github.com/garamsh/neocity/issues/98) adds ground tiles for broken roads and the decorations of a swallowed city to it. It awaits the creative decision-maker; the [review sheet](production/monster-mouth-escape-review-v3.png) puts the set beside the three concepts and composes a broken-road street from it.
+The production art set of [#90](https://github.com/garamsh/neocity/issues/90) follows that target. It lives in `project/levels/monster_mouth_escape/art/`, whose [manifest](../../project/levels/monster_mouth_escape/art/manifest.json) lists every file and its colour count, and the game draws the world, the characters and the kitchen from it. [#98](https://github.com/garamsh/neocity/issues/98) adds ground tiles for broken roads and the decorations of a swallowed city to it. It awaits the creative decision-maker; the [review sheet](production/monster-mouth-escape-review-v3.png) puts the set beside the three concepts and composes a broken-road street from it.
 
 | Topic | Set |
 |---|---|
@@ -19,7 +19,7 @@ The production art set of [#90](https://github.com/garamsh/neocity/issues/90) fo
 
 The opening and ending art belongs to [#29](https://github.com/garamsh/neocity/issues/29), in `project/levels/monster_mouth_escape/cinematics/`, under the [cinematic contract](../architecture/session.md#cinematic-contract). Until it exists the game shows a placeholder card.
 
-ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. Until the set is loaded, the screen draws both with the ascent prototype's atlas, [`project/levels/ascent/ascent_atlas.png`](../../project/levels/ascent/ascent_atlas.png), a temporary representation. The set's character frames are cut from the sheets:
+ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. The screen draws both from the set, whose character frames are cut from the sheets:
 
 | Actor | Sheet and set agree | Differs in the set |
 |---|---|---|
@@ -287,7 +287,7 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 
 ![Real Godot frame of the neon ascent prototype](production/ascent-playable-v1.png)
 
-The prototype used a city texture, removed in [#91](https://github.com/garamsh/neocity/issues/91), and [the sprite atlas](../../project/levels/ascent/ascent_atlas.png). [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation.
+The prototype used a city texture, removed in [#91](https://github.com/garamsh/neocity/issues/91), and [the sprite atlas](https://github.com/garamsh/neocity/blob/d48693ffdf2169b9604595577adb3990dc3036db/project/levels/ascent/ascent_atlas.png). [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation.
 
 | Field | Record |
 |---|---|
