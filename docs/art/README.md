@@ -287,7 +287,7 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 
 ![Real Godot frame of the neon ascent prototype](production/ascent-playable-v1.png)
 
-The prototype used a city texture, removed in [#91](https://github.com/garamsh/neocity/issues/91), and [the sprite atlas](../../project/levels/ascent/ascent_atlas.png). [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation.
+The prototype used a city texture, removed in [#91](https://github.com/garamsh/neocity/issues/91), and [the sprite atlas](https://github.com/garamsh/neocity/blob/d48693ffdf2169b9604595577adb3990dc3036db/project/levels/ascent/ascent_atlas.png). [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation.
 
 | Field | Record |
 |---|---|
