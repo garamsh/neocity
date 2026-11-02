@@ -245,7 +245,7 @@ void Session::advance(double delta, Command command) {
     return;
   }
   if (run) {
-    advance_run(delta, command);
+    advance_run(*run, delta, command);
   }
   if (screen == Screen::Ascent) {
     pending.horizontal = command.ascent.horizontal;
@@ -263,7 +263,8 @@ void Session::advance(double delta, Command command) {
 
 // The frame of the press was played up to it, so it spends its time, but no key
 // pressed before the run stopped may act once it continues.
-void Session::advance_run(double delta, const Command &command) {
+void Session::advance_run(SurvivalRun &open, double delta,
+                          const Command &command) {
   std::optional<hud::Interruption> opening;
   if (command.menu) {
     opening = hud::Interruption::ConfirmLeave;
@@ -271,14 +272,14 @@ void Session::advance_run(double delta, const Command &command) {
     opening = hud::Interruption::Paused;
   }
   if (opening) {
-    run->drop_input();
-    run->advance(delta, {}, survival::Direction::Idle);
+    open.drop_input();
+    open.advance(delta, {}, survival::Direction::Idle);
   } else {
-    run->advance(delta, command.survival, command.dish_step);
+    open.advance(delta, command.survival, command.dish_step);
   }
-  if (run->escaped()) {
+  if (open.escaped()) {
     play(hud::Cinematic::Ending);
-  } else if (run->lost()) {
+  } else if (open.lost()) {
     play(hud::Cinematic::Loss);
   } else {
     interruption = opening;

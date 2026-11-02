@@ -105,7 +105,7 @@ private:
   void enter(Screen destination);
   void choose(std::size_t option);
   void start_run(survival::ControlMap control);
-  void advance_run(double delta, const Command &command);
+  void advance_run(SurvivalRun &open, double delta, const Command &command);
   void advance_interruption(hud::Interruption open, const Command &command);
   void tick_ascent(double delta);
   void play(hud::Cinematic cinematic);
