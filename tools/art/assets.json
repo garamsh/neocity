@@ -65,6 +65,12 @@
   "#b7d7aa",
   "#ebe8a6",
   "#f7efe8",
+  "#0b0c11",
+  "#191826",
+  "#2c2935",
+  "#363146",
+  "#585466",
+  "#d1cbc8",
   "#f5ca37",
   "#1b4841",
   "#f4edea",
@@ -86,6 +92,10 @@
   "search-mockup-v1",
   "cook-feed-mockup-v1"
  ],
+ "review_before_after": [
+  "characters/chef_idle.png",
+  "icons/ingredient_tomato.png"
+ ],
  "review_mock": [
   [
    "backgrounds/throat.png",
@@ -97,7 +107,7 @@
   [
    "backgrounds/city.png",
    0,
-   0,
+   300,
    1,
    1
   ],
@@ -236,20 +246,20 @@
   ]
  ],
  "sources": {
+  "chef_concept_sheet": {
+   "file": "docs/art/concept-art/characters/chef-sheet-v1.png"
+  },
+  "detective_concept_sheet": {
+   "file": "docs/art/concept-art/characters/detective-sheet-v1.png"
+  },
   "bg_throat": {
    "url": "https://img.recraft.ai/itV-ds6ITpj7bV6RQjwXUpDPfd2BBnZqd2bLljFU4Pc/raw:1/plain/abs://prod/images/f97f1a75-c0c3-4756-a4b7-e4004842c228"
   },
   "bg_city": {
-   "url": "https://img.recraft.ai/RkYVWCkBKCCTCYp1FSFWWd1BNpdAx3AlO2ds-mrBOO0/raw:1/plain/abs://prod/images/e4270057-77c6-4be0-aa59-f3ee58efdbaa"
+   "url": "https://img.recraft.ai/CDfUbajyDKOXMpMMlOvefOKv_OXgjQ-aoone9QPiZd8/raw:1/plain/abs://prod/images/cc8e3596-da89-430a-a1e1-73fdf43f0443"
   },
   "bg_acid": {
    "url": "https://img.recraft.ai/Nnclea0oiY3cIXz44Aa_GtTOcErlSVZu2ttn4Wa7VxU/raw:1/plain/abs://prod/images/c82cf99f-756e-4aa5-8133-9424eabe93b1"
-  },
-  "chef_sheet": {
-   "url": "https://img.recraft.ai/lxDDshV_ZX5ihLAE_k7U_B3xoa5TirTz2r--Cvgf9Z4/raw:1/plain/abs://prod/images/8cc9caad-8adf-44d4-bf59-b8506afd131f"
-  },
-  "appraiser_sheet": {
-   "url": "https://img.recraft.ai/pVjWAfxi-ZCiYA52j9FsKh7EQgPCwNbzn-TkKdUPjWM/raw:1/plain/abs://prod/images/24f8ba02-95e5-4242-ba71-10c6712527df"
   },
   "platform": {
    "url": "https://img.recraft.ai/BbpKWlB9bMtcKIV4awdih_KeuOrhAtDYVt4qyhkealQ/raw:1/plain/abs://prod/images/4e3046de-c158-432d-aa8c-1eef97bbc0f3"
@@ -266,9 +276,9 @@
    "url": "https://img.recraft.ai/nZitHHibALXDtPAqHLxHG1_tijIluNAQoZmjf4LCnT8/raw:1/plain/abs://prod/images/066a7cb7-a345-46c6-b085-94806b02bebb"
   },
   "vending": {
-   "url": "https://img.recraft.ai/m9fPjQ7j6vzNK1bjt-awmxsM8eIwcYkYxLFaYJjJOo4/raw:1/plain/abs://prod/images/1e4ebb37-ae42-4e55-8f18-95f818dfd291",
+   "url": "https://img.recraft.ai/BDQ3wAaqWYbm9Gx-oWIFt8O_3FLEFupzoOMU5KyBCaY/raw:1/plain/abs://prod/images/b56a638a-6d91-4f23-8a97-aa718b8d12ba",
    "alpha": true,
-   "generated": "https://img.recraft.ai/f0BIhepHDvVxag4f7MO6d1Z8V9ktvOCiA0cz-aQ0TKo/raw:1/plain/abs://prod/images/ba455624-3516-40f4-b8fa-015b6090603d"
+   "generated": "https://img.recraft.ai/8sUKQFoFPSOb3x7C1uu6xemqEEugskD0YHX3YCXA_Sc/raw:1/plain/abs://prod/images/558c3578-627d-4cc7-90d7-d0a9f091bce3"
   },
   "shop": {
    "url": "https://img.recraft.ai/tVJaM_EYaGB5gEL1RcNEjz39lutF3QspLNWwEW1iDCc/raw:1/plain/abs://prod/images/f69e99c2-a362-4e95-875a-b2e6673a193d"
@@ -302,6 +312,9 @@
   "drip": {
    "url": "https://img.recraft.ai/cH_Vf4ObvQwMdbTsxiRodaqcvJBdj7JImrRLUw0TeTo/raw:1/plain/abs://prod/images/243dbc55-c7be-4e83-ab83-33c9f34e6a2f"
   },
+  "red_ingredients": {
+   "url": "https://img.recraft.ai/a1BshXrml6HHwlsVLYyWjb9hh465Hp1uIrUOFGWXOyY/raw:1/plain/abs://prod/images/32c5ffb0-5d29-4543-a54f-1193507e63ff"
+  },
   "ingredients": {
    "url": "https://img.recraft.ai/vpVYJU2mE0PAJBgkrS2SLCOfx9-PSDpvkqY4w5Mm_Eo/raw:1/plain/abs://prod/images/1d2b2d29-76bd-4d76-a086-ed0ae3a6c488"
   },
@@ -317,7 +330,9 @@
    "url": "https://img.recraft.ai/wxacvCVd0RjcmtFqhflaH_4ASr8lg8fspNNy8G0Bjtw/raw:1/plain/abs://prod/images/b7e5445f-fd4c-432a-bdf1-53bf78d72d3b"
   },
   "ui": {
-   "url": "https://img.recraft.ai/DceqsOIPkbNMTz64Iw-cq42A_br0bpl_OJ-SG1oXw3I/raw:1/plain/abs://prod/images/6821e065-bc22-4318-abbd-d5f1eb970d97"
+   "url": "https://img.recraft.ai/iiUw-F4RQ7gTtUWYe9B5qUXuMV0a17RvxhaONYbJxPM/raw:1/plain/abs://prod/images/32f30815-992f-4ee7-a394-705866d66f10",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/lNcLVqE0iqRYg4l6y0bygxQF8oG7nbxSAzGE7W5u6Dc/raw:1/plain/abs://prod/images/db384bd2-6031-4650-811d-fb5ed59fbe1d"
   },
   "workshop": {
    "url": "https://img.recraft.ai/SO5M0_d4naoGm0VoOBWbi3OkRCB0Ne9hn1ThB5B3hUs/raw:1/plain/abs://prod/images/859a392d-cddb-41d7-a47f-f3ed78b64dcf"
@@ -343,7 +358,8 @@
     1280,
     720
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 32,
    "depicts": "Back layer: monster upper jaw with fangs and the pink throat; opaque"
   },
   {
@@ -351,20 +367,21 @@
    "source": "bg_city",
    "crop": [
     0,
-    0,
+    418,
     1344,
-    756
+    302
    ],
    "size": [
     1280,
-    720
+    288
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 32,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Middle layer: indigo skyline with orange windows and an elevated train; transparent above"
+   "depicts": "Middle layer: low, hazy distant skyline with small orange windows; clear above the skyline"
   },
   {
    "path": "backgrounds/acid.png",
@@ -379,7 +396,8 @@
     1280,
     492
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 32,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -388,179 +406,195 @@
   },
   {
    "path": "characters/chef_idle.png",
-   "source": "chef_sheet",
+   "source": "chef_concept_sheet",
    "crop": [
-    43,
-    172,
-    440,
-    440
+    155,
+    500,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#0ac3db",
-    "tolerance": 60
+    "colour": "#2c3a46",
+    "tolerance": 24
    },
-   "depicts": "Chef (ART-CHAR-001), idle, facing right"
+   "depicts": "Chef (ART-CHAR-001), sheet pose 2, holding the spatula"
   },
   {
    "path": "characters/chef_walk_1.png",
-   "source": "chef_sheet",
+   "source": "chef_concept_sheet",
    "crop": [
-    373,
-    172,
-    440,
-    440
+    470,
+    500,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#0ac3db",
-    "tolerance": 60
+    "colour": "#2c3a46",
+    "tolerance": 24
    },
-   "depicts": "Chef (ART-CHAR-001), walk 1, facing right"
+   "depicts": "Chef (ART-CHAR-001), sheet pose 4, stepping with the spatula raised"
   },
   {
    "path": "characters/chef_walk_2.png",
-   "source": "chef_sheet",
+   "source": "chef_concept_sheet",
    "crop": [
-    752,
-    172,
-    440,
-    440
+    1045,
+    500,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#0ac3db",
-    "tolerance": 60
+    "colour": "#2c3a46",
+    "tolerance": 24
    },
-   "depicts": "Chef (ART-CHAR-001), walk 2, facing right"
+   "depicts": "Chef (ART-CHAR-001), sheet pose 7, stepping"
   },
   {
    "path": "characters/chef_climb.png",
-   "source": "chef_sheet",
+   "source": "chef_concept_sheet",
    "crop": [
-    1096,
-    172,
-    440,
-    440
+    1185,
+    500,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#0ac3db",
-    "tolerance": 60
+    "colour": "#2c3a46",
+    "tolerance": 24
    },
-   "depicts": "Chef (ART-CHAR-001), climbing, seen from behind"
+   "depicts": "Chef (ART-CHAR-001), sheet pose 8, seen from behind"
   },
   {
    "path": "characters/appraiser_idle.png",
-   "source": "appraiser_sheet",
+   "source": "detective_concept_sheet",
    "crop": [
     0,
-    160,
-    440,
-    440
+    457,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#12bdf9",
-    "tolerance": 60
+    "colour": "#213544",
+    "tolerance": 24
    },
-   "depicts": "Appraiser (ART-CHAR-002), idle, facing right"
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 1, standing with the magnifier"
   },
   {
    "path": "characters/appraiser_walk_1.png",
-   "source": "appraiser_sheet",
+   "source": "detective_concept_sheet",
    "crop": [
-    304,
-    160,
-    440,
-    440
+    305,
+    457,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#12bdf9",
-    "tolerance": 60
+    "colour": "#213544",
+    "tolerance": 24
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 1, facing right"
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 3, striding and pointing"
   },
   {
    "path": "characters/appraiser_walk_2.png",
-   "source": "appraiser_sheet",
+   "source": "detective_concept_sheet",
    "crop": [
-    761,
-    160,
-    440,
-    440
+    455,
+    457,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#12bdf9",
-    "tolerance": 60
+    "colour": "#213544",
+    "tolerance": 24
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 2, facing right"
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 4, stepping"
   },
   {
    "path": "characters/appraiser_climb.png",
-   "source": "appraiser_sheet",
+   "source": "detective_concept_sheet",
    "crop": [
-    1096,
-    160,
-    440,
-    440
+    1065,
+    457,
+    220,
+    220
    ],
    "size": [
-    48,
-    48
+    64,
+    64
    ],
    "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
-    "colour": "#12bdf9",
-    "tolerance": 60
+    "colour": "#213544",
+    "tolerance": 24
    },
-   "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind"
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 8, seen from behind"
   },
   {
    "path": "world/platform.png",
    "source": "platform",
    "crop": [
-    276,
+    230,
     298,
-    336,
+    453,
     340
    ],
    "size": [
@@ -568,6 +602,8 @@
     32
    ],
    "scale": 1,
+   "colours": 24,
+   "seamless": "x",
    "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
   },
   {
@@ -584,6 +620,7 @@
     32
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
@@ -605,6 +642,7 @@
     64
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
@@ -626,6 +664,7 @@
     64
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -645,6 +684,7 @@
     64
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -656,15 +696,17 @@
    "crop": [
     200,
     250,
-    512,
-    512
+    683,
+    683
    ],
    "size": [
     64,
     64
    ],
    "scale": 1,
-   "depicts": "Building body tile: indigo concrete with lit and dark windows"
+   "colours": 24,
+   "seamless": "xy",
+   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
   },
   {
    "path": "world/vending_machine.png",
@@ -680,10 +722,21 @@
     48
    ],
    "scale": 1,
+   "colours": 24,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
    "key": {
     "alpha": true
    },
-   "depicts": "Broken vending machine with jars behind cracked glass"
+   "depicts": "Broken red vending machine with jars behind cracked glass"
   },
   {
    "path": "world/shop.png",
@@ -699,6 +752,7 @@
     96
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -719,6 +773,7 @@
     64
    ],
    "scale": 1,
+   "colours": 24,
    "largest_only": true,
    "key": {
     "alpha": true
@@ -739,6 +794,7 @@
     48
    ],
    "scale": 1,
+   "colours": 24,
    "largest_only": true,
    "key": {
     "alpha": true
@@ -759,6 +815,7 @@
     64
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -768,16 +825,18 @@
    "path": "world/bridge.png",
    "source": "bridge",
    "crop": [
+    380,
+    330,
     300,
-    260,
-    420,
-    420
+    300
    ],
    "size": [
     32,
     32
    ],
    "scale": 1,
+   "colours": 24,
+   "seamless": "x",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
@@ -799,6 +858,7 @@
     112
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -819,6 +879,7 @@
     52
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -838,6 +899,7 @@
     34
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -857,6 +919,7 @@
     128
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "alpha": true
    },
@@ -876,6 +939,7 @@
     96
    ],
    "scale": 1,
+   "colours": 24,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -884,19 +948,31 @@
   },
   {
    "path": "icons/ingredient_tomato.png",
-   "source": "ingredients",
+   "source": "red_ingredients",
    "crop": [
-    13,
-    0,
-    305,
-    305
+    66,
+    82,
+    606,
+    606
    ],
    "size": [
     48,
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -917,6 +993,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -938,6 +1016,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -959,6 +1039,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -980,6 +1062,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -989,19 +1073,31 @@
   },
   {
    "path": "icons/ingredient_meat.png",
-   "source": "ingredients",
+   "source": "red_ingredients",
    "crop": [
-    707,
-    362,
-    306,
-    306
+    729,
+    20,
+    722,
+    722
    ],
    "size": [
     48,
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -1022,6 +1118,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1043,6 +1141,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1064,6 +1164,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1085,6 +1187,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1106,6 +1210,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1126,6 +1232,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1146,6 +1254,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1166,6 +1276,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1186,6 +1298,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1206,6 +1320,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "alpha": true
@@ -1226,6 +1342,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1247,6 +1365,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1268,6 +1388,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1289,6 +1411,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1310,6 +1434,8 @@
     48
    ],
    "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
    "largest_only": true,
    "key": {
     "colour": "#ffffff",
@@ -1321,176 +1447,232 @@
    "path": "ui/panel_frame.png",
    "source": "ui",
    "crop": [
-    11,
-    14,
-    365,
-    365
+    17,
+    35,
+    340,
+    340
    ],
    "size": [
     96,
     96
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Riveted panel frame for 9-slice"
+   "depicts": "Riveted grey steel panel frame for 9-slice"
   },
   {
    "path": "ui/bar_frame.png",
    "source": "ui",
    "crop": [
-    386,
-    68,
-    597,
-    244
+    341,
+    127,
+    662,
+    196
    ],
    "size": [
     192,
-    72
+    56
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Riveted bar frame, empty inside"
+   "depicts": "Riveted grey steel bar frame, empty inside"
   },
   {
    "path": "ui/item_slot.png",
    "source": "ui",
    "crop": [
-    21,
-    397,
-    309,
-    309
+    18,
+    381,
+    339,
+    339
    ],
    "size": [
     64,
     64
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Item slot frame"
+   "depicts": "Grey steel item slot frame"
   },
   {
    "path": "ui/heart_full.png",
    "source": "ui",
    "crop": [
-    331,
-    390,
-    326,
-    326
+    342,
+    373,
+    354,
+    354
    ],
    "size": [
     32,
     32
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Heart, full"
+   "depicts": "Heart, full, red"
   },
   {
    "path": "ui/heart_empty.png",
    "source": "ui",
    "crop": [
-    652,
-    397,
-    314,
-    314
+    696,
+    383,
+    277,
+    277
    ],
    "size": [
     32,
     32
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      0,
+      360
+     ],
+     "saturation": 0.2,
+     "lightness": 3.0
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Heart, empty"
+   "depicts": "Heart, empty outline, light grey"
   },
   {
    "path": "ui/button.png",
    "source": "ui",
    "crop": [
-    23,
-    719,
-    254,
-    254
+    22,
+    761,
+    198,
+    198
    ],
    "size": [
     64,
     64
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Button, normal, blank face"
+   "depicts": "Button, normal, grey steel, blank face"
   },
   {
    "path": "ui/button_highlight.png",
    "source": "ui",
    "crop": [
-    274,
-    723,
-    247,
-    247
+    227,
+    767,
+    189,
+    189
    ],
    "size": [
     64,
     64
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Button, highlighted, blank face"
+   "depicts": "Button, highlighted, yellow, blank face"
   },
   {
    "path": "ui/icon_day.png",
    "source": "ui",
    "crop": [
-    521,
-    751,
-    174,
-    174
+    424,
+    757,
+    204,
+    204
    ],
    "size": [
     32,
     32
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Day icon: sun"
+   "depicts": "Day icon: yellow sun"
   },
   {
    "path": "ui/icon_clock.png",
    "source": "ui",
    "crop": [
-    693,
-    755,
+    636,
+    775,
     174,
     174
    ],
@@ -1499,31 +1681,40 @@
     32
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
-   "depicts": "Clock icon"
+   "depicts": "Clock icon: grey case, yellow face"
   },
   {
    "path": "ui/icon_acid.png",
    "source": "ui",
    "crop": [
-    854,
-    758,
-    167,
-    167
+    822,
+    768,
+    183,
+    183
    ],
    "size": [
     32,
     32
    ],
    "scale": 2,
+   "colours": 12,
    "largest_only": true,
    "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+    "alpha": true
    },
    "depicts": "Acid icon: green drop"
   },
@@ -1540,7 +1731,8 @@
     1280,
     720
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 32,
    "depicts": "Base kitchen interior with cauldron, shelves, lanterns and the feeding crane; opaque"
   },
   {
@@ -1556,7 +1748,8 @@
     1280,
     720
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 32,
    "depicts": "Title key art: monster mouth, swallowed city, acid sea, chef and appraiser; opaque"
   },
   {
@@ -1572,7 +1765,8 @@
     512,
     512
    ],
-   "scale": 2,
+   "scale": 4,
+   "colours": 16,
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,

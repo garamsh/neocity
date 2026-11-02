@@ -1,16 +1,24 @@
-"""Turn Recraft generations into the monster-mouth escape runtime PNGs.
+"""Turn Recraft generations and the concept sheets into the monster-mouth escape runtime PNGs.
 
 Subcommands, all driven by assets.json beside this file:
-  fetch RAW_DIR          download every source and decode it to PNG with ImageMagick
-  process RAW_DIR ART    write every runtime PNG under ART
-  sheet ART CONCEPT_DIR OUT
-                         write the review sheet: the concept images, a mock frame, every asset
+  fetch RAW_DIR          download every URL source and decode it to PNG with ImageMagick;
+                         a "file" source is read from the repository instead
+  process RAW_DIR ART    write every runtime PNG and manifest.json under ART. Each output pixel
+                         is one block of the source: the generation's own grid where one is
+                         detected, otherwise an even division of the crop. A seamless asset's
+                         crop is a third wider or taller than the tile it makes
+  sheet RAW_DIR ART CONCEPT_DIR OUT
+                         write the review sheet: the concept images, a mock frame, 8x close-ups
+                         (sheet poses beside sprites, plain renders beside processed), every asset
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
 """
 
+import cmath
+import colorsys
 import json
+import math
 import pathlib
 import struct
 import subprocess
@@ -20,6 +28,9 @@ import zlib
 from collections import deque
 
 SPEC = pathlib.Path(__file__).with_name("assets.json")
+REPOSITORY = pathlib.Path(__file__).resolve().parents[2]
+GRID_CONFIDENCE = 4.0
+NOISE_DISTANCE = 80**2 * 3
 
 
 def read_png(path):
@@ -99,6 +110,25 @@ def write_png(path, rows):
 def crop(rows, box):
     x, y, w, h = box
     return [row[x : x + w] for row in rows[y : y + h]]
+
+
+def wrap_x(rows):
+    """Cross-fades the last quarter of each row into the first and drops it, so the result tiles horizontally."""
+    width = len(rows[0])
+    overlap = width // 4
+    out = []
+    for row in rows:
+        line = list(row[: width - overlap])
+        for x in range(overlap):
+            t = (x + 0.5) / overlap
+            tail = row[width - overlap + x]
+            line[x] = tuple(round(tail[c] * (1 - t) + row[x][c] * t) for c in range(4))
+        out.append(line)
+    return out
+
+
+def transpose(rows):
+    return [list(column) for column in zip(*rows)]
 
 
 def distance(a, b):
@@ -192,6 +222,31 @@ def nearest_opaque(rows, mask, cx, cy, x0, y0, x1, y1):
     return best[1]
 
 
+def recolour(rows, rules):
+    """Applies each rule to opaque pixels whose hue in degrees lies in its "hues" range.
+
+    A rule sets the hue to "hue" and multiplies saturation and lightness by "saturation" and
+    "lightness"; each is optional.
+    """
+    out = []
+    for row in rows:
+        line = []
+        for r, g, b, a in row:
+            if a:
+                h, l, s = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+                for rule in rules:
+                    low, high = rule["hues"]
+                    if low <= h * 360 <= high:
+                        h = rule.get("hue", h * 360) / 360
+                        s = min(1.0, s * rule.get("saturation", 1.0))
+                        l = min(1.0, l * rule.get("lightness", 1.0))
+                        break
+                r, g, b = (round(c * 255) for c in colorsys.hls_to_rgb(h, l, s))
+            line.append((r, g, b, a))
+        out.append(line)
+    return out
+
+
 def snap(rows, palette):
     """Replaces every opaque pixel by its nearest palette colour (redmean distance)."""
     cache = {}
@@ -234,6 +289,201 @@ def drop_specks(rows):
     return out
 
 
+def edge_profile(rows):
+    """Sums the colour change between each column and the one before it."""
+    width = len(rows[0])
+    edge = [0.0] * width
+    for row in rows:
+        for x in range(1, width):
+            a, b = row[x - 1], row[x]
+            edge[x] += abs(a[0] - b[0]) + abs(a[1] - b[1]) + abs(a[2] - b[2])
+    return edge
+
+
+def detect_pitch(rows):
+    """Returns (pitch, phase, confidence) of the strongest regular column grid, pitch 3 to 16 px.
+
+    Confidence is the spectral peak over the median; among pitches within 80% of the peak the
+    largest wins, because a grid also peaks at its half and third.
+    """
+    edge = edge_profile(rows)
+    total = sum(edge) or 1.0
+    spectrum = []
+    for step in range(260):
+        pitch = 3 + step * 0.05
+        z = sum(e * cmath.exp(-2j * math.pi * i / pitch) for i, e in enumerate(edge))
+        spectrum.append((abs(z) / total, pitch, (cmath.phase(z) / (2 * math.pi) * pitch) % pitch))
+    peak = max(s[0] for s in spectrum)
+    median = sorted(s[0] for s in spectrum)[len(spectrum) // 2] or 1e-9
+    strength, pitch, phase = max((s for s in spectrum if s[0] >= 0.8 * peak), key=lambda s: s[1])
+    return pitch, phase, peak / median
+
+
+def grid_crop(rows, box, logical):
+    """Moves box onto the generation's own pixel grid when one is found.
+
+    Returns (box, pitch_x, pitch_y): box covers logical blocks of the detected pitch, centred on
+    the given box and aligned to the grid, or the given box with pitches that divide it evenly.
+    """
+    x, y, w, h = box
+    region = crop(rows, box)
+    px, phase_x, conf_x = detect_pitch(region)
+    py, phase_y, conf_y = detect_pitch(transpose(region))
+    even = (box, w / logical[0], h / logical[1])
+    if min(conf_x, conf_y) < GRID_CONFIDENCE:
+        return even
+    new_w, new_h = logical[0] * px, logical[1] * py
+    left = x + phase_x + round((w - new_w) / 2 / px) * px
+    top = y + phase_y + round((h - new_h) / 2 / py) * py
+    if left < 0 or top < 0 or left + new_w > len(rows[0]) or top + new_h > len(rows):
+        return even
+    return [round(left), round(top), round(new_w), round(new_h)], px, py
+
+
+def nearest_index(colour, palette, cache):
+    """Index of the palette colour nearest to colour, keyed on 6-bit channels so the cache stays small."""
+    key = (colour[0] >> 2, colour[1] >> 2, colour[2] >> 2)
+    if key not in cache:
+        centre = tuple(c * 4 + 2 for c in key)
+        cache[key] = min(range(len(palette)), key=lambda i: (redmean(palette[i], centre), i))
+    return cache[key]
+
+
+def sample_blocks(rows, mask, logical, pitch, palette):
+    """One palette index per block: the most frequent in its centre, or None when mostly clear."""
+    cache = {}
+    width, height = logical
+    out = []
+    for ty in range(height):
+        y0 = int(ty * pitch[1])
+        y1 = max(y0 + 1, min(len(rows), int((ty + 1) * pitch[1])))
+        line = []
+        for tx in range(width):
+            x0 = int(tx * pitch[0])
+            x1 = max(x0 + 1, min(len(rows[0]), int((tx + 1) * pitch[0])))
+            if mask is not None:
+                clear = sum(mask[yy][xx] for yy in range(y0, y1) for xx in range(x0, x1))
+                if clear * 2 > (y1 - y0) * (x1 - x0):
+                    line.append(None)
+                    continue
+            # The vote uses the block's central half, so a one-pixel line in the source keeps the
+            # block it is centred in instead of losing to the colour around it.
+            cx0, cx1 = x0 + (x1 - x0) // 4, x1 - (x1 - x0) // 4
+            cy0, cy1 = y0 + (y1 - y0) // 4, y1 - (y1 - y0) // 4
+            counts = {}
+            for yy in range(cy0, max(cy1, cy0 + 1)):
+                for xx in range(cx0, max(cx1, cx0 + 1)):
+                    if mask is None or not mask[yy][xx]:
+                        index = nearest_index(rows[yy][xx], palette, cache)
+                        counts[index] = counts.get(index, 0) + 1
+            if not counts:
+                for yy in range(y0, y1):
+                    for xx in range(x0, x1):
+                        if not mask[yy][xx]:
+                            index = nearest_index(rows[yy][xx], palette, cache)
+                            counts[index] = counts.get(index, 0) + 1
+            line.append(max(counts, key=lambda i: (counts[i], -i)))
+        out.append(line)
+    return out
+
+
+def limit_colours(cells, palette, count, keep):
+    """Keeps count palette indices (keep among them) and maps every other cell to the nearest kept one.
+
+    After the most used colour, each pick maximises usage times distance to the colours already
+    kept, so a small accent such as an earring survives against shades of the large areas.
+    """
+    usage = {}
+    for row in cells:
+        for index in row:
+            if index is not None:
+                usage[index] = usage.get(index, 0) + 1
+    kept = [keep] if keep is not None and keep in usage else []
+    candidates = sorted(usage, key=lambda i: (-usage[i], i))
+    while len(kept) < min(count, len(usage)):
+        kept.append(
+            max(
+                (i for i in candidates if i not in kept),
+                key=lambda i: (usage[i] * min((redmean(palette[i], palette[k]) for k in kept), default=1), -i),
+            )
+        )
+    if keep is not None and keep not in kept:
+        kept = kept[: count - 1] + [keep]
+    nearest = {i: min(kept, key=lambda k: (redmean(palette[k], palette[i]), k)) for i in usage}
+    return [[None if i is None else nearest[i] for i in row] for row in cells]
+
+
+def neighbours(cells, x, y, diagonal):
+    steps = ((-1, 0), (1, 0), (0, -1), (0, 1))
+    if diagonal:
+        steps += ((-1, -1), (1, -1), (-1, 1), (1, 1))
+    for dx, dy in steps:
+        nx, ny = x + dx, y + dy
+        yield cells[ny][nx] if 0 <= ny < len(cells) and 0 <= nx < len(cells[0]) else None
+
+
+def most_common(values):
+    counts = {}
+    for value in values:
+        if value is not None:
+            counts[value] = counts.get(value, 0) + 1
+    return max(counts, key=lambda v: (counts[v], -v)) if counts else None
+
+
+def clean(cells, palette):
+    """Clears thin alpha spurs, fills alpha notches, and replaces lone pixels that are noise.
+
+    A pixel touching no neighbour of its own colour is noise when it is close to the colour
+    around it; a lone pixel that contrasts, such as an eye, is kept.
+    """
+    height, width = len(cells), len(cells[0])
+    shaped = [list(row) for row in cells]
+    for y in range(height):
+        for x in range(width):
+            around = list(neighbours(cells, x, y, False))
+            opaque = [v for v in around if v is not None]
+            if cells[y][x] is not None and len(opaque) <= 1:
+                shaped[y][x] = None
+            elif cells[y][x] is None and len(opaque) >= 3:
+                shaped[y][x] = most_common(opaque)
+    out = [list(row) for row in shaped]
+    for y in range(height):
+        for x in range(width):
+            value = shaped[y][x]
+            around = list(neighbours(shaped, x, y, True))
+            common = most_common(around)
+            if value is None or value in around or common is None:
+                continue
+            if redmean(palette[value], palette[common]) < NOISE_DISTANCE:
+                out[y][x] = common
+    return out
+
+
+def outline(cells, index):
+    """Sets every opaque cell with a clear or off-edge 4-neighbour to index."""
+    return [
+        [
+            index if value is not None and None in neighbours(cells, x, y, False) else value
+            for x, value in enumerate(row)
+        ]
+        for y, row in enumerate(cells)
+    ]
+
+
+def recolour_rows(rows, rules):
+    """recolour with a per-colour cache, for full-resolution crops."""
+    cache = {}
+    out = []
+    for row in rows:
+        line = []
+        for pixel in row:
+            if pixel not in cache:
+                cache[pixel] = recolour([[pixel]], rules)[0][0]
+            line.append(cache[pixel])
+        out.append(line)
+    return out
+
+
 def upscale(rows, factor):
     out = []
     for row in rows:
@@ -242,11 +492,28 @@ def upscale(rows, factor):
     return out
 
 
-def render(asset, raw_dir, palette, cache):
+def render(asset, raw_dir, palette, cache, sources, plain=False):
+    """Returns (rgba rows, report). plain renders the earlier nearest-neighbour pipeline for review."""
     source = asset["source"]
     if source not in cache:
-        cache[source] = read_png(pathlib.Path(raw_dir) / f"{source}.png")[2]
-    rows = crop(cache[source], asset["crop"])
+        if "file" in sources[source]:
+            path = REPOSITORY / sources[source]["file"]
+        else:
+            path = pathlib.Path(raw_dir) / f"{source}.png"
+        cache[source] = read_png(path)[2]
+    width, height = asset["size"]
+    scale = asset.get("scale", 1)
+    logical = (width // scale, height // scale)
+    seamless = asset.get("seamless", "")
+    box, pitch = asset["crop"], None
+    if not plain and not seamless:
+        box, pitch_x, pitch_y = grid_crop(cache[source], asset["crop"], logical)
+        pitch = (pitch_x, pitch_y)
+    rows = crop(cache[source], box)
+    if "x" in seamless:
+        rows = wrap_x(rows)
+    if "y" in seamless:
+        rows = transpose(wrap_x(transpose(rows)))
     mask = None
     key = asset.get("key")
     if key and key.get("alpha"):
@@ -255,13 +522,28 @@ def render(asset, raw_dir, palette, cache):
         mask = background_mask(rows, hex_colour(key["colour"]), key["tolerance"], key.get("enclosed", False))
     if mask is not None and asset.get("largest_only"):
         mask = keep_largest(mask)
-    width, height = asset["size"]
-    scale = asset.get("scale", 1)
-    small = downscale(rows, mask, width // scale, height // scale)
-    small = snap(small, palette)
-    if mask is not None:
-        small = drop_specks(small)
-    return upscale(small, scale)
+    if plain:
+        small = downscale(rows, mask, *logical)
+        if "recolour" in asset:
+            small = recolour(small, asset["recolour"])
+        small = snap(small, palette)
+        if mask is not None:
+            small = drop_specks(small)
+        return upscale(small, scale), None
+    if "recolour" in asset:
+        rows = recolour_rows(rows, asset["recolour"])
+    if pitch is None:
+        pitch = (len(rows[0]) / logical[0], len(rows) / logical[1])
+    cells = sample_blocks(rows, mask, logical, pitch, palette)
+    edge = palette.index(hex_colour(asset["outline"])) if "outline" in asset else None
+    cells = clean(limit_colours(cells, palette, asset["colours"], edge), palette)
+    if edge is not None:
+        cells = outline(cells, edge)
+    used = {i for row in cells for i in row if i is not None}
+    rgba = [[(0, 0, 0, 0) if i is None else (*palette[i], 255) for i in row] for row in cells]
+    grid = "detected" if box != asset["crop"] else "even"
+    report = {"colours": len(used), "pitch": [round(p, 2) for p in pitch], "grid": grid}
+    return upscale(rgba, scale), report
 
 
 def hex_colour(text):
@@ -279,6 +561,8 @@ def fetch(raw_dir):
     raw_dir = pathlib.Path(raw_dir)
     raw_dir.mkdir(parents=True, exist_ok=True)
     for name, source in spec["sources"].items():
+        if "file" in source:
+            continue
         url = source["url"]
         if not url.startswith("https://img.recraft.ai/"):
             raise ValueError(f"{name}: unexpected host in {url}")
@@ -292,9 +576,23 @@ def fetch(raw_dir):
 def process(raw_dir, art_dir):
     spec, palette = load_spec()
     cache = {}
+    manifest = []
     for asset in spec["assets"]:
-        write_png(pathlib.Path(art_dir) / asset["path"], render(asset, raw_dir, palette, cache))
-    print(f"wrote {len(spec['assets'])} runtime PNGs listed in {SPEC.name} under {art_dir}")
+        rows, report = render(asset, raw_dir, palette, cache, spec["sources"])
+        write_png(pathlib.Path(art_dir) / asset["path"], rows)
+        manifest.append(
+            {
+                "path": asset["path"],
+                "size": asset["size"],
+                "scale": asset.get("scale", 1),
+                "colours": report["colours"],
+                "depicts": asset["depicts"],
+            }
+        )
+        print(f"{asset['path']}: {report['colours']} colours, block {report['pitch']} px, {report['grid']} grid")
+    text = json.dumps({"generated_by": "tools/art/pixelize.py process", "files": manifest}, indent=1)
+    (pathlib.Path(art_dir) / "manifest.json").write_text(text + "\n")
+    print(f"wrote {len(manifest)} runtime PNGs listed in {SPEC.name} and manifest.json under {art_dir}")
 
 
 def fit(rows, max_w, max_h):
@@ -325,9 +623,36 @@ def mock_frame(spec, art_dir):
     return canvas
 
 
-def sheet(art_dir, concept_dir, out):
-    """Concept images across the top, a mock frame from the assets, then every asset on a grid."""
-    spec, _ = load_spec()
+def closeups(spec, art_dir):
+    """Pairs each asset cut from a repository image with its source crop, both 8x the sprite."""
+    pairs = []
+    for asset in spec["assets"]:
+        source = spec["sources"][asset["source"]]
+        if "file" not in source:
+            continue
+        sprite = upscale(read_png(pathlib.Path(art_dir) / asset["path"])[2], 8)
+        side = len(sprite)
+        original = fit(crop(read_png(REPOSITORY / source["file"])[2], asset["crop"]), side, side)
+        pairs.append((original, sprite))
+    return pairs
+
+
+def before_after(spec, palette, raw_dir, art_dir):
+    """Pairs the plain nearest-neighbour render of each review_before_after asset with its committed PNG, at 8x."""
+    by_path = {asset["path"]: asset for asset in spec["assets"]}
+    cache = {}
+    pairs = []
+    for path in spec["review_before_after"]:
+        before, _ = render(by_path[path], raw_dir, palette, cache, spec["sources"], plain=True)
+        after = read_png(pathlib.Path(art_dir) / path)[2]
+        pairs.append((upscale(before, 8), upscale(after, 8)))
+    return pairs
+
+
+def sheet(raw_dir, art_dir, concept_dir, out):
+    """Concept images, a mock frame, 8x close-ups (sheet poses beside sprites, then before beside
+    after), then every asset on a grid."""
+    spec, palette = load_spec()
     width, gap, cell = 1920, 16, 144
     concepts = [read_png(pathlib.Path(concept_dir) / f"{name}.png")[2] for name in spec["review_concepts"]]
     concept_w = (width - gap * (len(concepts) + 1)) // len(concepts)
@@ -335,7 +660,13 @@ def sheet(art_dir, concept_dir, out):
     concept_h = max(len(rows) for rows in scaled)
     mock = mock_frame(spec, art_dir)
     mock_top = gap * 2 + concept_h
-    grid_top = mock_top + len(mock) + gap
+    pairs = closeups(spec, art_dir) + before_after(spec, palette, raw_dir, art_dir)
+    pair_w = max((len(a[0]) + len(b[0]) + gap for a, b in pairs), default=0)
+    pair_h = max((len(b) for _, b in pairs), default=0)
+    per_row = 2
+    width = max(width, gap + per_row * (pair_w + gap * 3))
+    closeup_top = mock_top + len(mock) + gap
+    grid_top = closeup_top + -(-len(pairs) // per_row) * (pair_h + gap)
     columns = (width - gap) // (cell + gap)
     count = len(spec["assets"])
     grid_rows = -(-count // columns)
@@ -345,6 +676,11 @@ def sheet(art_dir, concept_dir, out):
     for i, rows in enumerate(scaled):
         paste(canvas, rows, gap + i * (concept_w + gap), gap)
     paste(canvas, mock, (width - len(mock[0])) // 2, mock_top)
+    for i, (original, sprite) in enumerate(pairs):
+        left = gap + (i % per_row) * (pair_w + gap * 3)
+        top = closeup_top + (i // per_row) * (pair_h + gap)
+        paste(canvas, original, left, top)
+        paste(canvas, sprite, left + len(original[0]) + gap, top)
     tile = (40, 32, 56, 255)
     for i, asset in enumerate(spec["assets"]):
         left = gap + (i % columns) * (cell + gap)
@@ -360,11 +696,14 @@ def sheet(art_dir, concept_dir, out):
             rows = fit(rows, cell, cell)
         paste(canvas, rows, left + (cell - len(rows[0])) // 2, top + (cell - len(rows)) // 2)
     write_png(out, canvas)
-    print(f"wrote review sheet {out}: {len(concepts)} concepts, a mock frame, {count} assets from {SPEC.name}")
+    print(
+        f"wrote review sheet {out}: {len(concepts)} concepts, a mock frame, "
+        f"{len(pairs)} close-ups, {count} assets from {SPEC.name}"
+    )
 
 
 def main(argv):
-    commands = {"fetch": (fetch, 1), "process": (process, 2), "sheet": (sheet, 3)}
+    commands = {"fetch": (fetch, 1), "process": (process, 2), "sheet": (sheet, 4)}
     if len(argv) < 2 or argv[1] not in commands or len(argv) - 2 != commands[argv[1]][1]:
         sys.exit(__doc__)
     command, _ = commands[argv[1]]
