@@ -189,7 +189,7 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   return object;
 }
 
-/// A bag the tide brings in once the run has spent `arrival` exploring. Acid
+/// A bag the tide brings in once world time reaches `arrival`. Acid
 /// never brings one: it carries the bag off at `gone`, or sinks it before it
 /// lands, so rising acid only takes supply away.
 ObjectDefinition washed_up(ObjectId id, GridPosition cell,
