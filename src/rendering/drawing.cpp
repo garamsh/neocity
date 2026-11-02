@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/theme_db.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <utility>
@@ -14,7 +15,11 @@ namespace {
 
 using godot::Vector2;
 
-constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::LampBent) + 1;
+/// The corner sizes of the kit's frames, whole multiples of their pixel grid.
+constexpr float PANEL_BORDER = 24.0F;
+constexpr float BUTTON_BORDER = 12.0F;
+
+constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
 
 const char *path(Image image) {
   switch (image) {
@@ -124,6 +129,72 @@ const char *path(Image image) {
     return "decor/lamp_standing.png";
   case Image::LampBent:
     return "decor/lamp_bent.png";
+  case Image::PanelFrame:
+    return "ui/panel_frame.png";
+  case Image::BarFrame:
+    return "ui/bar_frame.png";
+  case Image::ItemSlot:
+    return "ui/item_slot.png";
+  case Image::Button:
+    return "ui/button.png";
+  case Image::ButtonHighlight:
+    return "ui/button_highlight.png";
+  case Image::HeartFull:
+    return "ui/heart_full.png";
+  case Image::HeartEmpty:
+    return "ui/heart_empty.png";
+  case Image::IconDay:
+    return "ui/icon_day.png";
+  case Image::IconAcid:
+    return "ui/icon_acid.png";
+  case Image::IconClock:
+    return "ui/icon_clock.png";
+  case Image::IngredientTomato:
+    return "icons/ingredient_tomato.png";
+  case Image::IngredientFish:
+    return "icons/ingredient_fish.png";
+  case Image::IngredientKelp:
+    return "icons/ingredient_kelp.png";
+  case Image::IngredientMushroom:
+    return "icons/ingredient_mushroom.png";
+  case Image::IngredientPickles:
+    return "icons/ingredient_pickles.png";
+  case Image::IngredientMeat:
+    return "icons/ingredient_meat.png";
+  case Image::IngredientTruffle:
+    return "icons/ingredient_truffle.png";
+  case Image::ToolMagnifier:
+    return "icons/tool_magnifier.png";
+  case Image::ToolSpatula:
+    return "icons/tool_spatula.png";
+  case Image::ToolWrench:
+    return "icons/tool_wrench.png";
+  case Image::DishMushroomSoup:
+    return "icons/dish_mushroom_soup.png";
+  case Image::DishFishStew:
+    return "icons/dish_fish_stew.png";
+  case Image::DishKelpWrap:
+    return "icons/dish_kelp_wrap.png";
+  case Image::DishMeatSkewer:
+    return "icons/dish_meat_skewer.png";
+  case Image::DishTruffleRoast:
+    return "icons/dish_truffle_roast.png";
+  case Image::DishPickleSurprise:
+    return "icons/dish_pickle_surprise.png";
+  case Image::DishSeaSalad:
+    return "icons/dish_sea_salad.png";
+  case Image::DishFishPie:
+    return "icons/dish_fish_pie.png";
+  case Image::DishMeatStew:
+    return "icons/dish_meat_stew.png";
+  case Image::DishTruffleSoup:
+    return "icons/dish_truffle_soup.png";
+  case Image::DishSurfAndTurf:
+    return "icons/dish_surf_and_turf.png";
+  case Image::TitleKeyArt:
+    return "title/key_art.png";
+  case Image::TitleLogo:
+    return "title/logo.png";
   }
   std::abort();
 }
@@ -150,7 +221,8 @@ Palette palette() {
   return {.white = color(228, 234, 255, 1.0F),
           .muted = color(144, 159, 195, 1.0F),
           .cyan = color(91, 244, 219, 1.0F),
-          .gold = color(255, 192, 83, 1.0F)};
+          .gold = color(255, 192, 83, 1.0F),
+          .ink = color(33, 29, 68, 1.0F)};
 }
 
 Art::Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
@@ -202,6 +274,57 @@ void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination) const {
   canvas.draw_texture_rect_region(images.at(slot(image)), destination, source);
+}
+
+void Art::frame(godot::Node2D &canvas, Image image, godot::Rect2 destination,
+                float border, godot::Color fill) const {
+  const Vector2 whole = size(image);
+  const Vector2 middle = whole - Vector2(2.0F, 2.0F) * border;
+  const Vector2 at = destination.position.floor();
+  const Vector2 span =
+      (destination.size.floor() - Vector2(2.0F, 2.0F) * border).max(Vector2());
+  const Vector2 far = at + Vector2(border, border) + span;
+  canvas.draw_rect(godot::Rect2(at + Vector2(border, border), span), fill);
+  // Edges repeat whole source pixels; the last piece is cut, not squeezed.
+  for (int tile = 0; static_cast<float>(tile) * middle.x < span.x; ++tile) {
+    const float done = static_cast<float>(tile) * middle.x;
+    const float piece = std::min(middle.x, span.x - done);
+    const float x = at.x + border + done;
+    image_part(canvas, image, rect(border, 0.0F, piece, border),
+               rect(x, at.y, piece, border));
+    image_part(canvas, image, rect(border, whole.y - border, piece, border),
+               rect(x, far.y, piece, border));
+  }
+  for (int tile = 0; static_cast<float>(tile) * middle.y < span.y; ++tile) {
+    const float done = static_cast<float>(tile) * middle.y;
+    const float piece = std::min(middle.y, span.y - done);
+    const float y = at.y + border + done;
+    image_part(canvas, image, rect(0.0F, border, border, piece),
+               rect(at.x, y, border, piece));
+    image_part(canvas, image, rect(whole.x - border, border, border, piece),
+               rect(far.x, y, border, piece));
+  }
+  const Vector2 corner(border, border);
+  image_part(canvas, image, godot::Rect2(Vector2(), corner),
+             godot::Rect2(at, corner));
+  image_part(canvas, image,
+             godot::Rect2(Vector2(whole.x - border, 0.0F), corner),
+             godot::Rect2(Vector2(far.x, at.y), corner));
+  image_part(canvas, image,
+             godot::Rect2(Vector2(0.0F, whole.y - border), corner),
+             godot::Rect2(Vector2(at.x, far.y), corner));
+  image_part(canvas, image, godot::Rect2(whole - corner, corner),
+             godot::Rect2(far, corner));
+}
+
+void Art::panel(godot::Node2D &canvas, godot::Rect2 area) const {
+  frame(canvas, Image::PanelFrame, area, PANEL_BORDER, color(35, 36, 48, 1.0F));
+}
+
+void Art::button(godot::Node2D &canvas, godot::Rect2 area, bool marked) const {
+  frame(canvas, marked ? Image::ButtonHighlight : Image::Button, area,
+        BUTTON_BORDER,
+        marked ? color(245, 202, 55, 1.0F) : color(95, 87, 125, 1.0F));
 }
 
 Vector2 Art::size(Image image) const {

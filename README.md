@@ -4,15 +4,15 @@ Monster Mouth Escape, a survival game for one or two players on one computer, bu
 
 ## How to play
 
-A monster has swallowed the city. Play the chef or the appraiser while AI plays the other, or play both with a friend. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. New and delicious food holds the acid back; anything else raises it, and rising acid and time wreck the city and take the stock left in it. Each collection spends 12 seconds of the day's 45, a clock both actors share, so a day holds at most four collections between them. If the acid fills, the run is lost. From day 30, each finished day has a 20% chance that the party escapes. Either way the run then plays its ending and returns to the title screen, and the E key skips it. The opening, ending, and loss scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The NEXT line at the bottom of the screen suggests a next step.
+A monster has swallowed the city. Play the chef or the appraiser while AI plays the other, or play both with a friend. Gather ingredients and tools in the city before the day's time runs out, appraise them and cook at base, then feed the monster to start the next day. New and delicious food holds the acid back; anything else raises it, and rising acid and time wreck the city and take the stock left in it. Each collection spends 12 seconds of the day's 45, a clock both actors share, so a day holds at most four collections between them. If the acid fills, the run is lost. From day 30, each finished day has a 20% chance that the party escapes. Either way the run then plays its ending and returns to the title screen, and the E key skips it. The opening, ending, and loss scenes of [#29](https://github.com/garamsh/neocity/issues/29) are not delivered, so a placeholder card stands in for each. The map, balance, keys, and art are temporary. The plates at the top of the screen show the day, the acid, and the time left; in the city the plates at the bottom show each actor's health, stamina, and tools, the pack, and the log, and at base the appraise, cook, and feed panels show what each job can do. The NEXT line at the bottom of the screen suggests a next step.
 
-The game opens on the title screen:
+The game opens on the title screen, the monster's mouth behind the game's logo:
 
 - **New game** asks who is playing: **1** the chef, **2** the appraiser, **3** two players.
-- **Controls** lists every key for both players.
+- **Controls** lists every key for both players, the pause screen's list with the pause and leave keys after it.
 - **Quit** closes the game.
 
-Move the cursor with W or up and S or down, and press Enter; 1, 2, and 3 choose an entry directly. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
+On the title screen and on the choice of players, move the cursor with W or up and S or down, and press Enter; 1, 2, and 3 choose an entry directly. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
 
 | Input | Player 1 | Player 2 |
 |---|---|---|

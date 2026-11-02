@@ -36,68 +36,126 @@ using survival::Location;
 using survival::Phase;
 
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
-constexpr float CARD_Y = 588.0F;
-constexpr float CARD_WIDTH = 276.0F;
-constexpr float CARD_HEIGHT = 84.0F;
-constexpr float NEXT_Y = 674.0F;
-constexpr float PANEL_Y = 318.0F;
-constexpr float PANEL_HEIGHT = 348.0F;
-constexpr float APPRAISE_X = 10.0F;
-constexpr float APPRAISE_WIDTH = 368.0F;
-constexpr float COOK_X = 387.0F;
-constexpr float COOK_WIDTH = 496.0F;
-constexpr float FEED_X = 892.0F;
-constexpr float FEED_WIDTH = 378.0F;
-constexpr float PANEL_TEXT_MARGIN = 14.0F;
-constexpr int PANEL_JOB_SIZE = 17;
-constexpr float COOK_STATUS_X = 160.0F;
-constexpr float COOK_EATEN_X = 410.0F;
-constexpr float COOK_TASTE_X = 460.0F;
-constexpr int COOK_STATUS_SIZE = 15;
-constexpr int COOK_NAME_SIZE = 18;
-constexpr float COOK_ROW_HEIGHT = 23.0F;
-constexpr int FORECAST_SIZE = 15;
-constexpr int EATEN_SIZE = 14;
-constexpr std::size_t EATEN_PER_LINE = 4;
-/// The day's result, over the kitchen and clear of the two actors' heads.
-constexpr float RESULT_X = 44.0F;
-constexpr float RESULT_Y = 110.0F;
-constexpr float RESULT_WIDTH = 732.0F;
-constexpr float RESULT_LINE_HEIGHT = 21.0F;
-constexpr int RESULT_SIZE = 16;
+constexpr float SCREEN_WIDTH = 1280.0F;
+constexpr float SCREEN_HEIGHT = 720.0F;
+constexpr float SCREEN_EDGE = 1272.0F;
+constexpr float INSET = rendering::PANEL_INSET;
+/// Plates along the screen's edges run this far past it, so only their inner
+/// frame shows there.
+constexpr float HANG = 14.0F;
+/// The top band's plates hang from the top edge, clear of the map at y 70.
+constexpr float BAND_HEIGHT = 80.0F;
+constexpr float BAND_LINE = 30.0F;
+constexpr float BAND_SECOND_LINE = 44.0F;
+constexpr float DAY_RIGHT = 230.0F;
+constexpr float DAY_TEXT_X = INSET - HANG;
 constexpr int GOAL_SIZE = 13;
-/// The row under the day runs clear of the acid label above it.
-constexpr float GOAL_WIDTH = 300.0F;
+constexpr float GOAL_WIDTH = DAY_RIGHT - INSET - DAY_TEXT_X;
+constexpr float ACID_X = 236.0F;
+constexpr float ACID_Y = 3.0F;
+constexpr float ACID_WIDTH = 330.0F;
+/// The bar frame's corners, and its dark trough between y 18 and 40.
+constexpr float BAR_BORDER = 20.0F;
+constexpr float BAR_FRAME_HEIGHT = 56.0F;
+constexpr float TIME_X = 572.0F;
+/// The hand-off notice shares the time plate's lower line.
+constexpr float HAND_OFF_X = TIME_X + INSET;
+constexpr int HAND_OFF_SIZE = 13;
+constexpr float HAND_OFF_WIDTH = SCREEN_WIDTH + HANG - INSET - HAND_OFF_X;
+constexpr float NEXT_Y = 674.0F;
 constexpr float NEXT_TEXT_X = 70.0F;
 constexpr int NEXT_SIZE = 18;
 constexpr float LEGEND_X = 14.0F;
 constexpr int LEGEND_SIZE = 14;
-constexpr float SCREEN_EDGE = 1272.0F;
-constexpr float CARD_TEXT_X = 72.0F;
+/// The city's plates sit below the labels of the lowest map row.
+constexpr float CARD_Y = 540.0F;
+constexpr float CARD_HEIGHT = 140.0F;
+constexpr float CARD_WIDTH = 330.0F;
+/// Where a card's words start, right of the portrait.
+constexpr float CARD_COLUMN = 68.0F;
+constexpr float CARD_TOOL_TEXT = 30.0F;
+constexpr float CARD_SPARES = 130.0F;
 constexpr int CARD_TOOLS_SIZE = 13;
+constexpr float HEART_PITCH = 32.0F;
+/// Tool icons are narrow inside their 48 px, so they sit closer than that.
+constexpr float TOOL_PITCH = 24.0F;
+constexpr float PACK_X = 646.0F;
+constexpr float PACK_WIDTH = 326.0F;
+constexpr float INGREDIENT_PITCH = 40.0F;
+constexpr float CITY_EVENT_X = 972.0F;
+constexpr int EVENT_SIZE = 13;
+constexpr float EVENT_LINE_HEIGHT = 18.0F;
+/// The workshop's panels, under the kitchen floor at y 310.
+constexpr float PANEL_Y = 312.0F;
+constexpr float PANEL_HEIGHT = 368.0F;
+constexpr float APPRAISE_X = -HANG;
+constexpr float APPRAISE_WIDTH = 354.0F;
+constexpr float COOK_X = 340.0F;
+constexpr float COOK_WIDTH = 600.0F;
+constexpr float FEED_X = 940.0F;
+constexpr float FEED_WIDTH = 354.0F;
+constexpr int PANEL_TITLE_SIZE = 22;
+constexpr float SLOT = 64.0F;
+constexpr float SLOT_PITCH = 72.0F;
+constexpr std::size_t SLOTS_PER_ROW = 4;
+/// An icon sits in the middle of a slot.
+constexpr float SLOT_ICON = 8.0F;
+constexpr float JOB_Y = 612.0F;
+constexpr float BUTTON_HEIGHT = 44.0F;
+constexpr float BUTTON_TEXT_X = 12.0F;
+constexpr int JOB_SIZE = 15;
+constexpr float COOK_FIRST_ROW = 60.0F;
+constexpr float COOK_STATUS_X = 150.0F;
+constexpr float COOK_EATEN_X = 436.0F;
+constexpr float COOK_TASTE_X = 520.0F;
+constexpr int COOK_STATUS_SIZE = 13;
+constexpr int COOK_NAME_SIZE = 15;
+constexpr float COOK_ROW_HEIGHT = 19.0F;
+/// The offered dish's slot, forecast and key, under the recipes.
+constexpr float COOK_OFFER_Y = 262.0F;
+constexpr float COOK_OFFER_TEXT = 72.0F;
+constexpr int FORECAST_SIZE = 13;
+constexpr int EATEN_SIZE = 14;
+constexpr std::size_t EATEN_PER_LINE = 4;
+constexpr float FEED_BUTTON_Y = 562.0F;
+constexpr int FEED_NAME_SIZE = 16;
+/// The day's result, over the kitchen and clear of the two actors' heads.
+constexpr float RESULT_X = 30.0F;
+constexpr float RESULT_Y = 60.0F;
+constexpr float RESULT_WIDTH = 760.0F;
+constexpr float RESULT_LINE_HEIGHT = 21.0F;
+constexpr int RESULT_SIZE = 16;
 /// The workshop's event log, kept above the monster's bowl at y 157.
-constexpr float EVENT_Y = 64.0F;
-constexpr float EVENT_HEIGHT = 90.0F;
-/// The hand-off notice shares the top bar's lower row with the escape goal.
-constexpr float HAND_OFF_X = 330.0F;
-constexpr int HAND_OFF_SIZE = 14;
-constexpr float PAUSE_BOX_X = 170.0F;
-constexpr float PAUSE_BOX_Y = 40.0F;
-constexpr float PAUSE_BOX_WIDTH = 940.0F;
-constexpr float PAUSE_BOX_HEIGHT = 640.0F;
+constexpr float EVENT_X = 840.0F;
+constexpr float EVENT_Y = 46.0F;
+constexpr float EVENT_HEIGHT = 114.0F;
+constexpr float PAUSE_BOX_X = 150.0F;
+constexpr float PAUSE_BOX_Y = 20.0F;
+constexpr float PAUSE_BOX_WIDTH = 980.0F;
+constexpr float PAUSE_BOX_HEIGHT = 680.0F;
 constexpr float PAUSE_TEXT_X = 200.0F;
 constexpr float PAUSE_FIRST_X = 680.0F;
 constexpr float PAUSE_SECOND_X = 900.0F;
 constexpr float PAUSE_ROWS_Y = 170.0F;
 constexpr float PAUSE_ROW_HEIGHT = 40.0F;
 constexpr int PAUSE_ROW_SIZE = 20;
-constexpr float NOTICE_BOX_X = 290.0F;
-constexpr float NOTICE_BOX_Y = 240.0F;
-constexpr float NOTICE_BOX_WIDTH = 700.0F;
-constexpr float NOTICE_BOX_HEIGHT = 230.0F;
-constexpr float NOTICE_TEXT_X = 320.0F;
+constexpr float NOTICE_BOX_X = 280.0F;
+constexpr float NOTICE_BOX_Y = 230.0F;
+constexpr float NOTICE_BOX_WIDTH = 720.0F;
+constexpr float NOTICE_BOX_HEIGHT = 250.0F;
+constexpr float NOTICE_TEXT_X = 310.0F;
 constexpr int INTERRUPTION_TITLE_SIZE = 36;
 constexpr int INTERRUPTION_LINE_SIZE = 22;
+constexpr const char *NO_SPARE_TOOLS = "No spare tools";
+constexpr const char *UNIDENTIFIED_MARK = "? = not yet identified";
+constexpr std::array FEED_RULES{
+    "New and delicious food holds the acid back.",
+    "Anything else raises it. Full acid ends the run."};
+constexpr float SETUP_X = 200.0F;
+constexpr float SETUP_Y = 170.0F;
+constexpr float SETUP_WIDTH = 880.0F;
+constexpr float SETUP_HEIGHT = 120.0F;
+constexpr float SETUP_PITCH = 130.0F;
 
 /// The key each action is bound to in project.godot, one entry per key set.
 struct KeyLabels {
@@ -137,6 +195,14 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
 /// A human chef always holds the first key set's up and down.
 constexpr const char *CHOOSE_DISH_KEYS = "W/S";
 constexpr const char *EVERY_CHOOSE_DISH_KEY = "W/S or up/down";
+
+/// The menu keys project.godot binds, the same for both players.
+struct MenuKeys {
+  const char *pause;
+  const char *leave;
+};
+
+constexpr MenuKeys MENU_KEYS{.pause = "Esc", .leave = "M, then Enter"};
 
 String from(std::string_view text) {
   return String::utf8(text.data(), static_cast<std::int64_t>(text.size()));
@@ -267,6 +333,78 @@ std::map<std::uint32_t, std::uint32_t> pack_of(const GameView &view) {
     }
   }
   return pack;
+}
+
+/// An ingredient, tool or dish name and its icon in the art set.
+struct NamedIcon {
+  std::string_view name;
+  rendering::Image image;
+};
+
+/// Icons by the display names `survival::ingredient_name`, `tool_name` and
+/// `food_name` give.
+constexpr std::array ICONS{
+    NamedIcon{.name = "Tomato", .image = rendering::Image::IngredientTomato},
+    NamedIcon{.name = "Fish", .image = rendering::Image::IngredientFish},
+    NamedIcon{.name = "Kelp", .image = rendering::Image::IngredientKelp},
+    NamedIcon{.name = "Mushroom",
+              .image = rendering::Image::IngredientMushroom},
+    NamedIcon{.name = "Pickles", .image = rendering::Image::IngredientPickles},
+    NamedIcon{.name = "Meat", .image = rendering::Image::IngredientMeat},
+    NamedIcon{.name = "Truffle", .image = rendering::Image::IngredientTruffle},
+    NamedIcon{.name = "Magnifier", .image = rendering::Image::ToolMagnifier},
+    NamedIcon{.name = "Spatula", .image = rendering::Image::ToolSpatula},
+    NamedIcon{.name = "Wrench", .image = rendering::Image::ToolWrench},
+    NamedIcon{.name = "Mushroom Soup",
+              .image = rendering::Image::DishMushroomSoup},
+    NamedIcon{.name = "Fish Stew", .image = rendering::Image::DishFishStew},
+    NamedIcon{.name = "Kelp Wrap", .image = rendering::Image::DishKelpWrap},
+    NamedIcon{.name = "Meat Skewer", .image = rendering::Image::DishMeatSkewer},
+    NamedIcon{.name = "Truffle Roast",
+              .image = rendering::Image::DishTruffleRoast},
+    NamedIcon{.name = "Pickle Surprise",
+              .image = rendering::Image::DishPickleSurprise},
+    NamedIcon{.name = "Sea Salad", .image = rendering::Image::DishSeaSalad},
+    NamedIcon{.name = "Fish Pie", .image = rendering::Image::DishFishPie},
+    NamedIcon{.name = "Meat Stew", .image = rendering::Image::DishMeatStew},
+    NamedIcon{.name = "Truffle Soup",
+              .image = rendering::Image::DishTruffleSoup},
+    NamedIcon{.name = "Surf and Turf",
+              .image = rendering::Image::DishSurfAndTurf}};
+
+/// Draws the 48 px icon of `name` with its top-left corner at `at`; a name the
+/// art set has no icon for is written there instead.
+void paint_item(godot::Node2D &canvas, const rendering::Art &drawing,
+                std::string_view name, Vector2 at) {
+  const auto *icon = std::ranges::find(ICONS, name, &NamedIcon::name);
+  if (icon != ICONS.end()) {
+    drawing.image(canvas, icon->image, at);
+    return;
+  }
+  drawing.text(canvas, at.x, at.y + 28.0F, from(name), CARD_TOOLS_SIZE,
+               rendering::palette().white);
+}
+
+/// Words on a small opaque plate, for counts and marks drawn over an icon.
+void tag(godot::Node2D &canvas, const rendering::Art &drawing, float x,
+         float baseline, const String &text, int size, godot::Color tint) {
+  const auto height = static_cast<float>(size);
+  canvas.draw_rect(rect(x - 2.0F, baseline - height + 1.0F,
+                        drawing.text_width(text, size) + 4.0F, height + 3.0F),
+                   color(14, 12, 26, 1.0F));
+  drawing.text(canvas, x, baseline, text, size, tint);
+}
+
+/// A kit button with words centred on its height, dark on the yellow one.
+void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
+                  godot::Rect2 area, const String &text, int size,
+                  bool marked) {
+  const auto tones = rendering::palette();
+  drawing.button(canvas, area, marked);
+  drawing.text(canvas, area.position.x + BUTTON_TEXT_X,
+               area.position.y +
+                   (area.size.y + static_cast<float>(size)) / 2.0F - 3.0F,
+               text, size, marked ? tones.ink : tones.white);
 }
 
 String offered_step(const survival::Action &action, const KeyLabels &keys) {
@@ -482,67 +620,101 @@ float acid_ratio(const SurvivalFrame &frame) {
          static_cast<float>(frame.content.get().run.full_acid.value);
 }
 
+/// A gauge with a dark rim, for values too small for the kit's bar frame.
 void bar(godot::Node2D &canvas, float x, float y, float width, float height,
          float fill, godot::Color tint) {
+  canvas.draw_rect(rect(x - 2.0F, y - 2.0F, width + 4.0F, height + 4.0F),
+                   color(0, 0, 0, 1.0F));
   canvas.draw_rect(rect(x, y, width, height), color(44, 40, 66, 1.0F));
   canvas.draw_rect(rect(x, y, width * std::clamp(fill, 0.0F, 1.0F), height),
                    tint);
-}
-
-void frame_box(godot::Node2D &canvas, float x, float y, float width,
-               float height) {
-  canvas.draw_rect(rect(x, y, width, height), color(14, 12, 26, 0.94F));
-  canvas.draw_rect(rect(x, y, width, height), color(120, 104, 150, 1.0F), false,
-                   2.0F);
 }
 
 void paint_top_bar(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 62.0F), color(14, 12, 26, 1.0F));
-  drawing.text(canvas, 24.0F, 42.0F, "DAY " + number(progression.day), 30,
-               tones.gold);
-  drawing.text(canvas, 24.0F, 57.0F, escape_goal(), GOAL_SIZE, tones.muted);
-  drawing.text(canvas, 190.0F, 40.0F, "ACID", 24, color(150, 255, 120, 1.0F));
-  bar(canvas, 262.0F, 20.0F, 440.0F, 24.0F, acid_ratio(frame),
-      color(90, 226, 80, 1.0F));
-  drawing.text(canvas, 716.0F, 40.0F,
+  drawing.panel(canvas, rect(-HANG, -HANG, DAY_RIGHT + HANG, BAND_HEIGHT));
+  drawing.image(canvas, rendering::Image::IconDay, Vector2(DAY_TEXT_X, 2.0F));
+  drawing.text(canvas, DAY_TEXT_X + 38.0F, BAND_LINE,
+               "DAY " + number(progression.day), 24, tones.gold);
+  drawing.text(canvas, DAY_TEXT_X, BAND_SECOND_LINE, escape_goal(), GOAL_SIZE,
+               tones.muted);
+  drawing.frame(canvas, rendering::Image::BarFrame,
+                rect(ACID_X, ACID_Y, ACID_WIDTH, BAR_FRAME_HEIGHT), BAR_BORDER,
+                color(25, 24, 38, 1.0F));
+  drawing.image(canvas, rendering::Image::IconAcid,
+                Vector2(ACID_X + 14.0F, ACID_Y + 12.0F));
+  drawing.text(canvas, ACID_X + 48.0F, ACID_Y + 36.0F, "ACID", 16,
+               color(150, 255, 120, 1.0F));
+  bar(canvas, ACID_X + 92.0F, ACID_Y + 22.0F, ACID_WIDTH - 188.0F, 12.0F,
+      acid_ratio(frame), color(90, 226, 80, 1.0F));
+  drawing.text(canvas, ACID_X + ACID_WIDTH - 90.0F, ACID_Y + 36.0F,
                number(progression.acid.value) + " / " +
                    number(frame.content.get().run.full_acid.value),
-               22, tones.white);
-  drawing.text(canvas, 880.0F, 40.0F, "TIME LEFT", 20, tones.muted);
-  drawing.text(canvas, 990.0F, 44.0F, clock(progression.remaining_exploration),
-               32, tones.white);
-  drawing.text(canvas, 1140.0F, 20.0F, "Esc: pause", 16, tones.muted);
-  drawing.text(canvas, 1140.0F, 40.0F, "M: main menu", 16, tones.muted);
-  drawing.text(canvas, HAND_OFF_X, 57.0F, hand_off_notice(frame), HAND_OFF_SIZE,
-               tones.gold);
+               16, tones.white);
+  drawing.panel(canvas,
+                rect(TIME_X, -HANG, SCREEN_WIDTH + HANG - TIME_X, BAND_HEIGHT));
+  drawing.image(canvas, rendering::Image::IconClock,
+                Vector2(TIME_X + INSET - 2.0F, 2.0F));
+  drawing.text(canvas, TIME_X + INSET + 36.0F, BAND_LINE - 4.0F, "TIME LEFT",
+               14, tones.muted);
+  drawing.text(canvas, TIME_X + INSET + 116.0F, BAND_LINE,
+               clock(progression.remaining_exploration), 24, tones.white);
+  const String menu_keys = "Esc: pause   M: main menu";
+  drawing.text(canvas,
+               SCREEN_WIDTH + HANG - INSET - drawing.text_width(menu_keys, 14),
+               BAND_LINE - 4.0F, menu_keys, 14, tones.muted);
+  drawing.text(canvas, HAND_OFF_X, BAND_SECOND_LINE, hand_off_notice(frame),
+               HAND_OFF_SIZE, tones.gold);
 }
 
-void paint_hearts(godot::Node2D &canvas, float x, float y,
-                  std::uint8_t health) {
+void paint_hearts(godot::Node2D &canvas, const rendering::Art &drawing, float x,
+                  float y, std::uint8_t health) {
   for (std::uint8_t slot = 0; slot < 3; ++slot) {
-    const float left = x + static_cast<float>(slot) * 22.0F;
-    const auto tint =
-        slot < health ? color(235, 64, 84, 1.0F) : color(60, 50, 70, 1.0F);
-    canvas.draw_circle(Vector2(left + 5.0F, y + 5.0F), 5.0F, tint);
-    canvas.draw_circle(Vector2(left + 13.0F, y + 5.0F), 5.0F, tint);
-    canvas.draw_rect(rect(left + 2.0F, y + 6.0F, 14.0F, 7.0F), tint);
+    drawing.image(canvas,
+                  slot < health ? rendering::Image::HeartFull
+                                : rendering::Image::HeartEmpty,
+                  Vector2(x + static_cast<float>(slot) * HEART_PITCH, y));
   }
 }
 
-String spare_tools(const survival::ActorSnapshot &state) {
+/// Each spare tool an actor carries, as its icon with a count past one.
+void paint_spare_tools(godot::Node2D &canvas, const rendering::Art &drawing,
+                       const survival::ActorSnapshot &state, float x, float y) {
   std::map<std::uint32_t, std::uint32_t> spares;
   for (const auto spare : state.tools) {
     ++spares[spare.value];
   }
-  String tools;
-  for (const auto &[value, count] : spares) {
-    tools += from(survival::tool_name(survival::ToolId{value})) +
-             (count > 1 ? " x" + number(count) + "  " : String("  "));
+  if (spares.empty()) {
+    drawing.text(canvas, x, y + 30.0F, NO_SPARE_TOOLS, CARD_TOOLS_SIZE,
+                 rendering::palette().muted);
+    return;
   }
-  return spares.empty() ? String("No spare tools") : tools;
+  float left = x;
+  for (const auto &[value, count] : spares) {
+    paint_item(canvas, drawing, survival::tool_name(survival::ToolId{value}),
+               Vector2(left, y));
+    if (count > 1) {
+      tag(canvas, drawing, left + 26.0F, y + 46.0F, "x" + number(count),
+          CARD_TOOLS_SIZE, rendering::palette().white);
+    }
+    left += TOOL_PITCH;
+  }
+}
+
+/// A base tool's icon, name and condition, as a panel's header shows them.
+void paint_role_tool(godot::Node2D &canvas, const rendering::Art &drawing,
+                     const GameView &view, Actor actor, float x, float y) {
+  const auto tones = rendering::palette();
+  const auto tool = role_tool_state(view, actor);
+  paint_item(canvas, drawing, role_tool_name(actor), Vector2(x, y));
+  drawing.text(canvas, x + 46.0F, y + 22.0F, role_tool_name(actor), 14,
+               tones.white);
+  drawing.text(canvas, x + 46.0F, y + 40.0F, tool_condition(tool), 14,
+               tool == survival::ToolState::Intact
+                   ? tones.muted
+                   : color(255, 120, 110, 1.0F));
 }
 
 void paint_actor_card(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -555,67 +727,79 @@ void paint_actor_card(godot::Node2D &canvas, const rendering::Art &drawing,
       static_cast<float>(stamina_of(view, actor)) /
       static_cast<float>(
           frame.content.get().companion.exploration.maximum_stamina);
-  frame_box(canvas, x, CARD_Y, CARD_WIDTH, CARD_HEIGHT);
+  drawing.panel(canvas, rect(x, CARD_Y, CARD_WIDTH, CARD_HEIGHT));
+  const float left = x + INSET;
+  const float top = CARD_Y + INSET;
+  drawing.image(canvas, rendering::Image::ItemSlot, Vector2(left, top - 4.0F));
   drawing.image(canvas,
                 actor == Actor::Chef ? rendering::Image::ChefIdle
                                      : rendering::Image::AppraiserIdle,
-                godot::Vector2(x + 4.0F, CARD_Y + 10.0F));
-  const String who = keys ? "P" + number(*keys + 1) : String("AI");
-  drawing.text(canvas, x + 72.0F, CARD_Y + 22.0F,
-               String(actor_name(actor)) + "  " + who, 18, tones.white);
-  drawing.text(canvas, x + 196.0F, CARD_Y + 22.0F,
-               state.location == Location::City ? "in city" : "at base", 15,
-               state.location == Location::City ? tones.cyan : tones.gold);
-  paint_hearts(canvas, x + 72.0F, CARD_Y + 29.0F, state.health);
-  bar(canvas, x + 146.0F, CARD_Y + 31.0F, 120.0F, 10.0F, stamina,
+                Vector2(left, top - 8.0F));
+  const bool out = state.location == Location::City;
+  const String where = out ? "in city" : "at base";
+  drawing.text(canvas, left + (SLOT - drawing.text_width(where, 14)) / 2.0F,
+               top + 82.0F, where, 14, out ? tones.cyan : tones.gold);
+  const float column = left + CARD_COLUMN;
+  const String name = actor_name(actor);
+  drawing.text(canvas, column, top + 14.0F, name, 17, tones.white);
+  drawing.text(canvas, column + drawing.text_width(name, 17) + 8.0F,
+               top + 14.0F, keys ? "P" + number(*keys + 1) : String("AI"), 17,
+               keys ? tones.cyan : tones.muted);
+  paint_hearts(canvas, drawing, column - 2.0F, top + 18.0F, state.health);
+  bar(canvas, column + 104.0F, top + 30.0F,
+      CARD_WIDTH - 2.0F * INSET - CARD_COLUMN - 106.0F, 10.0F, stamina,
       color(96, 200, 250, 1.0F));
   const auto tool = role_tool_state(view, actor);
-  drawing.text(canvas, x + 72.0F, CARD_Y + 60.0F,
-               String(role_tool_name(actor)) + " " + tool_condition(tool), 15,
+  paint_item(canvas, drawing, role_tool_name(actor),
+             Vector2(column - 8.0F, top + 50.0F));
+  drawing.text(canvas, column + CARD_TOOL_TEXT, top + 68.0F,
+               role_tool_name(actor), CARD_TOOLS_SIZE, tones.white);
+  drawing.text(canvas, column + CARD_TOOL_TEXT, top + 86.0F,
+               tool_condition(tool), CARD_TOOLS_SIZE,
                tool == survival::ToolState::Intact
                    ? tones.muted
                    : color(255, 120, 110, 1.0F));
-  drawing.text(canvas, x + CARD_TEXT_X, CARD_Y + 77.0F, spare_tools(state),
-               CARD_TOOLS_SIZE, tones.muted);
+  paint_spare_tools(canvas, drawing, state, column + CARD_SPARES, top + 50.0F);
 }
 
 void paint_pack(godot::Node2D &canvas, const rendering::Art &drawing,
                 const GameView &view, float x) {
   const auto tones = rendering::palette();
-  frame_box(canvas, x, CARD_Y, 276.0F, CARD_HEIGHT);
-  drawing.text(canvas, x + 10.0F, CARD_Y + 18.0F, "PACK", 15, tones.gold);
-  drawing.text(canvas, x + 62.0F, CARD_Y + 18.0F, "? = not yet identified", 13,
+  drawing.panel(canvas, rect(x, CARD_Y, PACK_WIDTH, CARD_HEIGHT));
+  const float left = x + INSET;
+  const float top = CARD_Y + INSET;
+  drawing.text(canvas, left, top + 14.0F, "PACK", 15, tones.gold);
+  drawing.text(canvas, left + 50.0F, top + 14.0F, UNIDENTIFIED_MARK, 13,
                tones.muted);
   const auto pack = pack_of(view);
   if (pack.empty()) {
-    drawing.text(canvas, x + 10.0F, CARD_Y + 44.0F, "Empty", 15, tones.muted);
+    drawing.text(canvas, left, top + 50.0F, "Empty", 15, tones.muted);
   }
-  std::size_t index = 0;
+  float column = left;
   for (const auto &[value, count] : pack) {
     const auto ingredient = IngredientId{value};
-    const float column = static_cast<float>(index % 3) * 90.0F;
-    const std::size_t rows_above = index / 3;
-    const float row = static_cast<float>(rows_above) * 19.0F;
     const bool known = identified(view, ingredient);
-    drawing.text(canvas, x + 10.0F + column, CARD_Y + 38.0F + row,
-                 from(survival::ingredient_name(ingredient)) + " " +
-                     number(count) + (known ? "" : "?"),
-                 13, known ? tones.white : tones.gold);
-    ++index;
+    paint_item(canvas, drawing, survival::ingredient_name(ingredient),
+               Vector2(column, top + 20.0F));
+    const String label = number(count) + (known ? "" : "?");
+    drawing.text(canvas,
+                 column + (48.0F - drawing.text_width(label, 14)) / 2.0F,
+                 top + 86.0F, label, 14, known ? tones.white : tones.gold);
+    column += INGREDIENT_PITCH;
   }
 }
 
 void paint_events(godot::Node2D &canvas, const rendering::Art &drawing,
-                  const SurvivalFrame &frame, float x, float y, float height) {
-  const auto tones = rendering::palette();
+                  const SurvivalFrame &frame, godot::Rect2 area) {
   if (frame.events.empty()) {
     return;
   }
-  frame_box(canvas, x, y, 1280.0F - x - 8.0F, height);
-  float line = y + 19.0F;
+  drawing.panel(canvas, area);
+  float line = area.position.y + INSET + 13.0F;
   for (const auto &event : frame.events) {
-    drawing.text(canvas, x + 10.0F, line, describe(event), 15, tones.white);
-    line += 20.0F;
+    drawing.text(canvas, area.position.x + INSET, line, describe(event),
+                 EVENT_SIZE, rendering::palette().white);
+    line += EVENT_LINE_HEIGHT;
   }
 }
 
@@ -652,57 +836,62 @@ String key_legend(const SurvivalFrame &frame) {
 void paint_next_step(godot::Node2D &canvas, const rendering::Art &drawing,
                      const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  canvas.draw_rect(rect(0.0F, NEXT_Y, 1280.0F, 720.0F - NEXT_Y),
+  canvas.draw_rect(rect(0.0F, NEXT_Y, SCREEN_WIDTH, SCREEN_HEIGHT - NEXT_Y),
                    color(14, 12, 26, 1.0F));
-  drawing.text(canvas, 14.0F, NEXT_Y + 22.0F, "NEXT", 18, tones.cyan);
-  drawing.text(canvas, NEXT_TEXT_X, NEXT_Y + 22.0F, next_step(frame), NEXT_SIZE,
+  canvas.draw_rect(rect(0.0F, NEXT_Y, SCREEN_WIDTH, 2.0F),
+                   color(88, 84, 102, 1.0F));
+  drawing.text(canvas, LEGEND_X, NEXT_Y + 23.0F, "NEXT", NEXT_SIZE, tones.cyan);
+  drawing.text(canvas, NEXT_TEXT_X, NEXT_Y + 23.0F, next_step(frame), NEXT_SIZE,
                tones.white);
-  drawing.text(canvas, LEGEND_X, NEXT_Y + 40.0F, key_legend(frame), LEGEND_SIZE,
+  drawing.text(canvas, LEGEND_X, NEXT_Y + 41.0F, key_legend(frame), LEGEND_SIZE,
                tones.muted);
-}
-
-/// The panel's last line: whose job it is, in the keys of the player doing it.
-void paint_panel_job(godot::Node2D &canvas, const rendering::Art &drawing,
-                     float x, const String &job) {
-  drawing.text(canvas, x + PANEL_TEXT_MARGIN, PANEL_Y + PANEL_HEIGHT - 16.0F,
-               job, PANEL_JOB_SIZE, rendering::palette().cyan);
 }
 
 void paint_appraise_panel(godot::Node2D &canvas, const rendering::Art &drawing,
                           const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
-  frame_box(canvas, x, PANEL_Y, APPRAISE_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(canvas, drawing, x, appraise_job(frame));
-  drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "APPRAISE", 24, tones.gold);
-  drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
-               String("Magnifier ") +
-                   tool_condition(role_tool_state(view, Actor::Appraiser)),
-               16, tones.muted);
-  float y = PANEL_Y + 60.0F;
+  drawing.panel(canvas, rect(x, PANEL_Y, APPRAISE_WIDTH, PANEL_HEIGHT));
+  const float left = x + INSET;
+  const float top = PANEL_Y + INSET;
+  drawing.text(canvas, left, top + 26.0F, "APPRAISE", PANEL_TITLE_SIZE,
+               tones.gold);
+  paint_role_tool(canvas, drawing, view, Actor::Appraiser, left + 128.0F,
+                  top - 8.0F);
   const auto pack = pack_of(view);
   if (pack.empty()) {
-    drawing.text(canvas, x + 14.0F, y, "Nothing carried. Find ingredients.", 18,
-                 tones.muted);
+    drawing.text(canvas, left, top + 80.0F,
+                 "Nothing carried. Find ingredients.", 16, tones.muted);
   }
+  std::size_t index = 0;
   for (const auto &[value, count] : pack) {
     const auto ingredient = IngredientId{value};
-    const bool known = identified(view, ingredient);
-    drawing.text(canvas, x + 14.0F, y,
-                 from(survival::ingredient_name(ingredient)) + " x" +
-                     number(count),
-                 18, tones.white);
-    drawing.text(canvas, x + 200.0F, y, known ? "identified" : "unknown", 18,
-                 known ? tones.cyan : tones.gold);
-    y += 25.0F;
+    const std::size_t rows_above = index / SLOTS_PER_ROW;
+    const Vector2 slot(
+        left + static_cast<float>(index % SLOTS_PER_ROW) * SLOT_PITCH,
+        top + 48.0F + static_cast<float>(rows_above) * SLOT_PITCH);
+    drawing.image(canvas, rendering::Image::ItemSlot, slot);
+    paint_item(canvas, drawing, survival::ingredient_name(ingredient),
+               slot + Vector2(SLOT_ICON, SLOT_ICON));
+    tag(canvas, drawing, slot.x + 38.0F, slot.y + 56.0F, "x" + number(count),
+        13, tones.white);
+    if (!identified(view, ingredient)) {
+      tag(canvas, drawing, slot.x + 48.0F, slot.y + 20.0F, "?", 16, tones.gold);
+    }
+    ++index;
   }
-  const auto eaten = eaten_lines(view.workshop.eaten_ingredients);
-  float line = PANEL_Y + PANEL_HEIGHT - 56.0F;
-  for (const auto &text : eaten) {
-    drawing.text(canvas, x + PANEL_TEXT_MARGIN, line, text, EATEN_SIZE,
-                 tones.muted);
-    line += 18.0F;
+  drawing.text(canvas, left, top + 206.0F, UNIDENTIFIED_MARK, 13, tones.muted);
+  float line = top + 228.0F;
+  for (const auto &text : eaten_lines(view.workshop.eaten_ingredients)) {
+    drawing.text(canvas, left, line, text, EATEN_SIZE, tones.muted);
+    line += 17.0F;
   }
+  paint_button(canvas, drawing,
+               rect(left - 4.0F, JOB_Y, APPRAISE_WIDTH - 2.0F * INSET + 8.0F,
+                    BUTTON_HEIGHT),
+               appraise_job(frame), JOB_SIZE,
+               survival::key_set(frame.control, Actor::Appraiser) &&
+                   has_unidentified(view));
 }
 
 /// What stands between a recipe and the pot, ingredient by ingredient.
@@ -809,45 +998,55 @@ void paint_cook_panel(godot::Node2D &canvas, const rendering::Art &drawing,
                       const SurvivalFrame &frame, float x) {
   const auto tones = rendering::palette();
   const auto &view = frame.view;
-  frame_box(canvas, x, PANEL_Y, COOK_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(canvas, drawing, x, cook_job(frame));
-  drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "COOK", 24, tones.gold);
-  drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
-               String("Spatula ") +
-                   tool_condition(role_tool_state(view, Actor::Chef)),
-               16, tones.muted);
-  drawing.text(canvas, x + COOK_TASTE_X - 10.0F, PANEL_Y + 30.0F, "Taste", 14,
+  drawing.panel(canvas, rect(x, PANEL_Y, COOK_WIDTH, PANEL_HEIGHT));
+  const float left = x + INSET;
+  const float top = PANEL_Y + INSET;
+  drawing.text(canvas, left, top + 26.0F, "COOK", PANEL_TITLE_SIZE, tones.gold);
+  paint_role_tool(canvas, drawing, view, Actor::Chef, left + 80.0F, top - 8.0F);
+  drawing.text(canvas, left + COOK_TASTE_X - 4.0F, top + 40.0F, "Taste", 13,
                tones.muted);
-  float y = PANEL_Y + 60.0F;
+  float y = top + COOK_FIRST_ROW;
   const auto offered = offered_dish(frame);
   const auto &tuning = frame.content.get().companion.workshop;
   for (const auto &recipe : tuning.recipes) {
     const auto missing = needs_text(recipe_needs(view, recipe));
     if (offered == recipe.food) {
-      drawing.text(canvas, x + 3.0F, y, ">", 18, tones.gold);
+      drawing.text(canvas, left - 2.0F, y, ">", COOK_NAME_SIZE, tones.gold);
     }
     const auto &eaten = view.workshop.eaten_foods;
     const auto &rejected = view.workshop.rejected_foods;
     const bool repeat = std::ranges::find(eaten, recipe.food) != eaten.end();
     const bool hated =
         std::ranges::find(rejected, recipe.food) != rejected.end();
-    drawing.text(canvas, x + PANEL_TEXT_MARGIN, y,
+    drawing.text(canvas, left + 12.0F, y,
                  from(survival::food_name(recipe.food)), COOK_NAME_SIZE,
                  tones.white);
-    drawing.text(canvas, x + COOK_STATUS_X, y,
+    drawing.text(canvas, left + COOK_STATUS_X, y,
                  missing.is_empty() ? String("ready") : missing,
                  COOK_STATUS_SIZE,
                  missing.is_empty() ? tones.cyan : tones.muted);
     if (repeat) {
-      drawing.text(canvas, x + COOK_EATEN_X, y, hated ? "hated" : "eaten", 16,
-                   tones.gold);
+      drawing.text(canvas, left + COOK_EATEN_X, y, hated ? "hated" : "eaten",
+                   COOK_STATUS_SIZE, tones.gold);
     }
-    drawing.text(canvas, x + COOK_TASTE_X, y,
-                 number(survival::taste_of(recipe, tuning)), 16, tones.muted);
+    drawing.text(canvas, left + COOK_TASTE_X, y,
+                 number(survival::taste_of(recipe, tuning)), 14, tones.muted);
     y += COOK_ROW_HEIGHT;
   }
-  drawing.text(canvas, x + PANEL_TEXT_MARGIN, PANEL_Y + PANEL_HEIGHT - 36.0F,
+  const Vector2 slot(left, top + COOK_OFFER_Y);
+  drawing.image(canvas, rendering::Image::ItemSlot, slot);
+  if (offered) {
+    paint_item(canvas, drawing, survival::food_name(*offered),
+               slot + Vector2(SLOT_ICON, SLOT_ICON));
+  }
+  drawing.text(canvas, left + COOK_OFFER_TEXT, top + COOK_OFFER_Y + 14.0F,
                offered_forecast(frame), FORECAST_SIZE, tones.gold);
+  paint_button(canvas, drawing,
+               rect(left + COOK_OFFER_TEXT - 2.0F, JOB_Y,
+                    COOK_WIDTH - 2.0F * INSET - COOK_OFFER_TEXT + 6.0F,
+                    BUTTON_HEIGHT),
+               cook_job(frame), JOB_SIZE,
+               offered && survival::key_set(frame.control, Actor::Chef));
 }
 
 const char *reaction_text(survival::MonsterReaction reaction) {
@@ -864,11 +1063,18 @@ const char *reaction_text(survival::MonsterReaction reaction) {
   std::abort();
 }
 
-String feed_job(const SurvivalFrame &frame) {
+/// The feed panel's two keys: feed, and end the day unfed.
+std::array<String, 2> feed_jobs(const SurvivalFrame &frame) {
   const auto &keys = KEY_LABELS.at(0);
-  return key(keys.feed) + "Feed   " + key(keys.end_day) +
-         "End the day unfed: acid +" +
-         number(frame.content.get().companion.unfed_penalty.value);
+  return {key(keys.feed) + "Feed",
+          key(keys.end_day) + "End the day unfed: acid +" +
+              number(frame.content.get().companion.unfed_penalty.value)};
+}
+
+String dish_label(const survival::Dish &dish) {
+  return from(survival::food_name(dish.food)) +
+         (dish.quality == survival::DishQuality::Fine ? String(" (fine)")
+                                                      : String());
 }
 
 void paint_feed_panel(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -876,35 +1082,36 @@ void paint_feed_panel(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
-  frame_box(canvas, x, PANEL_Y, FEED_WIDTH, PANEL_HEIGHT);
-  paint_panel_job(canvas, drawing, x, feed_job(frame));
-  drawing.text(canvas, x + 14.0F, PANEL_Y + 30.0F, "FEED", 24, tones.gold);
-  drawing.text(canvas, x + 150.0F, PANEL_Y + 30.0F,
-               "Needs a score of " + number(tuning.satisfying_score), 16,
+  drawing.panel(canvas, rect(x, PANEL_Y, FEED_WIDTH, PANEL_HEIGHT));
+  const float left = x + INSET;
+  const float top = PANEL_Y + INSET;
+  drawing.text(canvas, left, top + 26.0F, "FEED", PANEL_TITLE_SIZE, tones.gold);
+  drawing.text(canvas, left + 76.0F, top + 26.0F,
+               "Needs a score of " + number(tuning.satisfying_score), 14,
                tones.muted);
-  float y = PANEL_Y + 60.0F;
+  drawing.text(canvas, left, top + 48.0F, FEED_RULES.at(0), 13, tones.muted);
+  drawing.text(canvas, left, top + 64.0F, FEED_RULES.at(1), 13, tones.muted);
+  float y = top + 76.0F;
   if (workshop.foods.empty()) {
-    drawing.text(canvas, x + 14.0F, y, "No dish stored. The chef must cook.",
-                 18, tones.muted);
-    y += 25.0F;
+    drawing.text(canvas, left, y + 24.0F, "No dish stored. The chef must cook.",
+                 15, tones.muted);
   }
   for (const auto &dish : workshop.foods) {
-    drawing.text(canvas, x + 14.0F, y,
-                 from(survival::food_name(dish.food)) +
-                     (dish.quality == survival::DishQuality::Fine
-                          ? String(" (fine)")
-                          : String()),
-                 18, tones.cyan);
-    y += 19.0F;
-    drawing.text(canvas, x + PANEL_TEXT_MARGIN, y,
-                 "Score " + score_word(frame, dish), FORECAST_SIZE, tones.gold);
-    y += 25.0F;
+    paint_item(canvas, drawing, survival::food_name(dish.food),
+               Vector2(left, y));
+    drawing.text(canvas, left + 54.0F, y + 20.0F, dish_label(dish),
+                 FEED_NAME_SIZE, tones.cyan);
+    drawing.text(canvas, left + 54.0F, y + 40.0F,
+                 "Score " + score_word(frame, dish), 14, tones.gold);
+    y += 50.0F;
   }
-  drawing.text(canvas, x + 14.0F, y + 12.0F,
-               "New and delicious food holds the acid back.", 16, tones.muted);
-  drawing.text(canvas, x + 14.0F, y + 34.0F,
-               "Anything else raises it. Full acid ends the run.", 16,
-               tones.muted);
+  const auto jobs = feed_jobs(frame);
+  const float width = FEED_WIDTH - 2.0F * INSET + 8.0F;
+  paint_button(canvas, drawing,
+               rect(left - 4.0F, FEED_BUTTON_Y, width, BUTTON_HEIGHT - 4.0F),
+               jobs.at(0), JOB_SIZE, dish_to_feed(frame));
+  paint_button(canvas, drawing, rect(left - 4.0F, JOB_Y, width, BUTTON_HEIGHT),
+               jobs.at(1), JOB_SIZE, false);
 }
 
 /// Draws over the kitchen and reads only snapshots, so no clock or key waits.
@@ -915,11 +1122,13 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
     return;
   }
   const auto tones = rendering::palette();
-  frame_box(canvas, RESULT_X, RESULT_Y, RESULT_WIDTH,
-            RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 8.0F);
-  float y = RESULT_Y + RESULT_LINE_HEIGHT;
+  drawing.panel(canvas,
+                rect(RESULT_X, RESULT_Y, RESULT_WIDTH,
+                     RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) +
+                         2.0F * INSET + 6.0F));
+  float y = RESULT_Y + INSET + static_cast<float>(RESULT_SIZE);
   for (const auto &line : lines) {
-    drawing.text(canvas, RESULT_X + 12.0F, y, line, RESULT_SIZE, tones.white);
+    drawing.text(canvas, RESULT_X + INSET, y, line, RESULT_SIZE, tones.white);
     y += RESULT_LINE_HEIGHT;
   }
 }
@@ -932,17 +1141,21 @@ void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
   paint_appraise_panel(canvas, drawing, frame, APPRAISE_X);
   paint_cook_panel(canvas, drawing, frame, COOK_X);
   paint_feed_panel(canvas, drawing, frame, FEED_X);
-  paint_events(canvas, drawing, frame, 840.0F, EVENT_Y, EVENT_HEIGHT);
+  paint_events(
+      canvas, drawing, frame,
+      rect(EVENT_X, EVENT_Y, SCREEN_WIDTH + HANG - EVENT_X, EVENT_HEIGHT));
 }
 
 void paint_city_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame) {
   rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
                         frame.control, out_of_reach(frame));
-  paint_actor_card(canvas, drawing, frame, Actor::Chef, 8.0F);
-  paint_actor_card(canvas, drawing, frame, Actor::Appraiser, 290.0F);
-  paint_pack(canvas, drawing, frame.view, 572.0F);
-  paint_events(canvas, drawing, frame, 854.0F, CARD_Y, CARD_HEIGHT);
+  paint_actor_card(canvas, drawing, frame, Actor::Chef, -HANG);
+  paint_actor_card(canvas, drawing, frame, Actor::Appraiser, CARD_WIDTH - HANG);
+  paint_pack(canvas, drawing, frame.view, PACK_X);
+  paint_events(canvas, drawing, frame,
+               rect(CITY_EVENT_X, CARD_Y, SCREEN_WIDTH + HANG - CITY_EVENT_X,
+                    CARD_HEIGHT));
 }
 
 String refusal_text(survival::Result result) {
@@ -1066,53 +1279,100 @@ FittedText fitted(const String &text, int size, float width) {
   return {.text = text, .size = size, .width = width};
 }
 
-void paint_pause_keys(godot::Node2D &canvas, const rendering::Art &drawing,
-                      const SurvivalFrame &frame) {
-  const auto tones = rendering::palette();
-  float y = PAUSE_ROWS_Y;
-  for (const auto &row : key_rows(frame)) {
-    drawing.text(canvas, PAUSE_TEXT_X, y, row.action, PAUSE_ROW_SIZE,
-                 tones.white);
-    drawing.text(canvas, PAUSE_FIRST_X, y, row.first, PAUSE_ROW_SIZE,
-                 tones.cyan);
-    drawing.text(canvas, PAUSE_SECOND_X, y, row.second, PAUSE_ROW_SIZE,
-                 tones.cyan);
-    y += PAUSE_ROW_HEIGHT;
+/// Every key of one player or of two, one row per action.
+std::vector<KeyRow> rows_for(bool together) {
+  const auto row = [together](const char *action, const char *first,
+                              const char *second) {
+    return KeyRow{.action = action,
+                  .first = first,
+                  .second = together ? String(second) : String()};
+  };
+  const auto &one = KEY_LABELS.at(0);
+  const auto &two = KEY_LABELS.at(1);
+  std::vector<KeyRow> rows;
+  if (together) {
+    rows.push_back(row("", "P1", "P2"));
   }
+  rows.push_back(row("Move", one.every_move, two.every_move));
+  rows.push_back(row("Run", one.run, two.run));
+  rows.push_back(row("Set out or return to base", one.travel, two.travel));
+  rows.push_back(row("Collect or repair; appraise or cook at base",
+                     one.interact, two.interact));
+  rows.push_back(row("Choose the dish, as the chef at base",
+                     EVERY_CHOOSE_DISH_KEY, "none"));
+  rows.push_back(
+      row("Replace a damaged base tool", one.replace_tool, two.replace_tool));
+  rows.push_back(row("Feed a stored dish", one.feed, two.feed));
+  rows.push_back(row("End the day unfed", one.end_day, two.end_day));
+  if (together) {
+    rows.push_back(row("Hand your actor to AI", one.leave, two.leave));
+    rows.push_back(
+        row("Swap actor, once one player is left", one.switch_actor, "none"));
+  } else {
+    rows.push_back(row("Swap actor", one.switch_actor, "none"));
+  }
+  return rows;
+}
+
+/// The name and the line under it of one choice of players.
+std::array<String, 2> setup_label(SetupEntry entry) {
+  switch (entry) {
+  case SetupEntry::Chef:
+    return {"CHEF", "You cook. AI appraises."};
+  case SetupEntry::Appraiser:
+    return {"APPRAISER", "You appraise. AI cooks."};
+  case SetupEntry::TwoPlayers:
+    return {"TWO PLAYERS", "P1 chef (WASD), P2 appraiser (IJKL)."};
+  }
+  std::abort();
 }
 
 } // namespace
 
-void paint_survival_setup(godot::Node2D &canvas,
-                          const rendering::Art &drawing) {
+void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
+                          SetupEntry selected) {
   const auto tones = rendering::palette();
-  rendering::paint_mouth(canvas, drawing, 0.1F);
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
-  drawing.text(canvas, 130.0F, 170.0F, "WHO IS PLAYING?", 46, tones.white);
-  drawing.image(canvas, rendering::Image::ChefIdle,
-                godot::Vector2(130.0F, 220.0F), 2.0F);
-  drawing.text(canvas, 130.0F, 410.0F, "1   CHEF", 32, tones.gold);
-  drawing.text(canvas, 130.0F, 444.0F, "You cook. AI appraises.", 20,
+  drawing.image(canvas, rendering::Image::TitleKeyArt, Vector2());
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(14, 12, 26, 0.45F));
+  drawing.panel(canvas, rect(SETUP_X, 30.0F, SETUP_WIDTH, 112.0F));
+  drawing.text(canvas, SETUP_X + 40.0F, 104.0F, "WHO IS PLAYING?", 40,
                tones.white);
-  drawing.image(canvas, rendering::Image::AppraiserIdle,
-                godot::Vector2(530.0F, 220.0F), 2.0F);
-  drawing.text(canvas, 530.0F, 410.0F, "2   APPRAISER", 32,
-               color(150, 255, 120, 1.0F));
-  drawing.text(canvas, 530.0F, 444.0F, "You appraise. AI cooks.", 20,
-               tones.white);
-  drawing.image(canvas, rendering::Image::ChefIdle,
-                godot::Vector2(890.0F, 220.0F), 2.0F);
-  drawing.image(canvas, rendering::Image::AppraiserIdle,
-                godot::Vector2(1000.0F, 220.0F), 2.0F);
-  drawing.text(canvas, 890.0F, 410.0F, "3   TWO PLAYERS", 32, tones.cyan);
-  drawing.text(canvas, 890.0F, 444.0F, "P1 chef (WASD), P2 appraiser (IJKL).",
-               20, tones.white);
-  drawing.text(canvas, 130.0F, 560.0F,
+  float y = SETUP_Y;
+  std::size_t number_key = 1;
+  for (const SetupEntry entry : SETUP_ENTRIES) {
+    const bool chosen = entry == selected;
+    drawing.button(canvas, rect(SETUP_X, y, SETUP_WIDTH, SETUP_HEIGHT), chosen);
+    const auto label = setup_label(entry);
+    if (entry == SetupEntry::TwoPlayers) {
+      drawing.image(canvas, rendering::Image::ChefIdle,
+                    Vector2(SETUP_X + 16.0F, y + 28.0F));
+      drawing.image(canvas, rendering::Image::AppraiserIdle,
+                    Vector2(SETUP_X + 72.0F, y + 28.0F));
+    } else {
+      drawing.image(canvas,
+                    entry == SetupEntry::Chef ? rendering::Image::ChefIdle
+                                              : rendering::Image::AppraiserIdle,
+                    Vector2(SETUP_X + 44.0F, y + 28.0F));
+    }
+    drawing.text(canvas, SETUP_X + 170.0F, y + 54.0F,
+                 number(number_key) + "   " + label.at(0), 30,
+                 chosen ? tones.ink : tones.white);
+    drawing.text(canvas, SETUP_X + 170.0F, y + 92.0F, label.at(1), 20,
+                 chosen ? tones.ink : tones.white);
+    y += SETUP_PITCH;
+    ++number_key;
+  }
+  drawing.panel(canvas, rect(-HANG, 572.0F, SCREEN_WIDTH + 2.0F * HANG,
+                             SCREEN_HEIGHT - 572.0F + HANG));
+  drawing.text(canvas, SETUP_X - 70.0F, 626.0F,
                "Gather by day, appraise and cook at base, and feed the monster "
                "before the acid wrecks the city.",
-               22, tones.white);
-  drawing.text(canvas, 130.0F, 640.0F, "Press 1, 2 or 3.   M: main menu", 22,
-               tones.muted);
+               20, tones.white);
+  drawing.text(canvas, SETUP_X - 70.0F, 666.0F,
+               "W/S or up/down: choose     Enter: select     1, 2, 3: jump "
+               "straight in     M: main menu",
+               18, tones.muted);
 }
 
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -1132,27 +1392,40 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(14, 12, 26, 0.6F));
   if (interruption == Interruption::Paused) {
-    frame_box(canvas, PAUSE_BOX_X, PAUSE_BOX_Y, PAUSE_BOX_WIDTH,
-              PAUSE_BOX_HEIGHT);
-    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 50.0F, text.at(0),
+    drawing.panel(canvas, rect(PAUSE_BOX_X, PAUSE_BOX_Y, PAUSE_BOX_WIDTH,
+                               PAUSE_BOX_HEIGHT));
+    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 70.0F, text.at(0),
                  INTERRUPTION_TITLE_SIZE, tones.gold);
-    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 85.0F, text.at(1),
+    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + 105.0F, text.at(1),
                  INTERRUPTION_LINE_SIZE, tones.white);
-    paint_pause_keys(canvas, drawing, frame);
-    drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + PAUSE_BOX_HEIGHT - 20.0F,
-                 text.at(2), INTERRUPTION_LINE_SIZE, tones.cyan);
+    paint_key_rows(canvas, drawing, key_rows(frame), PAUSE_ROWS_Y,
+                   PAUSE_ROW_HEIGHT);
+    paint_button(canvas, drawing,
+                 rect(PAUSE_TEXT_X - BUTTON_TEXT_X,
+                      PAUSE_BOX_Y + PAUSE_BOX_HEIGHT - 66.0F,
+                      drawing.text_width(text.at(2), INTERRUPTION_LINE_SIZE) +
+                          2.0F * BUTTON_TEXT_X,
+                      BUTTON_HEIGHT),
+                 text.at(2), INTERRUPTION_LINE_SIZE, false);
     return;
   }
-  frame_box(canvas, NOTICE_BOX_X, NOTICE_BOX_Y, NOTICE_BOX_WIDTH,
-            NOTICE_BOX_HEIGHT);
-  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 60.0F, text.at(0),
+  drawing.panel(canvas, rect(NOTICE_BOX_X, NOTICE_BOX_Y, NOTICE_BOX_WIDTH,
+                             NOTICE_BOX_HEIGHT));
+  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 70.0F, text.at(0),
                INTERRUPTION_TITLE_SIZE, tones.gold);
-  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 115.0F, text.at(1),
+  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 120.0F, text.at(1),
                INTERRUPTION_LINE_SIZE, tones.white);
-  drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + 180.0F, text.at(2),
-               INTERRUPTION_LINE_SIZE, tones.cyan);
+  if (!text.at(2).is_empty()) {
+    paint_button(canvas, drawing,
+                 rect(NOTICE_TEXT_X - BUTTON_TEXT_X, NOTICE_BOX_Y + 160.0F,
+                      drawing.text_width(text.at(2), INTERRUPTION_LINE_SIZE) +
+                          2.0F * BUTTON_TEXT_X,
+                      BUTTON_HEIGHT),
+                 text.at(2), INTERRUPTION_LINE_SIZE, false);
+  }
 }
 
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -1205,39 +1478,44 @@ bool recipe_ready(const GameView &view, const survival::Recipe &recipe) {
 }
 
 std::vector<KeyRow> key_rows(const SurvivalFrame &frame) {
-  const bool together = survival::key_set(frame.control, Actor::Chef) &&
-                        survival::key_set(frame.control, Actor::Appraiser);
-  const auto row = [together](const char *action, const char *first,
-                              const char *second) {
-    return KeyRow{.action = action,
-                  .first = first,
-                  .second = together ? String(second) : String()};
-  };
-  const auto &one = KEY_LABELS.at(0);
-  const auto &two = KEY_LABELS.at(1);
-  std::vector<KeyRow> rows;
-  if (together) {
-    rows.push_back(row("", "P1", "P2"));
-  }
-  rows.push_back(row("Move", one.every_move, two.every_move));
-  rows.push_back(row("Run", one.run, two.run));
-  rows.push_back(row("Set out or return to base", one.travel, two.travel));
-  rows.push_back(row("Collect or repair; appraise or cook at base",
-                     one.interact, two.interact));
-  rows.push_back(row("Choose the dish, as the chef at base",
-                     EVERY_CHOOSE_DISH_KEY, "none"));
-  rows.push_back(
-      row("Replace a damaged base tool", one.replace_tool, two.replace_tool));
-  rows.push_back(row("Feed a stored dish", one.feed, two.feed));
-  rows.push_back(row("End the day unfed", one.end_day, two.end_day));
-  if (together) {
-    rows.push_back(row("Hand your actor to AI", one.leave, two.leave));
-    rows.push_back(
-        row("Swap actor, once one player is left", one.switch_actor, "none"));
-  } else {
-    rows.push_back(row("Swap actor", one.switch_actor, "none"));
-  }
+  return rows_for(survival::key_set(frame.control, Actor::Chef) &&
+                  survival::key_set(frame.control, Actor::Appraiser));
+}
+
+std::vector<KeyRow> control_rows() {
+  auto rows = rows_for(true);
+  rows.push_back({.action = "Pause or continue",
+                  .first = MENU_KEYS.pause,
+                  .second = MENU_KEYS.pause});
+  rows.push_back({.action = "Leave the run; Esc cancels",
+                  .first = MENU_KEYS.leave,
+                  .second = MENU_KEYS.leave});
   return rows;
+}
+
+void paint_key_rows(godot::Node2D &canvas, const rendering::Art &drawing,
+                    const std::vector<KeyRow> &rows, float top,
+                    float row_height) {
+  const auto tones = rendering::palette();
+  float y = top;
+  for (const auto &row : rows) {
+    // The heading row names the players, not keys.
+    if (row.action.is_empty()) {
+      drawing.text(canvas, PAUSE_FIRST_X, y, row.first, PAUSE_ROW_SIZE,
+                   tones.gold);
+      drawing.text(canvas, PAUSE_SECOND_X, y, row.second, PAUSE_ROW_SIZE,
+                   tones.gold);
+      y += row_height;
+      continue;
+    }
+    drawing.text(canvas, PAUSE_TEXT_X, y, row.action, PAUSE_ROW_SIZE,
+                 tones.white);
+    drawing.text(canvas, PAUSE_FIRST_X, y, row.first, PAUSE_ROW_SIZE,
+                 tones.cyan);
+    drawing.text(canvas, PAUSE_SECOND_X, y, row.second, PAUSE_ROW_SIZE,
+                 tones.cyan);
+    y += row_height;
+  }
 }
 
 std::array<String, 3> interruption_text(Interruption interruption) {
@@ -1411,59 +1689,83 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
 }
 
 std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
-  const float job_inset = 2.0F * PANEL_TEXT_MARGIN;
+  const float appraise_inner = APPRAISE_WIDTH - 2.0F * INSET;
+  const float feed_inner = FEED_WIDTH - 2.0F * INSET;
   std::vector<FittedText> lines;
   lines.push_back(fitted(escape_goal(), GOAL_SIZE, GOAL_WIDTH));
   for (const auto &line : day_result(frame)) {
-    lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 24.0F));
+    lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 2.0F * INSET));
   }
   std::vector<IngredientId> every_ingredient;
   for (const auto &flavor : frame.content.get().companion.workshop.flavors) {
     every_ingredient.push_back(flavor.ingredient);
   }
   for (const auto &line : eaten_lines(every_ingredient)) {
-    lines.push_back(fitted(line, EATEN_SIZE, APPRAISE_WIDTH - job_inset));
+    lines.push_back(fitted(line, EATEN_SIZE, appraise_inner));
   }
   lines.push_back(
       fitted(next_step(frame), NEXT_SIZE, SCREEN_EDGE - NEXT_TEXT_X));
   lines.push_back(
       fitted(key_legend(frame), LEGEND_SIZE, SCREEN_EDGE - LEGEND_X));
   lines.push_back(
-      fitted(hand_off_notice(frame), HAND_OFF_SIZE, SCREEN_EDGE - HAND_OFF_X));
-  for (const auto &row : key_rows(frame)) {
-    lines.push_back(fitted(row.action, PAUSE_ROW_SIZE,
-                           PAUSE_FIRST_X - PAUSE_TEXT_X - 8.0F));
-    lines.push_back(fitted(row.first, PAUSE_ROW_SIZE,
-                           PAUSE_SECOND_X - PAUSE_FIRST_X - 8.0F));
-    lines.push_back(
-        fitted(row.second, PAUSE_ROW_SIZE,
-               PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_SECOND_X - 8.0F));
+      fitted(hand_off_notice(frame), HAND_OFF_SIZE, HAND_OFF_WIDTH));
+  // The city's log is the narrower of the two.
+  for (const auto &event : frame.events) {
+    lines.push_back(fitted(describe(event), EVENT_SIZE,
+                           SCREEN_WIDTH + HANG - INSET - CITY_EVENT_X - INSET));
+  }
+  for (const auto &rows : {key_rows(frame), control_rows()}) {
+    for (const auto &row : rows) {
+      lines.push_back(fitted(row.action, PAUSE_ROW_SIZE,
+                             PAUSE_FIRST_X - PAUSE_TEXT_X - 8.0F));
+      lines.push_back(fitted(row.first, PAUSE_ROW_SIZE,
+                             PAUSE_SECOND_X - PAUSE_FIRST_X - 8.0F));
+      lines.push_back(
+          fitted(row.second, PAUSE_ROW_SIZE,
+                 PAUSE_BOX_X + PAUSE_BOX_WIDTH - INSET - PAUSE_SECOND_X));
+    }
   }
   const float notice_width =
-      NOTICE_BOX_X + NOTICE_BOX_WIDTH - NOTICE_TEXT_X - 8.0F;
+      NOTICE_BOX_X + NOTICE_BOX_WIDTH - INSET - NOTICE_TEXT_X;
   for (const auto interruption :
        {Interruption::ConfirmLeave, Interruption::Resuming}) {
     const auto text = interruption_text(interruption);
     lines.push_back(fitted(text.at(0), INTERRUPTION_TITLE_SIZE, notice_width));
     lines.push_back(fitted(text.at(1), INTERRUPTION_LINE_SIZE, notice_width));
-    lines.push_back(fitted(text.at(2), INTERRUPTION_LINE_SIZE, notice_width));
+    lines.push_back(fitted(text.at(2), INTERRUPTION_LINE_SIZE,
+                           notice_width - BUTTON_TEXT_X));
   }
+  // Words on a button stay inside its rim.
+  const float button = 2.0F * BUTTON_TEXT_X;
   lines.push_back(
-      fitted(appraise_job(frame), PANEL_JOB_SIZE, APPRAISE_WIDTH - job_inset));
+      fitted(appraise_job(frame), JOB_SIZE, appraise_inner + 8.0F - button));
   lines.push_back(
-      fitted(cook_job(frame), PANEL_JOB_SIZE, COOK_WIDTH - job_inset));
-  lines.push_back(
-      fitted(feed_job(frame), PANEL_JOB_SIZE, FEED_WIDTH - job_inset));
-  for (const auto actor : ACTORS) {
-    lines.push_back(fitted(spare_tools(state_of(frame.view, actor)),
-                           CARD_TOOLS_SIZE, CARD_WIDTH - CARD_TEXT_X));
+      fitted(cook_job(frame), JOB_SIZE,
+             COOK_WIDTH - 2.0F * INSET - COOK_OFFER_TEXT + 6.0F - button));
+  for (const auto &job : feed_jobs(frame)) {
+    lines.push_back(fitted(job, JOB_SIZE, feed_inner + 8.0F - button));
   }
-  for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
+  for (const auto &rule : FEED_RULES) {
+    lines.push_back(fitted(rule, 13, feed_inner));
+  }
+  const float card_tools =
+      CARD_WIDTH - 2.0F * INSET - CARD_COLUMN - CARD_TOOL_TEXT;
+  lines.push_back(fitted(NO_SPARE_TOOLS, CARD_TOOLS_SIZE,
+                         card_tools - (CARD_SPARES - CARD_TOOL_TEXT)));
+  for (const auto state :
+       {survival::ToolState::Intact, survival::ToolState::Damaged}) {
+    lines.push_back(fitted(tool_condition(state), CARD_TOOLS_SIZE,
+                           CARD_SPARES - CARD_TOOL_TEXT - 2.0F));
+  }
+  const auto &tuning = frame.content.get().companion.workshop;
+  for (const auto &recipe : tuning.recipes) {
     lines.push_back(fitted(cook_forecast(frame, recipe.food), FORECAST_SIZE,
-                           COOK_WIDTH - job_inset));
+                           COOK_WIDTH - 2.0F * INSET - COOK_OFFER_TEXT));
     lines.push_back(fitted(from(survival::food_name(recipe.food)),
-                           COOK_NAME_SIZE,
-                           COOK_STATUS_X - PANEL_TEXT_MARGIN - 2.0F));
+                           COOK_NAME_SIZE, COOK_STATUS_X - 12.0F - 4.0F));
+    lines.push_back(fitted(dish_label({.food = recipe.food,
+                                       .quality = survival::DishQuality::Fine}),
+                           FEED_NAME_SIZE, feed_inner - 54.0F));
     const auto subsets = std::size_t{1} << recipe.ingredients.size();
     for (std::size_t held = 0; held < subsets; ++held) {
       for (std::size_t known = 0; known < subsets; ++known) {

@@ -1,6 +1,6 @@
 #include "menus.hpp"
 
-#include "../rendering/survival.hpp"
+#include "survival.hpp"
 
 #include <cstddef>
 #include <cstdlib>
@@ -11,47 +11,27 @@ namespace {
 using rendering::color;
 using rendering::rect;
 
-constexpr float ENTRY_X = 150.0F;
-constexpr float ENTRY_Y = 370.0F;
-constexpr float ENTRY_HEIGHT = 80.0F;
-constexpr float CONTROLS_ROW_Y = 160.0F;
-constexpr float CONTROLS_ROW_HEIGHT = 36.0F;
-constexpr int CONTROLS_ROW_SIZE = 20;
-
-/// One action and its key for each player, as project.godot binds them.
-struct ControlRow {
-  const char *action;
-  const char *first;
-  const char *second;
-};
-
-constexpr std::array CONTROL_ROWS{
-    ControlRow{.action = "", .first = "Player 1", .second = "Player 2"},
-    ControlRow{.action = "Move", .first = "WASD or arrows", .second = "IJKL"},
-    ControlRow{.action = "Run", .first = "Shift", .second = "H"},
-    ControlRow{
-        .action = "Set out or return to base", .first = "Q", .second = "U"},
-    ControlRow{.action = "Collect or repair; appraise or cook at base",
-               .first = "E",
-               .second = "O"},
-    ControlRow{.action = "Choose the dish, as the chef at base",
-               .first = "W/S or up/down",
-               .second = "none"},
-    ControlRow{
-        .action = "Replace a damaged base tool", .first = "R", .second = "P"},
-    ControlRow{.action = "Feed a stored dish", .first = "F", .second = "["},
-    ControlRow{.action = "End the day unfed", .first = "G", .second = "]"},
-    ControlRow{.action = "Swap actor, playing alone",
-               .first = "Tab",
-               .second = "none"},
-    ControlRow{.action = "Hand your actor to AI, playing together",
-               .first = "X",
-               .second = "N"},
-    ControlRow{.action = "Pause or continue", .first = "Esc", .second = "Esc"},
-    ControlRow{.action = "Leave the run; Esc cancels",
-               .first = "M, then Enter",
-               .second = "M, then Enter"},
-};
+constexpr float SCREEN_WIDTH = 1280.0F;
+constexpr float SCREEN_HEIGHT = 720.0F;
+/// Plates along the screen's edges run this far past it.
+constexpr float HANG = 14.0F;
+/// The logo's lettering starts 52 px into its picture.
+constexpr float LOGO_X = 24.0F;
+constexpr float LOGO_Y = -44.0F;
+constexpr float ENTRY_X = 790.0F;
+constexpr float ENTRY_Y = 300.0F;
+constexpr float ENTRY_WIDTH = 460.0F;
+constexpr float ENTRY_HEIGHT = 88.0F;
+constexpr float ENTRY_PITCH = 96.0F;
+constexpr float ENTRY_TEXT_X = 24.0F;
+constexpr float FOOT_Y = 604.0F;
+constexpr float CONTROLS_X = 150.0F;
+constexpr float CONTROLS_Y = 20.0F;
+constexpr float CONTROLS_WIDTH = 980.0F;
+constexpr float CONTROLS_HEIGHT = 680.0F;
+constexpr float CONTROLS_TEXT_X = 200.0F;
+constexpr float CONTROLS_ROW_Y = 140.0F;
+constexpr float CONTROLS_ROW_HEIGHT = 38.0F;
 
 const char *entry_label(TitleEntry entry) {
   switch (entry) {
@@ -77,11 +57,12 @@ const char *entry_summary(TitleEntry entry) {
   std::abort();
 }
 
-/// The monster's mouth behind a dark veil, so menu text reads over it.
+/// The title key art under a dark veil, so a page's panels stand out on it.
 void backdrop(godot::Node2D &canvas, const rendering::Art &drawing,
               float veil) {
-  rendering::paint_mouth(canvas, drawing, 0.1F);
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, veil));
+  drawing.image(canvas, rendering::Image::TitleKeyArt, godot::Vector2());
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(14, 12, 26, veil));
 }
 
 } // namespace
@@ -89,53 +70,51 @@ void backdrop(godot::Node2D &canvas, const rendering::Art &drawing,
 void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                  TitleEntry selected) {
   const auto tones = rendering::palette();
-  backdrop(canvas, drawing, 0.6F);
-  drawing.text(canvas, 130.0F, 200.0F, "MONSTER MOUTH ESCAPE", 64, tones.white);
-  drawing.text(canvas, 134.0F, 252.0F,
-               "Gather, cook, and feed the monster that swallowed the city.",
-               24, tones.muted);
-  drawing.image(canvas, rendering::Image::ChefIdle,
-                godot::Vector2(880.0F, 330.0F), 2.0F);
-  drawing.image(canvas, rendering::Image::AppraiserIdle,
-                godot::Vector2(1040.0F, 330.0F), 2.0F);
+  drawing.image(canvas, rendering::Image::TitleKeyArt, godot::Vector2());
+  drawing.image(canvas, rendering::Image::TitleLogo,
+                godot::Vector2(LOGO_X, LOGO_Y));
   float y = ENTRY_Y;
   std::size_t number = 1;
   for (const TitleEntry entry : TITLE_ENTRIES) {
     const bool chosen = entry == selected;
-    if (chosen) {
-      canvas.draw_rect(rect(ENTRY_X - 30.0F, y - 42.0F, 640.0F, 72.0F),
-                       color(14, 12, 26, 0.85F));
-      canvas.draw_rect(rect(ENTRY_X - 30.0F, y - 42.0F, 6.0F, 72.0F),
-                       tones.cyan);
-    }
-    drawing.text(canvas, ENTRY_X, y,
+    drawing.button(canvas, rect(ENTRY_X, y, ENTRY_WIDTH, ENTRY_HEIGHT), chosen);
+    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 40.0F,
                  godot::String::num_int64(static_cast<std::int64_t>(number)) +
                      "   " + entry_label(entry),
-                 34, chosen ? tones.cyan : tones.white);
-    drawing.text(canvas, ENTRY_X + 48.0F, y + 22.0F, entry_summary(entry), 18,
-                 chosen ? tones.white : tones.muted);
-    y += ENTRY_HEIGHT;
+                 30, chosen ? tones.ink : tones.white);
+    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 64.0F,
+                 entry_summary(entry), 15, chosen ? tones.ink : tones.white);
+    y += ENTRY_PITCH;
     ++number;
   }
-  drawing.text(canvas, 130.0F, 680.0F,
+  drawing.panel(canvas, rect(-HANG, FOOT_Y, SCREEN_WIDTH + 2.0F * HANG,
+                             SCREEN_HEIGHT - FOOT_Y + HANG));
+  drawing.text(canvas, 30.0F, FOOT_Y + 52.0F,
+               "Gather, cook, and feed the monster that swallowed the city.",
+               22, tones.white);
+  drawing.text(canvas, 30.0F, FOOT_Y + 90.0F,
                "W/S or up/down: choose     Enter: select     1, 2, 3: jump "
                "straight in",
-               20, tones.white);
+               18, tones.muted);
 }
 
 void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
   const auto tones = rendering::palette();
-  backdrop(canvas, drawing, 0.9F);
-  drawing.text(canvas, 190.0F, 110.0F, "CONTROLS", 46, tones.white);
-  float y = CONTROLS_ROW_Y;
-  for (const ControlRow &row : CONTROL_ROWS) {
-    drawing.text(canvas, 190.0F, y, row.action, CONTROLS_ROW_SIZE, tones.white);
-    drawing.text(canvas, 700.0F, y, row.first, CONTROLS_ROW_SIZE, tones.cyan);
-    drawing.text(canvas, 930.0F, y, row.second, CONTROLS_ROW_SIZE, tones.cyan);
-    y += CONTROLS_ROW_HEIGHT;
-  }
-  drawing.text(canvas, 190.0F, 680.0F, "Esc or M: back to the title", 22,
+  backdrop(canvas, drawing, 0.5F);
+  drawing.panel(canvas,
+                rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 70.0F, "CONTROLS", 40,
                tones.gold);
+  paint_key_rows(canvas, drawing, control_rows(), CONTROLS_ROW_Y,
+                 CONTROLS_ROW_HEIGHT);
+  const godot::String back = "Esc or M: back to the title";
+  drawing.button(canvas,
+                 rect(CONTROLS_TEXT_X - 12.0F,
+                      CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
+                      drawing.text_width(back, 22) + 24.0F, 44.0F),
+                 false);
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
+               back, 22, tones.gold);
 }
 
 } // namespace neocity::hud

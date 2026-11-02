@@ -19,19 +19,19 @@ namespace neocity::session {
 /// players, and the survival game.
 enum class Screen : std::uint8_t { Main, Controls, SurvivalSetup, Survival };
 
-/// A press that moves the title screen's cursor.
+/// A press that moves the cursor of the title screen or the choice of players.
 enum class MenuStep : std::uint8_t { Up, Down };
 
 /// One host frame's sampled actions.
 struct Command {
   /// Menu option pressed this frame, numbered from 1.
   std::optional<std::size_t> option;
-  /// The title cursor's up or down press this frame.
+  /// A menu cursor's up or down press this frame.
   std::optional<MenuStep> step;
   bool menu = false;
   /// The pause key, which also goes back from a menu.
   bool pause = false;
-  /// The key that accepts a question on screen or the title's marked entry.
+  /// The key that accepts a question on screen or a menu's marked entry.
   bool confirm = false;
   bool controls_held = false;
   /// Each actor's sampled keys, chef first, while a survival run is open.
@@ -86,7 +86,9 @@ private:
   void enter(Screen destination);
   void choose(std::size_t option);
   void select(hud::TitleEntry entry);
+  void select(hud::SetupEntry entry);
   void advance_title(const Command &command);
+  void advance_setup(const Command &command);
   void start_run(survival::ControlMap control);
   void advance_run(SurvivalRun &open, double delta, const Command &command);
   void advance_interruption(hud::Interruption open, const Command &command);
@@ -102,6 +104,8 @@ private:
   Screen screen = Screen::Main;
   /// The marked title entry, an index into `hud::TITLE_ENTRIES`.
   std::size_t cursor = 0;
+  /// The marked choice of players, an index into `hud::SETUP_ENTRIES`.
+  std::size_t setup_cursor = 0;
   bool waiting_for_release = true;
 };
 
