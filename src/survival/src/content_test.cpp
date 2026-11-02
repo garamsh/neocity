@@ -161,7 +161,7 @@ ObjectSnapshot object_of(const WorldSnapshot &world, ObjectId id) {
   return *found;
 }
 
-/// A run in which only exploration time passes.
+/// A run in which only world time passes.
 std::vector<WorldProgression> time_passing() {
   std::vector<WorldProgression> moments;
   for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
@@ -171,7 +171,7 @@ std::vector<WorldProgression> time_passing() {
   return moments;
 }
 
-/// A run in which only acid rises, as when no one sets out.
+/// A run in which only acid rises.
 std::vector<WorldProgression> acid_rising() {
   std::vector<WorldProgression> moments;
   for (std::uint32_t acid = 0; acid <= ACID_SCAN_END; acid += ACID_SCAN_STEP) {

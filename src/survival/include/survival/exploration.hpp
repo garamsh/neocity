@@ -101,8 +101,8 @@ public:
   /// Applies one health-slot hit and synchronizes any exhaustion return.
   [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
-  /// The world follows the run's clock here and on collection only; acid is
-  /// explicit until feeding is wired.
+  /// The world follows the run's clock here and on collection only, at the
+  /// acid the caller passes.
   /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,

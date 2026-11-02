@@ -57,8 +57,7 @@ struct ObjectDefinition {
   std::optional<ObjectId> supported_by = std::nullopt;
 };
 
-/// Cumulative exploration time and current acid, supplied explicitly by the
-/// host.
+/// The run's world time and current acid, supplied explicitly by the host.
 struct WorldProgression {
   std::chrono::microseconds elapsed{};
   AcidLevel acid{};
@@ -113,7 +112,7 @@ public:
   /// Throws std::invalid_argument for invalid geometry, IDs or object
   /// contracts.
   explicit World(const std::vector<ObjectDefinition> &definitions);
-  /// Applies cumulative exploration time and peak-acid deterioration once.
+  /// Applies world time and peak-acid deterioration once.
   [[nodiscard]] WorldUpdateResult update(WorldProgression progression);
   /// Repairs a destroyed passage and starts its next deterioration interval;
   /// possession is checked by Exploration::repair.
