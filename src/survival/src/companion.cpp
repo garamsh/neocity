@@ -319,14 +319,22 @@ std::optional<FoodId> food_to_cook(const WorkshopConfig &workshop,
   return best != nullptr ? std::optional{best->food} : std::nullopt;
 }
 
+/// An uneaten dish first, then any other; a food the monster rejected is never
+/// fed again, so a stored one of it counts as no dish.
 std::optional<FoodId> food_to_feed(const GameView &view) {
-  const auto &foods = view.workshop.foods;
-  const auto fresh = std::ranges::find_if(
-      foods, [&view](const Dish &dish) { return !eaten(view, dish.food); });
-  if (fresh != foods.end()) {
-    return fresh->food;
+  std::optional<FoodId> repeat;
+  for (const auto &dish : view.workshop.foods) {
+    if (rejected(view, dish.food)) {
+      continue;
+    }
+    if (!eaten(view, dish.food)) {
+      return dish.food;
+    }
+    if (!repeat) {
+      repeat = dish.food;
+    }
   }
-  return foods.empty() ? std::nullopt : std::optional{foods.front().food};
+  return repeat;
 }
 
 std::optional<Action> role_craft(const WorkshopConfig &workshop, Actor actor,
@@ -346,8 +354,8 @@ std::optional<Action> role_craft(const WorkshopConfig &workshop, Actor actor,
   std::abort();
 }
 
-/// What AI does at base in this actor's role. One stored dish is enough, so a
-/// chef spends no ingredients on a second.
+/// What AI does at base in this actor's role. One stored dish it would feed is
+/// enough, so a chef spends no ingredients on a second.
 std::optional<Action> ai_role_work(const WorkshopConfig &workshop, Actor actor,
                                    const GameView &view) {
   const auto tool = role_tool(actor);
@@ -359,7 +367,7 @@ std::optional<Action> ai_role_work(const WorkshopConfig &workshop, Actor actor,
       (carries(view.progression.chef) || carries(view.progression.appraiser))) {
     return ReplaceTool{tool};
   }
-  if (actor == Actor::Chef && !view.workshop.foods.empty()) {
+  if (actor == Actor::Chef && food_to_feed(view)) {
     return std::nullopt;
   }
   return role_craft(workshop, actor, view);

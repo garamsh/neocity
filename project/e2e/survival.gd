@@ -5,7 +5,7 @@ extends SceneTree
 
 const SEED: int = 11
 const DAY_FRAMES: int = 2900
-## On this seed the stock ends before the acid fills or an escape hits.
+## On this seed a party following NEXT alone escapes.
 const LONG_RUN_SEED: int = 44
 const LONG_RUN_DAYS: int = 60
 ## On this seed a chef who takes the wrench first outlasts the stock with the
@@ -61,7 +61,7 @@ func _run() -> void:
 	if not failed:
 		await _chef_chooses_a_dish()
 	if not failed:
-		await _follow_next_to_the_last_dish()
+		await _follow_next_to_an_escape()
 	if not failed:
 		await _wrench_stops_setting_out_with_no_stock_behind()
 	if not failed:
@@ -70,6 +70,8 @@ func _run() -> void:
 		await _appraiser_follows_next()
 	if not failed:
 		await _two_players()
+	if not failed:
+		await _a_hated_dish_is_not_fed_again()
 	if not failed:
 		await _pause_and_leave()
 	if not failed:
@@ -590,21 +592,36 @@ func _set_out_before_feeding() -> void:
 		return
 	await _tap(KEY_Q)
 
-## Plays on what NEXT says alone until the stock is gone.
-func _follow_next_to_the_last_dish() -> void:
+## Plays on what NEXT says alone to an escape. A dish the monster hated stays
+## stored, so the line may end a day unfed beside it, but never beside a dish it
+## would feed.
+func _follow_next_to_an_escape() -> void:
 	await _leave_run()
 	await _tap(KEY_1)
 	scene.pin_survival_seed(LONG_RUN_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
+	var hated: Array[String] = []
+	var beside: Array = []
 	var day: int = _int("day")
-	if not await _follow_next_until_day_ends_unfed():
+	var steps: int = 0
+	while beside.is_empty() and (_str("phase") == "workshop" or _str("phase") == "exploration") and day < LONG_RUN_DAYS:
+		var line: String = _next()
+		if line.contains("End the day unfed"):
+			beside = _stored().filter(func(dish: String) -> bool: return not hated.has(dish))
+		await _follow_next()
+		if _int("day") != day and line.contains("[F] Feed") and _str("reaction") == "disliked":
+			hated.append(line.get_slice("Feed ", 1).get_slice(" to the monster", 0))
+		steps = 0 if _int("day") != day else steps + 1
+		day = _int("day")
+		if steps >= DAY_STEPS:
+			_check(false, "following NEXT keeps the days moving")
+			return
+	if not _check(beside.is_empty(), "the line never ends a day unfed beside a dish it would feed: %s" % [beside]):
 		return
-	if not _check(_stored().is_empty(), "the line ends the day only with no dish stored"):
+	if not _check(_str("phase") == "escaped", "following NEXT alone escapes"):
 		return
-	day = _int("day")
-	await _tap(KEY_G)
-	await _until("the unfed day ends", func() -> bool: return _int("day") == day + 1, 30)
+	_check(not hated.is_empty(), "the run met a dish the monster hated")
 	scene.pin_survival_seed(SEED)
 
 ## A repair is an errand only towards stock, so a wrench in hand does not keep
@@ -857,6 +874,62 @@ func _two_players() -> void:
 		return
 	await _tap(KEY_BRACKETRIGHT)
 	await _until("player two ends the day", func() -> bool: return _int("day") == 2, 30)
+
+## Player two stays at base, so only player one's route spends the clock: two
+## days give two Pickle Surprises and a Mushroom Soup's worth.
+func _a_hated_dish_is_not_fed_again() -> void:
+	await _start_two_players()
+	walker = "chef"
+	if not await _collect_along([Vector2i(8, 7), Vector2i(8, 2), Vector2i(7, 2)], 2):
+		return
+	if not await _collect_along([Vector2i(8, 7), Vector2i(12, 7), Vector2i(12, 13), Vector2i(10, 13)], 1):
+		return
+	await _tap(KEY_Q)
+	await _until("player one comes home", func() -> bool: return _str("phase") == "workshop", 120)
+	await _tap(KEY_G)
+	if not await _until("the first gathering day ends", func() -> bool: return _int("day") == 2, 30):
+		return
+	if not await _collect_along([Vector2i(12, 7), Vector2i(12, 13), Vector2i(10, 13)], 2):
+		return
+	if not await _collect_along([Vector2i(12, 13), Vector2i(12, 7), Vector2i(6, 7)], 1):
+		return
+	await _tap(KEY_Q)
+	await _until("player one comes home again", func() -> bool: return _str("phase") == "workshop", 120)
+	var attempts: int = 0
+	while _next().contains("[O] Appraise") and attempts < 40:
+		attempts += 1
+		await _tap(KEY_O)
+	while _str("dish_offered") != "Pickle Surprise" and attempts < 40 + MENU_PRESSES:
+		attempts += 1
+		await _tap(KEY_S)
+	attempts = 0
+	while _stored().count("Pickle Surprise") < 2 and attempts < COOK_ATTEMPTS:
+		attempts += 1
+		await _tap(KEY_E)
+	if not _check(_stored() == ["Pickle Surprise", "Pickle Surprise"], "player one cooks the disliked dish twice"):
+		return
+	await _tap(KEY_F)
+	if not await _until("the hated dish ends the day", func() -> bool: return _int("day") == 3, 30):
+		return
+	if not _check(_str("reaction") == "disliked" and _stored() == ["Pickle Surprise"], "the monster hates the dish and one is left"):
+		return
+	await _tap(KEY_F)
+	await _frames(30)
+	if not _check(_int("day") == 3 and _stored() == ["Pickle Surprise"], "F does not feed a hated dish again"):
+		return
+	_check(_next().begins_with("[E] Cook ") and not _next().contains("Feed"), "with only a hated dish stored the screen cooks: %s" % _next())
+
+## Sets out if at base, walks the waypoints and collects `times` at the last.
+func _collect_along(waypoints: Array[Vector2i], times: int) -> bool:
+	if _where(walker) == "base":
+		await _tap(KEY_Q)
+	for waypoint: Vector2i in waypoints:
+		if not await _walk_to(waypoint.x, waypoint.y):
+			return false
+	var pack: int = _actor(walker, "ingredients")
+	for time: int in range(times):
+		await _tap(KEY_E)
+	return _check(_actor(walker, "ingredients") == pack + times, "player one collects %d at %s" % [times, waypoints.back()])
 
 func _loss_clears_the_offer() -> void:
 	await _leave_run()
