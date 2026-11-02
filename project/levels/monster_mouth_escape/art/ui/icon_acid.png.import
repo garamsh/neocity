@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vnt3xpjd1aya"
-path="res://.godot/imported/ascent_atlas.png-12c8f16dc9aac21d414d618a663b69df.ctex"
+uid="uid://dj5qhg1qybnnc"
+path="res://.godot/imported/icon_acid.png-ea2e089345f08974860ef1352fad28f6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/ascent/ascent_atlas.png"
-dest_files=["res://.godot/imported/ascent_atlas.png-12c8f16dc9aac21d414d618a663b69df.ctex"]
+source_file="res://levels/monster_mouth_escape/art/ui/icon_acid.png"
+dest_files=["res://.godot/imported/icon_acid.png-ea2e089345f08974860ef1352fad28f6.ctex"]
 
 [params]
 

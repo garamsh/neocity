@@ -17,10 +17,9 @@ inline constexpr std::array TITLE_ENTRIES{
     TitleEntry::NewGame, TitleEntry::Controls, TitleEntry::Quit};
 
 /// Draws the title screen with `selected` marked.
-void paint_title(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
+void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                  TitleEntry selected);
 /// Draws every key of both players and the way back to the title.
-void paint_controls(godot::Node2D &canvas,
-                    const rendering::AscentDrawing &drawing);
+void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing);
 
 } // namespace neocity::hud

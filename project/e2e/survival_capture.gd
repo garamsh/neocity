@@ -35,6 +35,12 @@ func _run() -> void:
 	await _climb(5)
 	await _frames(30)
 	await _save("5-city-after-drip")
+	await _walk(KEY_D, 16)
+	await _walk_left(15)
+	await _save("23-city-facing-left")
+	await _walk(KEY_D, 16)
+	await _climb(4)
+	await _save("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _save("6-workshop-after-return")
 	await _until_next("Cook", 300)
@@ -149,6 +155,18 @@ func _walk(code: Key, x: int) -> void:
 			break
 		await process_frame
 	_key(code, false)
+	await _frames(3)
+
+## Holds A until the chef stands on column `x` or left of it.
+func _walk_left(x: int) -> void:
+	_key(KEY_A, true)
+	for frame: int in range(240):
+		var chef: Dictionary = scene.survival_status()["chef"]
+		var at: int = chef["x"]
+		if at <= x:
+			break
+		await process_frame
+	_key(KEY_A, false)
 	await _frames(3)
 
 ## Holds W until the chef stands on row `y` or above.

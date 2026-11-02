@@ -108,20 +108,16 @@ struct KeyRow {
 };
 
 /// Draws the choice of who plays which actor.
-void paint_survival_setup(godot::Node2D &canvas,
-                          const rendering::AscentDrawing &drawing);
+void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing);
 /// Draws the city or the workshop, whichever the phase opens, with the HUD.
-void paint_survival(godot::Node2D &canvas,
-                    const rendering::AscentDrawing &drawing,
+void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame);
 /// Draws what holds the run over the frozen survival screen.
-void paint_interruption(godot::Node2D &canvas,
-                        const rendering::AscentDrawing &drawing,
+void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame);
 /// Draws the dark stage under a cinematic scene or, with `fallback`, the
 /// placeholder card that stands in when no scene can play.
-void paint_cinematic(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing,
+void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
 /// Whether the chef can cook `recipe` from what the two actors carry and have

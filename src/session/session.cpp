@@ -305,7 +305,7 @@ void Session::advance_interruption(hud::Interruption open,
 }
 
 void Session::paint(godot::Node2D &canvas,
-                    const rendering::AscentDrawing &drawing) const {
+                    const rendering::Art &drawing) const {
   switch (screen) {
   case Screen::Main:
     hud::paint_title(canvas, drawing, hud::TITLE_ENTRIES.at(cursor));

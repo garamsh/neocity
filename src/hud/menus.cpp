@@ -78,23 +78,26 @@ const char *entry_summary(TitleEntry entry) {
 }
 
 /// The monster's mouth behind a dark veil, so menu text reads over it.
-void backdrop(godot::Node2D &canvas, float veil) {
-  rendering::paint_mouth(canvas, 0.1F);
+void backdrop(godot::Node2D &canvas, const rendering::Art &drawing,
+              float veil) {
+  rendering::paint_mouth(canvas, drawing, 0.1F);
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, veil));
 }
 
 } // namespace
 
-void paint_title(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
+void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                  TitleEntry selected) {
   const auto tones = rendering::palette();
-  backdrop(canvas, 0.6F);
+  backdrop(canvas, drawing, 0.6F);
   drawing.text(canvas, 130.0F, 200.0F, "MONSTER MOUTH ESCAPE", 64, tones.white);
   drawing.text(canvas, 134.0F, 252.0F,
                "Gather, cook, and feed the monster that swallowed the city.",
                24, tones.muted);
-  drawing.sprite(canvas, 0, rect(880.0F, 330.0F, 150.0F, 172.0F), false);
-  drawing.sprite(canvas, 2, rect(1040.0F, 330.0F, 130.0F, 172.0F), false);
+  drawing.image(canvas, rendering::Image::ChefIdle,
+                godot::Vector2(880.0F, 330.0F), 2.0F);
+  drawing.image(canvas, rendering::Image::AppraiserIdle,
+                godot::Vector2(1040.0F, 330.0F), 2.0F);
   float y = ENTRY_Y;
   std::size_t number = 1;
   for (const TitleEntry entry : TITLE_ENTRIES) {
@@ -120,10 +123,9 @@ void paint_title(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
                20, tones.white);
 }
 
-void paint_controls(godot::Node2D &canvas,
-                    const rendering::AscentDrawing &drawing) {
+void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
   const auto tones = rendering::palette();
-  backdrop(canvas, 0.9F);
+  backdrop(canvas, drawing, 0.9F);
   drawing.text(canvas, 190.0F, 110.0F, "CONTROLS", 46, tones.white);
   float y = CONTROLS_ROW_Y;
   for (const ControlRow &row : CONTROL_ROWS) {

@@ -73,8 +73,7 @@ public:
   /// of the frame time.
   void advance(double delta, Command command);
   /// Draws the menus or the open game.
-  void paint(godot::Node2D &canvas,
-             const rendering::AscentDrawing &drawing) const;
+  void paint(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Names the current screen.
   [[nodiscard]] godot::String screen_name() const;
   /// Who drives each survival actor, or nothing with no run open.
