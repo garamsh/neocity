@@ -442,12 +442,25 @@ TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
   Game game(temporary_content(1));
   const auto penalty = game.content().companion.unfed_penalty;
   std::uint32_t days = 0;
-  while (game.simulation().snapshot().phase == Phase::Workshop) {
+  while (game.simulation().snapshot().phase == Phase::Workshop &&
+         days < TEMPORARY_ESCAPE.first_day) {
     ASSERT_EQ(game.workshop().end_day_unfed(penalty), WorkshopResult::Applied);
     ++days;
   }
   EXPECT_EQ(game.simulation().snapshot().phase, Phase::Lost);
   EXPECT_LT(days, TEMPORARY_ESCAPE.first_day / 2);
+}
+
+TEST(TemporaryContent, AcidCarriesAWashedUpBagAwayAfterBringingIt) {
+  World world(temporary_content(1).objects);
+  ASSERT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
+            ObjectState::Dormant);
+  ASSERT_EQ(world.update({.acid = AcidLevel{39}}), WorldUpdateResult::Applied);
+  EXPECT_TRUE(
+      object_named(world.snapshot(), "Washed-up Bag 1").material_available);
+  ASSERT_EQ(world.update({.acid = AcidLevel{40}}), WorldUpdateResult::Applied);
+  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
+            ObjectState::Destroyed);
 }
 
 TEST(TemporaryContent, RisingAcidStrandsStockThatNoOneCollected) {

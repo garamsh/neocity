@@ -69,7 +69,8 @@ WorkshopConfig kitchen(std::vector<Recipe> recipes = {
           .new_ingredient_score = 5,
           .satisfying_score = 12,
           .disliked_acid_rise = AcidLevel{7},
-          .unsatisfied_acid_rise = AcidLevel{2}};
+          .unsatisfied_acid_rise = AcidLevel{2},
+          .flavors = {}};
 }
 
 bool refused(const ActionResult &result) {

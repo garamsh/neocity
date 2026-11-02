@@ -58,7 +58,7 @@ struct WorkshopConfig {
   std::uint32_t satisfying_score;
   AcidLevel disliked_acid_rise;
   AcidLevel unsatisfied_acid_rise;
-  std::vector<Flavor> flavors{};
+  std::vector<Flavor> flavors;
   std::uint32_t fine_dish_score = 0;
 };
 

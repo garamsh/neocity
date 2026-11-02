@@ -10,6 +10,7 @@ const LONG_RUN_SEED: int = 1293
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
+const APPRAISER_DAYS: int = 14
 ## This seed's pack after GATHERING_DAYS cooks this dish twice.
 const CHOSEN: String = "Fish Stew"
 const MENU_PRESSES: int = 12
@@ -47,6 +48,8 @@ func _run() -> void:
 		await _follow_next_to_the_last_dish()
 	if not failed:
 		await _appraiser_run()
+	if not failed:
+		await _appraiser_follows_next()
 	if not failed:
 		await _two_players()
 	if not failed:
@@ -552,6 +555,22 @@ func _appraiser_run() -> void:
 	if not _check(_int("eaten") == 1, "the appraiser can feed what AI cooked"):
 		return
 	await _human_repairs_the_ladder()
+
+## An AI chef cooks a step after the last appraisal, so NEXT must not end that day.
+func _appraiser_follows_next() -> void:
+	await _tap(KEY_M)
+	await _tap(KEY_1)
+	await _tap(KEY_2)
+	await _tap(KEY_E)
+	var steps: int = 0
+	var fed: bool = true
+	while _int("day") <= APPRAISER_DAYS and steps < APPRAISER_DAYS * DAY_STEPS:
+		steps += 1
+		await _follow_next()
+		fed = fed and _str("reaction") != "unfed"
+	if not _check(fed, "following NEXT feeds what an AI chef can cook"):
+		return
+	_check(_int("day") > APPRAISER_DAYS, "the appraiser's days keep moving on NEXT alone")
 
 func _human_repairs_the_ladder() -> void:
 	await _tap(KEY_Q)

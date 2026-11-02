@@ -38,7 +38,8 @@ WorkshopConfig balance() {
           .new_ingredient_score = 3,
           .satisfying_score = 12,
           .disliked_acid_rise = AcidLevel{7},
-          .unsatisfied_acid_rise = AcidLevel{2}};
+          .unsatisfied_acid_rise = AcidLevel{2},
+          .flavors = {}};
 }
 
 /// A run at base with one ingredient carried by the appraiser.

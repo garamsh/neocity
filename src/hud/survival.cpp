@@ -380,6 +380,14 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
       return offered_step(*offer, KEY_LABELS.at(*chef_keys));
     }
   }
+  // An AI chef cooks on its next step, so the day must not end unfed first.
+  const auto &recipes = frame.content.get().companion.workshop.recipes;
+  if (!chef_keys && frame.view.workshop.foods.empty() &&
+      std::ranges::any_of(recipes, [&frame](const survival::Recipe &recipe) {
+        return recipe_ready(frame.view, recipe);
+      })) {
+    return "The AI chef is cooking.";
+  }
   // Feeding ends the day, and a stored dish keeps while the city still gives.
   if (worth_setting_out(frame)) {
     return std::nullopt;
