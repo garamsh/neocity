@@ -116,7 +116,7 @@ void Session::enter(Screen destination) {
 }
 
 void Session::choose(std::size_t option) {
-  cue(Cue::MenuSelect);
+  cue(audio::Cue::MenuSelect);
   switch (screen) {
   case Screen::Main:
     if (option >= 1 && option <= hud::TITLE_ENTRIES.size()) {
@@ -168,22 +168,22 @@ void Session::select(hud::SetupEntry entry) {
 // A step and Enter in one frame select the entry stepped to.
 void Session::advance_title(const Command &command) {
   if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
-    cue(Cue::MenuMove);
+    cue(audio::Cue::MenuMove);
   }
   move_cursor(cursor, hud::TITLE_ENTRIES.size(), command.step);
   if (command.confirm) {
-    cue(Cue::MenuSelect);
+    cue(audio::Cue::MenuSelect);
     select(hud::TITLE_ENTRIES.at(cursor));
   }
 }
 
 void Session::advance_setup(const Command &command) {
   if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
-    cue(Cue::MenuMove);
+    cue(audio::Cue::MenuMove);
   }
   move_cursor(setup_cursor, hud::SETUP_ENTRIES.size(), command.step);
   if (command.confirm) {
-    cue(Cue::MenuSelect);
+    cue(audio::Cue::MenuSelect);
     select(hud::SETUP_ENTRIES.at(setup_cursor));
   }
 }
@@ -256,7 +256,7 @@ void Session::advance(double delta, Command command) {
       return;
     case Screen::Controls:
     case Screen::SurvivalSetup:
-      cue(Cue::MenuBack);
+      cue(audio::Cue::MenuBack);
       enter(Screen::Main);
       return;
     }
@@ -310,7 +310,7 @@ void Session::advance_run(SurvivalRun &open, double delta,
   }
   react(moments(before, open.view(), events, strides));
   if (opening) {
-    cue(Cue::MenuSelect);
+    cue(audio::Cue::MenuSelect);
   }
   if (open.escaped()) {
     play(hud::Cinematic::Ending);
@@ -328,7 +328,7 @@ void Session::advance_interruption(hud::Interruption open,
   switch (open) {
   case hud::Interruption::Paused:
     if (command.pause) {
-      cue(Cue::MenuBack);
+      cue(audio::Cue::MenuBack);
       interruption = hud::Interruption::Resuming;
     } else if (command.step) {
       adjust_volume(*command.step);
@@ -359,7 +359,7 @@ void Session::advance_interruption(hud::Interruption open,
   std::abort();
 }
 
-void Session::cue(Cue cue) const {
+void Session::cue(audio::Cue cue) const {
   if (volume.effects > 0) {
     sound.play(cue);
   }
@@ -388,11 +388,13 @@ void Session::age_bursts(double delta) {
 
 // Up and down choose the bus; left and right change its level by one step.
 void Session::adjust_volume(MenuStep step) {
-  auto &level = volume.marked == Bus::Effects ? volume.effects : volume.music;
+  auto &level =
+      volume.marked == audio::Bus::Effects ? volume.effects : volume.music;
   switch (step) {
   case MenuStep::Up:
   case MenuStep::Down:
-    volume.marked = volume.marked == Bus::Effects ? Bus::Music : Bus::Effects;
+    volume.marked = volume.marked == audio::Bus::Effects ? audio::Bus::Music
+                                                         : audio::Bus::Effects;
     break;
   case MenuStep::Left:
     level = level > 0 ? static_cast<std::uint8_t>(level - 1) : level;
@@ -402,31 +404,31 @@ void Session::adjust_volume(MenuStep step) {
     break;
   }
   send_volume();
-  cue(Cue::MenuMove);
+  cue(audio::Cue::MenuMove);
 }
 
 void Session::send_volume() const {
-  sound.volume(Bus::Effects, loudness(volume.effects));
-  sound.volume(Bus::Music, loudness(volume.music));
+  sound.volume(audio::Bus::Effects, loudness(volume.effects));
+  sound.volume(audio::Bus::Music, loudness(volume.music));
 }
 
 // Off music plays nothing; a cinematic and a finished run bring their own.
 void Session::keep_music() const {
-  auto track = Track::Title;
+  auto track = audio::Track::Title;
   float tension = 0.0F;
   if (screen == Screen::Survival) {
-    track = Track::Silence;
+    track = audio::Track::Silence;
     if (run && !playback) {
       const auto progression = run->view().progression;
       tension = run->acid_fill();
       if (progression.phase == survival::Phase::Exploration) {
-        track = Track::City;
+        track = audio::Track::City;
       } else if (progression.phase == survival::Phase::Workshop) {
-        track = Track::Workshop;
+        track = audio::Track::Workshop;
       }
     }
   }
-  sound.music(volume.music > 0 ? track : Track::Silence, tension);
+  sound.music(volume.music > 0 ? track : audio::Track::Silence, tension);
 }
 
 void Session::paint(godot::Node2D &canvas,

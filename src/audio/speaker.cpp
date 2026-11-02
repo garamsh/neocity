@@ -12,7 +12,7 @@
 #include <cstdlib>
 #include <utility>
 
-namespace neocity::session {
+namespace neocity::audio {
 namespace {
 
 constexpr const char *FOLDER = "res://levels/monster_mouth_escape/audio/";
@@ -214,4 +214,4 @@ godot::Dictionary Speaker::status() const {
   return status;
 }
 
-} // namespace neocity::session
+} // namespace neocity::audio

@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <deque>
 
-namespace neocity::session {
+namespace neocity::audio {
 
 /// Plays the game's sound through Godot's audio players, on the Effects and
 /// Music buses of `project/default_bus_layout.tres`, and records what it was
@@ -53,4 +53,4 @@ private:
   std::deque<godot::String> recent;
 };
 
-} // namespace neocity::session
+} // namespace neocity::audio

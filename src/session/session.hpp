@@ -101,7 +101,7 @@ private:
   void advance_cinematic(Playback &open, double delta, const Command &command);
   void finish_cinematic(hud::Cinematic cinematic);
   /// Plays `cue` unless the effects are off.
-  void cue(Cue cue) const;
+  void cue(audio::Cue cue) const;
   /// Plays the moments of a run's frame and starts their flourishes.
   void react(const std::vector<Moment> &found);
   /// Moves the flourishes on by `delta` seconds and drops the finished ones.

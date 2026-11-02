@@ -58,32 +58,32 @@ bool failed(const survival::ActionResult &result) {
 }
 
 /// The cue of a command the rules carried out; refusals have none.
-std::optional<Cue> action_cue(const hud::ActionEvent &event,
-                              const survival::GameView &after) {
+std::optional<audio::Cue> action_cue(const hud::ActionEvent &event,
+                                     const survival::GameView &after) {
   if (!applied(event.result)) {
     return std::nullopt;
   }
   const bool missed = failed(event.result);
   return std::visit(
-      [&](const auto &action) -> std::optional<Cue> {
+      [&](const auto &action) -> std::optional<audio::Cue> {
         using Done = std::decay_t<decltype(action)>;
         if constexpr (std::is_same_v<Done, survival::Enter> ||
                       std::is_same_v<Done, survival::ReturnToBase>) {
-          return Cue::Travel;
+          return audio::Cue::Travel;
         } else if constexpr (std::is_same_v<Done, survival::Collect>) {
-          return Cue::Collect;
+          return audio::Cue::Collect;
         } else if constexpr (std::is_same_v<Done, survival::Repair> ||
                              std::is_same_v<Done, survival::ReplaceTool>) {
-          return Cue::Repair;
+          return audio::Cue::Repair;
         } else if constexpr (std::is_same_v<Done, survival::Appraise>) {
-          return missed ? Cue::AppraisalFailed : Cue::Identified;
+          return missed ? audio::Cue::AppraisalFailed : audio::Cue::Identified;
         } else if constexpr (std::is_same_v<Done, survival::Cook>) {
-          return missed ? Cue::Burned : Cue::Cooked;
+          return missed ? audio::Cue::Burned : audio::Cue::Cooked;
         } else if constexpr (std::is_same_v<Done, survival::Feed>) {
           const auto &day = after.workshop.last_day;
           return day && day->reaction == survival::MonsterReaction::Satisfied
-                     ? Cue::Satisfied
-                     : Cue::Refused;
+                     ? audio::Cue::Satisfied
+                     : audio::Cue::Refused;
         } else {
           return std::nullopt;
         }
@@ -104,11 +104,11 @@ void movement_moments(const survival::GameView &before,
   const auto &now = explorer(after, actor).body;
   if (then.stance != survival::Stance::Airborne &&
       now.stance == survival::Stance::Airborne && now.fall_speed < 0) {
-    found.push_back({.cue = Cue::Jump, .at = now.position});
+    found.push_back({.cue = audio::Cue::Jump, .at = now.position});
   }
   if (then.stance == survival::Stance::Airborne &&
       now.stance == survival::Stance::Standing) {
-    found.push_back({.cue = Cue::Land, .at = now.position});
+    found.push_back({.cue = audio::Cue::Land, .at = now.position});
     stride = 0;
   }
   if (then.stance == survival::Stance::Standing &&
@@ -116,7 +116,7 @@ void movement_moments(const survival::GameView &before,
     stride += std::abs(now.position.x - then.position.x);
     if (stride >= FOOTSTEP) {
       stride %= FOOTSTEP;
-      found.push_back({.cue = Cue::Step, .at = now.position});
+      found.push_back({.cue = audio::Cue::Step, .at = now.position});
     }
   }
 }
@@ -137,111 +137,53 @@ std::vector<Moment> moments(const survival::GameView &before,
             {.cue = *cue, .at = explorer(after, action->actor).body.position});
       }
     } else if (const auto *hazard = std::get_if<hud::HazardEvent>(&event)) {
-      found.push_back({.cue = Cue::Hurt,
+      found.push_back({.cue = audio::Cue::Hurt,
                        .at = explorer(before, hazard->actor).body.position});
     } else if (const auto *fall = std::get_if<hud::FallEvent>(&event)) {
-      found.push_back({.cue = Cue::Fall,
+      found.push_back({.cue = audio::Cue::Fall,
                        .at = explorer(before, fall->actor).body.position});
     }
   }
   if (after.progression.acid.value > before.progression.acid.value) {
-    found.push_back({.cue = Cue::AcidRise, .at = std::nullopt});
+    found.push_back({.cue = audio::Cue::AcidRise, .at = std::nullopt});
   }
   if (after.progression.day > before.progression.day) {
-    found.push_back({.cue = Cue::NewDay, .at = std::nullopt});
+    found.push_back({.cue = audio::Cue::NewDay, .at = std::nullopt});
   }
   return found;
 }
 
-std::optional<rendering::Flourish> flourish_of(Cue cue) {
+std::optional<rendering::Flourish> flourish_of(audio::Cue cue) {
   switch (cue) {
-  case Cue::Collect:
+  case audio::Cue::Collect:
     return rendering::Flourish::Pop;
-  case Cue::Repair:
+  case audio::Cue::Repair:
     return rendering::Flourish::Spark;
-  case Cue::Hurt:
+  case audio::Cue::Hurt:
     return rendering::Flourish::Hit;
-  case Cue::Fall:
+  case audio::Cue::Fall:
     return rendering::Flourish::Splash;
-  case Cue::AcidRise:
+  case audio::Cue::AcidRise:
     return rendering::Flourish::Surge;
-  case Cue::Cooked:
-  case Cue::Burned:
+  case audio::Cue::Cooked:
+  case audio::Cue::Burned:
     return rendering::Flourish::Steam;
-  case Cue::Satisfied:
+  case audio::Cue::Satisfied:
     return rendering::Flourish::Delight;
-  case Cue::Refused:
+  case audio::Cue::Refused:
     return rendering::Flourish::Disgust;
-  case Cue::NewDay:
+  case audio::Cue::NewDay:
     return rendering::Flourish::NewDay;
-  case Cue::Step:
-  case Cue::Jump:
-  case Cue::Land:
-  case Cue::Travel:
-  case Cue::Identified:
-  case Cue::AppraisalFailed:
-  case Cue::MenuMove:
-  case Cue::MenuSelect:
-  case Cue::MenuBack:
+  case audio::Cue::Step:
+  case audio::Cue::Jump:
+  case audio::Cue::Land:
+  case audio::Cue::Travel:
+  case audio::Cue::Identified:
+  case audio::Cue::AppraisalFailed:
+  case audio::Cue::MenuMove:
+  case audio::Cue::MenuSelect:
+  case audio::Cue::MenuBack:
     return std::nullopt;
-  }
-  std::abort();
-}
-
-const char *cue_name(Cue cue) {
-  switch (cue) {
-  case Cue::Step:
-    return "step";
-  case Cue::Jump:
-    return "jump";
-  case Cue::Land:
-    return "land";
-  case Cue::Collect:
-    return "collect";
-  case Cue::Repair:
-    return "repair";
-  case Cue::Hurt:
-    return "hurt";
-  case Cue::Fall:
-    return "fall";
-  case Cue::Travel:
-    return "travel";
-  case Cue::Identified:
-    return "identified";
-  case Cue::AppraisalFailed:
-    return "appraisal_failed";
-  case Cue::Cooked:
-    return "cooked";
-  case Cue::Burned:
-    return "burned";
-  case Cue::Satisfied:
-    return "satisfied";
-  case Cue::Refused:
-    return "refused";
-  case Cue::AcidRise:
-    return "acid_rise";
-  case Cue::NewDay:
-    return "new_day";
-  case Cue::MenuMove:
-    return "menu_move";
-  case Cue::MenuSelect:
-    return "menu_select";
-  case Cue::MenuBack:
-    return "menu_back";
-  }
-  std::abort();
-}
-
-const char *track_name(Track track) {
-  switch (track) {
-  case Track::Silence:
-    return "silence";
-  case Track::Title:
-    return "title";
-  case Track::City:
-    return "city";
-  case Track::Workshop:
-    return "workshop";
   }
   std::abort();
 }
@@ -254,11 +196,11 @@ std::array<hud::VolumeRow, 2> volume_rows(const Volume &volume) {
   return {hud::VolumeRow{.name = "Effects",
                          .level = volume.effects,
                          .steps = VOLUME_STEPS,
-                         .marked = volume.marked == Bus::Effects},
+                         .marked = volume.marked == audio::Bus::Effects},
           hud::VolumeRow{.name = "Music",
                          .level = volume.music,
                          .steps = VOLUME_STEPS,
-                         .marked = volume.marked == Bus::Music}};
+                         .marked = volume.marked == audio::Bus::Music}};
 }
 
 } // namespace neocity::session

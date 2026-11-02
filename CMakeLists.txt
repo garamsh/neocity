@@ -37,6 +37,8 @@ FetchContent_MakeAvailable(godot-cpp)
 add_library(
     neocity
     SHARED
+    src/audio/sound.cpp
+    src/audio/speaker.cpp
     src/hud/menus.cpp
     src/hud/survival.cpp
     src/input/menu.cpp
@@ -48,7 +50,6 @@ add_library(
     src/scene.cpp
     src/session/session.cpp
     src/session/sound.cpp
-    src/session/speaker.cpp
     src/session/survival_run.cpp
 )
 target_link_libraries(neocity PRIVATE survival godot-cpp)

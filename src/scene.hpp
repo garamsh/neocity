@@ -1,8 +1,8 @@
 #pragma once
 
+#include "audio/speaker.hpp"
 #include "rendering/drawing.hpp"
 #include "session/session.hpp"
-#include "session/speaker.hpp"
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
@@ -83,7 +83,7 @@ private:
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
   std::optional<rendering::Art> drawing;
-  std::optional<session::Speaker> speaker;
+  std::optional<audio::Speaker> speaker;
 };
 
 } // namespace neocity

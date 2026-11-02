@@ -52,19 +52,19 @@ MainScene::MainScene()
               .playing = [this] { return cinematic_playing(); },
               .stop = [this] { stop_cinematic(); }},
           session::SoundStage{.play =
-                                  [this](session::Cue cue) {
+                                  [this](audio::Cue cue) {
                                     if (speaker) {
                                       speaker->play(cue);
                                     }
                                   },
                               .music =
-                                  [this](session::Track track, float tension) {
+                                  [this](audio::Track track, float tension) {
                                     if (speaker) {
                                       speaker->music(track, tension);
                                     }
                                   },
                               .volume =
-                                  [this](session::Bus bus, float level) {
+                                  [this](audio::Bus bus, float level) {
                                     if (speaker) {
                                       speaker->volume(bus, level);
                                     }
@@ -88,7 +88,7 @@ void MainScene::_ready() {
     return;
   }
   drawing = rendering::Art::load();
-  speaker = session::Speaker::attach(*this);
+  speaker = audio::Speaker::attach(*this);
   godot::UtilityFunctions::print(
       "Host: title screen and Monster Mouth Escape ready.");
 }
