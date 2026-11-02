@@ -846,6 +846,22 @@ func _two_players() -> void:
 	await _start_two_players()
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
+	if not _check(_next().begins_with("[Q]/[U] Set out into the city"), "the base line names both players' set-out keys: %s" % _next()):
+		return
+	if not _text_fits("two players at base before setting out"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("player one sets out alone", func() -> bool: return _where("chef") == "city", 30):
+		return
+	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: [U] Set out into the city"), "the player left at base is told to set out: %s" % _next()):
+		return
+	if not _check(_screen_says("U set out") and not _screen_says("U return to base"), "the key line names U as setting out for player two at base"):
+		return
+	if not _text_fits("one player out and one at base"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("player one comes back", func() -> bool: return _str("phase") == "workshop", 30):
+		return
 	await _tap(KEY_U)
 	if not await _until("player two sets out alone", func() -> bool: return _where("appraiser") == "city", 30):
 		return

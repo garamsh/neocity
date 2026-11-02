@@ -334,16 +334,31 @@ const char *direction_word(survival::Direction direction) {
   std::abort();
 }
 
-/// Whether setting out today gives the first human, whose keys the base line
-/// names, something to do. A partner's errand does not count: the city line
-/// would send that human straight home.
-bool worth_setting_out(const SurvivalFrame &frame) {
-  const auto *human = std::ranges::find_if(ACTORS, [&frame](Actor actor) {
-    return survival::key_set(frame.control, actor).has_value();
-  });
-  return human != ACTORS.end() &&
-         survival::worth_entering(frame.content.get().companion, *human,
+/// Whether setting out now gives this human something to do. An AI partner's
+/// errand does not count: the city line would send the human straight home.
+bool worth_setting_out(const SurvivalFrame &frame, Actor actor) {
+  return survival::key_set(frame.control, actor).has_value() &&
+         survival::worth_entering(frame.content.get().companion, actor,
                                   frame.view);
+}
+
+/// Whether setting out today gives any human something to do.
+bool worth_setting_out(const SurvivalFrame &frame) {
+  return std::ranges::any_of(ACTORS, [&frame](Actor actor) {
+    return worth_setting_out(frame, actor);
+  });
+}
+
+/// Every human's set-out key, so two players each read their own.
+String set_out_keys(const SurvivalFrame &frame) {
+  String keys;
+  for (const auto actor : ACTORS) {
+    if (const auto set = survival::key_set(frame.control, actor)) {
+      keys += (keys.is_empty() ? String() : String("/")) + "[" +
+              from(KEY_LABELS.at(*set).travel) + "]";
+    }
+  }
+  return keys + " ";
 }
 
 String collection_clock(const SurvivalFrame &frame) {
@@ -455,7 +470,7 @@ String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
     return *step;
   }
   if (worth_setting_out(frame)) {
-    return key(keys.travel) + "Set out into the city: " +
+    return set_out_keys(frame) + "Set out into the city: " +
            clock(frame.view.progression.remaining_exploration) + " left today.";
   }
   return key(keys.end_day) + "End the day unfed: acid rises by " +
@@ -609,11 +624,14 @@ String key_legend(const SurvivalFrame &frame) {
   const bool city = frame.view.progression.phase == Phase::Exploration;
   const String collecting =
       city ? "    Each collection spends " + collection_clock(frame) : String();
-  const auto legend = [city](const KeyLabels &keys, bool chef) {
+  const auto legend = [city, &frame](const KeyLabels &keys, bool chef) {
     if (city) {
+      // A human left at base sets out with the travel key.
+      const auto actor = chef ? Actor::Chef : Actor::Appraiser;
+      const bool out = state_of(frame.view, actor).location == Location::City;
       return from(keys.move) + " move  " + from(keys.run) + " run  " +
              from(keys.interact) + " use  " + from(keys.travel) +
-             " return to base";
+             (out ? " return to base" : " set out");
     }
     return (chef ? from(CHOOSE_DISH_KEYS) + " choose dish  " : String()) +
            from(keys.interact) + " appraise/cook  " + from(keys.feed) +
@@ -1270,19 +1288,28 @@ String next_step(const SurvivalFrame &frame) {
   if (view.progression.phase == Phase::Workshop) {
     return workshop_step(frame, KEY_LABELS.at(0));
   }
-  const auto exploring = [&frame](Actor actor) {
-    return survival::key_set(frame.control, actor) &&
-           state_of(frame.view, actor).location == Location::City;
-  };
-  const bool both = std::ranges::all_of(ACTORS, exploring);
-  String line;
+  const bool two_humans = std::ranges::all_of(ACTORS, [&frame](Actor actor) {
+    return survival::key_set(frame.control, actor).has_value();
+  });
+  // A second human left at base is told to join while it has an errand.
+  std::vector<std::pair<std::size_t, String>> steps;
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
-    if (keys && exploring(actor)) {
-      const String player = both ? "P" + number(*keys + 1) + ": " : String();
-      line += (line.is_empty() ? String() : String("   ")) + player +
-              city_step(frame, actor, KEY_LABELS.at(*keys));
+    if (!keys) {
+      continue;
     }
+    const auto &labels = KEY_LABELS.at(*keys);
+    if (state_of(frame.view, actor).location == Location::City) {
+      steps.emplace_back(*keys, city_step(frame, actor, labels));
+    } else if (two_humans && worth_setting_out(frame, actor)) {
+      steps.emplace_back(*keys, key(labels.travel) + "Set out into the city.");
+    }
+  }
+  String line;
+  for (const auto &[keys, step] : steps) {
+    const String player =
+        steps.size() > 1 ? "P" + number(keys + 1) + ": " : String();
+    line += (line.is_empty() ? String() : String("   ")) + player + step;
   }
   return line.is_empty() ? String("Waiting for the party to reach base.")
                          : line;
