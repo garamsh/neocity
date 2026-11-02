@@ -7,17 +7,14 @@ extends SceneTree
 
 const BUDGET_MS: int = 45000
 const STEP_MS: int = 100
-## Above this frame time Godot's default of 8 steps at 120 Hz cuts `delta`.
-const DEFAULT_CAP_MS: int = 67
-const RULE_TICKS_PER_FRAME: int = 8
+## Above this frame time Godot's default of 8 steps at 60 Hz cuts `delta`.
+const DEFAULT_CAP_MS: int = 133
 ## No AI collects in this party, so only the steps these checks count spend the clock.
 const TWO_PLAYERS: int = 3
-## The rule tick that hits an idle player in pan_dodge.
-const FIRST_HIT_TICK: int = 300
 ## Frames in one 100ms step at the 480 frames a second this part runs at.
 const STEP_FRAMES: int = 48
 
-var scene: AscentScene
+var scene: MainScene
 var checks: int = 0
 var failed: bool = false
 var frame_seconds: float = 0.0
@@ -31,7 +28,7 @@ func _process(delta: float) -> bool:
 
 func _run() -> void:
 	await _frames(2)
-	scene = current_scene as AscentScene
+	scene = current_scene as MainScene
 	scene.pin_survival_seed(3)
 	if OS.get_cmdline_user_args().has("real-clock"):
 		await _real_frames()
@@ -476,9 +473,7 @@ func _real_frames() -> void:
 	await _delayed_frames(3, 250)
 	if not _check(_actor("chef", "x") == x + 2, "same-direction taps in consecutive 250ms frames walk one cell each"):
 		return
-	if not await _pause_ignores_the_real_clock():
-		return
-	await _experiment_keeps_its_delivery()
+	await _pause_ignores_the_real_clock()
 
 ## Real time passing under a pause reaches neither clock.
 func _pause_ignores_the_real_clock() -> bool:
@@ -491,34 +486,6 @@ func _pause_ignores_the_real_clock() -> bool:
 	if not _check(_interruption() == "" and before - _int("remaining_ms") <= 2 * STEP_MS, "resuming spends no paused time"):
 		return false
 	return await _spends_real_time(3, 250)
-
-## The cap raised for survival's clock must not reach an experiment's rule ticks.
-func _experiment_keeps_its_delivery() -> void:
-	await _leave_run()
-	await _frames(4)
-	await _one_frame("option_2")
-	await _frames(4)
-	await _one_frame("option_1")
-	await _frames(4)
-	var dodge: PanDodgeScene = scene.get_node_or_null("Experiment") as PanDodgeScene
-	if not _check(dodge != null, "the developer page mounts pan_dodge on the real clock"):
-		return
-	await _delayed_frames(1, 16)
-	var ticks: int = dodge.run_tick()
-	var physics: int = Engine.get_physics_frames()
-	await _delayed_frames(30, 16)
-	if not _check(dodge.run_tick() - ticks == Engine.get_physics_frames() - physics, "a frame under the limit loses no rule tick"):
-		return
-	await _delayed_frames(1, 200)
-	ticks = dodge.run_tick()
-	physics = Engine.get_physics_frames()
-	await _delayed_frames(5, 200)
-	if not _check(Engine.get_physics_frames() - physics > 5 * RULE_TICKS_PER_FRAME, "slow frames run more physics ticks than the limit"):
-		return
-	if not _check(dodge.run_tick() - ticks == 5 * RULE_TICKS_PER_FRAME, "pan_dodge runs its limit of rule ticks in each slow frame"):
-		return
-	await _delayed_frames(2, FIRST_HIT_TICK * 1000 / 120 + 500)
-	_check(dodge.outcome() == "playing", "a stall longer than the first hit leaves the idle player playing")
 
 ## Exploration time matches the wall clock to within two steps over `count` frames.
 func _spends_real_time(count: int, delay_ms: int) -> bool:
@@ -553,10 +520,21 @@ func _start(option: int) -> void:
 	await _frames(4)
 	await _one_frame("survival_1_interact")
 
-## M asks first mid-run; Enter accepts.
+## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
+## the title screen takes its marked entry, so it is pressed only to answer the
+## question, and the title must show before the next menu key.
 func _leave_run() -> void:
-	await _one_frame("menu")
-	await _one_frame("confirm")
+	var status: Dictionary = scene.survival_status()
+	if status.has("cinematic"):
+		await _one_frame("menu")
+	elif not status.is_empty():
+		await _one_frame("menu")
+		await _one_frame("confirm")
+	for frame: int in range(30):
+		if scene.screen_name() == "main" and scene.survival_status().is_empty():
+			return
+		await process_frame
+	_check(false, "the title screen shows after leaving the run")
 
 func _interruption() -> String:
 	var name: String = scene.survival_status().get("interruption", "")

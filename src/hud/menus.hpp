@@ -1,19 +1,26 @@
 #pragma once
 
-#include "../experiment/catalog.hpp"
 #include "../rendering/drawing.hpp"
 
-#include <span>
+#include <godot_cpp/classes/node2d.hpp>
+
+#include <array>
+#include <cstdint>
 
 namespace neocity::hud {
 
-/// Draws the start screen: the survival game, the developer page, the ascent
-/// prototype, and quitting.
-void paint_main_menu(godot::Node2D &canvas,
-                     const rendering::AscentDrawing &drawing);
-/// Draws the developer page listing every registered experiment.
-void paint_developer_menu(godot::Node2D &canvas,
-                          const rendering::AscentDrawing &drawing,
-                          std::span<const experiment::Entry> experiments);
+/// The title screen's entries.
+enum class TitleEntry : std::uint8_t { NewGame, Controls, Quit };
+
+/// The title entries top to bottom; number key n chooses entry n.
+inline constexpr std::array TITLE_ENTRIES{
+    TitleEntry::NewGame, TitleEntry::Controls, TitleEntry::Quit};
+
+/// Draws the title screen with `selected` marked.
+void paint_title(godot::Node2D &canvas, const rendering::AscentDrawing &drawing,
+                 TitleEntry selected);
+/// Draws every key of both players and the way back to the title.
+void paint_controls(godot::Node2D &canvas,
+                    const rendering::AscentDrawing &drawing);
 
 } // namespace neocity::hud

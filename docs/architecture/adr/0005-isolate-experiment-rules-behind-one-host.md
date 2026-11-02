@@ -1,6 +1,6 @@
 # ADR 0005: Isolate experiment rules behind one host
 
-> Status: accepted
+> Status: superseded by ADR-0006
 > Date: 2026-10-28
 
 ## Context

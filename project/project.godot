@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="NEOCITY — After Hours"
-run/main_scene="res://levels/ascent/ascent.tscn"
+run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [display]
@@ -24,7 +24,6 @@ window/stretch/mode="canvas_items"
 
 [physics]
 
-common/physics_ticks_per_second=120
 common/max_physics_steps_per_frame=100000
 
 [debug]
@@ -44,37 +43,17 @@ renderer/rendering_method.mobile="gl_compatibility"
 
 [input]
 
-move_left={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":65),Object(InputEventKey,"physical_keycode":4194319)]
-}
-move_right={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":68),Object(InputEventKey,"physical_keycode":4194321)]
-}
-jump={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":32),Object(InputEventKey,"physical_keycode":87),Object(InputEventKey,"physical_keycode":4194320)]
-}
-switch_character={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":4194306)]
-}
-retry={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":82)]
-}
 pause={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":4194305)]
 }
 
-move_up={
+menu_up={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":87),Object(InputEventKey,"physical_keycode":4194320)]
 }
 
-move_down={
+menu_down={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":83),Object(InputEventKey,"physical_keycode":4194322)]
 }
@@ -102,36 +81,6 @@ option_2={
 option_3={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":51)]
-}
-
-option_4={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":52)]
-}
-
-option_5={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":53)]
-}
-
-option_6={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":54)]
-}
-
-option_7={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":55)]
-}
-
-option_8={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":56)]
-}
-
-option_9={
-"deadzone":0.2,
-"events":[Object(InputEventKey,"physical_keycode":57)]
 }
 
 survival_1_left={

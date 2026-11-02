@@ -3,53 +3,42 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "../camera/camera.hpp"
-#include "../experiment/catalog.hpp"
+#include "../hud/menus.hpp"
 #include "../rendering/drawing.hpp"
 #include "survival_run.hpp"
-
-#include <gameplay/engine.hpp>
 
 #include <godot_cpp/variant/dictionary.hpp>
 
 #include <array>
 #include <functional>
 #include <optional>
-#include <span>
 
 namespace neocity::session {
 
-/// The shared host's screens: the main menu, the developer page, the survival
-/// game and its choice of players, the ascent prototype, and one mounted
-/// experiment scene.
-enum class Screen : std::uint8_t {
-  Main,
-  Developer,
-  SurvivalSetup,
-  Survival,
-  Ascent,
-  Experiment
-};
+/// The host's screens: the title screen, its controls page, the choice of
+/// players, and the survival game.
+enum class Screen : std::uint8_t { Main, Controls, SurvivalSetup, Survival };
+
+/// A press that moves the title screen's cursor.
+enum class MenuStep : std::uint8_t { Up, Down };
 
 /// One host frame's sampled actions.
 struct Command {
   /// Menu option pressed this frame, numbered from 1.
   std::optional<std::size_t> option;
+  /// The title cursor's up or down press this frame.
+  std::optional<MenuStep> step;
   bool menu = false;
-  /// The survival pause key; the ascent game reads its own in `ascent`.
+  /// The pause key, which also goes back from a menu.
   bool pause = false;
-  /// The key that accepts a question on screen.
+  /// The key that accepts a question on screen or the title's marked entry.
   bool confirm = false;
   bool controls_held = false;
-  gameplay::PlayerCommand ascent;
   /// Each actor's sampled keys, chef first, while a survival run is open.
   std::array<survival::PlayerInput, 2> survival;
   /// A human chef's up or down press this frame.
   survival::Direction dish_step = survival::Direction::Idle;
 };
-
-/// Mounts the given experiment scene, or removes the mounted one when empty.
-using Mount = std::function<void(std::optional<godot::String> scene)>;
 
 /// Plays one cinematic scene at a time for the session, without ever failing
 /// the host.
@@ -73,28 +62,21 @@ struct Playback {
   std::optional<double> card_left;
 };
 
-/// Owns menu navigation, run lifetime, and fixed-step delivery to both games,
-/// using implementations supplied by the scene composition root.
+/// Owns menu navigation, run lifetime, and fixed-step delivery to the
+/// survival game, using implementations supplied by the scene composition
+/// root.
 class Session {
 public:
-  /// Receives the ascent game, its camera and fresh-run reset, the survival
-  /// run factory, the registered experiments, and the operation that mounts
-  /// their scenes, and the stage that plays cinematics.
-  Session(gameplay::AscentEngine &ascent_engine,
-          camera::AscentCamera &ascent_camera,
-          std::function<void()> reset_ascent, StartSurvival start_survival,
-          std::span<const experiment::Entry> experiments, Mount mount_scene,
-          CinematicStage cinematic_stage);
-  /// Samples edges once and advances the open game: ascent on bounded frame
-  /// time, survival on all of it.
+  /// Receives the survival run factory and the stage that plays cinematics.
+  Session(StartSurvival start_survival, CinematicStage cinematic_stage);
+  /// Samples edges once and advances the open screen; a survival run takes all
+  /// of the frame time.
   void advance(double delta, Command command);
-  /// Draws the menus or the open game; a mounted experiment draws itself.
+  /// Draws the menus or the open game.
   void paint(godot::Node2D &canvas,
              const rendering::AscentDrawing &drawing) const;
-  /// Names the current screen, using the experiment id while one is open.
+  /// Names the current screen.
   [[nodiscard]] godot::String screen_name() const;
-  /// Exposes the ascent game's leader position for host integration checks.
-  [[nodiscard]] godot::Vector2 actor_position() const;
   /// Who drives each survival actor, or nothing with no run open.
   [[nodiscard]] std::optional<survival::ControlMap> survival_control() const;
   /// Reports the open survival run and any cinematic over it; empty with no
@@ -104,29 +86,24 @@ public:
 private:
   void enter(Screen destination);
   void choose(std::size_t option);
+  void select(hud::TitleEntry entry);
+  void advance_title(const Command &command);
   void start_run(survival::ControlMap control);
   void advance_run(SurvivalRun &open, double delta, const Command &command);
   void advance_interruption(hud::Interruption open, const Command &command);
-  void tick_ascent(double delta);
   void play(hud::Cinematic cinematic);
   void advance_cinematic(Playback &open, double delta, const Command &command);
   void finish_cinematic(hud::Cinematic cinematic);
 
-  std::reference_wrapper<gameplay::AscentEngine> ascent;
-  std::reference_wrapper<camera::AscentCamera> camera;
-  std::function<void()> reset;
   StartSurvival start;
   std::optional<SurvivalRun> run;
-  std::span<const experiment::Entry> catalog;
-  Mount mount;
   CinematicStage stage;
   std::optional<Playback> playback;
   std::optional<hud::Interruption> interruption;
   Screen screen = Screen::Main;
-  experiment::Entry active;
+  /// The marked title entry, an index into `hud::TITLE_ENTRIES`.
+  std::size_t cursor = 0;
   bool waiting_for_release = true;
-  double accumulator = 0.0;
-  gameplay::PlayerCommand pending;
 };
 
 } // namespace neocity::session

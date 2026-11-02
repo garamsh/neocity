@@ -1,6 +1,5 @@
 #include "scene.hpp"
 
-#include "experiment/catalog.hpp"
 #include "input/menu.hpp"
 
 #include <godot_cpp/classes/canvas_item.hpp>
@@ -11,7 +10,6 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
-#include <cstdlib>
 #include <utility>
 
 namespace neocity {
@@ -20,7 +18,6 @@ namespace {
 
 bool in_editor() { return godot::Engine::get_singleton()->is_editor_hint(); }
 
-constexpr const char *EXPERIMENT_NODE = "Experiment";
 constexpr const char *CINEMATIC_NODE = "Cinematic";
 constexpr const char *CINEMATIC_FINISHED = "finished";
 
@@ -43,45 +40,35 @@ session::SurvivalFeatures SurvivalRules::features() {
           .companion = companion};
 }
 
-AscentScene::AscentScene()
-    : camera(engine.snapshot()),
-      session(
-          engine, camera,
-          [this] {
-            engine = gameplay::AscentEngine{};
-            camera = camera::AscentCamera(engine.snapshot());
-          },
-          [this] { return start_survival(); }, experiment::CATALOG,
-          [this](const std::optional<godot::String> &scene) { mount(scene); },
-          session::CinematicStage{
-              .play =
-                  [this](const godot::String &scene) {
-                    return play_cinematic(scene);
-                  },
-              .playing = [this] { return cinematic_playing(); },
-              .stop = [this] { stop_cinematic(); }}) {}
+MainScene::MainScene()
+    : session([this] { return start_survival(); },
+              session::CinematicStage{
+                  .play =
+                      [this](const godot::String &scene) {
+                        return play_cinematic(scene);
+                      },
+                  .playing = [this] { return cinematic_playing(); },
+                  .stop = [this] { stop_cinematic(); }}) {}
 
-void AscentScene::_bind_methods() {
-  godot::ClassDB::bind_method(godot::D_METHOD("actor_position"),
-                              &AscentScene::actor_position);
+void MainScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
-                              &AscentScene::screen_name);
+                              &MainScene::screen_name);
   godot::ClassDB::bind_method(godot::D_METHOD("survival_status"),
-                              &AscentScene::survival_status);
+                              &MainScene::survival_status);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_survival_seed", "seed"),
-                              &AscentScene::pin_survival_seed);
+                              &MainScene::pin_survival_seed);
 }
 
-void AscentScene::_ready() {
+void MainScene::_ready() {
   if (in_editor()) {
     return;
   }
   drawing = rendering::AscentDrawing::load();
   godot::UtilityFunctions::print(
-      "Host: main menu, main game, and developer experiments ready.");
+      "Host: title screen and Monster Mouth Escape ready.");
 }
 
-void AscentScene::_process(double delta) {
+void MainScene::_process(double delta) {
   if (in_editor()) {
     return;
   }
@@ -90,56 +77,29 @@ void AscentScene::_process(double delta) {
   queue_redraw();
 }
 
-void AscentScene::_draw() {
+void MainScene::_draw() {
   if (drawing) {
     session.paint(*this, *drawing);
   }
 }
 
-godot::Vector2 AscentScene::actor_position() const {
-  return session.actor_position();
-}
-godot::String AscentScene::screen_name() const { return session.screen_name(); }
+godot::String MainScene::screen_name() const { return session.screen_name(); }
 
-godot::Dictionary AscentScene::survival_status() const {
+godot::Dictionary MainScene::survival_status() const {
   return session.survival_status();
 }
 
-void AscentScene::pin_survival_seed(std::int64_t seed) {
+void MainScene::pin_survival_seed(std::int64_t seed) {
   pinned_seed = static_cast<std::uint32_t>(seed);
 }
 
-session::SurvivalFeatures AscentScene::start_survival() {
+session::SurvivalFeatures MainScene::start_survival() {
   const auto seed = pinned_seed.value_or(
       static_cast<std::uint32_t>(godot::UtilityFunctions::randi()));
   return survival_rules.emplace(survival::temporary_content(seed)).features();
 }
 
-void AscentScene::mount(const std::optional<godot::String> &scene) {
-  if (godot::Node *open = get_node_or_null(EXPERIMENT_NODE)) {
-    remove_child(open);
-    open->queue_free();
-  }
-  if (!scene) {
-    return;
-  }
-  const godot::Ref<godot::PackedScene> packed =
-      godot::ResourceLoader::get_singleton()->load(*scene);
-  if (packed.is_null()) {
-    godot::UtilityFunctions::push_error("Experiment scene missing: ", *scene);
-    std::abort();
-  }
-  godot::Node *experiment = packed->instantiate();
-  if (experiment == nullptr) {
-    godot::UtilityFunctions::push_error(
-        "Experiment scene did not instantiate: ", *scene);
-    std::abort();
-  }
-  experiment->set_name(EXPERIMENT_NODE);
-  add_child(experiment);
-}
-
-bool AscentScene::play_cinematic(const godot::String &scene) {
+bool MainScene::play_cinematic(const godot::String &scene) {
   auto *loader = godot::ResourceLoader::get_singleton();
   if (!loader->exists(scene)) {
     return false;
@@ -161,17 +121,17 @@ bool AscentScene::play_cinematic(const godot::String &scene) {
   // Connected before add_child to hear a scene that finishes while entering the
   // tree, and deferred because add_child cannot survive removing that node.
   cinematic->connect(CINEMATIC_FINISHED,
-                     callable_mp(this, &AscentScene::stop_cinematic),
+                     callable_mp(this, &MainScene::stop_cinematic),
                      godot::Object::CONNECT_DEFERRED);
   add_child(cinematic);
   return true;
 }
 
-bool AscentScene::cinematic_playing() const {
+bool MainScene::cinematic_playing() const {
   return get_node_or_null(CINEMATIC_NODE) != nullptr;
 }
 
-void AscentScene::stop_cinematic() {
+void MainScene::stop_cinematic() {
   if (godot::Node *open = get_node_or_null(CINEMATIC_NODE)) {
     remove_child(open);
     open->queue_free();

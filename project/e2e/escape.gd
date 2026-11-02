@@ -21,7 +21,7 @@ const SLOW_FRAME_MS: int = 500
 ## The intro card's 4 seconds at SLOW_FRAME_MS, and 4 frames of margin.
 const INTRO_CARD_SLOW_FRAMES: int = 12
 
-var scene: AscentScene
+var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
 var failed: bool = false
@@ -42,7 +42,7 @@ func _process(delta: float) -> bool:
 
 func _run() -> void:
 	await _frames(2)
-	scene = current_scene as AscentScene
+	scene = current_scene as MainScene
 	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the main menu"):
 		return
 	scene.pin_survival_seed(SEED)
@@ -248,9 +248,17 @@ func _start() -> void:
 	await _tap(KEY_1)
 	await _tap(KEY_1)
 
+## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
+## the title screen takes its marked entry, so it is pressed only to answer the
+## question, and the title must show before the next menu key.
 func _leave() -> void:
-	await _tap(KEY_M)
-	await _tap(KEY_ENTER)
+	var status: Dictionary = scene.survival_status()
+	if status.has("cinematic"):
+		await _tap(KEY_M)
+	elif not status.is_empty():
+		await _tap(KEY_M)
+		await _tap(KEY_ENTER)
+	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and scene.survival_status().is_empty(), 30)
 
 ## Plays on what NEXT says until the run ends: only following it holds the acid.
 func _follow_to_the_end() -> void:

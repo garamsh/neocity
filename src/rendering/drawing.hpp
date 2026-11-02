@@ -1,7 +1,5 @@
 #pragma once
 
-#include <gameplay/world_snapshot.hpp>
-
 #include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -28,14 +26,11 @@ struct Palette {
 
 Palette palette();
 
-/// Paints world snapshots onto a Godot canvas with the ascent's resources.
+/// Draws text and the ascent atlas's sprites onto a Godot canvas.
 class AscentDrawing {
 public:
-  /// Loads the ascent textures and Godot's fallback font.
+  /// Loads the ascent atlas and Godot's fallback font.
   static AscentDrawing load();
-
-  void paint(godot::Node2D &canvas, const gameplay::WorldSnapshot &world,
-             float camera) const;
 
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
             int size, godot::Color tint) const;
@@ -45,14 +40,9 @@ public:
               godot::Rect2 destination, bool flip) const;
 
 private:
-  AscentDrawing(godot::Ref<godot::Texture2D> city,
-                godot::Ref<godot::Texture2D> sprites,
+  AscentDrawing(godot::Ref<godot::Texture2D> sprites,
                 godot::Ref<godot::Font> fallback_font);
 
-  void actor(godot::Node2D &canvas, gameplay::Actor actor, float camera,
-             bool leader, float time) const;
-
-  godot::Ref<godot::Texture2D> background;
   godot::Ref<godot::Texture2D> atlas;
   godot::Ref<godot::Font> font;
 };

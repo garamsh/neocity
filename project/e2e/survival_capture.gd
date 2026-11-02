@@ -10,7 +10,7 @@ const DAY_LIMIT: int = 120
 const STEP_FRAMES: int = 6
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
 
-var scene: AscentScene
+var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 
 func _initialize() -> void:
@@ -18,7 +18,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await _frames(2)
-	scene = current_scene as AscentScene
+	scene = current_scene as MainScene
 	scene.pin_survival_seed(11)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
