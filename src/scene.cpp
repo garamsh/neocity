@@ -93,6 +93,12 @@ void MainScene::_ready() {
       "Host: title screen and Monster Mouth Escape ready.");
 }
 
+void MainScene::_exit_tree() {
+  if (speaker) {
+    speaker->stop();
+  }
+}
+
 void MainScene::_process(double delta) {
   if (in_editor()) {
     return;

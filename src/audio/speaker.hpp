@@ -31,6 +31,10 @@ public:
   void music(Track track, float level);
   /// Sets the loudness of `bus`; 0 mutes it.
   void volume(Bus bus, float level);
+  /// Stops every sound and waits for the audio thread's next mix, which frees
+  /// what stopped: a playback the audio server still lists when it shuts down
+  /// is never freed.
+  void stop();
   /// What the speakers did and do now, for the Godot checks.
   [[nodiscard]] godot::Dictionary status() const;
 

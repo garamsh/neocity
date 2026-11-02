@@ -53,6 +53,7 @@ public:
   MainScene();
 
   void _ready() override;
+  void _exit_tree() override;
   void _process(double delta) override;
   void _draw() override;
 

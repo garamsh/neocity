@@ -8,8 +8,10 @@
 #include <godot_cpp/variant/string_name.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
+#include <thread>
 #include <utility>
 
 namespace neocity::audio {
@@ -28,6 +30,11 @@ constexpr float DRONE_LEVEL = 0.7F;
 constexpr std::size_t RECENT = 32;
 /// Quieter than any audible level, for a silent player.
 constexpr float SILENT_DB = -80.0F;
+/// Longest wait at exit for the audio thread's next mix; Godot's dummy driver
+/// mixes every 4096 frames, about a tenth of a second.
+constexpr std::chrono::milliseconds MIX_WAIT{500};
+/// How often the wait looks for a new mix.
+constexpr std::chrono::milliseconds MIX_POLL{1};
 
 const char *effect_file(Cue cue) {
   switch (cue) {
@@ -184,6 +191,29 @@ void Speaker::volume(Bus bus, float level) {
   const int index = bus_index(bus);
   server->set_bus_volume_db(index, decibels(level));
   server->set_bus_mute(index, level <= 0.0F);
+}
+
+void Speaker::stop() {
+  for (auto *player : effects) {
+    player->stop();
+  }
+  tune->stop();
+  drone->stop();
+  playing = Track::Silence;
+  auto *server = godot::AudioServer::get_singleton();
+  const auto deadline = std::chrono::steady_clock::now() + MIX_WAIT;
+  double since = server->get_time_since_last_mix();
+  while (std::chrono::steady_clock::now() < deadline) {
+    std::this_thread::sleep_for(MIX_POLL);
+    const double now = server->get_time_since_last_mix();
+    if (now < since) {
+      // A mix began after the stop; the lock is free once it has ended.
+      server->lock();
+      server->unlock();
+      return;
+    }
+    since = now;
+  }
 }
 
 godot::Dictionary Speaker::status() const {
