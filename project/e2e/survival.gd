@@ -6,11 +6,11 @@ extends SceneTree
 const SEED: int = 11
 const DAY_FRAMES: int = 2900
 ## On this seed the stock ends before the acid fills or an escape hits.
-const LONG_RUN_SEED: int = 1018
+const LONG_RUN_SEED: int = 81
 const LONG_RUN_DAYS: int = 60
 ## On this seed a chef who takes the wrench first outlasts the stock with the
 ## roof ladder broken.
-const WRENCH_SEED: int = 18
+const WRENCH_SEED: int = 2389
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
 const APPRAISER_DAYS: int = 29
@@ -695,9 +695,11 @@ func _acid_changes_the_city() -> void:
 		return
 	if not await _until("the screen reports the unfed day", func() -> bool: return _next_event_has("unfed"), 30):
 		return
-	if not await _until("acid brings a washed-up bag and breaks the ladder", func() -> bool: return _object("Washed-up Bag 1") == "intact" and _object("Roof Ladder") == "destroyed", 30):
+	if not await _until("acid breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
 		return
-	await _collect_from_the_washed_up_bag()
+	if not _check(_object("Washed-up Bag 1") == "dormant", "acid brings no bag"):
+		return
+	await _collect_from_the_tomato_machine()
 	if failed:
 		return
 	await _tap(KEY_G)
@@ -709,21 +711,21 @@ func _acid_changes_the_city() -> void:
 	await _until("acid brings the ferry", func() -> bool: return _object("Drifted Ferry") == "intact", 30)
 	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 36, "rising acid brings the ferry in")
 
-func _collect_from_the_washed_up_bag() -> void:
+func _collect_from_the_tomato_machine() -> void:
 	await _tap(KEY_Q)
-	if not await _until("the chef sets out for the bag", func() -> bool: return _where("chef") == "city", 30):
+	if not await _until("the chef sets out for the machine", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not await _walk_to(5, 7):
+	if not await _walk_to(6, 7):
 		return
 	var pack: int = _actor("chef", "ingredients")
 	var left: int = _int("remaining_ms")
 	await _tap(KEY_E)
-	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source that acid exposed"):
+	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source acid has not reached"):
 		return
 	if not _check(_int("remaining_ms") <= left - 12000, "a collection spends the shared clock"):
 		return
 	await _tap(KEY_Q)
-	await _until("the party is home from the bag", func() -> bool: return _str("phase") == "workshop", 120)
+	await _until("the party is home from the machine", func() -> bool: return _str("phase") == "workshop", 120)
 
 func _appraiser_run() -> void:
 	await _leave_run()
