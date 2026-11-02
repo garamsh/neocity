@@ -322,7 +322,7 @@ void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at) {
 }
 
 /// Which way a step or a slab rises, or that it lies level.
-enum class Rise { Level, Right, Left };
+enum class Rise : std::uint8_t { Level, Right, Left };
 
 /// How the tilted ground from column `first` to `last` of row `y` rises: to
 /// the right where ground meets its left end a row down or its right end a
