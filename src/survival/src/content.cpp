@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <optional>
 #include <stdexcept>
 
 namespace neocity::survival {
@@ -70,6 +71,19 @@ constexpr ObjectId WASHED_BAG_5{45};
 constexpr ObjectId WASHED_BAG_6{46};
 constexpr ObjectId WASHED_BAG_7{47};
 constexpr ObjectId WASHED_BAG_8{48};
+constexpr ObjectId NEON_LEDGE{51};
+constexpr ObjectId CRACKED_RAMP{52};
+constexpr ObjectId OVERPASS_STUB{53};
+constexpr ObjectId FALLEN_SLAB{54};
+constexpr ObjectId EAST_AVENUE{55};
+constexpr ObjectId SUNKEN_ASPHALT{56};
+constexpr ObjectId COLD_STORE_FLOOR{57};
+constexpr ObjectId MARKET_SHALLOWS{58};
+constexpr ObjectId TILTED_CAR{59};
+constexpr ObjectId PIER{60};
+constexpr ObjectId PLAZA_STEPS{61};
+constexpr ObjectId WEST_RUBBLE{62};
+constexpr ObjectId EAST_RUBBLE{63};
 
 constexpr std::uint32_t BAG_STOCK = 14;
 
@@ -144,6 +158,19 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = WASHED_BAG_6, .name = "Washed-up Bag 6"},
     Named<ObjectId>{.id = WASHED_BAG_7, .name = "Washed-up Bag 7"},
     Named<ObjectId>{.id = WASHED_BAG_8, .name = "Washed-up Bag 8"},
+    Named<ObjectId>{.id = NEON_LEDGE, .name = "Neon Ledge"},
+    Named<ObjectId>{.id = CRACKED_RAMP, .name = "Cracked Ramp"},
+    Named<ObjectId>{.id = OVERPASS_STUB, .name = "Overpass Stub"},
+    Named<ObjectId>{.id = FALLEN_SLAB, .name = "Fallen Slab"},
+    Named<ObjectId>{.id = EAST_AVENUE, .name = "East Avenue"},
+    Named<ObjectId>{.id = SUNKEN_ASPHALT, .name = "Sunken Asphalt"},
+    Named<ObjectId>{.id = COLD_STORE_FLOOR, .name = "Cold Store Floor"},
+    Named<ObjectId>{.id = MARKET_SHALLOWS, .name = "Market Shallows"},
+    Named<ObjectId>{.id = TILTED_CAR, .name = "Tilted Car"},
+    Named<ObjectId>{.id = PIER, .name = "Pier"},
+    Named<ObjectId>{.id = PLAZA_STEPS, .name = "Plaza Steps"},
+    Named<ObjectId>{.id = WEST_RUBBLE, .name = "West Rubble"},
+    Named<ObjectId>{.id = EAST_RUBBLE, .name = "East Rubble"},
 };
 
 template <typename Id, std::size_t Size>
@@ -204,71 +231,182 @@ ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
   return {.id = id, .kind = kind, .area = area, .repair_with = WRENCH};
 }
 
+ObjectDefinition building(ObjectId id, WorldArea area) {
+  return {.id = id, .kind = ObjectKind::Building, .area = area};
+}
+
+/// A broken road across the gullet: low ground drowns first, so every
+/// acid-only threshold rises with height.
 std::vector<ObjectDefinition> city() {
   constexpr auto ferry_time = 800s;
   const WorldThreshold ferry_arrives{.elapsed = ferry_time,
                                      .acid = AcidLevel{30}};
   return {
-      terrain(BASE_DOCK, {.x = 0, .y = 5, .width = 4, .height = 5}),
-      terrain(MAIN_STREET, {.x = 4, .y = 6, .width = 17, .height = 3}),
-      destroyed(terrain(ROTTEN_BRIDGE, {.x = 21, .y = 7, .width = 4}),
+      terrain(BASE_DOCK, {.x = 0, .y = 6, .width = 4, .height = 4}),
+      terrain(MAIN_STREET, {.x = 4, .y = 7, .width = 6, .height = 2}),
+      terrain(CRACKED_RAMP, {.x = 10, .y = 5, .height = 3}),
+      terrain(OVERPASS_STUB, {.x = 11, .y = 5, .width = 6}),
+      terrain(FALLEN_SLAB, {.x = 16, .y = 6, .width = 2}),
+      terrain(EAST_AVENUE, {.x = 17, .y = 7, .width = 5}),
+      destroyed(terrain(SUNKEN_ASPHALT, {.x = 20, .y = 8, .width = 2}),
+                {.acid = AcidLevel{55}}),
+      destroyed(terrain(ROTTEN_BRIDGE, {.x = 22, .y = 8, .width = 4}),
                 {.elapsed = 1080s, .acid = AcidLevel{40}}),
-      terrain(EAST_PLAZA, {.x = 25, .y = 4, .width = 10, .height = 9}),
-      terrain(NORTH_STAIRS, {.x = 8, .y = 3, .width = 2, .height = 3}),
-      terrain(ARCADE, {.x = 4, .y = 1, .width = 16, .height = 2}),
-      terrain(SOUTH_STAIRS, {.x = 12, .y = 9, .width = 2, .height = 3}),
-      terrain(MARKET, {.x = 6, .y = 12, .width = 15, .height = 3}),
-      terrain(ROOFTOP, {.x = 28, .y = 1, .width = 7, .height = 2}),
+      terrain(EAST_PLAZA, {.x = 26, .y = 6, .width = 5, .height = 4}),
+      terrain(COLD_STORE_FLOOR, {.x = 31, .y = 7, .width = 2}),
+      terrain(NORTH_STAIRS, {.x = 7, .y = 3, .height = 4}),
+      terrain(ARCADE, {.x = 2, .y = 1, .width = 9, .height = 2}),
+      terrain(NEON_LEDGE, {.x = 10, .y = 3, .width = 5}),
+      terrain(SOUTH_STAIRS, {.x = 8, .y = 9, .height = 2}),
+      terrain(MARKET, {.x = 6, .y = 11, .width = 9, .height = 2}),
+      destroyed(terrain(MARKET_SHALLOWS, {.x = 3, .y = 13, .width = 6}),
+                {.acid = AcidLevel{45}}),
+      terrain(TILTED_CAR, {.x = 14, .y = 13, .width = 4}),
       exposed(
-          terrain(DRIFTED_FERRY, {.x = 21, .y = 12, .width = 4, .height = 2}),
+          terrain(DRIFTED_FERRY, {.x = 18, .y = 12, .width = 5, .height = 2}),
           ferry_arrives),
-      destroyed(passage(ROOF_LADDER, ObjectKind::Ladder, {.x = 31, .y = 3}),
+      terrain(PIER, {.x = 23, .y = 12, .width = 3}),
+      terrain(PLAZA_STEPS, {.x = 26, .y = 10, .height = 3}),
+      terrain(ROOFTOP, {.x = 16, .y = 2, .width = 7, .height = 2}),
+      destroyed(passage(ROOF_LADDER, ObjectKind::Ladder, {.x = 16, .y = 4}),
                 {.elapsed = 240s, .acid = AcidLevel{10}}),
       destroyed(passage(COLD_STORE_DOOR, ObjectKind::Entrance,
-                        {.x = 27, .y = 7, .width = 4}),
+                        {.x = 30, .y = 7, .width = 3}),
                 {.elapsed = 400s, .acid = AcidLevel{20}}),
-      destroyed({.id = CORNER_SHOP,
-                 .kind = ObjectKind::Building,
-                 .area = {.x = 14, .y = 4, .width = 4, .height = 2}},
+      destroyed(building(CORNER_SHOP, {.x = 12, .y = 6, .width = 4}),
                 {.elapsed = 600s, .acid = AcidLevel{25}}),
-      {.id = COLD_STORE,
-       .kind = ObjectKind::Building,
-       .area = {.x = 27, .y = 6, .width = 6, .height = 4}},
-      destroyed({.id = KIOSK_WRECK,
-                 .kind = ObjectKind::Building,
-                 .area = {.x = 12, .y = 1, .width = 2, .height = 2}},
-                {.elapsed = 360s}),
+      building(COLD_STORE, {.x = 30, .y = 6, .width = 5, .height = 3}),
+      destroyed(
+          building(KIOSK_WRECK, {.x = 9, .y = 1, .width = 2, .height = 2}),
+          {.elapsed = 360s}),
+      building(WEST_RUBBLE, {.x = 6, .y = 8}),
+      building(EAST_RUBBLE, {.x = 29, .y = 9, .width = 2}),
       destroyed({.id = NOODLE_VENDOR,
                  .kind = ObjectKind::Npc,
-                 .area = {.x = 10, .y = 6}},
+                 .area = {.x = 9, .y = 7}},
                 {.elapsed = 480s, .acid = AcidLevel{20}}),
-      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 6}, TOMATO),
+      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 5, .y = 8}, TOMATO),
                 {.acid = AcidLevel{50}}),
-      owned(ingredient_source(VENDOR_CART, {.x = 12, .y = 6}, FISH),
+      owned(ingredient_source(VENDOR_CART, {.x = 9, .y = 8}, FISH),
             NOODLE_VENDOR),
-      owned(ingredient_source(SHOP_SHELF, {.x = 15, .y = 5}, KELP),
+      owned(ingredient_source(SHOP_SHELF, {.x = 13, .y = 6}, KELP),
             CORNER_SHOP),
-      destroyed(ingredient_source(LOST_BASKET, {.x = 9, .y = 13}, MUSHROOM),
+      destroyed(ingredient_source(LOST_BASKET, {.x = 7, .y = 13}, MUSHROOM),
                 {.acid = AcidLevel{40}}),
-      tool_source(TOOL_BAG, {.x = 16, .y = 13}, WRENCH),
-      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 6, .y = 2}, PICKLES),
+      tool_source(TOOL_BAG, {.x = 13, .y = 12}, WRENCH),
+      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 4, .y = 13}, PICKLES),
                 {.acid = AcidLevel{35}}),
-      tool_source(ARCADE_BAG, {.x = 17, .y = 1}, MAGNIFIER),
-      tool_source(SUPPLY_CRATE, {.x = 33, .y = 5}, SPATULA),
-      owned(ingredient_source(COLD_LOCKER, {.x = 31, .y = 7}, MEAT),
+      tool_source(ARCADE_BAG, {.x = 13, .y = 3}, MAGNIFIER),
+      tool_source(SUPPLY_CRATE, {.x = 3, .y = 2}, SPATULA),
+      owned(ingredient_source(COLD_LOCKER, {.x = 33, .y = 7}, MEAT),
             COLD_STORE),
-      ingredient_source(ROOF_BAG, {.x = 33, .y = 1}, TRUFFLE),
-      exposed(owned(ingredient_source(FERRY_BAG, {.x = 23, .y = 12}, KELP),
+      ingredient_source(ROOF_BAG, {.x = 22, .y = 2}, TRUFFLE),
+      exposed(owned(ingredient_source(FERRY_BAG, {.x = 20, .y = 12}, KELP),
                     DRIFTED_FERRY),
               {.elapsed = ferry_time}),
-      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 120s, 40),
-      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 250s, 50),
-      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 380s, 55),
-      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 510s, 60),
-      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 640s, 65),
-      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 980s, 75),
-      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 1160s, 85),
-      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 770s, 70),
+      washed_up(WASHED_BAG_1, {.x = 5, .y = 13}, FISH, 120s, 40),
+      washed_up(WASHED_BAG_2, {.x = 10, .y = 12}, MUSHROOM, 250s, 50),
+      washed_up(WASHED_BAG_3, {.x = 7, .y = 8}, TOMATO, 380s, 55),
+      washed_up(WASHED_BAG_4, {.x = 28, .y = 8}, PICKLES, 510s, 60),
+      washed_up(WASHED_BAG_5, {.x = 18, .y = 7}, KELP, 640s, 65),
+      washed_up(WASHED_BAG_6, {.x = 15, .y = 5}, MEAT, 980s, 75),
+      washed_up(WASHED_BAG_7, {.x = 4, .y = 1}, TRUFFLE, 1160s, 85),
+      washed_up(WASHED_BAG_8, {.x = 27, .y = 6}, TOMATO, 770s, 70),
+  };
+}
+
+/// The road surface by row, one character a cell: = road, ~ cracked, o
+/// pothole, < and > the left and right end of a broken road, / tilted slab,
+/// % rubble, _ planks, c buried car, and . no ground.
+constexpr std::array<std::string_view, 16> GROUND_ROWS{
+    "....................................",
+    "..<=~=o~=~>.........................",
+    "..<~=c~=~=>.....<=~=o~>.............",
+    "......./..<~o~>.<~==~o>.............",
+    "......./............................",
+    "......./../=~o=~>...................",
+    "<=~>.../../.....//........<=~o=.....",
+    "=~==~c=~o=/......~=o~>....=~c=~=~...",
+    "=~=o=~%=~>..........<o____~=o=~.....",
+    "=~o>..../.................=~=%%.....",
+    "......../................./.........",
+    "......<=~o=c~=>.........../.........",
+    "......<~=~o=~=>..._____~o~/.........",
+    "...<~o=~>...../ccc_____.............",
+    "....................................",
+    "....................................",
+};
+
+std::optional<GroundKind> ground_kind(char mark) {
+  switch (mark) {
+  case '=':
+    return GroundKind::Road;
+  case '~':
+    return GroundKind::CrackedRoad;
+  case 'o':
+    return GroundKind::Pothole;
+  case '<':
+    return GroundKind::RoadEndLeft;
+  case '>':
+    return GroundKind::RoadEndRight;
+  case '/':
+    return GroundKind::TiltedSlab;
+  case '%':
+    return GroundKind::Rubble;
+  case '_':
+    return GroundKind::PlankBridge;
+  case 'c':
+    return GroundKind::BuriedCar;
+  case '.':
+    return std::nullopt;
+  default:
+    throw std::logic_error("unknown ground mark");
+  }
+}
+
+std::vector<GroundCell> ground() {
+  std::vector<GroundCell> cells;
+  for (std::size_t row = 0; row < GROUND_ROWS.size(); ++row) {
+    const auto marks = GROUND_ROWS.at(row);
+    for (std::size_t column = 0; column < marks.size(); ++column) {
+      if (const auto kind = ground_kind(marks.at(column))) {
+        cells.push_back({.cell = {.x = static_cast<std::int32_t>(column),
+                                  .y = static_cast<std::int32_t>(row)},
+                         .kind = *kind});
+      }
+    }
+  }
+  return cells;
+}
+
+std::vector<Decoration> decorations() {
+  using enum DecorationKind;
+  return {
+      {.kind = TiltedTrain, .area = {.x = 24, .y = 3, .width = 3}},
+      {.kind = TiltedTrain, .area = {.x = 28, .y = 2, .width = 4}},
+      {.kind = TiltedTrain, .area = {.x = 23, .y = 14, .width = 4}},
+      {.kind = BuildingShell,
+       .area = {.x = 0, .y = 1, .width = 2, .height = 4}},
+      {.kind = BuildingShell,
+       .area = {.x = 11, .y = 8, .width = 5, .height = 3}},
+      {.kind = BuildingShell,
+       .area = {.x = 31, .y = 9, .width = 4, .height = 4}},
+      {.kind = HangingCables, .area = {.x = 11, .y = 4, .width = 5}},
+      {.kind = HangingCables, .area = {.x = 22, .y = 6, .width = 4}},
+      {.kind = DeadNeonSign, .area = {.x = 3, .y = 4, .width = 2, .height = 2}},
+      {.kind = DeadNeonSign, .area = {.x = 29, .y = 4, .width = 2}},
+      {.kind = FleshGrowth, .area = {.x = 0, .y = 10, .width = 3, .height = 3}},
+      {.kind = FleshGrowth, .area = {.x = 34, .y = 9, .width = 2, .height = 5}},
+      {.kind = FleshGrowth,
+       .area = {.x = 15, .y = 10, .width = 3, .height = 2}},
+      {.kind = RubblePile, .area = {.x = 9, .y = 13, .width = 4}},
+      {.kind = RubblePile, .area = {.x = 19, .y = 9, .width = 3, .height = 2}},
+      {.kind = BrokenPillar, .area = {.x = 12, .y = 7}},
+      {.kind = BrokenPillar, .area = {.x = 23, .y = 9, .height = 3}},
+      {.kind = BrokenPillar, .area = {.x = 17, .y = 8, .height = 2}},
+      {.kind = StreetLamp, .area = {.x = 4, .y = 6}},
+      {.kind = StreetLamp, .area = {.x = 18, .y = 6}},
+      {.kind = StreetLamp, .area = {.x = 27, .y = 5}},
   };
 }
 
@@ -353,8 +491,10 @@ Content temporary_content(std::uint32_t seed) {
                                  .flavors = flavors(),
                                  .fine_dish_score = 30},
                     .unfed_penalty = AcidLevel{12}},
-      .hazards = {{.x = 18, .y = 6, .width = 1, .height = 3}},
+      .hazards = {{.x = 10, .y = 6}},
       .map = {.width = 36, .height = 16},
+      .ground = ground(),
+      .decorations = decorations(),
   };
 }
 

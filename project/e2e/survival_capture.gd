@@ -31,7 +31,8 @@ func _run() -> void:
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 6)
 	await _save("4-city-collect-prompt")
-	await _walk(KEY_D, 19)
+	await _walk(KEY_D, 10)
+	await _climb(5)
 	await _frames(30)
 	await _save("5-city-after-drip")
 	await _until_phase("workshop")
@@ -148,6 +149,18 @@ func _walk(code: Key, x: int) -> void:
 			break
 		await process_frame
 	_key(code, false)
+	await _frames(3)
+
+## Holds W until the chef stands on row `y` or above.
+func _climb(y: int) -> void:
+	_key(KEY_W, true)
+	for frame: int in range(240):
+		var chef: Dictionary = scene.survival_status()["chef"]
+		var at: int = chef["y"]
+		if at <= y:
+			break
+		await process_frame
+	_key(KEY_W, false)
 	await _frames(3)
 
 func _until_phase(phase: String) -> void:

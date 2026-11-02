@@ -15,6 +15,42 @@ struct MapSize {
   friend bool operator==(const MapSize &, const MapSize &) = default;
 };
 
+/// The road surface a terrain cell shows while its terrain stands. Rubble
+/// marks a cell an intact building blocks; every other kind is drawing only.
+enum class GroundKind : std::uint8_t {
+  Road,
+  CrackedRoad,
+  Pothole,
+  RoadEndLeft,
+  RoadEndRight,
+  TiltedSlab,
+  Rubble,
+  PlankBridge,
+  BuriedCar
+};
+
+struct GroundCell {
+  GridPosition cell;
+  GroundKind kind = GroundKind::Road;
+};
+
+/// Scenery of the swallowed city; no rule reads it.
+enum class DecorationKind : std::uint8_t {
+  TiltedTrain,
+  BuildingShell,
+  HangingCables,
+  DeadNeonSign,
+  FleshGrowth,
+  RubblePile,
+  BrokenPillar,
+  StreetLamp
+};
+
+struct Decoration {
+  DecorationKind kind = DecorationKind::RubblePile;
+  WorldArea area;
+};
+
 /// One run's temporary data: the map, ingredients, recipes, tools and tuning.
 /// Every value makes the prototype playable and none is final balance.
 struct Content {
@@ -24,6 +60,9 @@ struct Content {
   /// Cells that cost one health slot to step into.
   std::vector<WorldArea> hazards;
   MapSize map;
+  /// One entry for each cell any terrain object covers.
+  std::vector<GroundCell> ground;
+  std::vector<Decoration> decorations;
 };
 
 /// Builds the temporary game for one run seed.

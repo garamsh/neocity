@@ -11,8 +11,11 @@ const COLLECT_MS: int = 12000
 const KIOSK_DAYS: int = 10
 const APPRAISE_ATTEMPTS: int = 12
 const COOK_ATTEMPTS: int = 6
-## The acid drip stands at x 18; waypoints on either side of it burn the walker.
-const BURN_WAYPOINTS: Array[int] = [17, 19, 17]
+## The acid drip stands at 10, 6 on the ramp; up and back down through it burns
+## the walker twice, and the third burn is one step up.
+const BURN_WAYPOINTS: Array[Vector2i] = [Vector2i(10, 7), Vector2i(10, 5), Vector2i(10, 7)]
+## Up the north stairs, through the fallen kiosk and down to the neon ledge.
+const ARCADE_ROUTE: Array[Vector2i] = [Vector2i(7, 7), Vector2i(7, 2), Vector2i(10, 2), Vector2i(10, 3), Vector2i(13, 3)]
 
 ## Action name to the key the README names for it.
 const KEYS: Dictionary[String, Key] = {
@@ -58,12 +61,12 @@ func _one_player() -> bool:
 	if not await _until("chef sets out", func() -> bool: return _where("chef") == "city", 30):
 		return false
 	var keys: Dictionary[String, Key] = _walk_keys(1)
-	if not await _walk_to("chef", keys, 8, 7):
+	if not await _walk_to("chef", keys, 7, 7):
 		return false
 	var x: int = _actor("chef", "x")
 	if not await _held_result("survival_1_left", func() -> bool: return _actor("chef", "x") < x, 30, "%s walks player one left" % _name("survival_1_left")):
 		return false
-	if not await _walk_to("chef", keys, 8, 7):
+	if not await _walk_to("chef", keys, 7, 7):
 		return false
 	if not await _held_result("survival_1_up", func() -> bool: return _actor("chef", "y") < 7, 30, "%s walks player one up" % _name("survival_1_up")):
 		return false
@@ -84,16 +87,18 @@ func _two_players() -> bool:
 	await _tap(KEY_U)
 	if not await _until("player two sets out alone", func() -> bool: return _where("appraiser") == "city", 30):
 		return false
-	if not await _walk_to("appraiser", keys, 8, 7):
+	if not await _walk_to("appraiser", keys, 7, 7):
 		return false
 	var x: int = _actor("appraiser", "x")
 	if not await _held_result("survival_2_left", func() -> bool: return _actor("appraiser", "x") < x, 30, "%s walks player two left" % _name("survival_2_left")):
 		return false
-	if not await _walk_to("appraiser", keys, 8, 7):
+	if not await _walk_to("appraiser", keys, 7, 7):
 		return false
 	if not await _held_result("survival_2_up", func() -> bool: return _actor("appraiser", "y") < 7, 30, "%s walks player two up" % _name("survival_2_up")):
 		return false
 	if not await _held_result("survival_2_down", func() -> bool: return _actor("appraiser", "y") > 7, 60, "%s walks player two down" % _name("survival_2_down")):
+		return false
+	if not await _walk_to("appraiser", keys, 7, 7):
 		return false
 	if not await _walk_to("appraiser", keys, 4, 7):
 		return false
@@ -104,13 +109,13 @@ func _two_players() -> bool:
 	_release()
 	if not ran:
 		return false
-	if not await _walk_to("appraiser", keys, 6, 7):
+	if not await _walk_to("appraiser", keys, 5, 7):
 		return false
 	var remaining: int = _int("remaining_ms")
 	await _tap(KEYS["survival_2_interact"])
 	if not _check(_actor("appraiser", "ingredients") == 1 and remaining - _int("remaining_ms") >= COLLECT_MS, "%s collects for player two and spends the clock" % _name("survival_2_interact")):
 		return false
-	if not await _walk_to("appraiser", keys, 12, 7):
+	if not await _walk_to("appraiser", keys, 9, 7):
 		return false
 	await _tap(KEYS["survival_2_interact"])
 	if not _check(_actor("appraiser", "ingredients") == 2, "%s collects a second ingredient" % _name("survival_2_interact")):
@@ -146,12 +151,12 @@ func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 		return false
 	if not _check(_str("magnifier") == "intact", "the magnifier starts intact"):
 		return false
-	for waypoint: int in BURN_WAYPOINTS:
-		if not await _walk_to("appraiser", keys, waypoint, 7):
+	for waypoint: Vector2i in BURN_WAYPOINTS:
+		if not await _walk_to("appraiser", keys, waypoint.x, waypoint.y):
 			return false
-	_key(keys["right"], true)
+	_key(keys["up"], true)
 	var exhausted: bool = await _until("the third drip", func() -> bool: return _actor("appraiser", "exhaustions") == 1, 60)
-	_key(keys["right"], false)
+	_key(keys["up"], false)
 	if not exhausted:
 		return false
 	if not _check(_where("appraiser") == "base" and _str("magnifier") == "damaged", "exhaustion sends player two home and damages the magnifier"):
@@ -159,7 +164,7 @@ func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 	await _tap(KEY_U)
 	if not await _until("player two sets out again", func() -> bool: return _where("appraiser") == "city", 30):
 		return false
-	for waypoint: Vector2i in [Vector2i(8, 7), Vector2i(8, 1), Vector2i(17, 1)]:
+	for waypoint: Vector2i in ARCADE_ROUTE:
 		if not await _walk_to("appraiser", keys, waypoint.x, waypoint.y):
 			return false
 	await _tap(KEYS["survival_2_interact"])
