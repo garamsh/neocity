@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -73,6 +74,9 @@ private:
   double accumulated = 0.0;
   std::array<survival::PlayerInput, 2> pending{};
   std::array<survival::ExplorationInput, 2> held{};
+  /// Game time left before each actor's interact edge acts again; a held run
+  /// takes no step, so it does not run down.
+  std::array<std::chrono::milliseconds, 2> interact_hold{};
   /// The chef's up or down press since the last step.
   survival::Direction dish_step = survival::Direction::Idle;
   /// Lasts for the day and applies while it can be cooked.
