@@ -228,21 +228,18 @@ String offered_step(const survival::Action &action, const KeyLabels &keys) {
       action);
 }
 
-/// Where `actor` has something to do: a stocked source that is supplying and
-/// that it can still take from today, or a broken passage it carries the tool
-/// for.
+/// Where `actor` has something to do: a stocked source that is supplying, or a
+/// broken passage it carries the tool for.
 std::vector<survival::WorldArea> errand_areas(const SurvivalFrame &frame,
                                               Actor actor) {
   const auto &view = frame.view;
-  const bool load_left = state_of(view, actor).load <
-                         frame.content.get().companion.exploration.daily_load;
   std::vector<survival::WorldArea> areas;
   const auto &objects = view.world.objects;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
     if (stock.remaining > 0 && object != objects.end() &&
-        object->material_available && (object->tool || load_left)) {
+        object->material_available) {
       areas.push_back(object->area);
     }
   }
@@ -287,12 +284,18 @@ bool errand_in_reach(const SurvivalFrame &frame, Actor actor,
   return false;
 }
 
-GridPosition position_of(const GameView &view, Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return view.exploration.chef.position;
-  case Actor::Appraiser:
-    return view.exploration.appraiser.position;
+const char *direction_word(survival::Direction direction) {
+  switch (direction) {
+  case survival::Direction::Idle:
+    return "over";
+  case survival::Direction::Left:
+    return "left";
+  case survival::Direction::Right:
+    return "right";
+  case survival::Direction::Up:
+    return "up";
+  case survival::Direction::Down:
+    return "down";
   }
   std::abort();
 }
@@ -313,19 +316,26 @@ bool worth_setting_out(const SurvivalFrame &frame) {
 String city_step(const SurvivalFrame &frame, Actor actor,
                  const KeyLabels &keys) {
   const auto &offers = frame.offers.at(index_of(actor));
-  // A source passed on the way to what the party lacks would spend the load.
-  const bool passing =
-      offers.route != survival::Direction::Idle && offers.interact &&
+  const bool collecting =
+      offers.interact &&
       std::holds_alternative<survival::Collect>(*offers.interact);
-  if (offers.interact && !passing) {
-    return offered_step(*offers.interact, keys);
+  const bool walking =
+      offers.errand && offers.errand->step != survival::Direction::Idle;
+  // A source passed on the way to what the party lacks would spend the clock.
+  if (offers.interact && !(collecting && walking)) {
+    return offered_step(*offers.interact, keys) +
+           (collecting ? " (" +
+                             clock(frame.content.get()
+                                       .companion.exploration.collection_time) +
+                             ")"
+                       : String());
   }
-  if (!errand_in_reach(frame, actor, position_of(frame.view, actor))) {
+  if (!offers.errand) {
     return "Nothing is within reach for now. " + from(keys.travel) +
            " returns to base.";
   }
-  return "Walk to a gold-framed marker and press " + from(keys.interact) +
-         ". Stay on the paved ground: a fall sends you to base. " +
+  return "Walk " + String(direction_word(offers.errand->step)) + " to " +
+         from(survival::object_name(offers.errand->target)) + ". " +
          from(keys.travel) + " returns.";
 }
 
@@ -384,7 +394,9 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
   const auto &recipes = frame.content.get().companion.workshop.recipes;
   if (!chef_keys && frame.view.workshop.foods.empty() &&
       std::ranges::any_of(recipes, [&frame](const survival::Recipe &recipe) {
-        return recipe_ready(frame.view, recipe);
+        const auto &rejected = frame.view.workshop.rejected_foods;
+        return recipe_ready(frame.view, recipe) &&
+               std::ranges::find(rejected, recipe.food) == rejected.end();
       })) {
     return "The AI chef is cooking.";
   }
@@ -486,10 +498,6 @@ void paint_actor_card(godot::Node2D &canvas,
   drawing.text(canvas, x + 196.0F, CARD_Y + 22.0F,
                state.location == Location::City ? "in city" : "at base", 15,
                state.location == Location::City ? tones.cyan : tones.gold);
-  drawing.text(canvas, x + 196.0F, CARD_Y + 60.0F,
-               "Load " + number(state.load) + "/" +
-                   number(frame.content.get().companion.exploration.daily_load),
-               15, tones.muted);
   paint_hearts(canvas, x + 72.0F, CARD_Y + 29.0F, state.health);
   bar(canvas, x + 146.0F, CARD_Y + 31.0F, 120.0F, 10.0F, stamina,
       color(96, 200, 250, 1.0F));
@@ -853,8 +861,6 @@ String refusal_text(survival::CollectionResult result) {
     return "That source is empty.";
   case survival::CollectionResult::Unavailable:
     return "That source is gone.";
-  case survival::CollectionResult::LoadFull:
-    return "That is all you can carry today.";
   case survival::CollectionResult::OutOfRange:
     return "Move closer.";
   case survival::CollectionResult::NotExploring:
@@ -1049,13 +1055,22 @@ String next_step(const SurvivalFrame &frame) {
   if (view.progression.phase == Phase::Workshop) {
     return workshop_step(frame, KEY_LABELS.at(0));
   }
+  const auto exploring = [&frame](Actor actor) {
+    return survival::key_set(frame.control, actor) &&
+           state_of(frame.view, actor).location == Location::City;
+  };
+  const bool both = std::ranges::all_of(ACTORS, exploring);
+  String line;
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
-    if (keys && state_of(view, actor).location == Location::City) {
-      return city_step(frame, actor, KEY_LABELS.at(*keys));
+    if (keys && exploring(actor)) {
+      const String player = both ? "P" + number(*keys + 1) + ": " : String();
+      line += (line.is_empty() ? String() : String("   ")) + player +
+              city_step(frame, actor, KEY_LABELS.at(*keys));
     }
   }
-  return "Waiting for the party to reach base.";
+  return line.is_empty() ? String("Waiting for the party to reach base.")
+                         : line;
 }
 
 String describe(const Event &event) {

@@ -48,12 +48,13 @@ struct WorldEvent {
 using Event =
     std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent, WorldEvent>;
 
-/// What one human's interact and feed keys would do right now, and the way AI
-/// would walk in that human's place: idle once the errand is in reach.
+/// What one human's interact and feed keys would do right now, and the errand
+/// AI would run in that human's place. The NEXT line names that errand, so the
+/// screen tells a player where to walk.
 struct Offers {
   std::optional<survival::Action> interact;
   std::optional<survival::Action> feed;
-  survival::Direction route = survival::Direction::Idle;
+  std::optional<survival::Errand> errand;
 };
 
 /// Everything one survival frame draws, read from snapshots.

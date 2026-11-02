@@ -257,7 +257,6 @@ TEST(Survival, FinishDayRaisesAcidAndRestoresTheBudgetKeepingInventory) {
   expected.day = 2;
   expected.acid = AcidLevel{5};
   expected.remaining_exploration = 10s;
-  expected.chef.load = 0;
   EXPECT_EQ(simulation.snapshot(), expected);
   ASSERT_EQ(simulation.finish_day({}), Result::Applied);
   EXPECT_EQ(simulation.snapshot().day, 3U);
@@ -485,20 +484,6 @@ TEST(Simulation, HealthExhaustionIsNotALoss) {
   }
   EXPECT_EQ(simulation.snapshot().chef.exhaustions, 1U);
   EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
-}
-
-TEST(Simulation,
-     EachCollectedIngredientCountsTowardTheDaysLoadUntilTheDayEnds) {
-  Simulation simulation({.exploration_budget = 10s, .seed = 1});
-  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
-  ASSERT_EQ(simulation.collect_tool(Actor::Chef, WRENCH), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.load, 1U);
-  EXPECT_EQ(simulation.snapshot().appraiser.load, 0U);
-  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.load, 1U);
-  ASSERT_EQ(simulation.finish_day({}), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.load, 0U);
 }
 
 } // namespace

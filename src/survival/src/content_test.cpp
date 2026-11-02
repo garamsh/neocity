@@ -31,7 +31,7 @@ constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
 constexpr auto STEP = 100ms;
 constexpr std::uint32_t STEP_LIMIT = 400'000;
 constexpr auto ARRIVAL_SCAN_STEP = 5s;
-constexpr auto ARRIVAL_SCAN_END = 400s;
+constexpr auto ARRIVAL_SCAN_END = 1600s;
 constexpr std::uint32_t ACID_SCAN_STEP = 5;
 constexpr std::uint32_t ACID_SCAN_END = 100;
 /// The share of attempts an intact spatula turns into a dish.
@@ -423,18 +423,75 @@ TEST(TemporaryContent, TheAcidGaugeFillsAtAValueOfTheRules) {
 }
 
 TEST(TemporaryContent,
-     NoRepeatCanSatisfyAndEveryWantedNewDishCanWhenCookedFine) {
+     OnlyAVeryTastyFineRepeatSatisfiesAndEveryWantedNewDishCanWhenCookedFine) {
   const auto content = temporary_content(1);
   const auto &work = content.companion.workshop;
+  std::uint32_t fine_repeats = 0;
+  std::uint32_t short_repeats = 0;
   for (const auto &recipe : work.recipes) {
     const auto taste = taste_of(recipe, work);
-    EXPECT_LT(taste + work.fine_dish_score, work.satisfying_score)
-        << food_name(recipe.food);
+    EXPECT_LT(taste, work.satisfying_score) << food_name(recipe.food);
+    const bool satisfies =
+        taste + work.fine_dish_score >= work.satisfying_score;
+    fine_repeats += satisfies && !recipe.disliked ? 1U : 0U;
+    short_repeats += satisfies ? 0U : 1U;
     if (!recipe.disliked) {
       EXPECT_GE(work.new_food_score + taste + work.fine_dish_score,
                 work.satisfying_score)
           << food_name(recipe.food);
     }
+  }
+  EXPECT_GT(fine_repeats, 0U);
+  EXPECT_GT(short_repeats, 0U);
+}
+
+TEST(TemporaryContent,
+     TheDayEndsByTimeWhileStockRemainsBecauseCollectingTakesTime) {
+  const auto first_trip = [](Content content) {
+    Game game(std::move(content));
+    game.step(ALL_AI);
+    for (std::uint32_t step = 0;
+         step < STEP_LIMIT &&
+         game.simulation().snapshot().phase != Phase::Workshop;
+         ++step) {
+      game.step(ALL_AI);
+    }
+    const auto sources = game.exploration().snapshot().sources;
+    return std::pair{
+        game.simulation().snapshot().remaining_exploration,
+        std::accumulate(sources.begin(), sources.end(), 0U,
+                        [](std::uint32_t sum, const SourceStock &source) {
+                          return sum + source.remaining;
+                        })};
+  };
+  auto content = temporary_content(1);
+  const auto [left, stock] = first_trip(content);
+  EXPECT_EQ(left, 0us);
+  EXPECT_GT(stock, 0U);
+  content.companion.exploration.collection_time = 0us;
+  const auto [free_left, free_stock] = first_trip(content);
+  EXPECT_GT(free_left, 0us);
+  EXPECT_LT(free_stock, stock);
+}
+
+TEST(TemporaryContent, AnAiPartyFeedsTheDislikedDishOnce) {
+  for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
+    Game game(temporary_content(seed));
+    std::uint32_t day = 0;
+    std::uint32_t disliked = 0;
+    for (std::uint32_t step = 0;
+         step < STEP_LIMIT && !run_over(game.simulation().snapshot().phase);
+         ++step) {
+      game.step(ALL_AI);
+      const auto last = game.workshop().snapshot().last_day;
+      if (last && last->completed_day != day) {
+        day = last->completed_day;
+        disliked += last->reaction == MonsterReaction::Disliked ? 1U : 0U;
+      }
+    }
+    EXPECT_TRUE(run_over(game.simulation().snapshot().phase))
+        << "seed " << seed;
+    EXPECT_LE(disliked, 1U) << "seed " << seed;
   }
 }
 
@@ -516,7 +573,7 @@ TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
 
   const std::array<ExplorationInput, 2> idle{};
   ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
-  while (game.world().snapshot().progression.elapsed < 280s) {
+  while (game.world().snapshot().progression.elapsed < 1120s) {
     ASSERT_EQ(game.exploration().advance(STEP, idle, AcidLevel{}),
               Result::Applied);
     if (game.simulation().snapshot().phase == Phase::Workshop) {

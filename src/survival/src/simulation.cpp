@@ -88,7 +88,6 @@ Result Simulation::collect(Actor actor, IngredientId ingredient) {
     return Result::NotExploring;
   }
   state.inventory.push_back(ingredient);
-  ++state.load;
   return Result::Applied;
 }
 
@@ -135,8 +134,6 @@ Result Simulation::finish_day(AcidLevel acid_rise) {
       std::min(acid_rise.value, full_acid.value - world.acid.value);
   ++world.day;
   world.remaining_exploration = daily_budget;
-  world.chef.load = 0;
-  world.appraiser.load = 0;
   if (world.acid == full_acid) {
     world.phase = Phase::Lost;
   }

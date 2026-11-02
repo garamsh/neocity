@@ -42,15 +42,13 @@ struct AcidLevel {
 };
 
 /// Exploration health and carried items; workshop has no separate health.
-/// `exhaustions` counts the times this actor's health ran out, and `load` the
-/// ingredients it collected today.
+/// `exhaustions` counts the times this actor's health ran out.
 struct ActorSnapshot {
   Location location = Location::Base;
   std::uint8_t health = 3;
   std::vector<IngredientId> inventory;
   std::vector<ToolId> tools;
   std::uint32_t exhaustions = 0;
-  std::uint32_t load = 0;
   friend bool operator==(const ActorSnapshot &,
                          const ActorSnapshot &) = default;
 };
@@ -116,8 +114,8 @@ public:
   /// Removes one tool from the two inventories, the chef's first.
   [[nodiscard]] Result consume_tool(ToolId tool);
   /// Raises acid, stopping at full, and starts the next day with a full
-  /// exploration budget and empty loads. Full acid ends the run as lost, before
-  /// anything can act on the new day.
+  /// exploration budget. Full acid ends the run as lost, before anything can
+  /// act on the new day.
   [[nodiscard]] Result finish_day(AcidLevel acid_rise);
   /// Ends the run from the workshop; every later command leaves the snapshot
   /// unchanged.

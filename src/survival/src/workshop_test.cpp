@@ -690,7 +690,7 @@ TEST(WorkshopIntegration, FoundToolRestoresTheBaseToolAfterAnExhaustion) {
             WorkshopResult::ToolIntact);
 }
 
-TEST(Workshop, ToolDamageReachesEveryPhaseButTheEscapedOne) {
+TEST(Workshop, ToolDamageReachesEveryPhaseUntilTheRunIsOver) {
   auto simulation = carrying(1, {});
   Workshop workshop(simulation, balance());
   workshop.damage_tool(WorkshopTool::Magnifier);

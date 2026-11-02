@@ -72,7 +72,7 @@ constexpr ObjectId WASHED_BAG_7{47};
 constexpr ObjectId WASHED_BAG_8{48};
 
 constexpr std::uint32_t BAG_SURVIVES = 30;
-constexpr std::uint32_t BAG_STOCK = 8;
+constexpr std::uint32_t BAG_STOCK = 12;
 
 template <typename Id> struct Named {
   Id id;
@@ -206,12 +206,12 @@ ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
 }
 
 std::vector<ObjectDefinition> city() {
-  const WorldThreshold ferry_arrives{.elapsed = 200s, .acid = AcidLevel{30}};
+  const WorldThreshold ferry_arrives{.elapsed = 800s, .acid = AcidLevel{30}};
   return {
       terrain(BASE_DOCK, {.x = 0, .y = 5, .width = 4, .height = 5}),
       terrain(MAIN_STREET, {.x = 4, .y = 6, .width = 17, .height = 3}),
       destroyed(terrain(ROTTEN_BRIDGE, {.x = 21, .y = 7, .width = 4}),
-                {.elapsed = 270s, .acid = AcidLevel{40}}),
+                {.elapsed = 1080s, .acid = AcidLevel{40}}),
       terrain(EAST_PLAZA, {.x = 25, .y = 4, .width = 10, .height = 9}),
       terrain(NORTH_STAIRS, {.x = 8, .y = 3, .width = 2, .height = 3}),
       terrain(ARCADE, {.x = 4, .y = 1, .width = 16, .height = 2}),
@@ -222,25 +222,25 @@ std::vector<ObjectDefinition> city() {
           terrain(DRIFTED_FERRY, {.x = 21, .y = 12, .width = 4, .height = 2}),
           ferry_arrives),
       destroyed(passage(ROOF_LADDER, ObjectKind::Ladder, {.x = 31, .y = 3}),
-                {.elapsed = 60s, .acid = AcidLevel{10}}),
+                {.elapsed = 240s, .acid = AcidLevel{10}}),
       destroyed(passage(COLD_STORE_DOOR, ObjectKind::Entrance,
                         {.x = 27, .y = 7, .width = 4}),
-                {.elapsed = 100s, .acid = AcidLevel{20}}),
+                {.elapsed = 400s, .acid = AcidLevel{20}}),
       destroyed({.id = CORNER_SHOP,
                  .kind = ObjectKind::Building,
                  .area = {.x = 14, .y = 4, .width = 4, .height = 2}},
-                {.elapsed = 150s, .acid = AcidLevel{25}}),
+                {.elapsed = 600s, .acid = AcidLevel{25}}),
       {.id = COLD_STORE,
        .kind = ObjectKind::Building,
        .area = {.x = 27, .y = 6, .width = 6, .height = 4}},
       destroyed({.id = KIOSK_WRECK,
                  .kind = ObjectKind::Building,
                  .area = {.x = 12, .y = 1, .width = 2, .height = 2}},
-                {.elapsed = 90s}),
+                {.elapsed = 360s}),
       destroyed({.id = NOODLE_VENDOR,
                  .kind = ObjectKind::Npc,
                  .area = {.x = 10, .y = 6}},
-                {.elapsed = 120s, .acid = AcidLevel{20}}),
+                {.elapsed = 480s, .acid = AcidLevel{20}}),
       destroyed(ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 6}, TOMATO),
                 {.acid = AcidLevel{50}}),
       owned(ingredient_source(VENDOR_CART, {.x = 12, .y = 6}, FISH),
@@ -260,14 +260,14 @@ std::vector<ObjectDefinition> city() {
       exposed(owned(ingredient_source(FERRY_BAG, {.x = 23, .y = 12}, KELP),
                     DRIFTED_FERRY),
               ferry_arrives),
-      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 50s, 10),
-      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 95s, 20),
-      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 140s, 30),
-      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 185s, 40),
-      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 230s, 50),
-      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 275s, 60),
-      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 320s, 70),
-      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 365s, 80),
+      washed_up(WASHED_BAG_1, {.x = 5, .y = 8}, FISH, 200s, 10),
+      washed_up(WASHED_BAG_2, {.x = 12, .y = 13}, MUSHROOM, 380s, 20),
+      washed_up(WASHED_BAG_3, {.x = 4, .y = 1}, TOMATO, 560s, 30),
+      washed_up(WASHED_BAG_4, {.x = 26, .y = 11}, PICKLES, 740s, 40),
+      washed_up(WASHED_BAG_5, {.x = 7, .y = 7}, KELP, 920s, 50),
+      washed_up(WASHED_BAG_6, {.x = 16, .y = 8}, MEAT, 1100s, 60),
+      washed_up(WASHED_BAG_7, {.x = 12, .y = 10}, TRUFFLE, 1280s, 70),
+      washed_up(WASHED_BAG_8, {.x = 30, .y = 12}, TOMATO, 1460s, 80),
   };
 }
 
@@ -318,13 +318,13 @@ std::vector<Recipe> recipes() {
 }
 
 std::vector<Flavor> flavors() {
-  return {{.ingredient = TOMATO, .taste = 10},
-          {.ingredient = FISH, .taste = 20},
-          {.ingredient = KELP, .taste = 15},
-          {.ingredient = MUSHROOM, .taste = 15},
-          {.ingredient = PICKLES, .taste = 5},
-          {.ingredient = MEAT, .taste = 25},
-          {.ingredient = TRUFFLE, .taste = 35}};
+  return {{.ingredient = TOMATO, .taste = 20},
+          {.ingredient = FISH, .taste = 35},
+          {.ingredient = KELP, .taste = 25},
+          {.ingredient = MUSHROOM, .taste = 25},
+          {.ingredient = PICKLES, .taste = 10},
+          {.ingredient = MEAT, .taste = 40},
+          {.ingredient = TRUFFLE, .taste = 55}};
 }
 
 } // namespace
@@ -340,17 +340,17 @@ Content temporary_content(std::uint32_t seed) {
                                     .maximum_stamina = 20,
                                     .collection_distance = 1,
                                     .sources = stock(),
-                                    .daily_load = 2},
+                                    .collection_time = 12s},
                     .workshop = {.recipes = recipes(),
                                  .magnifier = MAGNIFIER,
                                  .spatula = SPATULA,
-                                 .new_food_score = 70,
+                                 .new_food_score = 50,
                                  .new_ingredient_score = 5,
                                  .satisfying_score = 100,
                                  .disliked_acid_rise = AcidLevel{15},
-                                 .unsatisfied_acid_rise = AcidLevel{6},
+                                 .unsatisfied_acid_rise = AcidLevel{10},
                                  .flavors = flavors(),
-                                 .fine_dish_score = 15},
+                                 .fine_dish_score = 30},
                     .unfed_penalty = AcidLevel{12}},
       .hazards = {{.x = 18, .y = 6, .width = 1, .height = 3}},
       .map = {.width = 36, .height = 16},

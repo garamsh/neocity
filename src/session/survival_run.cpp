@@ -157,22 +157,6 @@ const char *reaction_name(survival::MonsterReaction reaction) {
   std::abort();
 }
 
-const char *direction_name(survival::Direction direction) {
-  switch (direction) {
-  case survival::Direction::Idle:
-    return "";
-  case survival::Direction::Left:
-    return "left";
-  case survival::Direction::Right:
-    return "right";
-  case survival::Direction::Up:
-    return "up";
-  case survival::Direction::Down:
-    return "down";
-  }
-  std::abort();
-}
-
 const char *location_name(survival::Location location) {
   switch (location) {
   case survival::Location::Base:
@@ -197,7 +181,6 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
   status.set("tools", static_cast<std::int64_t>(state.tools.size()));
   status.set("exhaustions", state.exhaustions);
-  status.set("load", state.load);
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
 }
@@ -437,12 +420,10 @@ hud::SurvivalFrame SurvivalRun::frame() const {
           .interact =
               command_for(actor, {.interact = true}, result.view).action,
           .feed = command_for(actor, {.feed = true}, result.view).action,
-          .route = state_of(result.view.progression, actor).location ==
-                           survival::Location::City
-                       ? features.companion.get()
-                             .command(actor, AI_ONLY, {}, result.view)
-                             .movement.direction
-                       : survival::Direction::Idle};
+          .errand = state_of(result.view.progression, actor).location ==
+                            survival::Location::City
+                        ? features.companion.get().errand(actor, result.view)
+                        : std::nullopt};
     }
   }
   return result;
@@ -502,8 +483,6 @@ godot::Dictionary SurvivalRun::status() const {
   }
   status.set("stock", stock);
   status.set("next", hud::next_step(current));
-  status.set("route", direction_name(std::max(current.offers.at(0).route,
-                                              current.offers.at(1).route)));
   godot::Array log;
   for (const auto &event : current.events) {
     log.push_back(hud::describe(event));

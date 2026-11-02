@@ -10,6 +10,8 @@ const STEP_MS: int = 100
 ## Above this frame time Godot's default of 8 steps at 120 Hz cuts `delta`.
 const DEFAULT_CAP_MS: int = 67
 const RULE_TICKS_PER_FRAME: int = 8
+## No AI collects in this party, so only the steps these checks count spend the clock.
+const TWO_PLAYERS: int = 3
 ## The rule tick that hits an idle player in pan_dodge.
 const FIRST_HIT_TICK: int = 300
 
@@ -41,7 +43,7 @@ func _run() -> void:
 	quit(0)
 
 func _fine_frames() -> void:
-	await _start(1)
+	await _start(TWO_PLAYERS)
 	await _one_frame("survival_1_travel")
 	await _frames(60)
 	if not _check(_location("chef") == "city", "a one-frame travel tap between steps is retained"):
@@ -205,7 +207,7 @@ func _both_leave() -> void:
 	_check(_actor("chef", "key_set") == -1 and _actor("appraiser", "key_set") == 0, "both leaving in one step keeps one human")
 
 func _coarse_frames() -> void:
-	await _start(1)
+	await _start(TWO_PLAYERS)
 	await _one_frame("survival_1_travel")
 	await _frames(1)
 	if not _check(_location("chef") == "city", "a slow frame still carries a tap"):
@@ -251,7 +253,7 @@ func _coarse_frames() -> void:
 func _real_frames() -> void:
 	if not _check(not OS.get_cmdline_args().has("--fixed-fps"), "the real clock run has no fixed frame time"):
 		return
-	await _start(1)
+	await _start(TWO_PLAYERS)
 	await _one_frame("survival_1_travel")
 	await _delayed_frames(3, 2 * STEP_MS)
 	if not _check(_location("chef") == "city", "the party sets out on the real clock"):

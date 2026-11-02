@@ -30,6 +30,8 @@ var step_frames: int = 6
 ## Keeps each taken-over resource alive; the cache forgets a path when it is freed.
 var stand_in: Resource
 var frame_seconds: float = 0.0
+## The last roll count read while a run was open: a closed run reports none.
+var rolls_seen: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -201,7 +203,7 @@ func _instant_ending(fixture: String) -> void:
 	await _start()
 	await _tap(KEY_E)
 	await _follow_to_the_end()
-	_check(_int("escape_rolls") == 0 and scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
+	_check(rolls_seen > 0 and scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 
 ## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
 ## would run in the frame that escaped.
@@ -247,6 +249,7 @@ func _leave() -> void:
 ## Plays on what NEXT says until the run ends: only following it holds the acid.
 func _follow_to_the_end() -> void:
 	while (_str("phase") == "workshop" or _str("phase") == "exploration") and _int("day") < DAY_LIMIT:
+		rolls_seen = _int("escape_rolls")
 		await _follow_next()
 
 ## Presses the one key NEXT names, or lets the day run while it names none.
@@ -262,15 +265,15 @@ func _follow_next() -> void:
 		await _tap(KEY_G)
 	elif line.contains("[E] "):
 		await _tap(KEY_E)
-	elif line.contains("gold-framed"):
-		await _walk_a_cell()
+	elif line.begins_with("Walk "):
+		await _walk_a_cell(line)
 	else:
 		await _frames(step_frames)
 
-## Walks one cell along the route to the human's next errand: a press and release
-## in one frame walks one step at any frame length.
-func _walk_a_cell() -> void:
-	var code: Key = ROUTE_KEYS.get(_str("route"), KEY_NONE)
+## Walks one cell the way NEXT names: a press and release in one frame walks one
+## step at any frame length.
+func _walk_a_cell(line: String) -> void:
+	var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
 	if code != KEY_NONE:
 		_key(code, true)
 		_key(code, false)

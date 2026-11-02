@@ -995,7 +995,7 @@ TEST(Companion, TheChefCooksTheTastiestNewDish) {
       (std::optional<Action>{Cook{SOUP}}));
 }
 
-TEST(Companion, TheChefRepeatsARejectedDishOnlyWhenNothingElseCanBeCooked) {
+TEST(Companion, TheChefNeverCooksARejectedDishAgain) {
   auto work = kitchen({{.food = SOUP, .ingredients = {CARROT}},
                        {.food = STEW, .ingredients = {ONION}}});
   work.flavors = {{.ingredient = CARROT, .taste = 1},
@@ -1009,34 +1009,29 @@ TEST(Companion, TheChefRepeatsARejectedDishOnlyWhenNothingElseCanBeCooked) {
       companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
       (std::optional<Action>{Cook{SOUP}}));
   view.progression.chef.inventory = {ONION};
+  EXPECT_NE(
+      companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Cook{STEW}}));
+  view.workshop.rejected_foods.clear();
   EXPECT_EQ(
       companion_with(work).command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
       (std::optional<Action>{Cook{STEW}}));
 }
 
-TEST(Companion, AnActorWithAFullLoadLeavesIngredientsButStillTakesTools) {
+TEST(Companion, TheErrandNamesWhereAiWouldWalkAndStopsStepping) {
   constexpr ObjectId NEAR{70};
-  constexpr ObjectId TOOLBOX{71};
   auto view = city_view({.x = 2});
-  add_source(view, NEAR, 2);
-  auto tool = object_of(TOOLBOX, ObjectKind::MaterialSource, 4);
-  tool.material_available = true;
-  tool.tool = WRENCH;
-  view.world.objects.push_back(tool);
-  view.exploration.sources.push_back({.id = TOOLBOX});
-  auto places = tuning({});
-  places.daily_load = 1;
-  const Companion companion({.exploration = places,
-                             .workshop = kitchen(),
-                             .unfed_penalty = UNFED_PENALTY});
-  EXPECT_EQ(companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
-            (std::optional<Action>{Collect{NEAR}}));
-  view.progression.chef.load = 1;
-  const auto loaded = companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
-  EXPECT_EQ(loaded.movement.direction, Direction::Right);
-  EXPECT_FALSE(loaded.action.has_value());
-  EXPECT_EQ(companion.command(Actor::Appraiser, ALL_AI, NO_INPUT, view).action,
-            (std::optional<Action>{Collect{NEAR}}));
+  add_source(view, NEAR, 6);
+  const auto companion = companion_with();
+  const auto walking = companion.errand(Actor::Chef, view).value_or(Errand{});
+  EXPECT_EQ(walking.target, NEAR);
+  EXPECT_EQ(walking.step, Direction::Right);
+  view.exploration.chef.position = {.x = 5};
+  const auto there = companion.errand(Actor::Chef, view).value_or(Errand{});
+  EXPECT_EQ(there.target, NEAR);
+  EXPECT_EQ(there.step, Direction::Idle);
+  view.exploration.sources.back().remaining = 0;
+  EXPECT_FALSE(companion.errand(Actor::Chef, view).has_value());
 }
 
 TEST(Companion, AiWalksToWhatThePartyLacksBeforeANearerSource) {
