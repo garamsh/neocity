@@ -1568,10 +1568,10 @@
    "path": "ui/heart_empty.png",
    "source": "ui",
    "crop": [
-    696,
-    383,
-    277,
-    277
+    342,
+    373,
+    354,
+    354
    ],
    "size": [
     32,
@@ -1586,14 +1586,14 @@
       0,
       360
      ],
-     "saturation": 0.2,
-     "lightness": 3.0
+     "saturation": 0.1,
+     "lightness": 0.55
     }
    ],
    "key": {
     "alpha": true
    },
-   "depicts": "Heart, empty outline, light grey"
+   "depicts": "Heart, empty: the full heart's shape drained to dark grey"
   },
   {
    "path": "ui/button.png",

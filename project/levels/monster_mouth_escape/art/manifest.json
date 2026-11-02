@@ -538,8 +538,8 @@
     32
    ],
    "scale": 2,
-   "colours": 2,
-   "depicts": "Heart, empty outline, light grey"
+   "colours": 8,
+   "depicts": "Heart, empty: the full heart's shape drained to dark grey"
   },
   {
    "path": "ui/button.png",
