@@ -284,11 +284,30 @@ Image plain_deck(survival::GridPosition cell) {
 /// Draws a walkway's lit picture: brighter than the scenery behind it, its
 /// top edge brightest, so the surface a player walks on reads first.
 void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
-                   Vector2 at, bool mirrored = false) {
+                   Vector2 at) {
+  art.image(canvas, image, at, 1.0F, false, ground_tint());
+  art.image_part(canvas, image, rect(0.0F, 0.0F, CELL, GROUND_EDGE),
+                 rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
+}
+
+/// Draws a ramp or stairs, mirrored where it rises to the left: brighter than
+/// the scenery behind it, and brightest along its top edge and above the
+/// diagonal it spans, where a player walks on it.
+void paint_step(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
+                bool mirrored) {
   art.image(canvas, image, at, 1.0F, mirrored, ground_tint());
-  if (!mirrored) {
-    art.image_part(canvas, image, rect(0.0F, 0.0F, CELL, GROUND_EDGE),
-                   rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
+  const Vector2 size = art.size(image);
+  const int width = static_cast<int>(size.x);
+  for (int column = 0; column < width; ++column) {
+    // The picture rises to the right, from its bottom-left corner.
+    const float walked = std::max(
+        GROUND_EDGE,
+        std::ceil(size.y * static_cast<float>(width - column) / size.x));
+    const int shown = mirrored ? width - 1 - column : column;
+    art.image_part(canvas, image,
+                   rect(static_cast<float>(column), 0.0F, 1.0F, walked),
+                   rect(at.x + static_cast<float>(shown), at.y, 1.0F, walked),
+                   ground_edge_tint());
   }
 }
 
@@ -302,24 +321,83 @@ void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at) {
   paint_surface(canvas, art, deck, at);
 }
 
-/// A step between floors: a ramp where it rises to the right, stairs where it
-/// rises to the left, each spanning from the floor line of its own cell down
-/// to the row below. A step with no step or floor on a diagonal is level.
-void paint_step(godot::Node2D &canvas, const Art &art,
-                std::span<const survival::GroundCell> cells,
-                const survival::GroundCell &ground) {
+/// Which way a step or a slab rises, or that it lies level.
+enum class Rise { Level, Right, Left };
+
+/// How the tilted ground from column `first` to `last` of row `y` rises: to
+/// the right where ground meets its left end a row down or its right end a
+/// row up, to the left the other way round, and level where neither does.
+Rise rise(std::span<const survival::GroundCell> cells, std::int32_t first,
+          std::int32_t last, std::int32_t y) {
+  if (has_ground(cells, {.x = first - 1, .y = y + 1}) ||
+      has_ground(cells, {.x = last + 1, .y = y - 1})) {
+    return Rise::Right;
+  }
+  if (has_ground(cells, {.x = last + 1, .y = y + 1}) ||
+      has_ground(cells, {.x = first - 1, .y = y - 1})) {
+    return Rise::Left;
+  }
+  return Rise::Level;
+}
+
+/// A fallen slab: the worn deck on its truss, `width` pixels long from `at`,
+/// its high end on that floor line and its low end a row down. Each column of
+/// pixels is lowered along the tilt on its own, so the slab is one straight
+/// piece on whole pixels.
+void paint_slab(godot::Node2D &canvas, const Art &art, Vector2 at, int width,
+                Rise rises) {
+  const Vector2 deck = art.size(Image::DeckWorn);
+  const float truss = art.size(Image::Truss).y;
+  for (int column = 0; column < width; ++column) {
+    const int along = rises == Rise::Right ? width - 1 - column : column;
+    const float drop = rises == Rise::Level
+                           ? 0.0F
+                           : std::floor(static_cast<float>(along) * CELL /
+                                        static_cast<float>(width));
+    const float x = at.x + static_cast<float>(column);
+    const float y = at.y + drop;
+    const float source = std::fmod(static_cast<float>(column), deck.x);
+    art.image_part(canvas, Image::Truss, rect(source, 0.0F, 1.0F, truss),
+                   rect(x, y + deck.y, 1.0F, truss), ground_tint());
+    art.image_part(canvas, Image::DeckWorn, rect(source, 0.0F, 1.0F, deck.y),
+                   rect(x, y, 1.0F, deck.y), ground_tint());
+    art.image_part(canvas, Image::DeckWorn,
+                   rect(source, 0.0F, 1.0F, GROUND_EDGE),
+                   rect(x, y, 1.0F, GROUND_EDGE), ground_edge_tint());
+  }
+}
+
+/// Tilted ground. A run of it along one row is a fallen slab, drawn whole from
+/// its first cell. A single cell is a step between floors: a ramp where it
+/// rises to the right, stairs where it rises to the left, each spanning from
+/// the floor line of its own cell down to the row below, and a level slab
+/// with no step or floor on a diagonal.
+void paint_tilted(godot::Node2D &canvas, const Art &art,
+                  std::span<const survival::GroundCell> cells,
+                  const survival::GroundCell &ground) {
   const auto [x, y] = ground.cell;
-  const bool rises_right = has_ground(cells, {.x = x - 1, .y = y + 1}) ||
-                           has_ground(cells, {.x = x + 1, .y = y - 1});
-  const bool rises_left = has_ground(cells, {.x = x + 1, .y = y + 1}) ||
-                          has_ground(cells, {.x = x - 1, .y = y - 1});
+  const auto tilted = [&](std::int32_t column) {
+    return std::ranges::any_of(cells, [&](const auto &other) {
+      return other.kind == GroundKind::TiltedSlab &&
+             other.cell == survival::GridPosition{.x = column, .y = y};
+    });
+  };
+  if (tilted(x - 1)) {
+    return;
+  }
+  std::int32_t last = x;
+  while (tilted(last + 1)) {
+    ++last;
+  }
   const Vector2 at(cell_x(x), floor_y(y));
-  if (rises_right) {
-    paint_surface(canvas, art, Image::Ramp, at);
-  } else if (rises_left) {
-    paint_surface(canvas, art, Image::Stairs, at, true);
+  const Rise rises = rise(cells, x, last, y);
+  if (last == x && rises == Rise::Right) {
+    paint_step(canvas, art, Image::Ramp, at, false);
+  } else if (last == x && rises == Rise::Left) {
+    paint_step(canvas, art, Image::Stairs, at, true);
   } else {
-    paint_deck(canvas, art, Image::DeckWorn, at);
+    paint_slab(canvas, art, at, static_cast<int>(cell_x(last + 1) - at.x),
+               rises);
   }
 }
 
@@ -353,7 +431,7 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
   };
   switch (ground.kind) {
   case GroundKind::TiltedSlab:
-    paint_step(canvas, art, cells, ground);
+    paint_tilted(canvas, art, cells, ground);
     return;
   case GroundKind::PlankBridge:
     art.image(canvas, Image::PlankBridge, at, 1.0F, false, ground_tint());
