@@ -29,6 +29,7 @@ enum class GroundKind : std::uint8_t {
   BuriedCar
 };
 
+/// The ground kind one terrain cell shows.
 struct GroundCell {
   GridPosition cell;
   GroundKind kind = GroundKind::Road;
@@ -46,6 +47,7 @@ enum class DecorationKind : std::uint8_t {
   StreetLamp
 };
 
+/// One piece of scenery and the area it covers.
 struct Decoration {
   DecorationKind kind = DecorationKind::RubblePile;
   WorldArea area;
@@ -62,6 +64,7 @@ struct Content {
   MapSize map;
   /// One entry for each cell any terrain object covers.
   std::vector<GroundCell> ground;
+  /// Scenery placed on the map; no rule reads it.
   std::vector<Decoration> decorations;
 };
 
