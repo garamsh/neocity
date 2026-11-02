@@ -89,6 +89,8 @@ func _menus() -> void:
 		return
 	if not _check(_next().contains("Set out"), "the screen tells a new player to set out"):
 		return
+	if not _check(_goal_shown(), "the base shows when escape checks begin"):
+		return
 
 func _first_day() -> void:
 	var start: Dictionary = scene.survival_status()
@@ -106,6 +108,8 @@ func _first_day() -> void:
 	if not _check(_out_of_reach().has("Arcade Bag") and not _out_of_reach().has("Tomato Machine"), "only stock behind the kiosk is marked out of reach"):
 		return
 	if not _text_fits("the first city screen"):
+		return
+	if not _check(_goal_shown(), "the city shows when escape checks begin"):
 		return
 	if not await _walk_to(6, 7):
 		return
@@ -235,8 +239,25 @@ func _workshop_day_one() -> void:
 		return
 	if not _text_fits("the workshop"):
 		return
+	var fed: String = _stored()[0]
+	if not _check(_lines("day_result").is_empty(), "the workshop shows no result until a day has ended"):
+		return
 	await _tap(KEY_F)
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
+		return
+	if not _check(_result_says("Day 1: " + fed) and _result_says("Satisfied"), "the result names the dish and the reaction"):
+		return
+	if not _check(_result_says("New food 50 + ") and _result_says("needs 100"), "the result breaks the score down"):
+		return
+	if not _check(_result_says("Acid 0 to 0.") and _result_says("Map changes: "), "the result shows the acid and the map changes"):
+		return
+	var eaten: String = _lines("eaten_lines")[0]
+	if not _check(eaten.begins_with("Eaten: "), "the eaten ingredients are listed"):
+		return
+	await _frames(30)
+	if not _check(_result_says("Day 1: " + fed) and _int("remaining_ms") == 45000, "the result stands on screen and spends no time"):
+		return
+	if not _text_fits("the day's result"):
 		return
 	if not _check(_str("reaction") == "satisfied" and _int("score") >= 100, "a new dish satisfies the monster"):
 		return
@@ -293,6 +314,8 @@ func _chef_chooses_a_dish() -> void:
 			return
 	var first: String = _str("dish_offered")
 	if not _check(first != "", "with no choice the key offers Companion's dish"):
+		return
+	if not _check(_str("forecast").begins_with("Plain ") and _str("forecast").contains(", fine ") and _str("forecast").ends_with(": needs 100"), "the panel forecasts the offered dish against the threshold"):
 		return
 	await _tap(KEY_TAB)
 	if not _check(_actor("chef", "key_set") == -1, "the human takes the appraiser"):
@@ -507,6 +530,10 @@ func _acid_changes_the_city() -> void:
 		return
 	if not _check(_int("day") == 4 and _int("acid") == 12 and _str("reaction") == "unfed", "an unfed day raises acid by the penalty"):
 		return
+	if not _check(_result_says("Day 3: Unfed") and _result_says("Acid 0 to 12."), "the result of an unfed day shows the acid it cost"):
+		return
+	if not await _until("the unfed result counts the map changes", func() -> bool: return _result_says("Map changes: ") and not _result_says("Map changes: 0"), 30):
+		return
 	if not await _until("the screen reports the unfed day", func() -> bool: return _next_event_has("unfed"), 30):
 		return
 	if not await _until("acid brings a washed-up bag and breaks the ladder", func() -> bool: return _object("Washed-up Bag 1") == "intact" and _object("Roof Ladder") == "destroyed", 30):
@@ -695,6 +722,18 @@ func _out_of_reach() -> Array:
 
 func _changing_text() -> Array:
 	return scene.survival_status()["changing_text"]
+
+func _lines(field: String) -> Array:
+	return scene.survival_status()[field]
+
+func _result_says(words: String) -> bool:
+	for line: String in _lines("day_result"):
+		if line.contains(words):
+			return true
+	return false
+
+func _goal_shown() -> bool:
+	return _str("goal") == "Escape checks from day 30" and _screen_says("Escape checks from day 30")
 
 func _screen_says(words: String) -> bool:
 	for line: Dictionary in _changing_text():

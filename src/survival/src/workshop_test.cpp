@@ -96,6 +96,13 @@ DayOutcome last_day(const Workshop &workshop) {
   return workshop.snapshot().last_day.value_or(DayOutcome{});
 }
 
+/// The outcome with its dish left out, for tests about the reaction and acid.
+DayOutcome reaction_of(const Workshop &workshop) {
+  auto outcome = last_day(workshop);
+  outcome.fed.reset();
+  return outcome;
+}
+
 TEST(Workshop, IntactMagnifierSucceedsThroughRoll89AndFailsAtRoll90) {
   auto below = carrying(seed_for_roll(89), {RICE});
   Workshop succeeding(below, balance());
@@ -324,7 +331,7 @@ TEST(Workshop, NewFoodsScoreAboveRepeatsAndRepeatsMissTheThreshold) {
   ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
 
   ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
-  EXPECT_EQ(workshop.snapshot().last_day,
+  EXPECT_EQ(reaction_of(workshop),
             (DayOutcome{.completed_day = 1,
                         .reaction = MonsterReaction::Satisfied,
                         .score = 13,
@@ -332,13 +339,73 @@ TEST(Workshop, NewFoodsScoreAboveRepeatsAndRepeatsMissTheThreshold) {
   EXPECT_EQ(simulation.snapshot().acid, AcidLevel{0});
 
   ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
-  EXPECT_EQ(workshop.snapshot().last_day,
+  EXPECT_EQ(reaction_of(workshop),
             (DayOutcome{.completed_day = 2,
                         .reaction = MonsterReaction::Unsatisfied,
                         .score = 0,
                         .acid_rise = AcidLevel{2}}));
   EXPECT_EQ(simulation.snapshot().acid, AcidLevel{2});
   EXPECT_EQ(simulation.snapshot().day, 3U);
+}
+
+TEST(DishScore, AddsEachPartForAPlainAndAFineDish) {
+  auto config = balance();
+  config.flavors = {{.ingredient = RICE, .taste = 4},
+                    {.ingredient = EGG, .taste = 6}};
+  config.fine_dish_score = 8;
+  WorkshopSnapshot history;
+  history.eaten_ingredients = {RICE};
+  EXPECT_EQ(dish_score({.food = OMELET}, history, config),
+            (DishScore{.new_food = 10,
+                       .new_ingredients = 1,
+                       .new_ingredient_points = 3,
+                       .taste = 10,
+                       .fine = 0,
+                       .total = 23}));
+  const auto fine = dish_score({.food = OMELET, .quality = DishQuality::Fine},
+                               history, config);
+  EXPECT_EQ(fine.value_or(DishScore{}).fine, 8U);
+  EXPECT_EQ(fine.value_or(DishScore{}).total, 31U);
+}
+
+TEST(DishScore, AnEatenFoodAddsNoNoveltyAndADislikeChangesNothing) {
+  const auto config = balance();
+  WorkshopSnapshot history;
+  history.eaten_foods = {PORRIDGE};
+  history.eaten_ingredients = {RICE};
+  EXPECT_EQ(dish_score({.food = PORRIDGE}, history, config), DishScore{});
+  auto disliked = balance();
+  disliked.recipes.at(1).disliked = true;
+  EXPECT_EQ(dish_score({.food = OMELET}, {}, config),
+            dish_score({.food = OMELET}, {}, disliked));
+}
+
+TEST(DishScore, ADishOfNoRecipeHasNoScore) {
+  EXPECT_FALSE(dish_score({.food = FoodId{99}}, {}, balance()).has_value());
+}
+
+TEST(Workshop, FeedingScoresWhatThePreviewSaidAndReportsTheDish) {
+  auto simulation = carrying(seed_for_roll(0), {RICE});
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.snapshot().foods.size(), 1U);
+  const auto dish = workshop.snapshot().foods.front();
+  const auto preview = dish_score(dish, workshop.snapshot(), balance());
+  ASSERT_TRUE(preview.has_value());
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  const auto outcome = last_day(workshop);
+  EXPECT_EQ(outcome.fed,
+            (FedDish{.dish = dish, .score = preview.value_or(DishScore{})}));
+  EXPECT_EQ(outcome.score, preview.value_or(DishScore{}).total);
+}
+
+TEST(Workshop, ADayEndedUnfedReportsNoDish) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.end_day_unfed(AcidLevel{1}), WorkshopResult::Applied);
+  ASSERT_TRUE(workshop.snapshot().last_day.has_value());
+  EXPECT_FALSE(last_day(workshop).fed.has_value());
 }
 
 TEST(Workshop, ScoreEqualToTheThresholdSatisfiesAndOneBelowDoesNot) {
@@ -392,7 +459,7 @@ TEST(Workshop, DislikedFoodRaisesAcidEvenWhenItsScorePasses) {
             WorkshopResult::Applied);
   ASSERT_EQ(workshop.cook(Actor::Chef, CURRY), WorkshopResult::Applied);
   ASSERT_EQ(workshop.feed(CURRY), WorkshopResult::Applied);
-  EXPECT_EQ(workshop.snapshot().last_day,
+  EXPECT_EQ(reaction_of(workshop),
             (DayOutcome{.completed_day = 1,
                         .reaction = MonsterReaction::Disliked,
                         .score = 13,

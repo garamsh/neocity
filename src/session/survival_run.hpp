@@ -74,6 +74,9 @@ private:
   survival::Direction dish_step = survival::Direction::Idle;
   /// Lasts for the day and applies while it can be cooked.
   std::optional<survival::FoodId> chosen_dish;
+  /// City objects changed since the last finished day.
+  std::uint32_t map_changes = 0;
+  std::uint32_t last_day_map_changes = 0;
   std::deque<hud::Event> events;
 };
 

@@ -66,6 +66,26 @@ struct WorkshopConfig {
 [[nodiscard]] std::uint64_t taste_of(const Recipe &recipe,
                                      const WorkshopConfig &config);
 
+/// What feeding a dish would score, part by part. Says nothing of a dislike,
+/// which is learned by feeding.
+struct DishScore {
+  std::uint64_t new_food = 0;
+  /// How many ingredient kinds would be eaten for the first time.
+  std::uint32_t new_ingredients = 0;
+  std::uint64_t new_ingredient_points = 0;
+  std::uint64_t taste = 0;
+  std::uint64_t fine = 0;
+  std::uint64_t total = 0;
+  friend bool operator==(const DishScore &, const DishScore &) = default;
+};
+
+/// The dish a day ended on and how it scored.
+struct FedDish {
+  Dish dish;
+  DishScore score;
+  friend bool operator==(const FedDish &, const FedDish &) = default;
+};
+
 /// Unfed marks a day ended without feeding.
 enum class MonsterReaction : std::uint8_t {
   Unfed,
@@ -80,6 +100,8 @@ struct DayOutcome {
   MonsterReaction reaction = MonsterReaction::Unfed;
   std::uint64_t score = 0;
   AcidLevel acid_rise;
+  /// Empty on a day ended unfed.
+  std::optional<FedDish> fed = std::nullopt;
   friend bool operator==(const DayOutcome &, const DayOutcome &) = default;
 };
 
@@ -99,6 +121,12 @@ struct WorkshopSnapshot {
   friend bool operator==(const WorkshopSnapshot &,
                          const WorkshopSnapshot &) = default;
 };
+
+/// What feeding `dish` would score after the history in `workshop`, or nothing
+/// for a dish of no configured recipe.
+[[nodiscard]] std::optional<DishScore>
+dish_score(const Dish &dish, const WorkshopSnapshot &workshop,
+           const WorkshopConfig &config);
 
 /// Failed is a spent attempt; every other non-Applied value is a refusal that
 /// leaves all state and the random sequence unchanged.

@@ -41,7 +41,7 @@ The pure C++ progression state of the monster-mouth escape game and the ownershi
 - The tools' intact 90% and damaged 40% are a [user decision](https://github.com/garamsh/neocity/issues/21#issuecomment-6526232827). The state of the two base tools is workshop state, separate from the carried `ToolId` items that replace them. Replacement needs the configured tool carried by either actor, and is refused on an intact base tool so that no tool is spent for nothing. Connecting other damage events belongs to the caller.
 - Exhaustion reaches the base tools without `Exploration` depending on `Workshop`: `Simulation` counts each actor's exhaustions, and `Workshop` derives a tool's state from that count against the count at its last replacement. Every path to exhaustion therefore counts, and a snapshot cannot lag behind it.
 - `Simulation`'s finish-day raises acid, moves to the next day, and returns the exploration budget to its configured value. Acid stops at full. Feeding or ending the day unfed finishes the day in one command, so there is one feeding per day. The world and stock are not reset by the day.
-- The last day's result is the finished day, the monster's reaction, the score, and the acid rise.
+- The last day's result is the finished day, the monster's reaction, the score, the acid rise, and on a fed day the dish with its score part by part. `dish_score` computes those parts from a dish and the eating history, for feeding and for the screen's forecast alike, and reads no `Recipe::disliked`.
 
 #### Randomness
 
