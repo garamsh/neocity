@@ -1,0 +1,625 @@
+{
+ "generated_by": "tools/art/pixelize.py process",
+ "files": [
+  {
+   "path": "backgrounds/throat.png",
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Back layer: monster upper jaw with fangs and the pink throat; opaque"
+  },
+  {
+   "path": "backgrounds/city.png",
+   "size": [
+    1280,
+    288
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Middle layer: low, hazy distant skyline with small orange windows; clear above the skyline"
+  },
+  {
+   "path": "backgrounds/acid.png",
+   "size": [
+    1280,
+    492
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Front layer: green acid sea with sunken train cars; surface near the top, transparent above it"
+  },
+  {
+   "path": "characters/chef_idle.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Chef (ART-CHAR-001), sheet pose 2, holding the spatula"
+  },
+  {
+   "path": "characters/chef_walk_1.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Chef (ART-CHAR-001), sheet pose 4, stepping with the spatula raised"
+  },
+  {
+   "path": "characters/chef_walk_2.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Chef (ART-CHAR-001), sheet pose 7, stepping"
+  },
+  {
+   "path": "characters/chef_climb.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Chef (ART-CHAR-001), sheet pose 8, seen from behind"
+  },
+  {
+   "path": "characters/appraiser_idle.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 1, standing with the magnifier"
+  },
+  {
+   "path": "characters/appraiser_walk_1.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 3, striding and pointing"
+  },
+  {
+   "path": "characters/appraiser_walk_2.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 4, stepping"
+  },
+  {
+   "path": "characters/appraiser_climb.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 8, seen from behind"
+  },
+  {
+   "path": "world/platform.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
+  },
+  {
+   "path": "world/ladder.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 23,
+   "depicts": "Ladder tile: two rungs; tiles vertically"
+  },
+  {
+   "path": "world/ladder_broken.png",
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall"
+  },
+  {
+   "path": "world/door_cold_store.png",
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Cold store door: riveted steel with a frosted window"
+  },
+  {
+   "path": "world/door_broken.png",
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 23,
+   "depicts": "Broken door: smashed and boarded"
+  },
+  {
+   "path": "world/building_wall.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
+  },
+  {
+   "path": "world/vending_machine.png",
+   "size": [
+    40,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Broken red vending machine with jars behind cracked glass"
+  },
+  {
+   "path": "world/shop.png",
+   "size": [
+    96,
+    96
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Corner shop front: shelves, crates, awning and lantern"
+  },
+  {
+   "path": "world/vendor_cart.png",
+   "size": [
+    40,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Street stall: noodle cart with canopy and lantern"
+  },
+  {
+   "path": "world/noodle_vendor.png",
+   "size": [
+    26,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Noodle vendor NPC holding a ladle"
+  },
+  {
+   "path": "world/kiosk.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Wrecked kiosk with flesh slime on the roof"
+  },
+  {
+   "path": "world/bridge.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Rotten bridge tile: dark planks; tiles horizontally"
+  },
+  {
+   "path": "world/ferry.png",
+   "size": [
+    192,
+    112
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Drifted ferry: rusty hull, lit cabin, lantern"
+  },
+  {
+   "path": "world/bag_washed_up.png",
+   "size": [
+    32,
+    52
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Washed-up bag: slimy backpack with a sparkle"
+  },
+  {
+   "path": "world/bag_roof.png",
+   "size": [
+    32,
+    34
+   ],
+   "scale": 1,
+   "colours": 19,
+   "depicts": "Roof bag: roped duffel with a sparkle"
+  },
+  {
+   "path": "world/cold_store.png",
+   "size": [
+    128,
+    128
+   ],
+   "scale": 1,
+   "colours": 24,
+   "depicts": "Cold store block in scaffolding with a steel door and lamp"
+  },
+  {
+   "path": "world/acid_drip.png",
+   "size": [
+    32,
+    96
+   ],
+   "scale": 1,
+   "colours": 22,
+   "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall"
+  },
+  {
+   "path": "icons/ingredient_tomato.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Ingredient icon: tomato"
+  },
+  {
+   "path": "icons/ingredient_fish.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Ingredient icon: fish"
+  },
+  {
+   "path": "icons/ingredient_kelp.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Ingredient icon: kelp"
+  },
+  {
+   "path": "icons/ingredient_mushroom.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Ingredient icon: mushroom"
+  },
+  {
+   "path": "icons/ingredient_pickles.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Ingredient icon: pickles"
+  },
+  {
+   "path": "icons/ingredient_meat.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Ingredient icon: meat"
+  },
+  {
+   "path": "icons/ingredient_truffle.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Ingredient icon: truffle"
+  },
+  {
+   "path": "icons/tool_magnifier.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Tool icon: magnifier"
+  },
+  {
+   "path": "icons/tool_spatula.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Tool icon: spatula"
+  },
+  {
+   "path": "icons/tool_wrench.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Tool icon: wrench"
+  },
+  {
+   "path": "icons/dish_mushroom_soup.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: mushroom soup"
+  },
+  {
+   "path": "icons/dish_fish_stew.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: fish stew"
+  },
+  {
+   "path": "icons/dish_kelp_wrap.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: kelp wrap"
+  },
+  {
+   "path": "icons/dish_meat_skewer.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: meat skewer"
+  },
+  {
+   "path": "icons/dish_truffle_roast.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: truffle roast"
+  },
+  {
+   "path": "icons/dish_pickle_surprise.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: pickle surprise"
+  },
+  {
+   "path": "icons/dish_sea_salad.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: sea salad"
+  },
+  {
+   "path": "icons/dish_fish_pie.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Dish icon: fish pie"
+  },
+  {
+   "path": "icons/dish_meat_stew.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: meat stew"
+  },
+  {
+   "path": "icons/dish_truffle_soup.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 10,
+   "depicts": "Dish icon: truffle soup"
+  },
+  {
+   "path": "icons/dish_surf_and_turf.png",
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Dish icon: surf and turf"
+  },
+  {
+   "path": "ui/panel_frame.png",
+   "size": [
+    96,
+    96
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Riveted grey steel panel frame for 9-slice"
+  },
+  {
+   "path": "ui/bar_frame.png",
+   "size": [
+    192,
+    56
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Riveted grey steel bar frame, empty inside"
+  },
+  {
+   "path": "ui/item_slot.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Grey steel item slot frame"
+  },
+  {
+   "path": "ui/heart_full.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 9,
+   "depicts": "Heart, full, red"
+  },
+  {
+   "path": "ui/heart_empty.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 2,
+   "depicts": "Heart, empty outline, light grey"
+  },
+  {
+   "path": "ui/button.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Button, normal, grey steel, blank face"
+  },
+  {
+   "path": "ui/button_highlight.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Button, highlighted, yellow, blank face"
+  },
+  {
+   "path": "ui/icon_day.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Day icon: yellow sun"
+  },
+  {
+   "path": "ui/icon_clock.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "depicts": "Clock icon: grey case, yellow face"
+  },
+  {
+   "path": "ui/icon_acid.png",
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 11,
+   "depicts": "Acid icon: green drop"
+  },
+  {
+   "path": "workshop/kitchen.png",
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Base kitchen interior with cauldron, shelves, lanterns and the feeding crane; opaque"
+  },
+  {
+   "path": "title/key_art.png",
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Title key art: monster mouth, swallowed city, acid sea, chef and appraiser; opaque"
+  },
+  {
+   "path": "title/logo.png",
+   "size": [
+    512,
+    512
+   ],
+   "scale": 4,
+   "colours": 16,
+   "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
+  }
+ ]
+}

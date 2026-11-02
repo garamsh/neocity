@@ -1,0 +1,159 @@
+Monster-mouth escape asset provenance, 2026-11-02, issue #90
+
+Version 2, after review of PR #96. Characters are cut from the approved concept sheets with no generation. Every other asset comes from Recraft, through its MCP connector, personal account. Every generation used the custom style below; Recraft ran it on model recraftv4_1_raster. No seed is exposed. Recraft returns WebP; the source URL of each generation is kept in tools/art/assets.json.
+Tools: Python 3.13.5 runs tools/art/pixelize.py, standard library only. ImageMagick 7.1.1-43 Q16 x86_64 decodes WebP in pixelize.py fetch (PNG24, or PNG32 for background-removed sources).
+Post-processing, the same for every asset, with per-asset values in assets.json; pixelize.py process:
+1. Crops the rectangle given. A seamless tile cross-fades the last quarter of its crop into the first along each tiling axis and drops it, so its edges meet.
+2. Masks the background: the given key colour connected to the border (or every pixel near it, for "enclosed"), or the alpha of a background-removed source; optionally keeps only the largest connected figure.
+3. Applies the asset's recolour rules, if any: hue ranges moved to red (tomato, meat, full heart, vending machine) or desaturated to grey steel (UI frames, slot, plain button, clock case, empty heart, which is also lightened).
+4. Detects the generation's own pixel grid from the spectrum of its column and row edges. Where both axes show a grid at least 4 times the median spectral strength, it moves the crop onto that grid so each output pixel is one drawn block; otherwise it divides the crop evenly. manifest.json does not record which; process prints it.
+5. Takes one colour per block: the most frequent master-palette colour in the block's central half; a block is clear when most of it is background.
+6. Limits the asset's colours to a subset of the 85-colour master palette in assets.json (64 median-cut from the three concept images, the 15 swatches of the two character sheets, and 6 greys from the concept's UI panels): 16 for characters, 12 for icons and UI, 24 for world tiles and props, 32 for backgrounds, workshop and key art, 16 for the logo. The most used colour is kept first, then each next pick maximises its use times its distance from the colours already kept, so small accents survive. Every other block takes its nearest kept colour.
+7. Cleans: clears opaque pixels with at most one opaque 4-neighbour, fills clear pixels with three or more, and replaces a pixel that touches none of its own colour by the colour around it when the two are close, so contrasting single pixels such as eyes stay.
+8. Characters and icons: sets every edge pixel to the outline colour #0a060e, giving a 1 px dark outline.
+9. Enlarges by the asset's scale with nearest-neighbour. Every pixel is fully opaque or fully clear.
+Raw generations are not committed. Running pixelize.py fetch and process again writes the committed PNGs and manifest.json byte for byte.
+
+Style
+Style ID: fc822ae0-7697-4ca7-9db9-44fd7b079c3e, private, name monster-mouth-escape-crops-v1, created with create_style, model recraftv4_raster.
+References: four crops of the concept images at commit 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, docs/art/concept-art/monster-mouth-escape/: search-mockup-v1.png 380x230+1075+0 (fangs and throat), concept-v1.png 700x330+950+580 (acid sea and sunken cars), search-mockup-v1.png 700x330+0+290 (walkway, chef, appraiser), cook-feed-mockup-v1.png 1100x330+0+330 (kitchen).
+Style prompt: Detailed 16-bit pixel art with crisp discrete pixel clusters, dark outlines and rich shading. Palette of pink and magenta flesh, cream fangs, indigo and violet buildings with warm orange windows, glowing neon green acid, rusty dark iron, warm amber lantern light.
+Rejected first style: 15e9427b-5c9c-4b79-ad3c-996b7667d07b, the three whole concept images. It redrew the full concept scene into every 16:9 or 2:1 request, including requests for a single layer, a logo or a sprite sheet, so no asset uses it.
+
+Generations
+Each entry: source name in assets.json, call, size, then the prompt as sent and the runtime files it feeds.
+
+bg_throat: generate_image, 16:9, n=2, second rejected
+Prompt as sent:
+Pixel art game backdrop layer showing ONLY the inside of a giant monster mouth: a row of huge cream-colored fangs hanging down from a pink and magenta fleshy upper jaw along the top edge, saliva dripping from fang tips, and behind them a deep glowing pink fleshy throat with concentric ridges and a red uvula in the upper middle. Absolutely no buildings, no city, no skyline, no trains, no platforms, no water, no acid, no characters, no text. The lower half is smooth dark magenta and purple flesh with soft folds and little detail.
+Runtime: backgrounds/throat.png
+
+bg_city: generate_image, 16:9, n=2, first rejected. Replaces the version 1 skyline, which filled two thirds of the screen and competed with the walkways.
+Prompt as sent:
+Pixel art far-distant city skyline layer for a side-view game: a low thin band of small hazy indigo and violet skyscraper silhouettes far away, softened by pink haze, tiny warm orange windows, a small tilted elevated train line, all along the bottom quarter of the image only. Low contrast and low detail so it stays in the far background. Everything above the skyline is a plain flat solid white background. No monster, no teeth, no flesh, no water, no acid, no characters, no text.
+Runtime: backgrounds/city.png (the skyline band only, 1344x302 from y 418)
+
+bg_acid: generate_image, 16:9, n=2, second rejected
+Prompt as sent:
+Isolated pixel art game asset: a wide horizontal band of glowing neon green toxic acid liquid seen from the side, wavy bubbling top surface with light green foam, darker green depths below with bubbles, half-sunken dark purple train cars with orange windows tilted in the acid. The band spans the full width and fills the lower two thirds. Above the band is a plain flat solid white background with nothing on it. No sky, no buildings, no monster, no text.
+Runtime: backgrounds/acid.png
+
+Characters: no generation. Every character frame is cut from the user-approved concept sheets, docs/art/concept-art/characters/chef-sheet-v1.png (ART-CHAR-001) and detective-sheet-v1.png (ART-CHAR-002), identical to commit 241124d5ba2dcef937c904623f1e5e3cb03fbcf5 (git blob 81f1ab61f379c6da3ecbb070009c1b317071817a and 9d1bf2a46a766e08110e7b464e9d35f326f04015). Each frame is a 220x220 crop of one pose in the sheet's pose row, keyed on the row's panel colour (#2c3a46 for the chef, #213544 for the appraiser), reduced to 64x64 by the steps above.
+Chef poses: idle = pose 2 (holding the spatula), walk_1 = pose 4, walk_2 = pose 7, climb = pose 8 (back view).
+Appraiser poses: idle = pose 1, walk_1 = pose 3, walk_2 = pose 4, climb = pose 8 (back view).
+Runtime: characters/chef_*.png, characters/appraiser_*.png
+Version 1 characters came from Recraft image_to_image over pose sheets composed from the same concept rows; they drifted from the sheets (long hair, unreadable face) and are replaced. A further image_to_image chef attempt in version 2 (strength 0.3, n=2) was superseded by the decision to cut the frames from the sheets.
+
+platform: generate_image, 1:1, n=2, first rejected
+Prompt as sent:
+Isolated single pixel art game tile, side view: one square segment of a rusty dark iron scaffold walkway platform, riveted steel deck with a worn top edge lit warm orange, thick dark underside with cross beams, a little magenta slime dripping off the edge. Seamless left and right edges so it tiles horizontally. Centered on a plain flat solid white background. No text, no letters, no scenery.
+Runtime: world/platform.png
+
+ladders: generate_image, 1:1, n=2, second rejected
+Prompt as sent:
+Isolated pixel art game sprites, side view, two items side by side on a plain flat solid white background: left, a straight tall rusty iron ladder with orange-brown rails and evenly spaced rungs; right, the same ladder broken, snapped in the middle with bent rails and missing rungs. No text, no letters, no scenery.
+Runtime: world/ladder.png, world/ladder_broken.png
+
+doors: generate_image, 1:1, n=2, second rejected; then remove_background on the kept image
+Prompt as sent:
+Isolated pixel art game sprites, side view, two doors side by side on a plain flat solid white background: left, a heavy riveted steel door with a frosty blue window and a big handle, the door of a cold store; right, the same kind of door smashed and hanging off its hinges, rusted and blocked with planks. No text, no letters, no scenery.
+Runtime: world/door_cold_store.png, world/door_broken.png
+
+building: generate_image, 1:1, n=2, second rejected
+Prompt as sent:
+Isolated single pixel art game tile: a square section of a ruined skyscraper wall seen from the front, dark indigo and violet concrete with cracks, a grid of small windows, some glowing warm orange and some dark and broken. Seamless on all four edges so it tiles. Fills the square, centered on a plain flat solid white background. No text, no letters.
+Runtime: world/building_wall.png
+
+vending: generate_image, 1:1, n=2, first rejected; then remove_background; then the red recolour rule. Replaces the version 1 machine, which read magenta.
+Prompt as sent:
+Isolated single pixel art game sprite, front view: a tall broken vending machine painted true bright red like a fire truck, not pink, not magenta, with a cracked glass front showing rows of cans and jars, a dented grey coin panel, rust and green slime stains. Centered on a plain flat solid white background. No text, no letters, no labels, no scenery.
+Runtime: world/vending_machine.png
+
+shop: generate_image, 1:1, n=2, first rejected
+Prompt as sent:
+Isolated single pixel art game sprite, side view: a small ruined corner shop front built into rusty iron scaffolding, wooden shelves full of jars, cans, crates of tomatoes and kelp, a torn red awning, a glowing brass lantern, warm amber light inside. Wider than tall. Centered on a plain flat solid white background. No text, no letters, no signs with writing, no people.
+Runtime: world/shop.png
+
+vendor: generate_image, 1:1, n=2, second rejected; then remove_background
+Prompt as sent:
+Isolated pixel art game sprites, side view, two items side by side on a plain flat solid white background: left, a small wooden street food vendor cart with two wheels, a steaming noodle pot, a striped red cloth canopy and a hanging lantern; right, a short old noodle vendor man standing, wearing a stained apron and a headband, holding a ladle, pale skin, chunky cartoon proportions with thick black outline. No text, no letters, no scenery.
+Runtime: world/vendor_cart.png, world/noodle_vendor.png
+
+kiosk: generate_image, 1:1, n=2, first rejected; then remove_background
+Prompt as sent:
+Isolated single pixel art game sprite: a small wrecked city news kiosk booth, dented violet metal walls, broken window with a dim orange light, a sagging roof with magenta flesh slime dripping on it, rust and cracks. Centered on a plain flat solid white background. No text, no letters, no posters with writing, no scenery.
+Runtime: world/kiosk.png
+
+bridge: generate_image, 1:1, n=2, first rejected
+Prompt as sent:
+Isolated single pixel art game tile, side view: one segment of a rotten wooden plank rope bridge, sagging dark wooden boards with gaps, frayed ropes and rusty chains along the top, a few green acid drips underneath. Seamless left and right edges so it tiles horizontally. Centered on a plain flat solid white background. No text, no letters, no scenery.
+Runtime: world/bridge.png
+
+ferry: generate_image, 2:1, n=2, first rejected
+Prompt as sent:
+Isolated single pixel art game sprite, side view: a small rusty drifted ferry boat, dark violet hull with rust streaks and rivets, a small cabin with warm orange lit round windows, a bent railing, a lantern on a pole, slime on the hull. Much wider than tall. Centered on a plain flat solid white background, no water. No text, no letters, no people.
+Runtime: world/ferry.png
+
+bags: generate_image, 1:1, n=2, first rejected; then remove_background. A second prompt asking for a plain background without sparkles (2:1, n=2) was rejected.
+Prompt as sent:
+Isolated pixel art game sprites, two bags side by side on a plain flat solid white background: left, a soggy washed-up orange canvas backpack covered in green acid slime with a small yellow sparkle above it; right, a dusty tan rooftop duffel bag tied with rope, with a small yellow sparkle above it. Chunky readable shapes with thick dark outline. No text, no letters, no scenery.
+Runtime: world/bag_washed_up.png, world/bag_roof.png
+
+cold_store: generate_image, 1:1, n=2, first rejected; then remove_background
+Prompt as sent:
+Isolated single pixel art game sprite, side view: a ruined cold storage warehouse block built into iron scaffolding, frosted pale blue metal panels with rivets, icy vents, a heavy steel door, a cold blue lamp, rust and magenta slime on top. Wider than tall. Centered on a plain flat solid white background. No text, no letters, no signs, no people.
+Runtime: world/cold_store.png
+
+drip: generate_image, 1:2, n=2, second rejected
+Prompt as sent:
+Isolated pixel art game hazard sprite: a vertical column of falling glowing neon green acid drops dripping from a small blob of pink flesh at the top, three teardrop drips with bright highlights, a splash at the bottom. Tall and narrow. Centered on a plain flat solid white background. No text, no letters, no scenery.
+Runtime: world/acid_drip.png
+
+ingredients: generate_image, 1:1, n=2, second rejected
+Prompt as sent:
+Pixel art game item icon set, seven separate ingredient icons arranged in a neat grid with wide spacing, each a single bold chunky object with thick dark outline readable at small size, on a plain flat solid white background: a red tomato, a silver-blue fish, a curly dark green kelp leaf, a glowing purple and cyan mushroom, a glass jar of green pickles, a raw marbled red steak, a black knobbly truffle. No text, no letters, no numbers, no frames, no slots.
+Runtime: icons/ingredient_fish.png, ingredient_kelp.png, ingredient_mushroom.png, ingredient_pickles.png, ingredient_truffle.png. Version 1 also took the tomato and meat from it; they read magenta.
+
+red_ingredients: generate_image, 2:1, n=2, first rejected (both still pink); then the red recolour rule.
+Prompt as sent:
+Pixel art game item icon set, two separate ingredient icons side by side with wide spacing, each a single bold chunky object with thick dark outline readable at small size, on a plain flat solid white background: left, a ripe bright tomato-red tomato, true red like a fire truck, not pink, with a green stem and a white glint; right, a raw beef steak in true blood red with white fat marbling, not pink. No text, no letters, no frames.
+Runtime: icons/ingredient_tomato.png, icons/ingredient_meat.png
+
+tools: generate_image, 2:1, n=2, second rejected. An earlier prompt (2:1, n=2) drew a green magnifier lens and was rejected.
+Prompt as sent:
+Pixel art game item icon set, three separate tool icons in a row with wide spacing, each a single bold chunky object with thick dark outline readable at small size, on a plain flat solid white background: a large magnifying glass with a pale sky-blue glass lens with a white glint and a black iron rim and handle, a silver steel kitchen spatula with slots and a brown wooden handle, a grey steel wrench with rust spots. No text, no letters, no numbers, no frames, no slots.
+Runtime: icons/tool_magnifier.png, tool_spatula.png, tool_wrench.png
+
+dishes_a: generate_image, 3:2, n=2, first rejected; then remove_background. A second prompt asking for a plain white background (3:2, n=2) drew full scenes and was rejected.
+Prompt as sent:
+Pixel art game food icon set, six separate cooked dish icons arranged in a grid of three columns and two rows with wide spacing, each a single bold dish with thick dark outline readable at small size, on a plain flat solid white background: mushroom soup in a bowl with purple mushrooms, fish stew in a pot, a kelp wrap roll, a meat skewer, a truffle roast on a plate, a pickle surprise bowl with pickles and mushrooms. Steam wisps. No text, no letters, no numbers, no frames.
+Runtime: icons/dish_mushroom_soup.png, dish_fish_stew.png, dish_kelp_wrap.png, dish_meat_skewer.png, dish_truffle_roast.png, dish_pickle_surprise.png
+
+dishes_b: generate_image, 2:1, n=2, first rejected
+Prompt as sent:
+Pixel art game food icon set, five separate cooked dish icons in a row with wide spacing, each a single bold dish with thick dark outline readable at small size, on a plain flat solid white background: a sea salad bowl with kelp and tomato, a golden fish pie, a meat stew in a pot, a truffle soup in a bowl, a surf and turf plate with steak and fish. Steam wisps. No text, no letters, no numbers, no frames.
+Runtime: icons/dish_sea_salad.png, dish_fish_pie.png, dish_meat_stew.png, dish_truffle_soup.png, dish_surf_and_turf.png
+
+ui: generate_image, 1:1, n=2, second rejected (purple tint); then remove_background; then the grey-steel and red recolour rules. Replaces the version 1 kit, whose frames were violet rather than the concept's grey steel.
+Prompt as sent:
+Pixel art game UI kit sheet on a plain flat solid white background, separate pieces with wide spacing, all made of neutral grey riveted steel plates: dark charcoal grey plate faces, light grey beveled steel borders, silver rivets in the corners, thick black outlines, no purple, no pink, no text, no letters, no numbers anywhere. Top row: one large empty square panel frame with a dark grey inside; beside it one long empty horizontal bar frame with a dark inside. Middle row: one empty square inventory item slot; one bright red pixel heart, full; one empty heart outline in dark grey. Bottom row: one plain grey steel button with a blank face; one bright yellow highlighted button with a blank face and a dark outline; a small yellow sun icon with rays; a small grey clock icon with a yellow face; a small bright green acid droplet icon.
+Runtime: ui/panel_frame.png, bar_frame.png, item_slot.png, heart_full.png, heart_empty.png, button.png, button_highlight.png, icon_day.png, icon_clock.png, icon_acid.png
+
+workshop: generate_image, 16:9, n=3, first and third rejected because they drew characters. An earlier prompt without "empty" (16:9, n=2) also drew characters and was rejected.
+Prompt as sent:
+Empty deserted side-view pixel art interior of a hideout kitchen built from rusty iron scaffolding, nobody inside, no people, no chef, no creatures: wooden shelves with jars and spice bottles, hanging pots and pans, glowing brass lanterns, a cast-iron stove with fire, an unattended big black cauldron bubbling on flames in the middle, an empty workbench on the left with a glass specimen case and crates of purple glowing mushrooms, tomatoes and meat, recipe papers pinned on the wall. Warm amber light. On the right through an opening, a crane with a hanging feeding basket over a glowing green acid sea, violet towers, cream fangs at the top. No text, no UI.
+Runtime: workshop/kitchen.png
+
+title: generate_image, 16:9, n=2, first rejected
+Prompt as sent:
+Pixel art key art for a game title screen: inside a giant monster mouth, a row of huge cream fangs dripping saliva frames the top, a glowing pink fleshy throat with a red uvula in the center, a swallowed ruined city of indigo and violet skyscrapers with warm orange windows and a tilted elevated train, a glowing neon green acid sea below with sunken train cars. In the lower left foreground on a rusty iron scaffold platform with lanterns, a yellow-skinned chef in a tall white hat and white coat raises a spatula, next to a green-skinned detective with head bolts and a big magnifying glass in a black suit. Calm empty area in the upper middle for a logo. No text, no letters, no UI.
+Runtime: title/key_art.png
+
+logo: generate_image, 1:1, n=2, second rejected
+Prompt as sent:
+Isolated pixel art game logo, the words "MONSTER MOUTH ESCAPE" in chunky bold retro arcade letters stacked on three lines, hot pink and magenta letters with thick dark purple outline, small cream fangs on top of the letters, green acid slime dripping from the bottom. Centered on a plain flat solid white background. No scenery, no city, no monster mouth, no characters, nothing else.
+Runtime: title/logo.png
+
+Tiles: world/platform.png, world/bridge.png (horizontal) and world/building_wall.png (both directions) use the seamless cross-fade of step 1; their generations are unchanged from version 1.
+
+Review sheet: docs/art/production/monster-mouth-escape-review-v2.png, written by pixelize.py sheet from the committed runtime PNGs, the raw generations and the three concept images. Below the concepts, a 1280x720 frame composes some of the assets by the placements in assets.json; that layout illustrates the set only and is not the game's map. Then each character frame at 8x beside its sheet crop, then chef_idle and the tomato at 8x as the plain version 1 pipeline renders the same source beside the committed result.

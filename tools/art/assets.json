@@ -1,0 +1,1778 @@
+{
+ "style_id": "fc822ae0-7697-4ca7-9db9-44fd7b079c3e",
+ "palette": [
+  "#000000",
+  "#080303",
+  "#0a060e",
+  "#0e0a16",
+  "#150722",
+  "#161015",
+  "#1e082d",
+  "#1e0936",
+  "#1d084b",
+  "#18122b",
+  "#1e1b2a",
+  "#211d44",
+  "#231d53",
+  "#232430",
+  "#47161f",
+  "#261e61",
+  "#252c32",
+  "#481842",
+  "#292078",
+  "#1d372d",
+  "#2b2e45",
+  "#661734",
+  "#2b2f59",
+  "#2c2e79",
+  "#671a5a",
+  "#264247",
+  "#801a30",
+  "#2d405c",
+  "#62226e",
+  "#542885",
+  "#2d3e84",
+  "#21592c",
+  "#961866",
+  "#5d29ad",
+  "#b22029",
+  "#6a4937",
+  "#be1969",
+  "#5c5064",
+  "#2c6c67",
+  "#2a734a",
+  "#bb227f",
+  "#5f577d",
+  "#5a54a7",
+  "#ce278c",
+  "#d027b0",
+  "#cd5814",
+  "#9d657d",
+  "#a35e98",
+  "#c45d47",
+  "#2ca670",
+  "#4f9a56",
+  "#f150af",
+  "#e16389",
+  "#ea9436",
+  "#6cde5e",
+  "#f28bc4",
+  "#83ce9f",
+  "#7ada7a",
+  "#e8a487",
+  "#b5da83",
+  "#e4d345",
+  "#b7d7aa",
+  "#ebe8a6",
+  "#f7efe8",
+  "#0b0c11",
+  "#191826",
+  "#2c2935",
+  "#363146",
+  "#585466",
+  "#d1cbc8",
+  "#f5ca37",
+  "#1b4841",
+  "#f4edea",
+  "#cc4378",
+  "#aa283f",
+  "#232731",
+  "#9196a3",
+  "#a0e077",
+  "#5f995e",
+  "#152e29",
+  "#8ccae3",
+  "#ebf1f0",
+  "#9b3c7c",
+  "#a81732",
+  "#19212d"
+ ],
+ "review_concepts": [
+  "concept-v1",
+  "search-mockup-v1",
+  "cook-feed-mockup-v1"
+ ],
+ "review_before_after": [
+  "characters/chef_idle.png",
+  "icons/ingredient_tomato.png"
+ ],
+ "review_mock": [
+  [
+   "backgrounds/throat.png",
+   0,
+   0,
+   1,
+   1
+  ],
+  [
+   "backgrounds/city.png",
+   0,
+   300,
+   1,
+   1
+  ],
+  [
+   "world/building_wall.png",
+   1088,
+   160,
+   2,
+   2
+  ],
+  [
+   "world/cold_store.png",
+   832,
+   160,
+   1,
+   1
+  ],
+  [
+   "world/platform.png",
+   832,
+   288,
+   14,
+   1
+  ],
+  [
+   "world/ladder.png",
+   800,
+   288,
+   1,
+   4
+  ],
+  [
+   "world/acid_drip.png",
+   704,
+   192,
+   1,
+   1
+  ],
+  [
+   "world/bag_roof.png",
+   1180,
+   254,
+   1,
+   1
+  ],
+  [
+   "world/platform.png",
+   0,
+   416,
+   20,
+   1
+  ],
+  [
+   "world/bridge.png",
+   640,
+   416,
+   5,
+   1
+  ],
+  [
+   "world/kiosk.png",
+   64,
+   352,
+   1,
+   1
+  ],
+  [
+   "world/vending_machine.png",
+   160,
+   368,
+   1,
+   1
+  ],
+  [
+   "world/shop.png",
+   224,
+   320,
+   1,
+   1
+  ],
+  [
+   "world/vendor_cart.png",
+   352,
+   352,
+   1,
+   1
+  ],
+  [
+   "world/noodle_vendor.png",
+   396,
+   368,
+   1,
+   1
+  ],
+  [
+   "characters/chef_walk_1.png",
+   470,
+   368,
+   1,
+   1
+  ],
+  [
+   "characters/appraiser_idle.png",
+   530,
+   368,
+   1,
+   1
+  ],
+  [
+   "world/door_broken.png",
+   1000,
+   224,
+   1,
+   1
+  ],
+  [
+   "backgrounds/acid.png",
+   0,
+   500,
+   1,
+   1
+  ],
+  [
+   "world/ferry.png",
+   900,
+   440,
+   1,
+   1
+  ],
+  [
+   "world/bag_washed_up.png",
+   1120,
+   500,
+   1,
+   1
+  ]
+ ],
+ "sources": {
+  "chef_concept_sheet": {
+   "file": "docs/art/concept-art/characters/chef-sheet-v1.png"
+  },
+  "detective_concept_sheet": {
+   "file": "docs/art/concept-art/characters/detective-sheet-v1.png"
+  },
+  "bg_throat": {
+   "url": "https://img.recraft.ai/itV-ds6ITpj7bV6RQjwXUpDPfd2BBnZqd2bLljFU4Pc/raw:1/plain/abs://prod/images/f97f1a75-c0c3-4756-a4b7-e4004842c228"
+  },
+  "bg_city": {
+   "url": "https://img.recraft.ai/CDfUbajyDKOXMpMMlOvefOKv_OXgjQ-aoone9QPiZd8/raw:1/plain/abs://prod/images/cc8e3596-da89-430a-a1e1-73fdf43f0443"
+  },
+  "bg_acid": {
+   "url": "https://img.recraft.ai/Nnclea0oiY3cIXz44Aa_GtTOcErlSVZu2ttn4Wa7VxU/raw:1/plain/abs://prod/images/c82cf99f-756e-4aa5-8133-9424eabe93b1"
+  },
+  "platform": {
+   "url": "https://img.recraft.ai/BbpKWlB9bMtcKIV4awdih_KeuOrhAtDYVt4qyhkealQ/raw:1/plain/abs://prod/images/4e3046de-c158-432d-aa8c-1eef97bbc0f3"
+  },
+  "ladders": {
+   "url": "https://img.recraft.ai/h0EUreJBQH0IFnw1xQS6XGNcstCCbENcEVqzAfwaFNA/raw:1/plain/abs://prod/images/f23bcc30-32b2-439c-aa32-32ea1641df76"
+  },
+  "doors": {
+   "url": "https://img.recraft.ai/ylxusNA2jOgQj8fFuyg5tVUqwOMihBLaO-FdwuQuxJ0/raw:1/plain/abs://prod/images/6a2aef52-b92b-41a8-8103-2ca64a9e29c9",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/iJBHLYp9zHjWXGgkJNCsXSE3qxam8cV8glc1UqpGihk/raw:1/plain/abs://prod/images/b153964f-f430-4e9d-a517-ca3116aa6928"
+  },
+  "building": {
+   "url": "https://img.recraft.ai/nZitHHibALXDtPAqHLxHG1_tijIluNAQoZmjf4LCnT8/raw:1/plain/abs://prod/images/066a7cb7-a345-46c6-b085-94806b02bebb"
+  },
+  "vending": {
+   "url": "https://img.recraft.ai/BDQ3wAaqWYbm9Gx-oWIFt8O_3FLEFupzoOMU5KyBCaY/raw:1/plain/abs://prod/images/b56a638a-6d91-4f23-8a97-aa718b8d12ba",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/8sUKQFoFPSOb3x7C1uu6xemqEEugskD0YHX3YCXA_Sc/raw:1/plain/abs://prod/images/558c3578-627d-4cc7-90d7-d0a9f091bce3"
+  },
+  "shop": {
+   "url": "https://img.recraft.ai/tVJaM_EYaGB5gEL1RcNEjz39lutF3QspLNWwEW1iDCc/raw:1/plain/abs://prod/images/f69e99c2-a362-4e95-875a-b2e6673a193d"
+  },
+  "vendor": {
+   "url": "https://img.recraft.ai/Spwl9FAmI5Poqn28HM1Jo6nNP36TQaeGUWRvprcIvV8/raw:1/plain/abs://prod/images/a5fefdbb-13b0-4d79-bd02-4056e9a5d2fc",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/OVkJstwadSKIqmyfhnWXl1sGuT2yaqUYRGivNIRdaRo/raw:1/plain/abs://prod/images/68b1afcc-2934-4198-ad20-6647a583ec88"
+  },
+  "kiosk": {
+   "url": "https://img.recraft.ai/-TrFKpqalKmDatOF5hCNATVRpLtWPobzxgRTCmwkn9s/raw:1/plain/abs://prod/images/bc82c045-bd34-416d-9e9c-f584ec7c30f0",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/tltHyFEXcAwfedmjCoOzXKhZd6CNEgSodAA2T3UWIP4/raw:1/plain/abs://prod/images/4cfcd3cd-ee75-4079-aad2-c820b899e0a3"
+  },
+  "bridge": {
+   "url": "https://img.recraft.ai/ERAl1poqwRooBfUShD6s5cz_4kj8Os831VfT5-cJ-CA/raw:1/plain/abs://prod/images/fc308177-6d72-4ce4-8c81-beef0f93b421"
+  },
+  "ferry": {
+   "url": "https://img.recraft.ai/EETIqxsTBQNHeE8HgA4OY_vZumukeeW8-TBafRv1IA0/raw:1/plain/abs://prod/images/141d09af-8295-4038-9439-1dda52438b22"
+  },
+  "bags": {
+   "url": "https://img.recraft.ai/NSxoz0M6W6ewpUk1XItrYBTQQQnCGYlHWz_EE7iFVYY/raw:1/plain/abs://prod/images/a1bff400-cac6-4495-a957-371979d4fa56",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/NTHHrOR51mfYhQ2qgLv__S6tSfQiB1c8EXJdJrxH4Wc/raw:1/plain/abs://prod/images/a4b8d335-9254-41ff-a797-1cd54e8018c1"
+  },
+  "cold_store": {
+   "url": "https://img.recraft.ai/6wzyKrXV9_hAB_5aLbUAbq3GzqQC7gp1M7aCLHi5tpE/raw:1/plain/abs://prod/images/0be1810f-cbb6-460e-91c0-ae6aa66ef503",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/FLBwDTMSDQzYNUMSDBDc3qxXhUzKHwL1BGzADMlEWaI/raw:1/plain/abs://prod/images/6d92a36c-7906-48de-98de-641c49c0b03b"
+  },
+  "drip": {
+   "url": "https://img.recraft.ai/cH_Vf4ObvQwMdbTsxiRodaqcvJBdj7JImrRLUw0TeTo/raw:1/plain/abs://prod/images/243dbc55-c7be-4e83-ab83-33c9f34e6a2f"
+  },
+  "red_ingredients": {
+   "url": "https://img.recraft.ai/a1BshXrml6HHwlsVLYyWjb9hh465Hp1uIrUOFGWXOyY/raw:1/plain/abs://prod/images/32c5ffb0-5d29-4543-a54f-1193507e63ff"
+  },
+  "ingredients": {
+   "url": "https://img.recraft.ai/vpVYJU2mE0PAJBgkrS2SLCOfx9-PSDpvkqY4w5Mm_Eo/raw:1/plain/abs://prod/images/1d2b2d29-76bd-4d76-a086-ed0ae3a6c488"
+  },
+  "tools": {
+   "url": "https://img.recraft.ai/kE-71pxQTZU6IRHTZFkafiwZ2sjlijN3B62qRsWOdcU/raw:1/plain/abs://prod/images/7ed34027-4083-486e-8730-fab8461fb268"
+  },
+  "dishes_a": {
+   "url": "https://img.recraft.ai/kg5w27cee7KaOiQmCLfgQxLSLpe1q2Gq7qflZBOHNro/raw:1/plain/abs://prod/images/431b5870-d2e0-4251-8a2d-b5865ccfbc33",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/s8HVxF9mRKqL2sOopT4DpqeOCNqOcsEFQvo62NLyyeA/raw:1/plain/abs://prod/images/a9fe24f1-e01d-4f45-813c-81eb935dc6b2"
+  },
+  "dishes_b": {
+   "url": "https://img.recraft.ai/wxacvCVd0RjcmtFqhflaH_4ASr8lg8fspNNy8G0Bjtw/raw:1/plain/abs://prod/images/b7e5445f-fd4c-432a-bdf1-53bf78d72d3b"
+  },
+  "ui": {
+   "url": "https://img.recraft.ai/iiUw-F4RQ7gTtUWYe9B5qUXuMV0a17RvxhaONYbJxPM/raw:1/plain/abs://prod/images/32f30815-992f-4ee7-a394-705866d66f10",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/lNcLVqE0iqRYg4l6y0bygxQF8oG7nbxSAzGE7W5u6Dc/raw:1/plain/abs://prod/images/db384bd2-6031-4650-811d-fb5ed59fbe1d"
+  },
+  "workshop": {
+   "url": "https://img.recraft.ai/SO5M0_d4naoGm0VoOBWbi3OkRCB0Ne9hn1ThB5B3hUs/raw:1/plain/abs://prod/images/859a392d-cddb-41d7-a47f-f3ed78b64dcf"
+  },
+  "title": {
+   "url": "https://img.recraft.ai/qcUXgC8xNNysQ_eZ3bbooF8dz2j71wDJjYt-mWF-BUQ/raw:1/plain/abs://prod/images/8289a0c2-4001-4115-b3eb-c6e382d58094"
+  },
+  "logo": {
+   "url": "https://img.recraft.ai/7DLPUbzI8Gqz3BHliwqpEJcKcfSjDd2NdkFBt8X4zgw/raw:1/plain/abs://prod/images/a9e62625-5451-40d0-8697-3fdef4bc02c8"
+  }
+ },
+ "assets": [
+  {
+   "path": "backgrounds/throat.png",
+   "source": "bg_throat",
+   "crop": [
+    0,
+    0,
+    1344,
+    756
+   ],
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Back layer: monster upper jaw with fangs and the pink throat; opaque"
+  },
+  {
+   "path": "backgrounds/city.png",
+   "source": "bg_city",
+   "crop": [
+    0,
+    418,
+    1344,
+    302
+   ],
+   "size": [
+    1280,
+    288
+   ],
+   "scale": 4,
+   "colours": 32,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Middle layer: low, hazy distant skyline with small orange windows; clear above the skyline"
+  },
+  {
+   "path": "backgrounds/acid.png",
+   "source": "bg_acid",
+   "crop": [
+    0,
+    250,
+    1344,
+    518
+   ],
+   "size": [
+    1280,
+    492
+   ],
+   "scale": 4,
+   "colours": 32,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Front layer: green acid sea with sunken train cars; surface near the top, transparent above it"
+  },
+  {
+   "path": "characters/chef_idle.png",
+   "source": "chef_concept_sheet",
+   "crop": [
+    155,
+    500,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#2c3a46",
+    "tolerance": 24
+   },
+   "depicts": "Chef (ART-CHAR-001), sheet pose 2, holding the spatula"
+  },
+  {
+   "path": "characters/chef_walk_1.png",
+   "source": "chef_concept_sheet",
+   "crop": [
+    470,
+    500,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#2c3a46",
+    "tolerance": 24
+   },
+   "depicts": "Chef (ART-CHAR-001), sheet pose 4, stepping with the spatula raised"
+  },
+  {
+   "path": "characters/chef_walk_2.png",
+   "source": "chef_concept_sheet",
+   "crop": [
+    1045,
+    500,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#2c3a46",
+    "tolerance": 24
+   },
+   "depicts": "Chef (ART-CHAR-001), sheet pose 7, stepping"
+  },
+  {
+   "path": "characters/chef_climb.png",
+   "source": "chef_concept_sheet",
+   "crop": [
+    1185,
+    500,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#2c3a46",
+    "tolerance": 24
+   },
+   "depicts": "Chef (ART-CHAR-001), sheet pose 8, seen from behind"
+  },
+  {
+   "path": "characters/appraiser_idle.png",
+   "source": "detective_concept_sheet",
+   "crop": [
+    0,
+    457,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#213544",
+    "tolerance": 24
+   },
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 1, standing with the magnifier"
+  },
+  {
+   "path": "characters/appraiser_walk_1.png",
+   "source": "detective_concept_sheet",
+   "crop": [
+    305,
+    457,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#213544",
+    "tolerance": 24
+   },
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 3, striding and pointing"
+  },
+  {
+   "path": "characters/appraiser_walk_2.png",
+   "source": "detective_concept_sheet",
+   "crop": [
+    455,
+    457,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#213544",
+    "tolerance": 24
+   },
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 4, stepping"
+  },
+  {
+   "path": "characters/appraiser_climb.png",
+   "source": "detective_concept_sheet",
+   "crop": [
+    1065,
+    457,
+    220,
+    220
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 16,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#213544",
+    "tolerance": 24
+   },
+   "depicts": "Appraiser (ART-CHAR-002), sheet pose 8, seen from behind"
+  },
+  {
+   "path": "world/platform.png",
+   "source": "platform",
+   "crop": [
+    230,
+    298,
+    453,
+    340
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 24,
+   "seamless": "x",
+   "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
+  },
+  {
+   "path": "world/ladder.png",
+   "source": "ladders",
+   "crop": [
+    37,
+    100,
+    216,
+    208
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "depicts": "Ladder tile: two rungs; tiles vertically"
+  },
+  {
+   "path": "world/ladder_broken.png",
+   "source": "ladders",
+   "crop": [
+    650,
+    380,
+    330,
+    644
+   ],
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall"
+  },
+  {
+   "path": "world/door_cold_store.png",
+   "source": "doors",
+   "crop": [
+    0,
+    32,
+    497,
+    992
+   ],
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Cold store door: riveted steel with a frosted window"
+  },
+  {
+   "path": "world/door_broken.png",
+   "source": "doors",
+   "crop": [
+    523,
+    0,
+    501,
+    1024
+   ],
+   "size": [
+    32,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Broken door: smashed and boarded"
+  },
+  {
+   "path": "world/building_wall.png",
+   "source": "building",
+   "crop": [
+    200,
+    250,
+    683,
+    683
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "seamless": "xy",
+   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
+  },
+  {
+   "path": "world/vending_machine.png",
+   "source": "vending",
+   "crop": [
+    100,
+    0,
+    820,
+    1024
+   ],
+   "size": [
+    40,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Broken red vending machine with jars behind cracked glass"
+  },
+  {
+   "path": "world/shop.png",
+   "source": "shop",
+   "crop": [
+    130,
+    80,
+    760,
+    760
+   ],
+   "size": [
+    96,
+    96
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Corner shop front: shelves, crates, awning and lantern"
+  },
+  {
+   "path": "world/vendor_cart.png",
+   "source": "vendor",
+   "crop": [
+    0,
+    0,
+    620,
+    1024
+   ],
+   "size": [
+    40,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Street stall: noodle cart with canopy and lantern"
+  },
+  {
+   "path": "world/noodle_vendor.png",
+   "source": "vendor",
+   "crop": [
+    600,
+    240,
+    424,
+    784
+   ],
+   "size": [
+    26,
+    48
+   ],
+   "scale": 1,
+   "colours": 24,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Noodle vendor NPC holding a ladle"
+  },
+  {
+   "path": "world/kiosk.png",
+   "source": "kiosk",
+   "crop": [
+    0,
+    0,
+    1024,
+    1024
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Wrecked kiosk with flesh slime on the roof"
+  },
+  {
+   "path": "world/bridge.png",
+   "source": "bridge",
+   "crop": [
+    380,
+    330,
+    300,
+    300
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 1,
+   "colours": 24,
+   "seamless": "x",
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "depicts": "Rotten bridge tile: dark planks; tiles horizontally"
+  },
+  {
+   "path": "world/ferry.png",
+   "source": "ferry",
+   "crop": [
+    200,
+    0,
+    1140,
+    670
+   ],
+   "size": [
+    192,
+    112
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Drifted ferry: rusty hull, lit cabin, lantern"
+  },
+  {
+   "path": "world/bag_washed_up.png",
+   "source": "bags",
+   "crop": [
+    0,
+    110,
+    500,
+    820
+   ],
+   "size": [
+    32,
+    52
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Washed-up bag: slimy backpack with a sparkle"
+  },
+  {
+   "path": "world/bag_roof.png",
+   "source": "bags",
+   "crop": [
+    491,
+    110,
+    530,
+    570
+   ],
+   "size": [
+    32,
+    34
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Roof bag: roped duffel with a sparkle"
+  },
+  {
+   "path": "world/cold_store.png",
+   "source": "cold_store",
+   "crop": [
+    0,
+    0,
+    1024,
+    1024
+   ],
+   "size": [
+    128,
+    128
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Cold store block in scaffolding with a steel door and lamp"
+  },
+  {
+   "path": "world/acid_drip.png",
+   "source": "drip",
+   "crop": [
+    128,
+    0,
+    512,
+    1536
+   ],
+   "size": [
+    32,
+    96
+   ],
+   "scale": 1,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall"
+  },
+  {
+   "path": "icons/ingredient_tomato.png",
+   "source": "red_ingredients",
+   "crop": [
+    66,
+    82,
+    606,
+    606
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: tomato"
+  },
+  {
+   "path": "icons/ingredient_fish.png",
+   "source": "ingredients",
+   "crop": [
+    346,
+    0,
+    342,
+    342
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: fish"
+  },
+  {
+   "path": "icons/ingredient_kelp.png",
+   "source": "ingredients",
+   "crop": [
+    712,
+    2,
+    308,
+    308
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: kelp"
+  },
+  {
+   "path": "icons/ingredient_mushroom.png",
+   "source": "ingredients",
+   "crop": [
+    0,
+    330,
+    346,
+    346
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: mushroom"
+  },
+  {
+   "path": "icons/ingredient_pickles.png",
+   "source": "ingredients",
+   "crop": [
+    354,
+    356,
+    316,
+    316
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: pickles"
+  },
+  {
+   "path": "icons/ingredient_meat.png",
+   "source": "red_ingredients",
+   "crop": [
+    729,
+    20,
+    722,
+    722
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: meat"
+  },
+  {
+   "path": "icons/ingredient_truffle.png",
+   "source": "ingredients",
+   "crop": [
+    363,
+    718,
+    299,
+    299
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Ingredient icon: truffle"
+  },
+  {
+   "path": "icons/tool_magnifier.png",
+   "source": "tools",
+   "crop": [
+    0,
+    0,
+    768,
+    768
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Tool icon: magnifier"
+  },
+  {
+   "path": "icons/tool_spatula.png",
+   "source": "tools",
+   "crop": [
+    427,
+    11,
+    753,
+    753
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Tool icon: spatula"
+  },
+  {
+   "path": "icons/tool_wrench.png",
+   "source": "tools",
+   "crop": [
+    808,
+    36,
+    728,
+    728
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Tool icon: wrench"
+  },
+  {
+   "path": "icons/dish_mushroom_soup.png",
+   "source": "dishes_a",
+   "crop": [
+    0,
+    20,
+    400,
+    400
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: mushroom soup"
+  },
+  {
+   "path": "icons/dish_fish_stew.png",
+   "source": "dishes_a",
+   "crop": [
+    380,
+    0,
+    520,
+    520
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: fish stew"
+  },
+  {
+   "path": "icons/dish_kelp_wrap.png",
+   "source": "dishes_a",
+   "crop": [
+    900,
+    0,
+    380,
+    380
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: kelp wrap"
+  },
+  {
+   "path": "icons/dish_meat_skewer.png",
+   "source": "dishes_a",
+   "crop": [
+    0,
+    420,
+    412,
+    412
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: meat skewer"
+  },
+  {
+   "path": "icons/dish_truffle_roast.png",
+   "source": "dishes_a",
+   "crop": [
+    440,
+    400,
+    432,
+    432
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: truffle roast"
+  },
+  {
+   "path": "icons/dish_pickle_surprise.png",
+   "source": "dishes_a",
+   "crop": [
+    868,
+    420,
+    412,
+    412
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Dish icon: pickle surprise"
+  },
+  {
+   "path": "icons/dish_sea_salad.png",
+   "source": "dishes_b",
+   "crop": [
+    0,
+    175,
+    360,
+    360
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dish icon: sea salad"
+  },
+  {
+   "path": "icons/dish_fish_pie.png",
+   "source": "dishes_b",
+   "crop": [
+    288,
+    175,
+    360,
+    360
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dish icon: fish pie"
+  },
+  {
+   "path": "icons/dish_meat_stew.png",
+   "source": "dishes_b",
+   "crop": [
+    589,
+    175,
+    360,
+    360
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dish icon: meat stew"
+  },
+  {
+   "path": "icons/dish_truffle_soup.png",
+   "source": "dishes_b",
+   "crop": [
+    895,
+    175,
+    360,
+    360
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dish icon: truffle soup"
+  },
+  {
+   "path": "icons/dish_surf_and_turf.png",
+   "source": "dishes_b",
+   "crop": [
+    1176,
+    175,
+    360,
+    360
+   ],
+   "size": [
+    48,
+    48
+   ],
+   "scale": 1,
+   "colours": 12,
+   "outline": "#0a060e",
+   "largest_only": true,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "depicts": "Dish icon: surf and turf"
+  },
+  {
+   "path": "ui/panel_frame.png",
+   "source": "ui",
+   "crop": [
+    17,
+    35,
+    340,
+    340
+   ],
+   "size": [
+    96,
+    96
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Riveted grey steel panel frame for 9-slice"
+  },
+  {
+   "path": "ui/bar_frame.png",
+   "source": "ui",
+   "crop": [
+    341,
+    127,
+    662,
+    196
+   ],
+   "size": [
+    192,
+    56
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Riveted grey steel bar frame, empty inside"
+  },
+  {
+   "path": "ui/item_slot.png",
+   "source": "ui",
+   "crop": [
+    18,
+    381,
+    339,
+    339
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Grey steel item slot frame"
+  },
+  {
+   "path": "ui/heart_full.png",
+   "source": "ui",
+   "crop": [
+    342,
+    373,
+    354,
+    354
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      280,
+      350
+     ],
+     "hue": 357,
+     "saturation": 1.1
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Heart, full, red"
+  },
+  {
+   "path": "ui/heart_empty.png",
+   "source": "ui",
+   "crop": [
+    696,
+    383,
+    277,
+    277
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      0,
+      360
+     ],
+     "saturation": 0.2,
+     "lightness": 3.0
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Heart, empty outline, light grey"
+  },
+  {
+   "path": "ui/button.png",
+   "source": "ui",
+   "crop": [
+    22,
+    761,
+    198,
+    198
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Button, normal, grey steel, blank face"
+  },
+  {
+   "path": "ui/button_highlight.png",
+   "source": "ui",
+   "crop": [
+    227,
+    767,
+    189,
+    189
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Button, highlighted, yellow, blank face"
+  },
+  {
+   "path": "ui/icon_day.png",
+   "source": "ui",
+   "crop": [
+    424,
+    757,
+    204,
+    204
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Day icon: yellow sun"
+  },
+  {
+   "path": "ui/icon_clock.png",
+   "source": "ui",
+   "crop": [
+    636,
+    775,
+    174,
+    174
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      190,
+      345
+     ],
+     "saturation": 0.2
+    }
+   ],
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Clock icon: grey case, yellow face"
+  },
+  {
+   "path": "ui/icon_acid.png",
+   "source": "ui",
+   "crop": [
+    822,
+    768,
+    183,
+    183
+   ],
+   "size": [
+    32,
+    32
+   ],
+   "scale": 2,
+   "colours": 12,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "depicts": "Acid icon: green drop"
+  },
+  {
+   "path": "workshop/kitchen.png",
+   "source": "workshop",
+   "crop": [
+    0,
+    0,
+    1344,
+    756
+   ],
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Base kitchen interior with cauldron, shelves, lanterns and the feeding crane; opaque"
+  },
+  {
+   "path": "title/key_art.png",
+   "source": "title",
+   "crop": [
+    0,
+    0,
+    1344,
+    756
+   ],
+   "size": [
+    1280,
+    720
+   ],
+   "scale": 4,
+   "colours": 32,
+   "depicts": "Title key art: monster mouth, swallowed city, acid sea, chef and appraiser; opaque"
+  },
+  {
+   "path": "title/logo.png",
+   "source": "logo",
+   "crop": [
+    0,
+    0,
+    1024,
+    1024
+   ],
+   "size": [
+    512,
+    512
+   ],
+   "scale": 4,
+   "colours": 16,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48,
+    "enclosed": true
+   },
+   "depicts": "Logo: MONSTER MOUTH ESCAPE lettering with fangs and acid drips"
+  }
+ ]
+}

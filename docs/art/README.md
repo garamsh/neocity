@@ -4,18 +4,29 @@ The current visual direction of the monster-mouth escape game, source images, an
 
 ## Current direction
 
-The current game is the monster-mouth escape game of [parent #21](https://github.com/garamsh/neocity/issues/21): a monster swallows a city, and a yellow chef and a green appraiser gather ingredients, feed it, and look for a way out. The [game baseline](../design/monster-mouth-escape.md) holds its decisions. The concept images #21 cites, kept in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape), are its visual target, and #21 states that their drawn UI, numbers, keys, and layout are not requirements. No final art for this game is approved. What the screen shows now is temporary and awaits the creative decision-maker.
+The current game is the monster-mouth escape game of [parent #21](https://github.com/garamsh/neocity/issues/21): a monster swallows a city, and a yellow chef and a green appraiser gather ingredients, feed it, and look for a way out. The [game baseline](../design/monster-mouth-escape.md) holds its decisions. The concept images #21 cites, kept in the [concept archive](https://github.com/garamsh/neocity/tree/241124d5ba2dcef937c904623f1e5e3cb03fbcf5/docs/art/concept-art/monster-mouth-escape), are its visual target, and #21 states that their drawn UI, numbers, keys, and layout are not requirements. No final art for this game is approved.
+
+The production art set of [#90](https://github.com/garamsh/neocity/issues/90) follows that target. It lives in `project/levels/monster_mouth_escape/art/`, whose [manifest](../../project/levels/monster_mouth_escape/art/manifest.json) lists every file and its colour count, and the game does not load it yet. It awaits the creative decision-maker; the [review sheet](production/monster-mouth-escape-review-v2.png) puts the set beside the three concepts.
+
+| Topic | Set |
+|---|---|
+| Visual language kept from the concepts | Side-view pixel art: pink and magenta flesh throat with cream fangs, indigo skyline with orange windows and a tilted elevated train, glowing green acid with sunken train cars, rusty riveted iron walkways and ladders, amber lanterns, grey riveted steel UI with yellow accents |
+| Not kept | The concepts' close camera. The game shows the whole 36×16 map, so world tiles are 32 px, item icons 48×48, and characters 64×64 frames that stand taller than their cell |
+| Layers | Throat behind, a low distant skyline band in the middle, acid in front; the acid layer follows the acid level |
+| Palette | One 85-colour master palette (64 median-cut from the three concepts, the character sheets' swatches, and the concept UI's greys). Each asset keeps a subset: at most 16 colours for characters, 12 for icons and UI, 24 for world tiles and props, 32 for full-screen art |
+| Text | Only the logo carries letters; the engine draws all other words and numbers |
+| Source | Characters are cut from the approved sheets ART-CHAR-001 and ART-CHAR-002 with no generation. Everything else is Recraft with one custom style made from crops of the concepts. Prompts, style and post-processing are in the [provenance record](production/monster-mouth-escape-asset-provenance.txt); `tools/art/pixelize.py` regenerates the set |
 
 The opening and ending art belongs to [#29](https://github.com/garamsh/neocity/issues/29), in `project/levels/monster_mouth_escape/cinematics/`, under the [cinematic contract](../architecture/session.md#cinematic-contract). Until it exists the game shows a placeholder card.
 
-ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. The screen draws both with the ascent prototype's atlas, [`project/levels/ascent/ascent_atlas.png`](../../project/levels/ascent/ascent_atlas.png), which is a temporary representation and not a production sheet:
+ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. Until the set is loaded, the screen draws both with the ascent prototype's atlas, [`project/levels/ascent/ascent_atlas.png`](../../project/levels/ascent/ascent_atlas.png), a temporary representation. The set's character frames are cut from the sheets:
 
-| Actor | Sheet and temporary sprite agree | Differs on screen |
+| Actor | Sheet and set agree | Differs in the set |
 |---|---|---|
-| Chef, ART-CHAR-001 | Yellow skin, dark green hair, tall white hat, white coat with magenta buttons, magenta earrings, dark trousers | The sprite always holds a frying pan, while the game's base tool is the spatula, which the sheet draws only in a pose and as a prop. The sheet's expressions and pose row are not used |
-| Appraiser, ART-CHAR-002 | Green skin, spiked crown in the skin's green with a black outline, two metal bolts, X eye mark, large magnifying glass, dark suit with a magenta tie | The sprite's head is a flatter, lighter green without the sheet's darker shading, and its X mark is a brighter red. The sheet's expressions and pose row are not used |
+| Chef, ART-CHAR-001 | Sheet poses 2, 4, 7 and 8, so face, hair, hat, coat, magenta buttons and earrings, and spatula are the sheet's | At 64 px with 16 colours, the eyes and grin are a few pixels each. The sheet's expressions are not used |
+| Appraiser, ART-CHAR-002 | Sheet poses 1, 3, 4 and 8, so crown, bolts, X eye mark, magnifier, suit and tie are the sheet's | The X mark and tie are a few pixels each. The sheet's expressions are not used |
 
-The next section and those after it down to the reference gallery, and the gallery's jump-map entries, are the record of the earlier ascent prototype, which remains playable from the main menu. They do not direct the monster-mouth escape game.
+The next section and those after it down to the reference gallery, and the gallery's jump-map entries, are the historical record of the earlier ascent prototype. They do not direct the monster-mouth escape game.
 
 ## Earlier jump-map prototype record
 
@@ -276,7 +287,7 @@ Use the repository's [propose-art skill](../../.agents/skills/propose-art/SKILL.
 
 ![Real Godot frame of the neon ascent prototype](production/ascent-playable-v1.png)
 
-The implementation uses [the city texture](../../project/levels/ascent/neon_city.png) and [the sprite atlas](../../project/levels/ascent/ascent_atlas.png), owned by the ascent level in the Godot project. [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation. The [gameplay](../architecture/gameplay.md) and [presentation](../architecture/presentation.md) responsibility documents record the rules/presentation split and prototype controls.
+The prototype used a city texture, removed in [#91](https://github.com/garamsh/neocity/issues/91), and [the sprite atlas](../../project/levels/ascent/ascent_atlas.png). [Generation provenance](production/ascent-asset-provenance.txt) records their prompts, references, settings, and atlas-layout limitation.
 
 | Field | Record |
 |---|---|
