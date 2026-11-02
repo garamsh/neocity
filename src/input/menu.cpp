@@ -30,12 +30,16 @@ sample_session_input(std::optional<survival::ControlMap> control) {
     command.step = session::MenuStep::Up;
   } else if (input->is_action_just_pressed("menu_down")) {
     command.step = session::MenuStep::Down;
+  } else if (input->is_action_just_pressed("menu_left")) {
+    command.step = session::MenuStep::Left;
+  } else if (input->is_action_just_pressed("menu_right")) {
+    command.step = session::MenuStep::Right;
   }
   command.menu = input->is_action_just_pressed("menu");
   command.pause = input->is_action_just_pressed("pause");
   command.confirm = input->is_action_just_pressed("confirm");
-  for (const auto *action :
-       {"menu_up", "menu_down", "pause", "menu", "confirm"}) {
+  for (const auto *action : {"menu_up", "menu_down", "menu_left", "menu_right",
+                             "pause", "menu", "confirm"}) {
     command.controls_held =
         command.controls_held || input->is_action_pressed(action);
   }

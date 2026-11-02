@@ -1,5 +1,6 @@
 #pragma once
 
+#include "audio/speaker.hpp"
 #include "rendering/drawing.hpp"
 #include "session/session.hpp"
 
@@ -52,6 +53,7 @@ public:
   MainScene();
 
   void _ready() override;
+  void _exit_tree() override;
   void _process(double delta) override;
   void _draw() override;
 
@@ -63,6 +65,9 @@ public:
   [[nodiscard]] static godot::PackedStringArray controls_keys();
   /// Pins the seed of every later survival run, for repeatable host checks.
   void pin_survival_seed(std::int64_t seed);
+  /// Reports what the speakers played and play now, for host checks; empty
+  /// before the scene is ready.
+  [[nodiscard]] godot::Dictionary sound_status() const;
 
 protected:
   static void _bind_methods();
@@ -79,6 +84,7 @@ private:
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
   std::optional<rendering::Art> drawing;
+  std::optional<audio::Speaker> speaker;
 };
 
 } // namespace neocity

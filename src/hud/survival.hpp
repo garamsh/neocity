@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../rendering/drawing.hpp"
+#include "../rendering/feedback.hpp"
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
@@ -107,6 +108,15 @@ struct KeyRow {
   godot::String second;
 };
 
+/// One volume on the pause screen: its name, its level out of `steps`, and
+/// whether the left and right keys change it now.
+struct VolumeRow {
+  godot::String name;
+  std::uint8_t level = 0;
+  std::uint8_t steps = 0;
+  bool marked = false;
+};
+
 /// Who plays which actor, as the choice of players offers it.
 enum class SetupEntry : std::uint8_t { Chef, Appraiser, TwoPlayers };
 
@@ -117,12 +127,16 @@ inline constexpr std::array SETUP_ENTRIES{
 /// Draws the choice of who plays which actor with `selected` marked.
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected);
-/// Draws the city or the workshop, whichever the phase opens, with the HUD.
+/// Draws the city or the workshop, whichever the phase opens, with the HUD
+/// and the flourishes under way.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const SurvivalFrame &frame);
-/// Draws what holds the run over the frozen survival screen.
+                    const SurvivalFrame &frame,
+                    const std::vector<rendering::Burst> &bursts);
+/// Draws what holds the run over the frozen survival screen; the pause screen
+/// shows `volumes`.
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
-                        Interruption interruption, const SurvivalFrame &frame);
+                        Interruption interruption, const SurvivalFrame &frame,
+                        const std::array<VolumeRow, 2> &volumes);
 /// Draws the dark stage under a cinematic scene or, with `fallback`, the
 /// placeholder card that stands in when no scene can play.
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,

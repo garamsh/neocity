@@ -42,14 +42,33 @@ session::SurvivalFeatures SurvivalRules::features() {
 }
 
 MainScene::MainScene()
-    : session([this] { return start_survival(); },
-              session::CinematicStage{
-                  .play =
-                      [this](const godot::String &scene) {
-                        return play_cinematic(scene);
-                      },
-                  .playing = [this] { return cinematic_playing(); },
-                  .stop = [this] { stop_cinematic(); }}) {}
+    : session(
+          [this] { return start_survival(); },
+          session::CinematicStage{
+              .play =
+                  [this](const godot::String &scene) {
+                    return play_cinematic(scene);
+                  },
+              .playing = [this] { return cinematic_playing(); },
+              .stop = [this] { stop_cinematic(); }},
+          session::SoundStage{.play =
+                                  [this](audio::Cue cue) {
+                                    if (speaker) {
+                                      speaker->play(cue);
+                                    }
+                                  },
+                              .music =
+                                  [this](audio::Track track, float tension) {
+                                    if (speaker) {
+                                      speaker->music(track, tension);
+                                    }
+                                  },
+                              .volume =
+                                  [this](audio::Bus bus, float level) {
+                                    if (speaker) {
+                                      speaker->volume(bus, level);
+                                    }
+                                  }}) {}
 
 void MainScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
@@ -60,6 +79,8 @@ void MainScene::_bind_methods() {
       "MainScene", godot::D_METHOD("controls_keys"), &MainScene::controls_keys);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_survival_seed", "seed"),
                               &MainScene::pin_survival_seed);
+  godot::ClassDB::bind_method(godot::D_METHOD("sound_status"),
+                              &MainScene::sound_status);
 }
 
 void MainScene::_ready() {
@@ -67,8 +88,15 @@ void MainScene::_ready() {
     return;
   }
   drawing = rendering::Art::load();
+  speaker = audio::Speaker::attach(*this);
   godot::UtilityFunctions::print(
       "Host: title screen and Monster Mouth Escape ready.");
+}
+
+void MainScene::_exit_tree() {
+  if (speaker) {
+    speaker->stop();
+  }
 }
 
 void MainScene::_process(double delta) {
@@ -90,6 +118,10 @@ godot::String MainScene::screen_name() const { return session.screen_name(); }
 
 godot::Dictionary MainScene::survival_status() const {
   return session.survival_status();
+}
+
+godot::Dictionary MainScene::sound_status() const {
+  return speaker ? speaker->status() : godot::Dictionary();
 }
 
 godot::PackedStringArray MainScene::controls_keys() {

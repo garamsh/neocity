@@ -6,7 +6,7 @@ The purpose-folder shape selected for the C++ sources and the Godot project, and
 
 The C++ sources are partitioned by purpose: each folder directly under `src/` holds one thing the game does. Godot and C++ are implementation technologies within this shape, not folder names.
 
-- **A purpose is the unit.** One shallow folder per purpose directly under `src/`, named for what it does: `survival`, `session`, `input`, `rendering`, `hud`. No purpose nests by kind.
+- **A purpose is the unit.** One shallow folder per purpose directly under `src/`, named for what it does: `survival`, `session`, `input`, `rendering`, `hud`, `audio`. No purpose nests by kind.
 - **A new purpose earns a new folder, and a folder that mixes two purposes is split.** Folders are created when the purpose is named, not when its code outgrows a file.
 - **No generic container.** No `common`, `shared`, `util`, or similar folder that no single purpose owns.
 - **Each rule library is a build-enforced boundary.** `survival` owns its simulation and depends only on the C++ standard library at runtime. Each target exposes only its own `include/<library>/` directory; its `src/` is internal. Consumers include only `<library/...>`, never internal headers. No rule library may include or link another rule library or Godot.

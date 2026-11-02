@@ -211,6 +211,9 @@ public:
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
+  /// Moves everything drawn on `canvas` after it by `offset`, until the next
+  /// shift; a mirrored image keeps it.
+  void shift(godot::Node2D &canvas, godot::Vector2 offset) const;
   /// Eases from the value `name` last showed toward `target` whenever the
   /// target changes; a value missing from the last drawn frame starts at its
   /// target.
@@ -257,6 +260,8 @@ private:
   /// art.
   mutable std::array<Trail, 2> trails{};
   mutable std::map<godot::String, Tween> tweens;
+  /// The canvas offset of the last `shift`.
+  mutable godot::Vector2 origin;
 };
 
 } // namespace neocity::rendering

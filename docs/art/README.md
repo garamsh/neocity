@@ -17,6 +17,8 @@ The production art set of [#90](https://github.com/garamsh/neocity/issues/90) fo
 | Text | Only the logo carries letters; the engine draws all other words and numbers |
 | Source | Character frames are Recraft `image_edit` redraws of the approved sheets ART-CHAR-001 and ART-CHAR-002 in new poses, on its default model, which takes no custom style. Everything else is Recraft with one custom style made from crops of the concepts. Prompts, style and post-processing are in the [provenance record](production/monster-mouth-escape-asset-provenance.txt); `tools/art/pixelize.py` regenerates the set |
 
+The game's sound effects and music, since [#111](https://github.com/garamsh/neocity/issues/111), are CC0 files from packs by Kenney and Juhani Junkala, kept unchanged in `project/levels/monster_mouth_escape/audio/`; the [sound provenance](production/monster-mouth-escape-sound-provenance.txt) records each file's source, licence and digest. They await the creative decision-maker.
+
 The opening and ending art belongs to [#29](https://github.com/garamsh/neocity/issues/29), in `project/levels/monster_mouth_escape/cinematics/`, under the [cinematic contract](../architecture/session.md#cinematic-contract). Until it exists the game shows a placeholder card.
 
 ART-CHAR-001 and ART-CHAR-002 remain the identity sources; the game calls the detective the appraiser. The screen draws both from the set, whose character frames are redrawn from the sheets in new poses:

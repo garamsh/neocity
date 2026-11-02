@@ -898,11 +898,9 @@ Pose pose(Actor actor, const survival::Body &body, const Motion &motion,
 /// 100ms step so it moves smoothly between them.
 Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
   const bool chef = actor == Actor::Chef;
-  constexpr float PIXELS = CELL / static_cast<float>(survival::SUBCELLS);
-  return {art.glide(chef ? "chef_feet_x" : "appraiser_feet_x",
-                    MAP_X + static_cast<float>(body.position.x) * PIXELS),
-          art.glide(chef ? "chef_feet_y" : "appraiser_feet_y",
-                    MAP_Y + static_cast<float>(body.position.y) * PIXELS)};
+  const Vector2 point = map_point(body.position);
+  return {art.glide(chef ? "chef_feet_x" : "appraiser_feet_x", point.x),
+          art.glide(chef ? "chef_feet_y" : "appraiser_feet_y", point.y)};
 }
 
 /// Draws an actor taller than its cell, its frame's bottom edge on its feet,
@@ -1026,14 +1024,23 @@ Plates label_city(const Art &art, const survival::Content &content,
 
 } // namespace
 
+float acid_surface(float acid_ratio) {
+  return ACID_LOW - std::clamp(acid_ratio, 0.0F, 1.0F) * (ACID_LOW - MAP_Y);
+}
+
+Vector2 map_point(survival::Position position) {
+  constexpr float PIXELS = CELL / static_cast<float>(survival::SUBCELLS);
+  return {MAP_X + static_cast<float>(position.x) * PIXELS,
+          MAP_Y + static_cast<float>(position.y) * PIXELS};
+}
+
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio) {
   art.image(canvas, Image::Throat, Vector2(0.0F, 0.0F), 1.0F, false,
             throat_tint());
   art.image(canvas, Image::City,
             Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), 1.0F, false,
             city_tint());
-  const float ratio = std::clamp(acid_ratio, 0.0F, 1.0F);
-  const float surface = ACID_LOW - ratio * (ACID_LOW - MAP_Y);
+  const float surface = acid_surface(acid_ratio);
   const Vector2 acid = art.size(Image::Acid);
   const float top = std::floor(surface - ACID_SURFACE_DEPTH);
   const auto band = [&](float from, float height, godot::Color tint) {

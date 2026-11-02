@@ -29,6 +29,7 @@ On the title screen and on the choice of players, move the cursor with W or up a
 | Hand your actor to AI, playing together | X | N |
 | Pause or continue, listing every key | Esc | Esc |
 | Leave the run for the title screen | M, then Enter; Esc cancels | M, then Enter; Esc cancels |
+| Change the effects or music volume, on the pause screen | W/S or up/down to choose, A/D or left/right to change | the same |
 
 ## Run it
 
@@ -65,7 +66,7 @@ After `make build`, `godot --headless --path project --main-loop TitleMenuCheck 
 
 C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 
-CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export or audio pipeline is selected.
+CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export is selected. Sound plays through Godot's audio players on an Effects and a Music bus; every sound is a CC0 file whose source the [sound provenance](docs/art/production/monster-mouth-escape-sound-provenance.txt) records.
 
 ## Contributing
 

@@ -132,6 +132,10 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss slow frames: 2 live checks passed.' "$$log"
 
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AudioFeedbackCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 33 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, burn, repair, fall, flourishes, effects off, music off).' "$$log"
+
 ci: lint format test
 
 run: build

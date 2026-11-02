@@ -155,7 +155,14 @@ constexpr float PAUSE_TEXT_X = 230.0F;
 constexpr float PAUSE_FIRST_X = 700.0F;
 constexpr float PAUSE_SECOND_X = 890.0F;
 constexpr float PAUSE_ROWS_Y = 172.0F;
-constexpr float PAUSE_ROW_HEIGHT = 38.0F;
+constexpr float PAUSE_ROW_HEIGHT = 31.0F;
+constexpr float PAUSE_INSET = 32.0F;
+/// The volume rows' part at the bottom of the pause screen.
+constexpr float VOLUME_AREA = 104.0F;
+constexpr float VOLUME_ROW_HEIGHT = 34.0F;
+constexpr float VOLUME_BLOCK_STEP = 22.0F;
+constexpr const char *VOLUME_KEYS =
+    "SOUND     W/S or up/down: choose     A/D or left/right: change";
 constexpr int PAUSE_ROW_SIZE = 18;
 constexpr float NOTICE_BOX_X = 290.0F;
 constexpr float NOTICE_BOX_Y = 236.0F;
@@ -1467,10 +1474,9 @@ void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
   paint_feed_panel(canvas, drawing, frame, lift);
 }
 
+/// The city's cards; `paint_survival` draws the map under them.
 void paint_city_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame) {
-  rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                        frame.control, out_of_reach(frame));
   paint_actor_card(canvas, drawing, frame, Actor::Chef, MARGIN);
   paint_actor_card(canvas, drawing, frame, Actor::Appraiser,
                    MARGIN + CARD_WIDTH + GAP);
@@ -1707,22 +1713,81 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                17, tones.muted);
 }
 
+namespace {
+
+/// "off" at level 0, otherwise the level as a percentage.
+String volume_label(const VolumeRow &row) {
+  if (row.level == 0 || row.steps == 0) {
+    return "off";
+  }
+  return number(static_cast<std::uint32_t>(row.level) * 100U / row.steps) +
+         String("%");
+}
+
+/// The pause screen's volume rows: each a name, a row of level blocks and a
+/// percentage, the row the left and right keys change marked in the accent.
+void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
+                   const std::array<VolumeRow, 2> &volumes, float lift) {
+  const auto tones = rendering::palette();
+  const float top = PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA;
+  caption(canvas, drawing, PAUSE_TEXT_X, top, VOLUME_KEYS, tones.gold);
+  float y = top + VOLUME_ROW_HEIGHT;
+  for (const auto &row : volumes) {
+    const godot::Color lit = row.marked ? tones.gold : tones.cyan;
+    if (row.marked) {
+      rendering::rounded(
+          canvas,
+          rect(PAUSE_TEXT_X - 14.0F, y - VOLUME_ROW_HEIGHT + 10.0F,
+               PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_TEXT_X - 26.0F,
+               VOLUME_ROW_HEIGHT),
+          8.0F, tones.raised);
+    }
+    drawing.text(canvas, PAUSE_TEXT_X, y, row.name, PAUSE_ROW_SIZE,
+                 row.marked ? tones.gold : tones.white, Weight::SemiBold);
+    for (std::uint8_t step = 0; step < row.steps; ++step) {
+      rendering::rounded(
+          canvas,
+          rect(PAUSE_FIRST_X + static_cast<float>(step) * VOLUME_BLOCK_STEP,
+               y - 16.0F, VOLUME_BLOCK_STEP - 4.0F, 18.0F),
+          3.0F, step < row.level ? lit : tones.background);
+    }
+    drawing.text(canvas,
+                 PAUSE_FIRST_X +
+                     static_cast<float>(row.steps) * VOLUME_BLOCK_STEP + 12.0F,
+                 y, volume_label(row), PAUSE_ROW_SIZE, tones.white, CHANGING);
+    y += VOLUME_ROW_HEIGHT;
+  }
+}
+
+} // namespace
+
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const SurvivalFrame &frame) {
+                    const SurvivalFrame &frame,
+                    const std::vector<rendering::Burst> &bursts) {
   const auto &progression = frame.view.progression;
+  // A burn shakes the world, not the interface over it.
+  drawing.shift(canvas, rendering::shake(bursts));
   rendering::paint_mouth(canvas, drawing, acid_ratio(frame));
   if (progression.phase == Phase::Exploration) {
+    rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
+                          frame.control, out_of_reach(frame));
+    rendering::paint_city_bursts(canvas, bursts, acid_ratio(frame));
+    drawing.shift(canvas, {});
     paint_city_screen(canvas, drawing, frame);
   } else {
+    drawing.shift(canvas, {});
     paint_workshop_screen(canvas, drawing, frame);
+    rendering::paint_workshop_bursts(canvas, drawing, bursts);
   }
   paint_top_bar(canvas, drawing, frame);
   paint_events(canvas, drawing, frame);
   paint_next_step(canvas, drawing, frame);
+  rendering::paint_screen_bursts(canvas, bursts);
 }
 
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
-                        Interruption interruption, const SurvivalFrame &frame) {
+                        Interruption interruption, const SurvivalFrame &frame,
+                        const std::array<VolumeRow, 2> &volumes) {
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
   const float shown = drawing.entrance("interruption");
@@ -1738,12 +1803,14 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                  INTERRUPTION_LINE_SIZE, tones.muted);
     paint_key_rows(canvas, drawing, key_rows(frame), PAUSE_ROWS_Y + lift,
                    PAUSE_ROW_HEIGHT);
-    paint_button(canvas, drawing,
-                 rect(PAUSE_TEXT_X - BUTTON_PAD,
-                      PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - 70.0F,
-                      button_width(drawing, text.at(2), INTERRUPTION_LINE_SIZE),
-                      48.0F),
-                 text.at(2), INTERRUPTION_LINE_SIZE, false);
+    const float continue_width =
+        button_width(drawing, text.at(2), INTERRUPTION_LINE_SIZE);
+    paint_button(
+        canvas, drawing,
+        rect(PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_INSET - continue_width,
+             PAUSE_BOX_Y + lift + 36.0F, continue_width, 48.0F),
+        text.at(2), INTERRUPTION_LINE_SIZE, false);
+    paint_volumes(canvas, drawing, volumes, lift);
     return;
   }
   rendering::panel(canvas, rect(NOTICE_BOX_X, NOTICE_BOX_Y + lift,
