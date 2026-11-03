@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <iterator>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -174,7 +175,9 @@ WashedBag washed_bag_at(std::size_t index) {
   const bool late = day >= LATE_BAG_DAY;
   const auto &cargo = late ? lane.late_cargo : lane.cargo;
   const auto landings = late ? lane.late_landings : lane.landings;
-  return {.cell = landings[turn % landings.size()],
+  return {.cell = *std::ranges::next(
+              landings.begin(),
+              static_cast<std::ptrdiff_t>(turn % landings.size())),
           .ingredient = cargo.at(turn % cargo.size()),
           .day = day};
 }
@@ -188,6 +191,7 @@ ObjectId washed_bag(std::size_t index) {
 std::string_view washed_bag_name(std::size_t index) {
   static const auto names = [] {
     std::vector<std::string> list;
+    list.reserve(WASHED_BAG_COUNT);
     for (std::size_t bag = 0; bag < WASHED_BAG_COUNT; ++bag) {
       list.push_back("Washed-up Bag " + std::to_string(bag + 1));
     }
