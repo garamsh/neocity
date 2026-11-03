@@ -57,7 +57,9 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// not drawn, and a repaired one looks intact. A source in `out_of_reach`
 /// has stock no player can walk to: it loses the gold frame. Each actor faces
 /// the way it last walked, alternates its walking frames while it moves, and
-/// climbs on a ladder.
+/// climbs on a ladder. The monster's upper teeth hang from the top of the
+/// screen whatever the camera shows, in front of the backdrop scenery and the
+/// supports and behind the buildings, the walkways and all on them.
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,

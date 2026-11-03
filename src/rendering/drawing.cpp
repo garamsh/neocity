@@ -53,6 +53,8 @@ const char *path(Image image) {
     return "backgrounds/city.png";
   case Image::Acid:
     return "backgrounds/acid.png";
+  case Image::Jaw:
+    return "backgrounds/jaw.png";
   case Image::Kitchen:
     return "workshop/kitchen.png";
   case Image::ChefIdle:
@@ -514,6 +516,10 @@ void Art::look(godot::Node2D &canvas, Vector2 origin, float zoom) const {
   canvas.draw_set_transform_matrix(placed);
 }
 
+Look Art::looking() const {
+  return {.origin = placed.get_origin() - shaken, .zoom = placed.get_scale().x};
+}
+
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   canvas.draw_texture_rect_region(images.at(slot(image)), destination, source,
@@ -564,8 +570,10 @@ Vector2 Art::size(Image image) const {
 }
 
 float Art::seconds() const {
-  return static_cast<float>(now() - loaded) / 1.0e6F;
+  return pinned.value_or(static_cast<float>(now() - loaded) / 1.0e6F);
 }
+
+void Art::pin(float held) { pinned = held; }
 
 void Art::note_waterline(float band, float band_left, float sea) const {
   const float zoom = placed.get_scale().x;

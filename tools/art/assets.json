@@ -647,18 +647,24 @@
   "building": {
    "url": "https://img.recraft.ai/nZitHHibALXDtPAqHLxHG1_tijIluNAQoZmjf4LCnT8/raw:1/plain/abs://prod/images/066a7cb7-a345-46c6-b085-94806b02bebb"
   },
-  "vending": {
-   "url": "https://img.recraft.ai/BDQ3wAaqWYbm9Gx-oWIFt8O_3FLEFupzoOMU5KyBCaY/raw:1/plain/abs://prod/images/b56a638a-6d91-4f23-8a97-aa718b8d12ba",
-   "alpha": true,
-   "generated": "https://img.recraft.ai/8sUKQFoFPSOb3x7C1uu6xemqEEugskD0YHX3YCXA_Sc/raw:1/plain/abs://prod/images/558c3578-627d-4cc7-90d7-d0a9f091bce3"
-  },
-  "shop": {
-   "url": "https://img.recraft.ai/tVJaM_EYaGB5gEL1RcNEjz39lutF3QspLNWwEW1iDCc/raw:1/plain/abs://prod/images/f69e99c2-a362-4e95-875a-b2e6673a193d"
-  },
   "vendor": {
    "url": "https://img.recraft.ai/Spwl9FAmI5Poqn28HM1Jo6nNP36TQaeGUWRvprcIvV8/raw:1/plain/abs://prod/images/a5fefdbb-13b0-4d79-bd02-4056e9a5d2fc",
    "alpha": true,
    "generated": "https://img.recraft.ai/OVkJstwadSKIqmyfhnWXl1sGuT2yaqUYRGivNIRdaRo/raw:1/plain/abs://prod/images/68b1afcc-2934-4198-ad20-6647a583ec88"
+  },
+  "shop_lit": {
+   "url": "https://img.recraft.ai/YhN15kS0ld5Bc6PyWhRyjiYD94vdP9dCUbFfW1aKtgk/raw:1/plain/abs://prod/images/454629c1-aa1b-40d1-a45f-efef5c7afa40"
+  },
+  "vending_lit": {
+   "url": "https://img.recraft.ai/J4M0i0i4shgauYBIBYHfvGo8CO05RjZaWmZ1yqqhi9M/raw:1/plain/abs://prod/images/27891768-ac98-41d4-afd9-cda06c2bdfcc",
+   "alpha": true,
+   "generated": "https://img.recraft.ai/aXP0UAPCNS3yepsrwJEslqDH2HQhe6I98AJ3igiEWMQ/raw:1/plain/abs://prod/images/ccfeed90-86a1-4f38-9468-d840bc065b83"
+  },
+  "stall_lit": {
+   "url": "https://img.recraft.ai/0zJnQmNAwdc_XDiKC9RbxkeRB74DMVZ7ItH2MiRsNfk/raw:1/plain/abs://prod/images/7d58f860-a0c6-4a33-8ca2-94749f821574"
+  },
+  "jaw": {
+   "url": "https://img.recraft.ai/wPzauxqAY-czgPHc7lCXNONVeFXcshG27YoyNIkPdFw/raw:1/plain/abs://prod/images/a675d774-d618-410b-a06c-5c3197b3b3a1"
   },
   "kiosk": {
    "url": "https://img.recraft.ai/-TrFKpqalKmDatOF5hCNATVRpLtWPobzxgRTCmwkn9s/raw:1/plain/abs://prod/images/bc82c045-bd34-416d-9e9c-f584ec7c30f0",
@@ -814,6 +820,27 @@
     "tolerance": 48
    },
    "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
+  },
+  {
+   "path": "backgrounds/jaw.png",
+   "source": "jaw",
+   "crop": [
+    0,
+    0,
+    1536,
+    685
+   ],
+   "size": [
+    448,
+    200
+   ],
+   "scale": 2,
+   "colours": 24,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 32
+   },
+   "depicts": "Teeth layer: a row of cream fangs hanging from the pink upper gum; clear below"
   },
   {
    "path": "backgrounds/acid.png",
@@ -1471,16 +1498,16 @@
   },
   {
    "path": "world/vending_machine.png",
-   "source": "vending",
+   "source": "vending_lit",
    "crop": [
-    100,
+    40,
     0,
-    820,
+    935,
     1024
    ],
    "size": [
-    48,
-    60
+    56,
+    62
    ],
    "scale": 1,
    "colours": 12,
@@ -1497,21 +1524,21 @@
    "key": {
     "alpha": true
    },
-   "depicts": "Broken red vending machine with jars behind cracked glass",
+   "depicts": "Red vending machine lit from inside: rows of cans and jars behind glass under a glowing top panel",
    "edge": "lit"
   },
   {
    "path": "world/shop.png",
-   "source": "shop",
+   "source": "shop_lit",
    "crop": [
-    130,
-    80,
-    760,
-    760
+    25,
+    14,
+    999,
+    948
    ],
    "size": [
-    96,
-    96
+    120,
+    114
    ],
    "scale": 1,
    "colours": 12,
@@ -1519,29 +1546,29 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Corner shop front: shelves, crates, awning and lantern",
+   "depicts": "Lit corner shop: a slanted iron roof over brick walls, its open front glowing amber over shelves of jars and crates, a lantern at the eave",
    "edge": "lit"
   },
   {
    "path": "world/vendor_cart.png",
-   "source": "vendor",
+   "source": "stall_lit",
    "crop": [
+    137,
     0,
-    0,
-    620,
+    753,
     1024
    ],
    "size": [
-    50,
+    62,
     84
    ],
    "scale": 1,
    "colours": 12,
-   "largest_only": true,
    "key": {
-    "alpha": true
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Street stall: noodle cart with canopy and lantern",
+   "depicts": "Street stall: a noodle cart under a slanted tin roof, its counter glowing amber under a hanging lantern",
    "edge": "lit"
   },
   {

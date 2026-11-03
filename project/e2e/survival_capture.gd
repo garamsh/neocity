@@ -7,14 +7,18 @@ extends SceneTree
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
 ## lit top edge does not run along its tilt, the acid's light does not rise
 ## above its surface, the acid stands still between two
-## frames a moment apart on the finishing pass's clock, the finishing pass
+## frames a moment apart on the scene's clock, the finishing pass
 ## breaks the scene's pixels below the sea's surface into smaller ones, the
 ## city draws fewer than 60 frames a second,
-## or one of its word plates covers another or a source other than the source's
-## own count. The camera shows a part of the city, so each look is measured on
-## every city frame that shows what it looks at, and fails when none does.
-## The finishing pass's clock is pinned and moves only when the capture moves
-## it, so every look at the finished acid reads the same moment on every run.
+## one of its word plates covers another or a source other than the source's
+## own count, the monster's teeth do not show along the top of the play area,
+## a support reaches down from a walkway too high for it, or the shops, stall
+## and vending machines do not read warm and lit. The camera shows a part of
+## the city, so each look is measured on every city frame that shows what it
+## looks at, and fails when none does.
+## The scene's clock, which runs its ambient motion and its finishing pass, is
+## pinned and moves only when the capture moves it, so every city frame shows
+## the same moment on every run.
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
@@ -93,11 +97,11 @@ const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i
 ## the floor line of its first cell to that of the row below at its right end.
 const SLAB_CELL: Vector2i = Vector2i(20, 6)
 const SLAB_CELLS: int = 2
-## Where the finishing pass's clock is pinned, in seconds; how far apart on
+## Where the scene's clock is pinned, in seconds; how far apart on
 ## that clock the two frames of the acid's motion are taken; how much a pixel's
 ## colour must change in a channel, from 0 to 1, to count as moved; and the
 ## least share of the acid's pixels that move.
-const FINISH_CLOCK: float = 0.0
+const SCENE_CLOCK: float = 0.0
 const MOTION_SECONDS: float = 0.25
 const MOTION_STEP: float = 0.04
 const MOTION_SHARE: float = 0.05
@@ -129,6 +133,28 @@ const RATE_FRAMES: int = 600
 const RUN_UNIT: int = 50
 ## Longer than the screen's longest eased motion.
 const SETTLE_MSEC: int = 400
+## The rows at the top of the play area the teeth are read over; the least
+## share of the pixels their picture covers there that must show it, within
+## TEETH_TOLERANCE in each channel, low because a high walkway hides them
+## where it crosses the top of the screen; and the least share of the pixels
+## read the picture must cover.
+const TEETH_ROWS: int = 48
+const TEETH_SHARE: float = 0.04
+const TEETH_TOLERANCE: float = 0.06
+const TEETH_COVER: float = 0.3
+## How dark, in luminance, a pixel of a support reads; how many scene pixels
+## tall a dark run must be to read as a long support, longer than a brace;
+## and the most of the play area's columns such runs may cross.
+const SUPPORT_DARK: float = 0.15
+const SUPPORT_RUN: int = 120
+const SUPPORT_SHARE: float = 0.07
+## The scene rectangles of the lit structures: the corner shops, the vending
+## machine and the stall; how bright a pixel's red must be and how far it must
+## lead blue to read warm and lit; and the least share of their pixels that do.
+const LIT_AREAS: Array[Rect2] = [Rect2(468, 290, 120, 114), Rect2(52, 52, 120, 114), Rect2(308, 392, 56, 62), Rect2(305, 274, 62, 84)]
+const LIT_RED: float = 0.6
+const LIT_WARMTH: float = 0.2
+const LIT_SHARE: float = 0.15
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -142,8 +168,13 @@ var acid_frames: int = 0
 var band_frames: int = 0
 var grid_frames: int = 0
 var light_frames: int = 0
-## Where the finishing pass's clock stands.
-var clock: float = FINISH_CLOCK
+var teeth_frames: int = 0
+var support_frames: int = 0
+var lit_frames: int = 0
+## The teeth picture, as the World layer draws it at `teeth_at`.
+var teeth: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art/backgrounds/jaw.png"))
+## Where the scene's clock stands.
+var clock: float = SCENE_CLOCK
 ## Set once the run has printed its result line.
 var finished: bool = false
 
@@ -154,7 +185,7 @@ func _run() -> void:
 	await _frames(2)
 	scene = current_scene as MainScene
 	scene.pin_survival_seed(11)
-	scene.pin_finish_clock(clock)
+	scene.pin_scene_clock(clock)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
 	await _tap(KEY_2)
@@ -327,10 +358,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d and the acid light in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames, teeth_frames, support_frames, lit_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -546,7 +577,7 @@ func _save_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -715,7 +746,7 @@ func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
 	return true
 
 ## Whether, while the camera rests, MOTION_SHARE of the acid's pixels change
-## between two frames MOTION_SECONDS apart on the finishing pass's clock: of
+## between two frames MOTION_SECONDS apart on the scene's clock: of
 ## the pixels whose green leads by ACID_GREEN in the first, in the BAND_ROWS
 ## under the acid band's surface where the sea does not cover them, else in
 ## the SEA_ROWS under the sea's surface. The control is that the camera did not
@@ -732,7 +763,7 @@ func _acid_moves(screen: String) -> bool:
 		which = "sea"
 	var first: Image = await _frame()
 	clock += MOTION_SECONDS
-	scene.pin_finish_clock(clock)
+	scene.pin_scene_clock(clock)
 	var second: Image = await _frame()
 	var still: Transform2D = scene.get_meta("map_view", Transform2D())
 	if not still.is_equal_approx(view) or top < PLAY.position.y or bottom > PLAY.end.y:
@@ -750,7 +781,7 @@ func _acid_moves(screen: String) -> bool:
 			if maxf(absf(before.r - after.r), maxf(absf(before.g - after.g), absf(before.b - after.b))) >= MOTION_STEP:
 				moved += 1
 	var share: float = float(moved) / maxi(count, 1)
-	print("Capture: %s: %.3f of the %d green pixels of the %s in rows %d to %d moved in %.2fs of the finishing pass's clock (at least %.3f)." % [screen, share, count, which, top, bottom, MOTION_SECONDS, MOTION_SHARE])
+	print("Capture: %s: %.3f of the %d green pixels of the %s in rows %d to %d moved in %.2fs of the scene's clock (at least %.3f)." % [screen, share, count, which, top, bottom, MOTION_SECONDS, MOTION_SHARE])
 	if share < MOTION_SHARE:
 		_fail("%s: the %s stands still" % [screen, which])
 		return false
@@ -840,6 +871,102 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 	print("Capture: %s: over %.3f of the columns, where the acid shows under its surface at row %d, the rows above it lead the backdrop above them in green by %.3f (lit %.3f, backdrop %.3f, at least %.3f)." % [screen, share, surface, lit - unlit, lit, unlit, LIGHT_GAP])
 	if share < LIGHT_COLUMNS or lit - unlit < LIGHT_GAP:
 		_fail("%s: the acid's light does not rise above its surface" % screen)
+		return false
+	return true
+
+## Whether, over the TEETH_ROWS at the top of the play area, every other
+## column, TEETH_SHARE of the pixels the teeth picture covers where the World
+## layer's `teeth_at` meta puts it, its copies at odd steps of its width
+## mirrored, read within TEETH_TOLERANCE of the picture's colour in each
+## channel. The control is that the picture covers at least TEETH_COVER of
+## the pixels read, so the rows are the teeth's.
+func _teeth_show(frame: Image, screen: String) -> bool:
+	var at: Vector2 = scene.get_node("World").get_meta("teeth_at", Vector2(-INF, -INF))
+	var width: int = teeth.get_width()
+	var covered: int = 0
+	var matched: int = 0
+	var count: int = 0
+	for y: int in range(int(PLAY.position.y), int(PLAY.position.y) + TEETH_ROWS):
+		var row: int = y - int(at.y)
+		for x: int in range(0, int(PLAY.size.x), 2):
+			count += 1
+			var step: int = floori((x - at.x) / width)
+			var column: int = x - int(at.x) - step * width
+			if step % 2 != 0:
+				column = width - 1 - column
+			if row < 0 or row >= teeth.get_height() or column < 0 or column >= width:
+				continue
+			var tooth: Color = teeth.get_pixel(column, row)
+			if tooth.a < 0.5:
+				continue
+			covered += 1
+			var pixel: Color = frame.get_pixel(x, y)
+			if maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) <= TEETH_TOLERANCE:
+				matched += 1
+	var cover: float = float(covered) / count
+	var share: float = float(matched) / maxi(covered, 1)
+	teeth_frames += 1
+	print("Capture: %s: %.3f of the %.3f of the top %d rows of the play area the teeth cover show them (at least %.3f of at least %.3f)." % [screen, share, cover, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
+	if cover < TEETH_COVER or share < TEETH_SHARE:
+		_fail("%s: the teeth do not show along the top of the play area" % screen)
+		return false
+	return true
+
+## Whether at most SUPPORT_SHARE of the play area's columns, every other one,
+## hold a run of SUPPORT_DARK pixels SUPPORT_RUN scene pixels tall or more, so
+## the supports do not stand in dark lines across the backdrop. The control is
+## that a dark run a cell tall or more is found, so dark structures are read.
+func _supports_open(frame: Image, view: Transform2D, screen: String) -> bool:
+	var run_rows: int = SUPPORT_RUN * roundi(view.x.x)
+	var long: int = 0
+	var count: int = 0
+	var longest: int = 0
+	for x: int in range(0, int(PLAY.size.x), 2):
+		count += 1
+		var run: int = 0
+		var best: int = 0
+		for y: int in range(int(PLAY.position.y), int(PLAY.end.y)):
+			run = run + 1 if frame.get_pixel(x, y).get_luminance() < SUPPORT_DARK else 0
+			best = maxi(best, run)
+		longest = maxi(longest, best)
+		long += 1 if best >= run_rows else 0
+	var share: float = float(long) / count
+	support_frames += 1
+	print("Capture: %s: %.3f of the columns hold a dark run %d rows tall or more, the longest %d rows (at most %.3f)." % [screen, share, run_rows, longest, SUPPORT_SHARE])
+	if longest < CELL * roundi(view.x.x):
+		_fail("%s: no dark structure is read in the play area" % screen)
+		return false
+	if share > SUPPORT_SHARE:
+		_fail("%s: the supports stand in dark lines across the backdrop" % screen)
+		return false
+	return true
+
+## Whether, at no acid, before anything lit is destroyed, LIT_SHARE of the
+## pixels of the lit structures the frame shows whole read warm and bright:
+## red over LIT_RED and leading blue by LIT_WARMTH. The control is that the
+## frame shows at least one.
+func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
+	if _int("acid") != 0:
+		return true
+	var warm: int = 0
+	var count: int = 0
+	for area: Rect2 in LIT_AREAS:
+		if not _shows(view, area.position, area.size):
+			continue
+		for y: int in range(int(area.size.y)):
+			for x: int in range(int(area.size.x)):
+				var at: Vector2 = view * (area.position + Vector2(x + 0.5, y + 0.5))
+				var pixel: Color = frame.get_pixelv(Vector2i(at.floor()))
+				count += 1
+				if pixel.r >= LIT_RED and pixel.r - pixel.b >= LIT_WARMTH:
+					warm += 1
+	if count == 0:
+		return true
+	var share: float = float(warm) / count
+	lit_frames += 1
+	print("Capture: %s: %.3f of the lit structures' %d scene pixels read warm and bright (at least %.3f)." % [screen, share, count, LIT_SHARE])
+	if share < LIT_SHARE:
+		_fail("%s: the shops, stalls and vending machines do not read lit" % screen)
 		return false
 	return true
 

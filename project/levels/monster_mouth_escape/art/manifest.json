@@ -22,6 +22,16 @@
    "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
   },
   {
+   "path": "backgrounds/jaw.png",
+   "size": [
+    448,
+    200
+   ],
+   "scale": 2,
+   "colours": 24,
+   "depicts": "Teeth layer: a row of cream fangs hanging from the pink upper gum; clear below"
+  },
+  {
    "path": "backgrounds/acid.png",
    "size": [
     1280,
@@ -314,32 +324,32 @@
   {
    "path": "world/vending_machine.png",
    "size": [
-    48,
-    60
+    56,
+    62
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Broken red vending machine with jars behind cracked glass"
+   "depicts": "Red vending machine lit from inside: rows of cans and jars behind glass under a glowing top panel"
   },
   {
    "path": "world/shop.png",
    "size": [
-    96,
-    96
+    120,
+    114
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Corner shop front: shelves, crates, awning and lantern"
+   "depicts": "Lit corner shop: a slanted iron roof over brick walls, its open front glowing amber over shelves of jars and crates, a lantern at the eave"
   },
   {
    "path": "world/vendor_cart.png",
    "size": [
-    50,
+    62,
     84
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Street stall: noodle cart with canopy and lantern"
+   "depicts": "Street stall: a noodle cart under a slanted tin roof, its counter glowing amber under a hanging lantern"
   },
   {
    "path": "world/noodle_vendor.png",

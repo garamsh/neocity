@@ -102,8 +102,8 @@ void MainScene::_bind_methods() {
       "MainScene", godot::D_METHOD("controls_keys"), &MainScene::controls_keys);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_survival_seed", "seed"),
                               &MainScene::pin_survival_seed);
-  godot::ClassDB::bind_method(godot::D_METHOD("pin_finish_clock", "seconds"),
-                              &MainScene::pin_finish_clock);
+  godot::ClassDB::bind_method(godot::D_METHOD("pin_scene_clock", "seconds"),
+                              &MainScene::pin_scene_clock);
   godot::ClassDB::bind_method(godot::D_METHOD("sound_status"),
                               &MainScene::sound_status);
 }
@@ -177,8 +177,7 @@ void MainScene::draw_finish() {
   if (!line) {
     return;
   }
-  finishing->set("shader_parameter/time",
-                 pinned_clock.value_or(drawing->seconds()));
+  finishing->set("shader_parameter/time", drawing->seconds());
   finishing->set("shader_parameter/band", line->band);
   finishing->set("shader_parameter/band_left", line->band_left);
   finishing->set("shader_parameter/sea", line->sea);
@@ -217,8 +216,10 @@ void MainScene::pin_survival_seed(std::int64_t seed) {
   pinned_seed = static_cast<std::uint32_t>(seed);
 }
 
-void MainScene::pin_finish_clock(double seconds) {
-  pinned_clock = static_cast<float>(seconds);
+void MainScene::pin_scene_clock(double seconds) {
+  if (drawing) {
+    drawing->pin(static_cast<float>(seconds));
+  }
 }
 
 session::SurvivalFeatures MainScene::start_survival() {
