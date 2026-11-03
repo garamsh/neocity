@@ -321,18 +321,27 @@ func _run() -> void:
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 
-## Presses the one key NEXT names, or lets the day run while it names none.
+## Whether NEXT names what the interact key does: collect, repair, appraise
+## or cook, as the controls page lists for it.
+func _names_interact(line: String) -> bool:
+	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+		if line.begins_with(verb):
+			return true
+	return false
+
+## Presses the key for the one action NEXT names, as the controls page lists
+## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = scene.survival_status().get("next", "")
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
-	elif line.contains("[F] Feed"):
+	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
-	elif line.contains("[R] "):
+	elif line.begins_with("Replace "):
 		await _tap(KEY_R)
-	elif line.contains("[G] "):
+	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
-	elif line.contains("[E] "):
+	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
