@@ -64,6 +64,11 @@ constexpr float STAIR_TREAD = 2.0F;
 /// acid 0, so its towers stand clear below the teeth.
 constexpr float THROAT_TOP = -200.0F;
 constexpr float CITY_BOTTOM = 700.0F;
+/// The monster's upper teeth hang in front of the city from the screen's top
+/// edge, behind the top bar, and slide sideways this many times as far as the
+/// map when the camera moves.
+constexpr float JAW_TOP = 0.0F;
+constexpr float JAW_DEPTH = 1.25F;
 /// The part of the kitchen picture the workshop shows between the top bar and
 /// the panels, with the kitchen floor along its bottom.
 constexpr float KITCHEN_SOURCE_Y = 364.0F;
@@ -95,6 +100,14 @@ constexpr float RUN_SPEED =
     static_cast<float>(survival::PHYSICS.walk + survival::PHYSICS.run) / 2.0F;
 /// A walkway has a support under every this many cells between its ends.
 constexpr std::int32_t SUPPORT_SPACING = 4;
+/// A support stands down to the walkway below or into the acid only where
+/// that is at most this far under the deck, the acid read at its surface at
+/// acid 0; a higher walkway stands on short braces this long under the deck,
+/// ending on a girder of this many of the deck picture's bottom rows that
+/// runs along the walkway between them.
+constexpr float SUPPORT_REACH = 4.5F * CELL;
+constexpr float BRACE = CELL;
+constexpr float GIRDER = 8.0F;
 /// How far the ferry's hull sinks below its floor line, so its deck is there.
 constexpr float FERRY_SINK = 64.0F;
 /// Where the map's words may stand: below the top bar, above the actor cards.
@@ -649,8 +662,10 @@ void paint_support(godot::Node2D &canvas, const Art &art, Image image,
 /// The supports under every walkway deck and the pier, but the planks, the
 /// tilted ground and the other landmarks: a support under each end of a run
 /// and under every SUPPORT_SPACING-th cell between, down to the next walkway
-/// below or out of the map, into the acid. Each run takes the next support
-/// picture in turn.
+/// below or out of the map, into the acid, where that is within
+/// SUPPORT_REACH; a run too high for that stands on a brace under each end,
+/// on a girder between them. Each run takes the next support picture in
+/// turn.
 void paint_supports(godot::Node2D &canvas, const Art &art,
                     const std::vector<Standing> &ground, float map_bottom,
                     float surface) {
@@ -674,6 +689,19 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
              kind(other);
     });
   };
+  const Vector2 deck = art.size(Image::Deck);
+  // The span of the braces under the run being drawn.
+  std::optional<godot::Rect2> girder;
+  const auto close_girder = [&] {
+    if (girder) {
+      for (float x = girder->position.x; x < girder->get_end().x; x += CELL) {
+        art.image_part(
+            canvas, Image::Deck, rect(0.0F, deck.y - GIRDER, deck.x, GIRDER),
+            rect(x, girder->position.y, deck.x, GIRDER), support_tint());
+      }
+    }
+    girder.reset();
+  };
   std::size_t run = 0;
   for (std::size_t index = 0; index < ground.size(); ++index) {
     const auto &cell = ground.at(index);
@@ -681,6 +709,7 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
       continue;
     }
     if (!beside(index, -1, walkway)) {
+      close_girder();
       ++run;
     }
     const auto [x, y] = cell.ground.cell;
@@ -688,11 +717,19 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
     if (!solid(cell) || (!ends && x % SUPPORT_SPACING != 0)) {
       continue;
     }
-    const Image deck = cell.picture ? Image::Platform : Image::Deck;
-    const float top = floor_y(y) + art.size(deck).y;
-    paint_support(canvas, art, SUPPORTS.at(run % SUPPORTS.size()), x, top,
-                  support_bottom(ground, x, top, map_bottom), surface);
+    const float top =
+        floor_y(y) + art.size(cell.picture ? Image::Platform : Image::Deck).y;
+    const float bottom = support_bottom(ground, x, top, map_bottom);
+    const Image support = SUPPORTS.at(run % SUPPORTS.size());
+    if (std::min(bottom, ACID_LOW) - top <= SUPPORT_REACH) {
+      paint_support(canvas, art, support, x, top, bottom, surface);
+    } else if (ends) {
+      paint_support(canvas, art, support, x, top, top + BRACE, surface);
+      const auto brace = rect(cell_x(x), top + BRACE, CELL, GIRDER);
+      girder = girder ? girder->merge(brace) : brace;
+    }
   }
+  close_girder();
 }
 
 /// Whether flesh has grown over the front edge of a cell of walkway deck.
@@ -997,40 +1034,24 @@ bool stands_in_front(LandmarkKind kind) {
   std::abort();
 }
 
-/// A shop front hung from the walkway above a building with a shop inside:
-/// its roof under the deck, which is drawn over it, and its floor on a
-/// footing of deck across the building's width, held up by a support under
-/// each end down to the walkway below or into the acid at `surface`.
-void paint_storefront(godot::Node2D &canvas, const Art &art,
-                      const survival::WorldArea &area,
-                      const std::vector<Standing> &ground, float map_bottom,
-                      float surface) {
+/// Where a building with a shop inside stands: on the walkway over it, as
+/// wide and as tall as the building, so the shop opens onto the walkway its
+/// stock is reached from.
+godot::Rect2 shop_box(const survival::WorldArea &area) {
   const auto box = area_rect(area);
-  const Vector2 shop = art.size(Image::Shop);
-  const float floor = box.position.y + shop.y;
-  art.image(canvas, Image::Shop,
-            Vector2(box.get_center().x - shop.x / 2.0F, box.position.y));
-  const float footing = art.size(Image::Deck).y;
-  for (std::int32_t x = area.x; x < area.x + area.width; ++x) {
-    art.image(canvas, Image::Deck, Vector2(cell_x(x), floor), 1.0F, false,
-              support_tint());
-  }
-  for (const std::int32_t x : {area.x, area.x + area.width - 1}) {
-    paint_support(canvas, art, Image::Pillar, x, floor + footing,
-                  support_bottom(ground, x, floor, map_bottom), surface);
-  }
+  return {box.position - Vector2(0.0F, box.size.y), box.size};
 }
 
-/// A building is a wall of windows over its area, a shop front where a shop
-/// is inside it, its landmark picture standing in it, or rubble once
-/// destroyed. A building whose every cell is rubble ground is that rubble
-/// heap already. Only what stands in front of the ground is drawn when
-/// `front`, and only the rest otherwise.
+/// A building is a wall of windows over its area, a lit shop standing on the
+/// walkway over it where a shop is inside it, its landmark picture standing
+/// in it, or rubble once destroyed, where the shop stood for a shop. A building
+/// whose every cell is rubble ground is that rubble heap already. Only what
+/// stands in front of the ground is drawn when `front`, and only the rest
+/// otherwise.
 void paint_building(godot::Node2D &canvas, const Art &art,
                     const survival::Content &content,
-                    const ObjectSnapshot &object, bool front, bool shop,
-                    const std::vector<Standing> &ground, float surface) {
-  const auto box = area_rect(object.area);
+                    const ObjectSnapshot &object, bool front, bool shop) {
+  const auto box = shop ? shop_box(object.area) : area_rect(object.area);
   const auto &area = object.area;
   const auto picture = landmark(content, object.id);
   if (front != (object.state == ObjectState::Intact && picture &&
@@ -1071,8 +1092,7 @@ void paint_building(godot::Node2D &canvas, const Art &art,
     return;
   }
   if (shop) {
-    paint_storefront(canvas, art, area, ground, cell_y(content.map.height),
-                     surface);
+    stand_on_floor(canvas, art, Image::Shop, box);
     return;
   }
   for (std::int32_t y = area.y; y < area.y + area.height; y += TILE_CELLS) {
@@ -1177,8 +1197,9 @@ bool shop_inside(const ObjectSnapshot &building, const Marker &marker) {
                 {.x = marker.object.area.x, .y = marker.object.area.y});
 }
 
-/// A shop front is as tall as three cells, so it stands behind the ground. A
-/// shop inside a building has that building for its front, or its rubble.
+/// A lit shop is taller than three cells, so it stands behind the
+/// ground. A shop inside a building is drawn with that building, or its
+/// rubble.
 void paint_shop_front(godot::Node2D &canvas, const Art &art,
                       std::span<const ObjectSnapshot> objects,
                       const Marker &marker) {
@@ -1659,6 +1680,25 @@ void paint_saliva(godot::Node2D &canvas, const Art &art, Vector2 at) {
   }
 }
 
+/// The monster's upper teeth along the top of the screen, in front of the
+/// city whatever the camera shows, breathing with the throat and sliding
+/// sideways with the map, beside mirrored copies of themselves that meet
+/// without a seam. The canvas goes back to the scene afterwards.
+void paint_jaw(godot::Node2D &canvas, const Art &art) {
+  const Look scene = art.looking();
+  const float width = art.size(Image::Jaw).x;
+  const float slide =
+      wrapped(std::round(scene.origin.x * JAW_DEPTH), 2.0F * width);
+  const float top = JAW_TOP - std::round(breath(art) * BREATH_LIFT);
+  art.look(canvas, Vector2(), 1.0F);
+  for (int copy = -2; copy <= 2; ++copy) {
+    art.image(canvas, Image::Jaw,
+              Vector2(slide + static_cast<float>(copy) * width, top), 1.0F,
+              copy % 2 != 0);
+  }
+  art.look(canvas, scene.origin, scene.zoom);
+}
+
 /// The acid band nearest behind the map: the silhouettes of sunken trains
 /// and broken pillars in a sea glowing at its surface, pinned to the bottom of
 /// the play area and rising with the acid, slid sideways by `slide`.
@@ -1791,8 +1831,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       const bool shop = std::ranges::any_of(markers, [&](const auto &marker) {
         return shop_inside(object, marker);
       });
-      paint_building(canvas, art, content, object, front, shop, ground,
-                     surface);
+      paint_building(canvas, art, content, object, front, shop);
     });
   };
   paint_buildings(false);
@@ -1823,6 +1862,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     paint_actor(canvas, art, view, Actor::Appraiser,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
   }
+  paint_jaw(canvas, art);
 }
 
 void paint_city_labels(godot::Node2D &canvas, const Art &art,

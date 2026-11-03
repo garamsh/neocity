@@ -26,6 +26,7 @@ Every PNG keeps these, and `pixelize.py check` measures them on the art's own pi
 
 - `backgrounds/throat.png` (1280×720, opaque) is the back layer.
 - `backgrounds/city.png` (1280×480) is the middle layer: a swallowed city of tilted towers sunk in flesh, with an elevated railway and a train skewered into the flesh, clear above the skyline. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
+- `backgrounds/jaw.png` (448×200, scale 2) is the front layer: the monster's upper teeth hanging from a gum along its top edge, clear below. Draw it in front of the city along the top of the screen, beside mirrored copies of itself.
 - `backgrounds/acid.png` (1280×492) is the acid, both the band nearest behind the map and the sea in the scene. Its surface is near the top edge: move the layer so that edge follows the acid level, and fill any screen area below it with its bottom row.
 - The backdrop layers are not tiles; drawn beside a mirrored copy, each meets it without a seam.
 - `glow.tres` is the blend-add material of the layer that adds light over the scene.

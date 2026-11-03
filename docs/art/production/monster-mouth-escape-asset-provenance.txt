@@ -1,4 +1,6 @@
-Monster-mouth escape asset provenance, 2026-11-03, issues #90, #98, #110, #128, #141 and #151
+Monster-mouth escape asset provenance, 2026-11-04, issues #90, #98, #110, #128, #141, #151 and #153
+
+Version 7, issue #153: redraws the shop, the street stall and the vending machine as lit structures and adds the monster's upper teeth drawn in front of the city, backgrounds/jaw.png, from new generations; the earlier shop and vending machine sources leave tools/art/assets.json; see Version 7 changes at the end.
 
 Version 6, issue #151: removes the walls, wall fixtures and flesh-grown foot of the buildings sunk under the walkways, which the screen no longer draws, with their sources in tools/art/assets.json. No new generation.
 
@@ -70,17 +72,17 @@ Runtime: world/building_wall.png
 vending: generate_image, 1:1, n=2, first rejected; then remove_background; then the red recolour rule. Replaces the version 1 machine, which read magenta.
 Prompt as sent:
 Isolated single pixel art game sprite, front view: a tall broken vending machine painted true bright red like a fire truck, not pink, not magenta, with a cracked glass front showing rows of cans and jars, a dented grey coin panel, rust and green slime stains. Centered on a plain flat solid white background. No text, no letters, no labels, no scenery.
-Runtime: world/vending_machine.png
+Runtime: none since version 7; until then world/vending_machine.png
 
 shop: generate_image, 1:1, n=2, first rejected
 Prompt as sent:
 Isolated single pixel art game sprite, side view: a small ruined corner shop front built into rusty iron scaffolding, wooden shelves full of jars, cans, crates of tomatoes and kelp, a torn red awning, a glowing brass lantern, warm amber light inside. Wider than tall. Centered on a plain flat solid white background. No text, no letters, no signs with writing, no people.
-Runtime: world/shop.png
+Runtime: none since version 7; until then world/shop.png
 
 vendor: generate_image, 1:1, n=2, second rejected; then remove_background
 Prompt as sent:
 Isolated pixel art game sprites, side view, two items side by side on a plain flat solid white background: left, a small wooden street food vendor cart with two wheels, a steaming noodle pot, a striped red cloth canopy and a hanging lantern; right, a short old noodle vendor man standing, wearing a stained apron and a headband, holding a ladle, pale skin, chunky cartoon proportions with thick black outline. No text, no letters, no scenery.
-Runtime: world/vendor_cart.png, world/noodle_vendor.png
+Runtime: world/noodle_vendor.png; world/vendor_cart.png until version 7
 
 kiosk: generate_image, 1:1, n=2, first rejected; then remove_background
 Prompt as sent:
@@ -310,3 +312,27 @@ waterline: generate_image, 2:1, n=2, first rejected (the flesh read as a row of 
 Prompt as sent:
 Isolated pixel art game tile strip, side view: one long horizontal band of wet glossy pink and magenta monster flesh and green slime growing over the bottom of a ruined building wall where it sinks into glowing neon green acid, lumpy flesh bulges with thin veins, small polyps, strands of slime and drips, the bottom edge lit green from the acid below, the top edge ragged and thin where it creeps up the wall. Spans the full width of the image and repeats seamlessly left to right. Centered on a plain flat solid white background. Clean chunky pixel clusters, dark outlines, limited palette. No text, no letters, no wall, no water, no scenery.
 Runtime: none since version 6; until then world/waterline.png (seamless horizontally: the kept image repeats every 768 px, and its crop is one repeat plus the quarter step 1 fades, over the flesh only, above the acid it drew)
+
+Version 7 changes, issue #153
+Recraft use for issue #153: 17 credits, personal account (526 before by get_user): four generate_image calls with n=2, 4 credits a call, and one remove_background, 1 credit. Every call used the custom style above and ran on its model.
+Post-processing as above. The jaw is cut from its whole generation without the seamless cross-fade, which doubled a fang where it blended; the screen draws it beside mirrored copies, which meet without a seam.
+
+shop_lit: generate_image, 1:1, n=2, first rejected (narrower, fewer lit shelves)
+Prompt as sent:
+Isolated single pixel art game sprite, side view: a small lit corner shop that stands on a street, a slanted rusty corrugated iron roof with a warm lantern hanging under its eave, dark violet brick side walls framing a wide open front, the inside glowing bright warm amber and orange, wooden shelves stocked with jars, cans, crates of green vegetables and red tomatoes, a warm hanging lamp, a low wooden counter along the bottom. Wider than tall. Centered on a plain flat solid white background. No text, no letters, no signs with writing, no people, no ground, no scenery.
+Runtime: world/shop.png
+
+vending_lit: generate_image, 1:1, n=2, second rejected (its jars dark at the sprite's size); then remove_background on the kept image, whose background was a pink gradient; then the red recolour rule
+Prompt as sent:
+Isolated single pixel art game sprite, front view: a tall vending machine painted true bright red like a fire truck, not pink, not magenta, its glass front lit from inside with a warm white and yellow glow showing rows of colourful cans and jars, a bright glowing light panel across the top, a dented grey coin panel, a little rust. Centered on a plain flat solid white background. No text, no letters, no labels, no scenery.
+Runtime: world/vending_machine.png
+
+stall_lit: generate_image, 1:1, n=2, first rejected (drawn over a green forest)
+Prompt as sent:
+Isolated single pixel art game sprite, side view: a small street noodle stall on two wheels with a slanted rusty tin roof on two thin poles, a warm glowing lantern hanging from the roof, a lit wooden counter glowing warm amber with a steaming pot and stacked bowls, a striped red cloth hanging under the roof edge. Taller than wide. Centered on a plain flat solid white background. No text, no letters, no people, no scenery.
+Runtime: world/vendor_cart.png
+
+jaw: generate_image, 2:1, n=2, first rejected (green drips at the fang tips, which the finishing pass would read as acid)
+Prompt as sent:
+Isolated pixel art game asset strip: a row of huge cream and ivory monster fangs hanging straight down from a thick pink and magenta fleshy upper gum that runs along the very top edge, uneven sizes, saliva dripping from the tips, spanning the full width edge to edge. Everything below the fang tips is plain flat solid white with nothing in it. No throat, no uvula, no city, no buildings, no acid, no characters, no text.
+Runtime: backgrounds/jaw.png

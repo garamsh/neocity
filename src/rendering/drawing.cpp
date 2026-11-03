@@ -53,6 +53,8 @@ const char *path(Image image) {
     return "backgrounds/city.png";
   case Image::Acid:
     return "backgrounds/acid.png";
+  case Image::Jaw:
+    return "backgrounds/jaw.png";
   case Image::Kitchen:
     return "workshop/kitchen.png";
   case Image::ChefIdle:
@@ -512,6 +514,10 @@ void Art::shift(godot::Node2D &canvas, Vector2 offset) const {
 void Art::look(godot::Node2D &canvas, Vector2 origin, float zoom) const {
   placed = godot::Transform2D(0.0F, Vector2(zoom, zoom), 0.0F, shaken + origin);
   canvas.draw_set_transform_matrix(placed);
+}
+
+Look Art::looking() const {
+  return {.origin = placed.get_origin() - shaken, .zoom = placed.get_scale().x};
 }
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
