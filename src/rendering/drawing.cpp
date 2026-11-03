@@ -117,8 +117,6 @@ const char *path(Image image) {
     return "walkway/pillar.png";
   case Image::Column:
     return "walkway/column.png";
-  case Image::Stairs:
-    return "walkway/stairs.png";
   case Image::Rubble:
     return "ground/rubble.png";
   case Image::PlankBridge:
@@ -127,6 +125,26 @@ const char *path(Image image) {
     return "ground/car_buried.png";
   case Image::BuildingWall:
     return "world/building_wall.png";
+  case Image::FacadeConcrete:
+    return "world/facade_concrete.png";
+  case Image::FacadeBrick:
+    return "world/facade_brick.png";
+  case Image::FacadeOffice:
+    return "world/facade_office.png";
+  case Image::FacadeTenement:
+    return "world/facade_tenement.png";
+  case Image::WallAc:
+    return "world/wall_ac.png";
+  case Image::WallSign:
+    return "world/wall_sign.png";
+  case Image::WallShutter:
+    return "world/wall_shutter.png";
+  case Image::WallShopWindow:
+    return "world/wall_shop_window.png";
+  case Image::WallPipe:
+    return "world/wall_pipe.png";
+  case Image::Waterline:
+    return "world/waterline.png";
   case Image::Shop:
     return "world/shop.png";
   case Image::VendingMachine:

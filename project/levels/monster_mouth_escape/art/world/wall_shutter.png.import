@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://t6l752lswu51"
-path="res://.godot/imported/stairs.png-18aa36900ad4bd79a33a9cbdf428b9a0.ctex"
+uid="uid://c5r0q6yesy8ds"
+path="res://.godot/imported/wall_shutter.png-5258346f8f94334db4aacd851100817b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/stairs.png"
-dest_files=["res://.godot/imported/stairs.png-18aa36900ad4bd79a33a9cbdf428b9a0.ctex"]
+source_file="res://levels/monster_mouth_escape/art/world/wall_shutter.png"
+dest_files=["res://.godot/imported/wall_shutter.png-5258346f8f94334db4aacd851100817b.ctex"]
 
 [params]
 

@@ -2,7 +2,9 @@ class_name SurvivalCapture
 extends SceneTree
 ## Captures real rendered frames of a played survival run into user://survival/,
 ## and fails when a city frame's ground does not read over the scenery behind it,
-## the stairs' walked-on part does not lead the part under it, the fallen slab's
+## the walkway's top edge does not read over the wall of the sunken building
+## behind it, the stairs' walked-on part does not lead the part under it or
+## reads darker than the deck's top edge, the fallen slab's
 ## lit top edge does not run along its tilt, or one of its word plates covers
 ## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
 ## every city frame that shows what it looks at, and fails when none does.
@@ -36,9 +38,21 @@ const EDGE_ROWS: int = 4
 ## The south stairs, each rising to the left across its cell from its floor
 ## line down to the row below, so its walked-on part lies above that diagonal.
 const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
+## Main-street cells whose scenery is the wall of the arcade's sunken building,
+## which stands behind them.
+const WALL_CELLS: Array[Vector2i] = [Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8)]
+## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
+## EDGE_ROWS under those cells read than the wall in the cells.
+const WALL_LEAD: float = 0.1
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
-const STEP_LEAD: float = 0.09
+const STEP_LEAD: float = 0.15
+## Plain market deck beside the south stairs, whose lit top edge the stairs'
+## walked-on part is held to; the camera that shows the stairs shows it too.
+const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(11, 11)]
+## The least share of that deck's top edge, in mean luminance, that the
+## stairs' walked-on part reads at, so stairs read as walkway like the deck.
+const STAIR_PARITY: float = 0.9
 ## From the entrance down the market ladder into the market.
 const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
 ## The fallen slab's first cell and its width in cells; it falls a row from
@@ -54,6 +68,7 @@ var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var city_frames: int = 0
 var ground_frames: int = 0
+var wall_frames: int = 0
 var stairs_frames: int = 0
 var slab_frames: int = 0
 
@@ -232,10 +247,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or stairs_frames == 0 or slab_frames == 0:
-		_fail("a look was never measured: ground %d, stairs %d, slab %d frames" % [ground_frames, stairs_frames, slab_frames])
+	if ground_frames == 0 or wall_frames == 0 or stairs_frames == 0 or slab_frames == 0:
+		_fail("a look was never measured: ground %d, wall %d, stairs %d, slab %d frames" % [ground_frames, wall_frames, stairs_frames, slab_frames])
 		return
-	print("Capture: the ground was measured in %d, the stairs in %d and the slab in %d city frames." % [ground_frames, stairs_frames, slab_frames])
+	print("Capture: the ground was measured in %d, the walls in %d, the stairs in %d and the slab in %d city frames." % [ground_frames, wall_frames, stairs_frames, slab_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
@@ -441,7 +456,7 @@ func _save_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _walls_recede(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -476,10 +491,36 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 		return false
 	return true
 
+## Whether the walkway's lit top EDGE_ROWS lead the sunken building's wall
+## right above them by WALL_LEAD, over the WALL_CELLS the frame shows, when it
+## shows two or more; the control is that the wall is not black.
+func _walls_recede(frame: Image, view: Transform2D, screen: String) -> bool:
+	var edge: float = 0.0
+	var wall: float = 0.0
+	var shown: int = 0
+	for cell: Vector2i in WALL_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
+		if not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
+			continue
+		edge += _luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS)
+		wall += _luminance(frame, view, corner, CELL)
+		shown += 1
+	if shown < 2:
+		return true
+	edge /= shown
+	wall /= shown
+	wall_frames += 1
+	print("Capture: %s: the walkway's top edge leads the wall behind it by %.3f over %d cells (edge %.3f, wall %.3f, at least %.3f)." % [screen, edge - wall, shown, edge, wall, WALL_LEAD])
+	if wall <= 0.0 or edge - wall < WALL_LEAD:
+		_fail("%s: the walkway's top edge does not read over the wall behind it" % screen)
+		return false
+	return true
+
 ## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
-## on, lead the EDGE_ROWS just under it by STEP_LEAD, when the frame shows both
-## stairs; the columns at the cell's ends, where a band would leave the cell,
-## are left out.
+## on, lead the EDGE_ROWS just under it by STEP_LEAD and read at STAIR_PARITY
+## of the STAIR_DECK_CELLS' top EDGE_ROWS, when the frame shows both stairs
+## and that deck; the columns at the cell's ends, where a band would leave the
+## cell, are left out.
 func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	var walked: float = 0.0
 	var under: float = 0.0
@@ -488,6 +529,13 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
 		if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(CELL, CELL + 2 * EDGE_ROWS)):
 			return true
+	var deck: float = 0.0
+	for cell: Vector2i in STAIR_DECK_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+		if not _shows(view, corner, Vector2(CELL, EDGE_ROWS)):
+			return true
+		deck += _luminance(frame, view, corner, EDGE_ROWS)
+	deck /= STAIR_DECK_CELLS.size()
 	for cell: Vector2i in STAIR_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
 		walked += _band(frame, view, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
@@ -498,6 +546,10 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	print("Capture: %s: the stairs' walked-on part leads the part under it by %.3f (walked %.3f, under %.3f, at least %.3f)." % [screen, walked - under, walked, under, STEP_LEAD])
 	if under <= 0.0 or walked - under < STEP_LEAD:
 		_fail("%s: the stairs' walked-on part does not read over the part under it" % screen)
+		return false
+	print("Capture: %s: the stairs' walked-on part reads at %.3f of the deck's top edge (walked %.3f, deck %.3f, at least %.3f)." % [screen, walked / deck, walked, deck, STAIR_PARITY])
+	if deck <= 0.0 or walked < STAIR_PARITY * deck:
+		_fail("%s: the stairs' walked-on part reads darker than the deck's top edge" % screen)
 		return false
 	return true
 

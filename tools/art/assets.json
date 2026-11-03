@@ -497,13 +497,6 @@
    1
   ],
   [
-   "walkway/stairs.png",
-   768,
-   384,
-   1,
-   1
-  ],
-  [
    "ground/rubble.png",
    896,
    360,
@@ -781,6 +774,15 @@
   },
   "walkway_stone_more": {
    "url": "https://img.recraft.ai/-XBf40L_gnBD3-KZCoCmfwryHFLqTOHiTbsr54ypPeM/raw:1/plain/abs://prod/images/025e8d96-c781-4f8b-80be-24f4f7019019"
+  },
+  "facades": {
+   "url": "https://img.recraft.ai/pN_PhmGAYXT64vpK29qosS4JcCo6GC59P44OwME5mI4/raw:1/plain/abs://prod/images/1bf78487-d480-44ce-bb4c-eb49631d737b"
+  },
+  "wall_details": {
+   "url": "https://img.recraft.ai/UdXZlh3P-zL6FS3gLNQsgKDj-2GuQiijex2zPO1ttLM/raw:1/plain/abs://prod/images/3d9c44ad-15b2-4a18-b033-7f0a18ecde22"
+  },
+  "waterline": {
+   "url": "https://img.recraft.ai/UvraccwGYHIK7BP2omOkZgSPPqF4G7XcBGMZBKtZ9H8/raw:1/plain/abs://prod/images/90e87526-1789-4daf-9a94-ee2f48634685"
   }
  },
  "assets": [
@@ -1477,6 +1479,215 @@
    "edge": "lit"
   },
   {
+   "path": "world/facade_concrete.png",
+   "source": "facades",
+   "crop": [
+    10,
+    32,
+    435,
+    464
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "xy",
+   "edge": "lit",
+   "depicts": "Sunken building wall: cracked violet and magenta concrete, two storeys of windows, a few lit warm orange; tiles in both directions"
+  },
+  {
+   "path": "world/facade_brick.png",
+   "source": "facades",
+   "crop": [
+    545,
+    15,
+    413,
+    467
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "xy",
+   "edge": "lit",
+   "depicts": "Sunken building wall: deep purple brick with tall windows, one lit; tiles in both directions"
+  },
+  {
+   "path": "world/facade_office.png",
+   "source": "facades",
+   "crop": [
+    5,
+    585,
+    296,
+    320
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "xy",
+   "edge": "lit",
+   "depicts": "Sunken building wall: a plum office tower's grid of dark blue windows with lit ones and ledges between floors; tiles in both directions"
+  },
+  {
+   "path": "world/facade_tenement.png",
+   "source": "facades",
+   "crop": [
+    535,
+    525,
+    405,
+    467
+   ],
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "xy",
+   "edge": "lit",
+   "depicts": "Sunken building wall: pink stucco tenement with shuttered windows and iron balconies; tiles in both directions"
+  },
+  {
+   "path": "world/wall_ac.png",
+   "source": "wall_details",
+   "crop": [
+    40,
+    10,
+    362,
+    252
+   ],
+   "size": [
+    26,
+    18
+   ],
+   "scale": 1,
+   "colours": 12,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "largest_only": true,
+   "edge": "lit",
+   "depicts": "Rusty air conditioner unit on a wall"
+  },
+  {
+   "path": "world/wall_sign.png",
+   "source": "wall_details",
+   "crop": [
+    435,
+    60,
+    382,
+    192
+   ],
+   "size": [
+    30,
+    16
+   ],
+   "scale": 1,
+   "colours": 12,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "largest_only": true,
+   "edge": "lit",
+   "depicts": "Dead neon sign box, its magenta tube frame round a blank face"
+  },
+  {
+   "path": "world/wall_shutter.png",
+   "source": "wall_details",
+   "crop": [
+    845,
+    50,
+    428,
+    334
+   ],
+   "size": [
+    28,
+    22
+   ],
+   "scale": 1,
+   "colours": 12,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "largest_only": true,
+   "edge": "lit",
+   "depicts": "Rolled-down shop shutter in a door frame"
+  },
+  {
+   "path": "world/wall_shop_window.png",
+   "source": "wall_details",
+   "crop": [
+    0,
+    350,
+    482,
+    482
+   ],
+   "size": [
+    30,
+    30
+   ],
+   "scale": 1,
+   "colours": 12,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "largest_only": true,
+   "edge": "lit",
+   "depicts": "Lit shop window: shelves of jars and a lantern behind it"
+  },
+  {
+   "path": "world/wall_pipe.png",
+   "source": "wall_details",
+   "crop": [
+    560,
+    290,
+    160,
+    535
+   ],
+   "size": [
+    12,
+    40
+   ],
+   "scale": 1,
+   "colours": 12,
+   "key": {
+    "colour": "#ffffff",
+    "tolerance": 48
+   },
+   "edge": "lit",
+   "depicts": "Rusty drainpipe with brackets, bent at its foot"
+  },
+  {
+   "path": "world/waterline.png",
+   "source": "waterline",
+   "crop": [
+    0,
+    440,
+    1024,
+    216
+   ],
+   "size": [
+    64,
+    18
+   ],
+   "scale": 1,
+   "colours": 12,
+   "seamless": "x",
+   "edge": "lit",
+   "depicts": "Flesh and green slime grown over a sunken building's foot where it meets the acid; tiles horizontally"
+  },
+  {
    "path": "world/vending_machine.png",
    "source": "vending",
    "crop": [
@@ -1745,6 +1956,16 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Walkway slab: a thick slab of slate stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
   },
@@ -1772,6 +1993,16 @@
     "sides": "lr",
     "width": 3
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Walkway slab variant: a riveted joint plate"
   },
@@ -1799,6 +2030,16 @@
     "sides": "lr",
     "width": 3
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Walkway slab variant: cracked stone blocks"
   },
@@ -1826,6 +2067,16 @@
     "sides": "lr",
     "width": 3
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Walkway slab eaten by the acid: pitted stone, green stains, holes in the beam"
   },
@@ -1878,6 +2129,16 @@
     "width": 3,
     "top": true
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Snapped left end of a walkway slab: jagged stone and bent rebar on its left"
   },
@@ -1908,6 +2169,16 @@
     "width": 3,
     "top": true
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Snapped right end of a walkway slab: jagged stone and bent rebar on its right"
   },
@@ -1931,6 +2202,16 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
+   "recolour": [
+    {
+     "hues": [
+      180,
+      265
+     ],
+     "hue": 290,
+     "saturation": 1.5
+    }
+   ],
    "edge": "lit",
    "depicts": "Support: a square pillar of slate stone blocks; tiles vertically"
   },
@@ -1955,30 +2236,6 @@
     "alpha": true
    },
    "depicts": "Support: a bolted iron I-beam column; tiles vertically"
-  },
-  {
-   "path": "walkway/stairs.png",
-   "source": "walkway_stone",
-   "crop": [
-    613,
-    341,
-    627,
-    386
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48,
-    "enclosed": true
-   },
-   "largest_only": true,
-   "edge": "lit",
-   "depicts": "Stairs: slate stone steps with orange lit treads rising left to right; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",
