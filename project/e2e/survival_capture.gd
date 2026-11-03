@@ -1,8 +1,10 @@
 class_name SurvivalCapture
 extends SceneTree
 ## Captures real rendered frames of a played survival run into user://survival/,
-## and fails when a city frame's ground does not read over the scenery behind it
-## or one of its word plates covers another.
+## and fails when a city frame's ground does not read over the scenery behind it,
+## the stairs' walked-on part does not lead the part under it, the fallen slab's
+## lit top edge does not run along its tilt, or one of its word plates covers
+## another.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
@@ -25,6 +27,18 @@ const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7,
 const GROUND_LEAD: float = 0.05
 ## The rows of a deck under its floor line, as the city draws it.
 const DECK_ROWS: int = 10
+## The rows of a walkway's lit top edge, as the city draws it.
+const EDGE_ROWS: int = 4
+## The south stairs, each rising to the left across its cell from its floor
+## line down to the row below, so its walked-on part lies above that diagonal.
+const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
+## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
+## a stair's diagonal read than the EDGE_ROWS just under it.
+const STEP_LEAD: float = 0.09
+## The fallen slab's first cell and its width in cells; it falls a row from
+## the floor line of its first cell to that of the row below at its right end.
+const SLAB_CELL: Vector2i = Vector2i(20, 6)
+const SLAB_CELLS: int = 2
 ## How far one 100ms movement unit carries a running actor, in sub-cells.
 const RUN_UNIT: int = 50
 ## Longer than the screen's longest eased motion.
@@ -54,7 +68,8 @@ func _run() -> void:
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 7)
-	if not _ground_leads(await _save_city("4-city-collect-prompt")):
+	var first_city: Image = await _save_city("4-city-collect-prompt")
+	if not _ground_leads(first_city) or not _stairs_lit(first_city) or not _slab_tilts(first_city):
 		return
 	# A jump in place on the flat street comes down where it rose.
 	_key(KEY_SPACE, true)
@@ -367,6 +382,50 @@ func _ground_leads(frame: Image) -> bool:
 		_fail("the ground does not read over the scenery behind it")
 		return false
 	return true
+
+## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
+## on, lead the EDGE_ROWS just under it by STEP_LEAD; the columns at the cell's
+## ends, where a band would leave the cell, are left out.
+func _stairs_lit(frame: Image) -> bool:
+	var walked: float = 0.0
+	var under: float = 0.0
+	var columns: Vector2i = Vector2i(EDGE_ROWS - 1, CELL - EDGE_ROWS)
+	for cell: Vector2i in STAIR_CELLS:
+		var corner: Vector2i = MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL
+		walked += _band(frame, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
+		under += _band(frame, corner, CELL, columns, Vector2i(1, 1 + EDGE_ROWS))
+	walked /= STAIR_CELLS.size()
+	under /= STAIR_CELLS.size()
+	print("Capture: the stairs' walked-on part leads the part under it by %.3f (walked %.3f, under %.3f, at least %.3f)." % [walked - under, walked, under, STEP_LEAD])
+	if under <= 0.0 or walked - under < STEP_LEAD:
+		_fail("the stairs' walked-on part does not read over the part under it")
+		return false
+	return true
+
+## Whether the fallen slab's lit top edge, the EDGE_ROWS under the line it
+## tilts along, leads the EDGE_ROWS of scenery just above that line by
+## GROUND_LEAD.
+func _slab_tilts(frame: Image) -> bool:
+	var corner: Vector2i = MAP_ORIGIN + (SLAB_CELL + Vector2i.DOWN) * CELL
+	var columns: Vector2i = Vector2i(0, SLAB_CELLS * CELL)
+	var edge: float = _band(frame, corner, SLAB_CELLS * CELL, columns, Vector2i(0, EDGE_ROWS))
+	var above: float = _band(frame, corner, SLAB_CELLS * CELL, columns, Vector2i(-EDGE_ROWS, 0))
+	print("Capture: the fallen slab's top edge leads the scenery above its tilt by %.3f (edge %.3f, scenery %.3f, at least %.3f)." % [edge - above, edge, above, GROUND_LEAD])
+	if above <= 0.0 or edge - above < GROUND_LEAD:
+		_fail("the fallen slab's top edge does not run along its tilt")
+		return false
+	return true
+
+## The mean luminance of a band along a line that falls one CELL from corner
+## across width pixels: in each of the columns from columns.x to columns.y, the
+## rows from rows.x to rows.y under the line, a negative row above it.
+func _band(frame: Image, corner: Vector2i, width: int, columns: Vector2i, rows: Vector2i) -> float:
+	var total: float = 0.0
+	for x: int in range(columns.x, columns.y):
+		var line: int = corner.y + floori(float(x * CELL) / width)
+		for row: int in range(rows.x, rows.y):
+			total += frame.get_pixel(corner.x + x, line + row).get_luminance()
+	return total / ((columns.y - columns.x) * (rows.y - rows.x))
 
 ## The mean luminance of a cell-wide band of rows whose top-left is corner.
 func _luminance(frame: Image, corner: Vector2i, rows: int) -> float:
