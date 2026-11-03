@@ -9,10 +9,13 @@
 #include <godot_cpp/variant/packed_string_array.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <type_traits>
 #include <utility>
+#include <variant>
 
 namespace neocity::session {
 namespace {
@@ -84,6 +87,58 @@ void move_cursor(std::size_t &cursor, std::size_t count,
     cursor = (cursor + count - 1) % count;
   } else if (step == MenuStep::Down) {
     cursor = (cursor + 1) % count;
+  }
+}
+
+/// Marks the volume of `bus` and sets it to `level`.
+void set_volume(Volume &volume, audio::Bus bus, std::uint8_t level) {
+  volume.marked = bus;
+  (bus == audio::Bus::Effects ? volume.effects : volume.music) =
+      std::min(level, VOLUME_STEPS);
+}
+
+void press_menu_key(Command &command, hud::MenuKey key) {
+  switch (key) {
+  case hud::MenuKey::Confirm:
+    command.confirm = true;
+    return;
+  case hud::MenuKey::Pause:
+    command.pause = true;
+    return;
+  case hud::MenuKey::Menu:
+    command.menu = true;
+    return;
+  }
+  std::abort();
+}
+
+bool &key_of(survival::PlayerInput &input, hud::PlayerKey key) {
+  switch (key) {
+  case hud::PlayerKey::Interact:
+    return input.interact;
+  case hud::PlayerKey::Feed:
+    return input.feed;
+  case hud::PlayerKey::EndDay:
+    return input.end_day;
+  case hud::PlayerKey::ReplaceTool:
+    return input.replace_tool;
+  case hud::PlayerKey::Travel:
+    return input.travel;
+  }
+  std::abort();
+}
+
+/// Presses the key of the human `press` names, or of every human.
+void press_player_key(Command &command, survival::ControlMap control,
+                      const hud::PlayerPress &press) {
+  constexpr std::array actors{survival::Actor::Chef,
+                              survival::Actor::Appraiser};
+  for (std::size_t index = 0; index < actors.size(); ++index) {
+    const auto actor = actors.at(index);
+    if (survival::key_set(control, actor) &&
+        (!press.actor || *press.actor == actor)) {
+      key_of(command.survival.at(index), press.key) = true;
+    }
   }
 }
 
@@ -238,6 +293,10 @@ void Session::finish_cinematic(hud::Cinematic cinematic) {
 }
 
 void Session::advance(double delta, Command command) {
+  pointer = command.pointer;
+  if (command.click && command.pointer) {
+    click_at(command, *command.pointer);
+  }
   advance_screen(delta, command);
   framed.reset();
   shot.reset();
@@ -250,6 +309,58 @@ void Session::aim(const rendering::Art &drawing) {
   if (framed) {
     shot = hud::shot_of(drawing, *framed);
   }
+  targets = shown_targets(drawing);
+}
+
+std::vector<hud::Target>
+Session::shown_targets(const rendering::Art &drawing) const {
+  switch (screen) {
+  case Screen::Main:
+    return hud::title_targets();
+  case Screen::Controls:
+    return hud::controls_targets(drawing);
+  case Screen::SurvivalSetup:
+    return hud::setup_targets();
+  case Screen::Survival:
+    if (playback || !framed) {
+      return {};
+    }
+    if (interruption) {
+      return hud::interruption_targets(drawing, *interruption,
+                                       volume_rows(volume));
+    }
+    return hud::survival_targets(drawing, *framed);
+  }
+  std::abort();
+}
+
+// A click presses what a key would, for the target the player saw under it;
+// a refused target presses nothing.
+void Session::click_at(Command &command, godot::Vector2 point) {
+  const auto *target = hud::target_at(targets, point);
+  if (target == nullptr || !target->refusal.is_empty()) {
+    return;
+  }
+  std::visit(
+      [this, &command](const auto &press) {
+        using Pressed = std::decay_t<decltype(press)>;
+        if constexpr (std::is_same_v<Pressed, hud::OptionPress>) {
+          command.option = press.number;
+        } else if constexpr (std::is_same_v<Pressed, hud::MenuKey>) {
+          press_menu_key(command, press);
+        } else if constexpr (std::is_same_v<Pressed, hud::PlayerPress>) {
+          if (run) {
+            press_player_key(command, run->control(), press);
+          }
+        } else if constexpr (std::is_same_v<Pressed, hud::DishPress>) {
+          command.dish_step = press.direction;
+        } else {
+          set_volume(volume, press.bus, press.level);
+          send_volume();
+          cue(audio::Cue::MenuMove);
+        }
+      },
+      target->press);
 }
 
 void Session::advance_screen(double delta, const Command &command) {
@@ -457,6 +568,7 @@ void Session::paint(godot::Node2D &canvas,
   static_cast<void>(drawing.take_written());
   static_cast<void>(drawing.take_sizes());
   paint_screen(canvas, drawing);
+  hud::paint_pointer(canvas, drawing, targets, pointer);
   godot::PackedStringArray lines;
   for (const auto &line : drawing.take_written()) {
     lines.push_back(line);

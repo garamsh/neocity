@@ -575,6 +575,9 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
   status.set("dish_offered", cook != nullptr
                                  ? from(survival::food_name(cook->food))
                                  : godot::String());
+  status.set("dish_chosen", chosen_dish
+                                ? from(survival::food_name(*chosen_dish))
+                                : godot::String());
   status.set("eaten",
              static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
   status.set("rolls", view.workshop.rolls);

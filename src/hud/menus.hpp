@@ -1,11 +1,13 @@
 #pragma once
 
 #include "../rendering/drawing.hpp"
+#include "pointer.hpp"
 
 #include <godot_cpp/classes/node2d.hpp>
 
 #include <array>
 #include <cstdint>
+#include <vector>
 
 namespace neocity::hud {
 
@@ -21,5 +23,10 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                  TitleEntry selected);
 /// Draws every key of both players and the way back to the title.
 void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing);
+/// The title screen's entries, each clicked as its number key.
+[[nodiscard]] std::vector<Target> title_targets();
+/// The controls page's way back to the title.
+[[nodiscard]] std::vector<Target>
+controls_targets(const rendering::Art &drawing);
 
 } // namespace neocity::hud
