@@ -5,9 +5,9 @@ extends SceneTree
 ## span several steps. Run with no --fixed-fps and `-- real-clock` for frames
 ## slowed for real, the only ones that reach the engine's frame time cap.
 
-const BUDGET_MS: int = 20000
+const BUDGET_MS: int = 18000
 ## How long one collection holds the collecting actor.
-const COLLECT_MS: int = 2000
+const COLLECT_MS: int = 1500
 const STEP_MS: int = 100
 ## Above this frame time Godot's default of 8 steps at 60 Hz cuts `delta`.
 const DEFAULT_CAP_MS: int = 133

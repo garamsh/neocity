@@ -19,6 +19,8 @@ const TOOL_BAG_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector
 ## the roof ladder.
 const ROOF_LADDER_ROUTE: Array[Vector2i] = [Vector2i(7, 11), Vector2i(7, 8), Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5)]
 const APPRAISE_ATTEMPTS: int = 12
+## Frames of a collection's hold on the collecting actor, with a step to spare.
+const COLLECT_FRAMES: int = 102
 const COOK_ATTEMPTS: int = 6
 const PLAYER_TWO: Dictionary[String, Key] = {
 	"left": KEY_J, "right": KEY_L, "up": KEY_I, "down": KEY_K, "jump": KEY_SEMICOLON,
@@ -110,6 +112,8 @@ func _a_day_plays_its_cues() -> bool:
 			return false
 	await _tap(KEY_O)
 	if not _check(_actor("ingredients") == 2, "a second collection fills the pack"):
+		return false
+	if not await _until("the second collection ends", func() -> bool: return _actor("collecting_ms") == 0, COLLECT_FRAMES):
 		return false
 	await _tap(KEY_U)
 	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 60):
