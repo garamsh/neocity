@@ -14,9 +14,11 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <span>
 #include <string_view>
+#include <utility>
 
 namespace neocity::rendering {
 namespace {
@@ -646,25 +648,32 @@ struct Run {
   bool torn_right = false;
 };
 
-/// The runs of walkway that are a building's roof or floor, top row first:
-/// every walkway but the planks, the tilted ground and the landmarks.
+/// The runs of walkway that are a building's roof or floor, top row first and
+/// each row left to right: every walkway but the planks, the tilted ground and
+/// the landmarks.
 std::vector<Run> building_runs(const std::vector<Standing> &ground) {
-  std::vector<Run> runs;
+  std::vector<survival::GroundCell> cells;
   for (const auto &cell : ground) {
     const auto kind = cell.ground.kind;
-    if (cell.picture || kind == GroundKind::PlankBridge ||
-        kind == GroundKind::TiltedSlab) {
-      continue;
+    if (!cell.picture && kind != GroundKind::PlankBridge &&
+        kind != GroundKind::TiltedSlab) {
+      cells.push_back(cell.ground);
     }
-    const auto [x, y] = cell.ground.cell;
+  }
+  std::ranges::sort(cells, {}, [](const survival::GroundCell &cell) {
+    return std::pair(cell.cell.y, cell.cell.x);
+  });
+  std::vector<Run> runs;
+  for (const auto &cell : cells) {
+    const auto [x, y] = cell.cell;
     if (runs.empty() || runs.back().y != y || runs.back().last + 1 != x) {
       runs.push_back({.first = x,
                       .last = x,
                       .y = y,
-                      .torn_left = kind == GroundKind::RoadEndLeft});
+                      .torn_left = cell.kind == GroundKind::RoadEndLeft});
     }
     runs.back().last = x;
-    runs.back().torn_right = kind == GroundKind::RoadEndRight;
+    runs.back().torn_right = cell.kind == GroundKind::RoadEndRight;
   }
   return runs;
 }
@@ -675,18 +684,39 @@ float wrapped(float value, float period) {
   return rest < 0.0F ? rest + period : rest;
 }
 
+/// How each row of repeats of a wall shifts sideways: by a whole number of
+/// its `columns` of windows, picked by `seed`, so the windows stay in columns
+/// while the rows do not repeat one another. One column never shifts.
+struct Stagger {
+  std::int32_t columns = 1;
+  std::uint32_t seed = 0;
+};
+
+/// A spread of `seed` and `index` over the 32-bit values.
+std::uint32_t scatter(std::uint32_t seed, std::int64_t index) {
+  return (seed + static_cast<std::uint32_t>(index)) * 2654435761U >> 16U;
+}
+
 /// Repeats `image` over `box`, its pattern anchored at `anchor`, so a wall
-/// drawn in pieces lines up across them.
+/// drawn in pieces lines up across them; each row of repeats shifts by
+/// `stagger`.
 void tile(godot::Node2D &canvas, const Art &art, Image image,
-          const godot::Rect2 &box, Vector2 anchor, godot::Color tint) {
+          const godot::Rect2 &box, Vector2 anchor, godot::Color tint,
+          Stagger stagger = {}) {
   const Vector2 size = art.size(image);
   const float right = box.position.x + box.size.x;
   const float bottom = box.position.y + box.size.y;
   for (float y = box.position.y; y < bottom;) {
     const float top = wrapped(y - anchor.y, size.y);
     const float height = std::min(size.y - top, bottom - y);
+    const auto row =
+        static_cast<std::int64_t>(std::floor((y - anchor.y) / size.y));
+    const float shift =
+        size.x / static_cast<float>(stagger.columns) *
+        static_cast<float>(scatter(stagger.seed, row) %
+                           static_cast<std::uint32_t>(stagger.columns));
     for (float x = box.position.x; x < right;) {
-      const float left = wrapped(x - anchor.x, size.x);
+      const float left = wrapped(x - anchor.x - shift, size.x);
       const float width = std::min(size.x - left, right - x);
       art.image_part(canvas, image, rect(left, top, width, height),
                      rect(x, y, width, height), tint);
@@ -696,15 +726,21 @@ void tile(godot::Node2D &canvas, const Art &art, Image image,
   }
 }
 
-/// The wall pictures of the sunken buildings, and the tints that set
-/// neighbouring buildings apart, each a run of walkway in turn.
-constexpr std::array WALLS{Image::FacadeConcrete, Image::FacadeOffice,
-                           Image::FacadeBrick, Image::FacadeTenement};
-godot::Color wall_tint(std::size_t ordinal) {
+/// A wall picture of the sunken buildings and the columns of windows across
+/// one repeat of it.
+struct WallPicture {
+  Image image{};
+  std::int32_t columns = 1;
+};
+constexpr std::array WALLS{
+    WallPicture{Image::FacadeConcrete, 2}, WallPicture{Image::FacadeOffice, 3},
+    WallPicture{Image::FacadeBrick, 2}, WallPicture{Image::FacadeTenement, 2}};
+/// The tints that set neighbouring buildings apart.
+const std::array<godot::Color, 3> &wall_tints() {
   static const std::array TINTS{color(105, 82, 120, 1.0F),
                                 color(120, 84, 108, 1.0F),
                                 color(96, 82, 126, 1.0F)};
-  return TINTS.at(ordinal % TINTS.size());
+  return TINTS;
 }
 /// How much of its tint the wall of a building at the top of the scene keeps;
 /// one whose roof is nearer the acid keeps more.
@@ -712,10 +748,10 @@ constexpr float FAR_SHADE = 0.6F;
 /// The rows a leaning wall draws at one sideways offset; it leans a pixel
 /// further each time.
 constexpr float LEAN_ROWS = 20.0F;
-/// The shadow a slab casts on the wall under it.
-constexpr float SLAB_SHADOW = 6.0F;
-/// How far a broken corner falls away from the slab at a snapped end, and the
-/// jagged steps along its edge.
+/// The shadow a deck casts on the wall under it.
+constexpr float DECK_SHADOW = 6.0F;
+/// How far a broken corner falls away from the deck at a snapped end, and the
+/// jagged steps along its line.
 constexpr float BREAK_DROP = 40.0F;
 constexpr float BREAK_JAG = 2.0F;
 constexpr int BREAK_JAGS = 5;
@@ -723,8 +759,11 @@ constexpr int BREAK_JAGS = 5;
 constexpr float BREAK_STRIP = 2.0F;
 constexpr int BREAK_STRIPS = static_cast<int>(CELL / BREAK_STRIP);
 /// The flesh on a wall's foot, a little darker than its own colours so it
-/// does not outshine the walkways.
+/// does not outshine the walkways, and the places along its picture a cell of
+/// it starts at.
 godot::Color waterline_tint() { return color(200, 170, 190, 1.0F); }
+constexpr float WATERLINE_STEP = 8.0F;
+constexpr std::uint32_t WATERLINE_PLACES = 8;
 /// The acid's green light on a wall, laid in steps up from its surface.
 constexpr int ACID_LIGHT_STEPS = 5;
 constexpr float ACID_LIGHT_STEP = 8.0F;
@@ -734,81 +773,205 @@ godot::Color acid_light(int step) {
                    static_cast<float>(ACID_LIGHT_STEPS));
 }
 
-/// A sunken building under one run of walkway: its wall from under the slab
-/// down to the acid at `surface` or the map's bottom, leaning a little or not
-/// at all, broken away at a snapped end; windows, shutters, air conditioners,
-/// a sign and a drainpipe on it; flesh grown over its foot where the acid
-/// meets it, and the acid's green light on it.
-void paint_sunken_building(godot::Node2D &canvas, const Art &art,
-                           const Run &run, std::size_t ordinal, float surface,
-                           float map_bottom) {
-  const float top = floor_y(run.y) + art.size(Image::Deck).y - GROUND_EDGE;
-  const float bottom = std::min(surface, map_bottom);
-  if (bottom <= top) {
-    return;
+/// A building sunk under one run of walkway, from under the deck down to the
+/// acid or the map's bottom. Its wall, tint and lean follow from where the run
+/// starts, so it keeps its look whatever else is destroyed.
+struct SunkenBuilding {
+  Run run;
+  /// The top row its deck hides, the deck's top unless the acid has eaten
+  /// into it; the wall's top, under the deck; and the wall's bottom.
+  float roof = 0.0F;
+  float top = 0.0F;
+  float bottom = 0.0F;
+  /// The run's width, and the part of it no broken corner cuts into.
+  float left = 0.0F;
+  float right = 0.0F;
+  float body_left = 0.0F;
+  float body_right = 0.0F;
+  /// The rows a broken corner cuts into end here.
+  float broken_bottom = 0.0F;
+  WallPicture wall;
+  godot::Color tint;
+  /// A pixel to the right, to the left, or none, every LEAN_ROWS down.
+  int lean = 0;
+  Vector2 anchor;
+  /// Picks the shift of each row of the wall's repeats and where each cell of
+  /// flesh at its foot starts.
+  std::uint32_t seed = 0;
+
+  /// How far the wall has leant at row `y`.
+  [[nodiscard]] float shift(float y) const {
+    return static_cast<float>(lean) * std::floor((y - top) / LEAN_ROWS);
   }
-  const Image wall = WALLS.at(ordinal % WALLS.size());
-  // A higher building stands farther back, in deeper shade.
-  const float depth =
-      FAR_SHADE + (1.0F - FAR_SHADE) * std::min(1.0F, top / ACID_LOW);
-  const godot::Color base = wall_tint(ordinal);
-  const godot::Color tint(base.r * depth, base.g * depth, base.b * depth);
-  const int leaning = static_cast<int>(ordinal % 3) - 1;
-  const auto shift = [&](float y) {
-    return static_cast<float>(leaning) * std::floor((y - top) / LEAN_ROWS);
-  };
-  const Vector2 anchor(static_cast<float>(ordinal * 23 % 64), top);
-  const float left = cell_x(run.first);
-  const float right = cell_x(run.last + 1);
-  const float body_left = run.torn_left ? left + CELL : left;
-  const float body_right = run.torn_right ? right - CELL : right;
-  // The broken corner falls away toward the snapped edge, in a jagged line
-  // that ends above `broken_bottom`; under it the wall spans the whole run.
-  const auto broken_top = [&](float from_edge) {
+  /// Where the broken corner's edge falls `from_edge` pixels in from a
+  /// snapped end.
+  [[nodiscard]] float broken_top(float from_edge) const {
     const auto jag =
         static_cast<float>(static_cast<int>(from_edge) * 7 % BREAK_JAGS);
     return top + BREAK_DROP * (1.0F - from_edge / CELL) + BREAK_JAG * jag;
-  };
-  const float broken_bottom =
-      run.torn_left || run.torn_right
-          ? std::min(bottom, top + BREAK_DROP +
-                                 BREAK_JAG * static_cast<float>(BREAK_JAGS - 1))
-          : top;
-  // The wall's rows from `from` to `to` between `x_from` and `x_to`, at once
-  // where it stands straight and a band of LEAN_ROWS at a time where it leans.
-  const auto paint_wall = [&](float from, float to, float x_from, float x_to) {
-    for (float y = from; y < to;) {
-      const float end =
-          leaning == 0
-              ? to
-              : std::min(to, top + (std::floor((y - top) / LEAN_ROWS) + 1.0F) *
-                                       LEAN_ROWS);
-      const float offset = shift(y);
-      tile(canvas, art, wall, rect(x_from + offset, y, x_to - x_from, end - y),
-           anchor + Vector2(offset, 0.0F), tint);
-      y = end;
-    }
-  };
-  if (body_right > body_left) {
-    paint_wall(top, broken_bottom, body_left, body_right);
   }
-  paint_wall(broken_bottom, bottom, left, right);
+  /// The columns the deck and the wall hide in every row of `box`, when
+  /// they span its rows: the deck's whole cells, and under them the wall as
+  /// it leans.
+  [[nodiscard]] std::optional<std::pair<float, float>>
+  hidden_columns(const godot::Rect2 &box) const {
+    const float box_top = box.position.y;
+    const float box_bottom = box.position.y + box.size.y;
+    if (box_top < roof || box_bottom > bottom) {
+      return std::nullopt;
+    }
+    float from = std::numeric_limits<float>::lowest();
+    float to = std::numeric_limits<float>::max();
+    if (box_top < top) {
+      from = body_left;
+      to = body_right;
+    }
+    if (box_bottom > top) {
+      const float wall_top = std::max(box_top, top);
+      const bool whole = wall_top >= broken_bottom;
+      const float first = shift(wall_top);
+      const float last = shift(box_bottom - 1.0F);
+      from = std::max(from, (whole ? left : body_left) + std::max(first, last));
+      to = std::min(to, (whole ? right : body_right) + std::min(first, last));
+    }
+    return std::pair(from, to);
+  }
+};
+
+/// Whether the walls of `buildings`, one alone or side by side, hide all of
+/// `box`.
+bool hidden(std::span<const SunkenBuilding> buildings,
+            const godot::Rect2 &box) {
+  std::vector<std::pair<float, float>> spans;
+  for (const auto &building : buildings) {
+    if (const auto columns = building.hidden_columns(box)) {
+      spans.push_back(*columns);
+    }
+  }
+  std::ranges::sort(spans);
+  float reach = box.position.x;
+  for (const auto &[from, to] : spans) {
+    if (from > reach) {
+      break;
+    }
+    reach = std::max(reach, to);
+  }
+  return reach >= box.position.x + box.size.x;
+}
+
+/// The sunken building under `run`, with the acid at `surface`, unless the
+/// acid has risen over the run's deck.
+std::optional<SunkenBuilding> sunken_building(const Art &art, const Run &run,
+                                              float surface, float map_bottom) {
+  const float top = floor_y(run.y) + art.size(Image::Deck).y - GROUND_EDGE;
+  const float bottom = std::min(surface, map_bottom);
+  if (bottom <= top) {
+    return std::nullopt;
+  }
+  const auto place = [&](std::int32_t across, std::int32_t down,
+                         std::size_t count) {
+    return static_cast<std::size_t>(run.first * across + run.y * down) % count;
+  };
+  // A higher building stands farther back, in deeper shade.
+  const float depth =
+      FAR_SHADE + (1.0F - FAR_SHADE) * std::min(1.0F, top / ACID_LOW);
+  const godot::Color base = wall_tints().at(place(1, 2, wall_tints().size()));
+  const float left = cell_x(run.first);
+  const float right = cell_x(run.last + 1);
+  const float floor = floor_y(run.y);
+  return SunkenBuilding{
+      .run = run,
+      .roof = corroded(art, floor, surface) ? floor + 1.0F : floor,
+      .top = top,
+      .bottom = bottom,
+      .left = left,
+      .right = right,
+      .body_left = run.torn_left ? left + CELL : left,
+      .body_right = run.torn_right ? right - CELL : right,
+      .broken_bottom =
+          run.torn_left || run.torn_right
+              ? std::min(bottom,
+                         top + BREAK_DROP +
+                             BREAK_JAG * static_cast<float>(BREAK_JAGS - 1))
+              : top,
+      .wall = WALLS.at(place(1, 3, WALLS.size())),
+      .tint = godot::Color(base.r * depth, base.g * depth, base.b * depth),
+      .lean = static_cast<int>(place(1, 1, 3)) - 1,
+      .anchor = Vector2(static_cast<float>(place(23, 11, 64)), top),
+      .seed = static_cast<std::uint32_t>(place(31, 17, 1U << 16U)),
+  };
+}
+
+/// The sunken buildings under the walkways, the top rows' first, with the acid
+/// at `surface`.
+std::vector<SunkenBuilding>
+sunken_buildings(const Art &art, const std::vector<Standing> &ground,
+                 float surface, float map_bottom) {
+  std::vector<SunkenBuilding> buildings;
+  for (const auto &run : building_runs(ground)) {
+    if (auto building = sunken_building(art, run, surface, map_bottom)) {
+      buildings.push_back(*building);
+    }
+  }
+  return buildings;
+}
+
+/// Draws a building's wall rows from `from` to `to` between `x_from` and
+/// `x_to`: at once where it stands straight, and a band of LEAN_ROWS at a time
+/// where it leans.
+void paint_wall(godot::Node2D &canvas, const Art &art,
+                const SunkenBuilding &building, float from, float to,
+                float x_from, float x_to) {
+  const Stagger stagger{.columns = building.wall.columns,
+                        .seed = building.seed};
+  for (float y = from; y < to;) {
+    const float end =
+        building.lean == 0
+            ? to
+            : std::min(to,
+                       building.top +
+                           (std::floor((y - building.top) / LEAN_ROWS) + 1.0F) *
+                               LEAN_ROWS);
+    const float offset = building.shift(y);
+    tile(canvas, art, building.wall.image,
+         rect(x_from + offset, y, x_to - x_from, end - y),
+         building.anchor + Vector2(offset, 0.0F), building.tint, stagger);
+    y = end;
+  }
+}
+
+/// A sunken building: its wall, broken away at a snapped end; windows,
+/// shutters, air conditioners, a sign and a drainpipe on it; the deck's
+/// shadow; and where the acid at `surface` meets it, flesh grown over its
+/// foot and the acid's green light on it.
+void paint_sunken_building(godot::Node2D &canvas, const Art &art,
+                           const SunkenBuilding &building, float surface) {
+  const auto &run = building.run;
+  const float top = building.top;
+  const float bottom = building.bottom;
+  if (building.body_right > building.body_left) {
+    paint_wall(canvas, art, building, top, building.broken_bottom,
+               building.body_left, building.body_right);
+  }
+  paint_wall(canvas, art, building, building.broken_bottom, bottom,
+             building.left, building.right);
   for (int column = 0; column < BREAK_STRIPS; ++column) {
     const float strip = static_cast<float>(column) * BREAK_STRIP;
-    const float strip_top = broken_top(strip + BREAK_STRIP / 2.0F);
-    if (run.torn_left && left + strip < body_right) {
-      paint_wall(strip_top, broken_bottom, left + strip,
-                 left + strip + BREAK_STRIP);
+    const float strip_top = building.broken_top(strip + BREAK_STRIP / 2.0F);
+    if (run.torn_left && building.left + strip < building.body_right) {
+      paint_wall(canvas, art, building, strip_top, building.broken_bottom,
+                 building.left + strip, building.left + strip + BREAK_STRIP);
     }
-    if (run.torn_right && right - strip - BREAK_STRIP >= body_left) {
-      paint_wall(strip_top, broken_bottom, right - strip - BREAK_STRIP,
-                 right - strip);
+    if (run.torn_right &&
+        building.right - strip - BREAK_STRIP >= building.body_left) {
+      paint_wall(canvas, art, building, strip_top, building.broken_bottom,
+                 building.right - strip - BREAK_STRIP, building.right - strip);
     }
   }
   const auto fixture = [&](Image image, float x, float y, godot::Color lit) {
     if (y + art.size(image).y <= bottom) {
-      art.image(canvas, image, Vector2(std::round(x + shift(y)), y), 1.0F,
-                false, lit);
+      art.image(canvas, image, Vector2(std::round(x + building.shift(y)), y),
+                1.0F, false, lit);
     }
   };
   const auto storeys =
@@ -820,51 +983,57 @@ void paint_sunken_building(godot::Node2D &canvas, const Art &art,
     }
     for (std::int32_t storey = 0; storey < storeys; ++storey) {
       const float y = top + static_cast<float>(storey) * CELL;
-      const auto pick =
-          (x * 7 + storey * 13 + static_cast<std::int32_t>(ordinal) * 5) % 11;
+      const auto pick = (x * 7 + storey * 13 + run.y * 5) % 11;
       if (storey == 0 && x == run.first + 1 + run.last % 2) {
         fixture(Image::WallSign, cell_x(x), y + 6.0F, untinted());
       } else if (storey == 0 && pick % 4 == 1) {
         fixture(Image::WallShopWindow, cell_x(x) + 1.0F, y + 2.0F, untinted());
       } else if (pick == 6 || pick == 9) {
-        fixture(Image::WallAc, cell_x(x) + 3.0F, y + 12.0F, tint);
+        fixture(Image::WallAc, cell_x(x) + 3.0F, y + 12.0F, building.tint);
       } else if (storey == 1 && pick == 2) {
-        fixture(Image::WallShutter, cell_x(x) + 2.0F, y + 10.0F, tint);
+        fixture(Image::WallShutter, cell_x(x) + 2.0F, y + 10.0F, building.tint);
       }
     }
   }
-  canvas.draw_rect(rect(left, top + GROUND_EDGE, right - left, SLAB_SHADOW),
+  canvas.draw_rect(rect(building.left, top + GROUND_EDGE,
+                        building.right - building.left, DECK_SHADOW),
                    floor_shadow());
   if (run.last - run.first >= 2) {
     fixture(Image::WallPipe, cell_x(run.last - (run.torn_right ? 1 : 0)) - 6.0F,
-            top, tint);
+            top, building.tint);
   }
   if (bottom < surface) {
     return;
   }
   for (int step = 0; step < ACID_LIGHT_STEPS; ++step) {
     const float y = bottom - static_cast<float>(step + 1) * ACID_LIGHT_STEP;
-    canvas.draw_rect(rect(body_left + shift(y), std::max(top, y),
-                          body_right - body_left, ACID_LIGHT_STEP),
-                     acid_light(step));
+    canvas.draw_rect(
+        rect(building.body_left + building.shift(y), std::max(top, y),
+             building.body_right - building.body_left, ACID_LIGHT_STEP),
+        acid_light(step));
   }
-  const Vector2 flesh = art.size(Image::Waterline);
-  const float foot = bottom - flesh.y + 2.0F;
-  tile(canvas, art, Image::Waterline,
-       rect(left + shift(foot), std::max(top, foot), right - left,
-            bottom + 2.0F - std::max(top, foot)),
-       Vector2(anchor.x + shift(foot), foot), waterline_tint());
+  // The flesh is laid a cell at a time, each from its own place along the
+  // picture, so it does not repeat along the wall.
+  const float foot = bottom - art.size(Image::Waterline).y + 2.0F;
+  const float flesh_top = std::max(top, foot);
+  for (std::int32_t x = run.first; x <= run.last; ++x) {
+    const float from =
+        WATERLINE_STEP *
+        static_cast<float>(scatter(building.seed, x) % WATERLINE_PLACES);
+    const float at = cell_x(x) + building.shift(foot);
+    tile(canvas, art, Image::Waterline,
+         rect(at, flesh_top, CELL, bottom + 2.0F - flesh_top),
+         Vector2(at - from, foot), waterline_tint());
+  }
 }
 
-/// The sunken buildings under the walkways, the top rows' first, so a lower
-/// building stands in front of a higher one.
+/// Draws the sunken buildings, the top rows' first, so a lower building stands
+/// in front of a higher one.
 void paint_sunken_buildings(godot::Node2D &canvas, const Art &art,
-                            const std::vector<Standing> &ground, float surface,
-                            float map_bottom) {
-  const auto runs = building_runs(ground);
-  for (std::size_t ordinal = 0; ordinal < runs.size(); ++ordinal) {
-    paint_sunken_building(canvas, art, runs.at(ordinal), ordinal, surface,
-                          map_bottom);
+                            std::span<const SunkenBuilding> buildings,
+                            float surface) {
+  for (const auto &building : buildings) {
+    paint_sunken_building(canvas, art, building, surface);
   }
 }
 
@@ -1019,10 +1188,16 @@ decoration_pieces(const Art &art, const survival::Content &content, bool back) {
   return pieces;
 }
 
+/// Draws the scenery behind the ground when `back`, and in front of it
+/// otherwise, but for a piece the walls of `hiding` hide whole.
 void paint_decorations(godot::Node2D &canvas, const Art &art,
-                       const survival::Content &content, bool back) {
+                       const survival::Content &content, bool back,
+                       std::span<const SunkenBuilding> hiding) {
   for (const auto &piece : decoration_pieces(art, content, back)) {
-    art.image(canvas, piece.image, piece.at);
+    if (!hidden(hiding,
+                godot::Rect2(piece.at.floor(), art.size(piece.image)))) {
+      art.image(canvas, piece.image, piece.at);
+    }
   }
 }
 
@@ -1776,9 +1951,10 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   const float surface =
       acid_surface(static_cast<float>(view.progression.acid.value) /
                    static_cast<float>(content.run.full_acid.value));
-  paint_decorations(canvas, art, content, true);
-  paint_sunken_buildings(canvas, art, ground, surface,
-                         cell_y(content.map.height));
+  const auto buildings =
+      sunken_buildings(art, ground, surface, cell_y(content.map.height));
+  paint_decorations(canvas, art, content, true, buildings);
+  paint_sunken_buildings(canvas, art, buildings, surface);
   paint_supports(canvas, art, ground, cell_y(content.map.height), surface);
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
@@ -1802,7 +1978,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_kind(ObjectKind::Ladder, [&](const ObjectSnapshot &object) {
     paint_passage(canvas, art, object, true);
   });
-  paint_decorations(canvas, art, content, false);
+  paint_decorations(canvas, art, content, false, {});
   paint_kind(ObjectKind::Npc, [&](const ObjectSnapshot &object) {
     paint_npc(canvas, art, object);
   });
