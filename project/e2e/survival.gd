@@ -1151,7 +1151,15 @@ func _player_two_errand_alone_sets_out() -> void:
 	await _tap(KEY_O)
 	if not _check(_actor("appraiser", "tools") == 1, "player two carries the wrench"):
 		return
+	await _frames(2)
+	if not _check(_actor("appraiser", "collecting_ms") > 0 and _hold_shown(), "player two's row shows how long player two's hold has left"):
+		return
+	if not _text_fits("player two's hold"):
+		return
 	if not await _until("player two's wrench collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+		return
+	await _frames(2)
+	if not _check(not _hold_shown() and _screen_shows("[U] Return to base"), "player two's row shows the travel key again once the hold ends"):
 		return
 	await _tap(KEY_U)
 	if not await _until("player two brings the wrench home", func() -> bool: return _str("phase") == "workshop", 30):
@@ -1248,6 +1256,14 @@ func _goal_shown() -> bool:
 func _screen_shows(words: String) -> bool:
 	for line: Dictionary in _changing_text():
 		if line["text"] == words:
+			return true
+	return false
+
+## Whether a changing line, other than NEXT's, reads the hold's time left.
+func _hold_shown() -> bool:
+	for line: Dictionary in _changing_text():
+		var text: String = line["text"]
+		if text.begins_with("Collecting: ") and text.ends_with("s"):
 			return true
 	return false
 

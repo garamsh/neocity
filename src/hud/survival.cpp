@@ -1143,11 +1143,16 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
                  rect(left + PLAYER_TAG, row, DUO_INTERACT, height),
                  interact_label(frame, actor, keys), BUTTON_SIZE,
                  frame.offers.at(index_of(actor)).interact.has_value());
-    paint_button(
-        canvas, drawing,
-        rect(left + PLAYER_TAG + DUO_INTERACT + GAP, row, DUO_TRAVEL, height),
-        travel_label(frame, actor, keys), BUTTON_SIZE,
-        travel_asked(frame, actor));
+    const float travel_x = left + PLAYER_TAG + DUO_INTERACT + GAP;
+    // A held player's travel key does nothing, so its place shows the hold.
+    if (collecting_of(frame.view, actor)) {
+      drawing.text(canvas, travel_x, row + 27.0F, interact_target(frame, actor),
+                   BUTTON_SIZE, tones.white, CHANGING);
+    } else {
+      paint_button(canvas, drawing, rect(travel_x, row, DUO_TRAVEL, height),
+                   travel_label(frame, actor, keys), BUTTON_SIZE,
+                   travel_asked(frame, actor));
+    }
     row += height + GAP;
   }
 }
@@ -2178,7 +2183,10 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
           fitted(move_hint(keys), 14, action_inner - SOLO_TRAVEL - 10.0F));
     } else {
       lines.push_back(fitted(label, BUTTON_SIZE, DUO_INTERACT - padding));
-      lines.push_back(fitted(travel, BUTTON_SIZE, DUO_TRAVEL - padding));
+      lines.push_back(collecting_of(frame.view, actor)
+                          ? fitted(interact_target(frame, actor), BUTTON_SIZE,
+                                   DUO_TRAVEL)
+                          : fitted(travel, BUTTON_SIZE, DUO_TRAVEL - padding));
     }
   }
   for (const auto &rows : {key_rows(frame), control_rows()}) {
