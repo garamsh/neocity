@@ -74,9 +74,8 @@ void foot(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   rendering::panel(canvas, rect(MARGIN, FOOT_Y, SCREEN_WIDTH - 2.0F * MARGIN,
                                 SCREEN_HEIGHT - MARGIN - FOOT_Y));
-  drawing.text(canvas, 32.0F, FOOT_Y + 40.0F, line, 21, tones.white,
-               rendering::Weight::SemiBold);
-  drawing.text(canvas, 32.0F, FOOT_Y + 76.0F, keys, 17, tones.muted);
+  drawing.text(canvas, 32.0F, FOOT_Y + 42.0F, line, 24, tones.white);
+  drawing.text(canvas, 32.0F, FOOT_Y + 76.0F, keys, 16, tones.muted);
 }
 
 } // namespace
@@ -108,9 +107,9 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
     drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 38.0F,
                  godot::String::num_int64(static_cast<std::int64_t>(number)) +
                      "   " + entry_label(entry),
-                 28, chosen ? tones.ink : tones.white, rendering::Weight::Bold);
+                 32, chosen ? tones.ink : tones.white, rendering::Weight::Bold);
     drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 64.0F,
-                 entry_summary(entry), 15, chosen ? tones.ink : tones.muted);
+                 entry_summary(entry), 16, chosen ? tones.ink : tones.muted);
     y += ENTRY_PITCH;
     ++number;
   }
@@ -125,19 +124,18 @@ void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
   backdrop(canvas, drawing, 0.6F);
   rendering::panel(
       canvas, rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
-  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Controls", 38,
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Controls", 40,
                tones.white, rendering::Weight::Bold);
   paint_key_rows(canvas, drawing, control_rows(), CONTROLS_TEXT_X,
                  CONTROLS_ROW_Y, CONTROLS_ROW_HEIGHT);
   const godot::String back = "Esc or M: back to the title";
-  rendering::button(
-      canvas,
-      rect(CONTROLS_TEXT_X - 14.0F, CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
-           drawing.text_width(back, 20, rendering::Weight::SemiBold) + 28.0F,
-           46.0F),
-      false);
+  rendering::button(canvas,
+                    rect(CONTROLS_TEXT_X - 14.0F,
+                         CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
+                         drawing.text_width(back, 24) + 28.0F, 46.0F),
+                    false);
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
-               back, 20, tones.white, rendering::Weight::SemiBold);
+               back, 24, tones.white);
 }
 
 } // namespace neocity::hud

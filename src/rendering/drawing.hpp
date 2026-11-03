@@ -72,8 +72,13 @@ struct Palette {
 /// How far a panel's words stay inside its edge.
 inline constexpr float PANEL_INSET = 16.0F;
 
-/// The interface font's weights, lightest first.
-enum class Weight : std::uint8_t { Medium, SemiBold, Bold };
+/// How words are drawn in the interface's one face: `Bold` draws them again
+/// one pixel to the right.
+enum class Weight : std::uint8_t { Regular, Bold };
+
+/// The interface face's pixels per em when one of its design pixels is one
+/// screen pixel; words are drawn at whole multiples of it.
+inline constexpr int FONT_GRID = 8;
 
 Palette palette();
 
@@ -202,14 +207,19 @@ struct Motion {
 /// remembers how each actor moved between frames.
 class Art {
 public:
-  /// Loads every picture of the art set and the interface font's weights.
+  /// Loads every picture of the art set and the interface font.
   static Art load();
 
+  /// Draws `text` with the left end of its baseline on the whole pixel
+  /// nearest (`x`, `y`), at the whole multiple of `FONT_GRID` nearest `size`.
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
-            int size, godot::Color tint, Weight weight = Weight::Medium) const;
+            int size, godot::Color tint, Weight weight = Weight::Regular) const;
   /// How wide `text` draws at `size` in `weight`.
   [[nodiscard]] float text_width(const godot::String &text, int size,
-                                 Weight weight = Weight::Medium) const;
+                                 Weight weight = Weight::Regular) const;
+  /// The lines drawn since the last call, in drawing order; words drawn on a
+  /// line's baseline where it ends continue that line.
+  [[nodiscard]] std::vector<godot::String> take_written() const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
   /// Each colour is multiplied by `tint`.
@@ -265,18 +275,25 @@ private:
     std::uint64_t frame = 0;
   };
 
+  /// One line `text` has drawn, and where its baseline ends.
+  struct Written {
+    godot::String text;
+    godot::Vector2 end;
+  };
+
   Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-      std::array<godot::Ref<godot::Font>, 3> weights);
+      godot::Ref<godot::Font> face);
 
   /// The tween of `name`, restarted when it was not drawn for a moment.
   Tween &tween(const godot::String &name, float target) const;
 
   std::vector<godot::Ref<godot::Texture2D>> images;
-  std::array<godot::Ref<godot::Font>, 3> fonts;
-  /// Painting is const; the trails and tweens are what the screen saw, not
-  /// art.
+  godot::Ref<godot::Font> font;
+  /// Painting is const; the trails, tweens and written lines are what the
+  /// screen saw, not art.
   mutable std::array<Trail, 2> trails{};
   mutable std::map<godot::String, Tween> tweens;
+  mutable std::vector<Written> written;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;

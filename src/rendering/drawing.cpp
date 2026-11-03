@@ -35,10 +35,13 @@ constexpr int CORNER_STEPS = 6;
 constexpr std::uint64_t GLIDE_MICROSECONDS = 280000;
 constexpr std::uint64_t ENTRANCE_MICROSECONDS = 220000;
 
-/// The interface font's weights, in `Weight` order.
-constexpr std::array FONT_FILES{"PixelifySans-Medium.ttf",
-                                "PixelifySans-SemiBold.ttf",
-                                "PixelifySans-Bold.ttf"};
+/// The interface's pixel face, drawn without smoothing on its own grid.
+constexpr const char *FONT_FILE = "Tiny5-Regular.ttf";
+
+/// `size` at the nearest whole multiple of the face's grid, one at least.
+int on_grid(int size) {
+  return std::max(1, (size + FONT_GRID / 2) / FONT_GRID) * FONT_GRID;
+}
 
 constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
 
@@ -427,18 +430,15 @@ Palette palette() {
 }
 
 Art::Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-         std::array<godot::Ref<godot::Font>, 3> weights)
-    : images(std::move(pictures)), fonts(std::move(weights)) {}
+         godot::Ref<godot::Font> face)
+    : images(std::move(pictures)), font(std::move(face)) {}
 
 Art Art::load() {
-  std::array<godot::Ref<godot::Font>, 3> fonts;
-  for (std::size_t weight = 0; weight < FONT_FILES.size(); ++weight) {
-    const godot::String file =
-        godot::String("res://levels/monster_mouth_escape/fonts/") +
-        FONT_FILES.at(weight);
-    fonts.at(weight) = godot::ResourceLoader::get_singleton()->load(file);
-    CRASH_COND_MSG(fonts.at(weight).is_null(), "Font must load: " + file);
-  }
+  const godot::String file =
+      godot::String("res://levels/monster_mouth_escape/fonts/") + FONT_FILE;
+  godot::Ref<godot::Font> font =
+      godot::ResourceLoader::get_singleton()->load(file);
+  CRASH_COND_MSG(font.is_null(), "Font must load: " + file);
   std::vector<godot::Ref<godot::Texture2D>> pictures;
   pictures.reserve(IMAGE_COUNT);
   for (std::size_t image = 0; image < IMAGE_COUNT; ++image) {
@@ -446,21 +446,45 @@ Art Art::load() {
         load_texture(godot::String("res://levels/monster_mouth_escape/art/") +
                      path(static_cast<Image>(image))));
   }
-  return {std::move(pictures), std::move(fonts)};
+  return {std::move(pictures), std::move(font)};
 }
 
 void Art::text(godot::Node2D &canvas, float x, float y,
                const godot::String &text, int size, godot::Color tint,
                Weight weight) const {
-  canvas.draw_string(fonts.at(static_cast<std::size_t>(weight)), Vector2(x, y),
-                     text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint);
+  const Vector2 at = Vector2(x, y).round();
+  const int drawn = on_grid(size);
+  canvas.draw_string(font, at, text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1,
+                     drawn, tint);
+  if (weight == Weight::Bold) {
+    canvas.draw_string(font, at + Vector2(1.0F, 0.0F), text,
+                       godot::HORIZONTAL_ALIGNMENT_LEFT, -1, drawn, tint);
+  }
+  const Vector2 end = at + Vector2(text_width(text, size, weight), 0.0F);
+  if (!written.empty() && written.back().end.is_equal_approx(at)) {
+    written.back() = {.text = written.back().text + text, .end = end};
+  } else {
+    written.push_back({.text = text, .end = end});
+  }
 }
 
 float Art::text_width(const godot::String &text, int size,
                       Weight weight) const {
-  return fonts.at(static_cast<std::size_t>(weight))
-      ->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size)
-      .x;
+  const float width =
+      font->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1,
+                            on_grid(size))
+          .x;
+  return weight == Weight::Bold ? width + 1.0F : width;
+}
+
+std::vector<godot::String> Art::take_written() const {
+  std::vector<godot::String> lines;
+  lines.reserve(written.size());
+  for (auto &line : written) {
+    lines.push_back(std::move(line.text));
+  }
+  written.clear();
+  return lines;
 }
 
 void Art::image(godot::Node2D &canvas, Image image, Vector2 position,

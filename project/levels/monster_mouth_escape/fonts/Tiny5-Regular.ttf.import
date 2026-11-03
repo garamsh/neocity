@@ -2,18 +2,18 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dnxudkxhksjpi"
-path="res://.godot/imported/PixelifySans-Medium.ttf-a99704db5ae065b8616124f18fa2862b.fontdata"
+uid="uid://b8wi86onk8uep"
+path="res://.godot/imported/Tiny5-Regular.ttf-29495163a113ed3aeade946887f9ec5b.fontdata"
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/fonts/PixelifySans-Medium.ttf"
-dest_files=["res://.godot/imported/PixelifySans-Medium.ttf-a99704db5ae065b8616124f18fa2862b.fontdata"]
+source_file="res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
+dest_files=["res://.godot/imported/Tiny5-Regular.ttf-29495163a113ed3aeade946887f9ec5b.fontdata"]
 
 [params]
 
 Rendering=null
-antialiasing=1
+antialiasing=0
 generate_mipmaps=false
 disable_embedded_bitmaps=true
 multichannel_signed_distance_field=false
@@ -33,6 +33,4 @@ compress=true
 preload=[]
 language_support={}
 script_support={}
-opentype_features={
-1818847073: 0
-}
+opentype_features={}

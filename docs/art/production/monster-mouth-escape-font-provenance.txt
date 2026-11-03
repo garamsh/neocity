@@ -1,16 +1,15 @@
 Monster-mouth escape interface font provenance, 2026-11-03, issue #119
 
-Font: Pixelify Sans, by Stefie Justprince and The Pixelify Sans Project Authors, https://github.com/eifetx/Pixelify-Sans
-Source: commit 39df74aba80df8157546034b878e8be1eb565ced of https://github.com/eifetx/Pixelify-Sans, the commit google/fonts records for the family in ofl/pixelifysans/METADATA.pb at google/fonts commit 8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5
-Download: https://raw.githubusercontent.com/eifetx/Pixelify-Sans/39df74aba80df8157546034b878e8be1eb565ced/<path> for each path below
-Licence: SIL Open Font License 1.1. The repository's OFL.txt, identical to google/fonts' ofl/pixelifysans/OFL.txt at the commit above, is committed unchanged as project/levels/monster_mouth_escape/fonts/OFL.txt, beside the fonts, as the licence requires for redistribution.
+Font: Tiny5, by Stefan Schmidt and The Tiny5 Project Authors, https://github.com/Gissio/font_tiny5
+Source: ofl/tiny5/Tiny5-Regular.ttf and ofl/tiny5/OFL.txt at google/fonts commit 8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5, which ofl/tiny5/METADATA.pb there records as built from fonts/ttf/tiny5-Medium.ttf of https://github.com/Gissio/font_tiny5 at commit 1d6e16fe1ffe3f91def8cf512ae45188503f7685
+Download: https://raw.githubusercontent.com/google/fonts/8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5/ofl/tiny5/<file> for each file below
+Licence: SIL Open Font License 1.1. OFL.txt, identical to the upstream repository's OFL.txt at the commit above, is committed unchanged as project/levels/monster_mouth_escape/fonts/OFL.txt, beside the font, as the licence requires for redistribution.
 
-Files taken unchanged from the repository's fonts/ttf/ folder, with their SHA-256:
-- PixelifySans-Medium.ttf 5219b5ad08fde84e82b4a926614766c253379757eca86f56b766b0bdbfff69af
-- PixelifySans-SemiBold.ttf a4b54982991cd47450df317a451a7f066bf6b91aa033e105643aba2cf7bd35c3
-- PixelifySans-Bold.ttf 3c3c203a3f3b862b944e836e4ec0fce201eddc1952cbca0d682e382d668b293c
-- OFL.txt b66ba46f511a851ab09998b5a5a9fdbb102545a3864cb993095e1745996873a7
+Files taken unchanged, with their SHA-256:
+- Tiny5-Regular.ttf cb8168f80cfee2f47f6db59f2a7afbde31cdcdcdcf262e7a993e4d468a5bf4b0
+- OFL.txt 6fe7d64407c69d187748206265977654747d3e2fe9e38e45a62cd03ec4770df6
 
-Runtime: project/levels/monster_mouth_escape/fonts/. Godot imports each file with greyscale antialiasing, hinting off, subpixel positioning off and the liga feature (tag 1818847073) off, set in the .import files beside them; the rest are Godot's defaults.
+Grid: 1024 units per em, every outline point and advance a multiple of 128 units, so one of its pixels is an eighth of an em; capitals stand 5 of them. Its GSUB holds only ccmp and its GPOS only mark.
+Runtime: project/levels/monster_mouth_escape/fonts/. Godot imports it with antialiasing, hinting and subpixel positioning off, set in the .import file beside it; the rest are Godot's defaults. rendering::Art draws it at whole multiples of 8 pixels only.
 No glyph is edited and the font is not renamed. The licence's copyright line declares no Reserved Font Name.
-Replaces Inter 4.1 of issue #107, which the interface no longer uses.
+Replaces Pixelify Sans, whose outlines are off a strict grid and whose antialiased C read as O at the interface's sizes in the review of PR #147. The glyph sheet monster-mouth-escape-font-glyphs.png beside this file draws the old face as frames 11 and 18 at commit 040b8be2615ccb7eb7250f39ddcbdd0ba2a24a60 showed it, and Tiny5 at every size and weight the interface uses, each pixel doubled.
