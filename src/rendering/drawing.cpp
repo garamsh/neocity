@@ -445,7 +445,7 @@ Palette palette() {
 
 Art::Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
          godot::Ref<godot::Font> face)
-    : images(std::move(pictures)), font(std::move(face)) {}
+    : images(std::move(pictures)), font(std::move(face)), loaded(now()) {}
 
 Art Art::load() {
   const godot::String file =
@@ -581,6 +581,21 @@ float Art::shown_for(const godot::String &name) const {
 
 Vector2 Art::size(Image image) const {
   return images.at(slot(image))->get_size();
+}
+
+float Art::seconds() const {
+  return static_cast<float>(now() - loaded) / 1.0e6F;
+}
+
+void Art::note_waterline(float surface) const {
+  const float zoom = placed.get_scale().x;
+  waterline = Waterline{.surface = placed.get_origin().y + surface * zoom,
+                        .origin = placed.get_origin(),
+                        .zoom = zoom};
+}
+
+std::optional<Waterline> Art::take_waterline() const {
+  return std::exchange(waterline, std::nullopt);
 }
 
 Motion Art::track(survival::Actor actor, const survival::Body &body,
