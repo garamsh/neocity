@@ -45,10 +45,11 @@ constexpr float ACID_SURFACE_DEPTH = 48.0F;
 /// of this many pixels.
 constexpr int ACID_FADE_STEPS = 6;
 constexpr float ACID_FADE_STEP = 6.0F;
-/// The rows of a ground tile's top edge, which a player walks on, drawn lit
-/// from the picture's rows under its dark top outline, so the walked-on edge
-/// is the top of the deck.
+/// The rows of a ground tile's top edge, which a player walks on, drawn lit.
 constexpr float GROUND_EDGE = 4.0F;
+/// The dark top outline of the walkway deck pictures, which their lit top edge
+/// is drawn from under, so the walked-on edge is the top of the deck. The
+/// pier's picture has none: its top row is its brightest.
 constexpr float OUTLINE = 1.0F;
 /// The rise of each step of stairs, cut from a walkway deck, and the first row
 /// of the deck's face, which stairs show under their steps.
@@ -365,11 +366,12 @@ Image plain_deck(survival::GridPosition cell) {
 }
 
 /// Draws a walkway's picture dark, in front of the bright backdrop, under a
-/// top edge lit brightest, so the surface a player walks on reads first.
+/// top edge lit brightest from the picture's rows below `outline`, so the
+/// surface a player walks on reads first.
 void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
-                   Vector2 at) {
+                   Vector2 at, float outline) {
   art.image(canvas, image, at, 1.0F, false, ground_tint());
-  art.image_part(canvas, image, rect(0.0F, OUTLINE, CELL, GROUND_EDGE),
+  art.image_part(canvas, image, rect(0.0F, outline, CELL, GROUND_EDGE),
                  rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
 }
 
@@ -378,7 +380,8 @@ void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
 void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at,
                 bool corroded) {
   const bool end = deck == Image::EndLeft || deck == Image::EndRight;
-  paint_surface(canvas, art, corroded && !end ? Image::DeckCorroded : deck, at);
+  paint_surface(canvas, art, corroded && !end ? Image::DeckCorroded : deck, at,
+                OUTLINE);
 }
 
 /// Which way a step or a slab rises, or that it lies level.
@@ -501,7 +504,7 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
     case LandmarkKind::Ferry:
       return;
     case LandmarkKind::Platform:
-      paint_surface(canvas, art, Image::Platform, at);
+      paint_surface(canvas, art, Image::Platform, at, 0.0F);
       return;
     case LandmarkKind::Bridge:
       art.image(canvas, Image::Bridge, at);
