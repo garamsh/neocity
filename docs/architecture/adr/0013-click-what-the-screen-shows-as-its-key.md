@@ -23,7 +23,7 @@ The rejected alternative was to let a click on a source on the map act for the h
 ## Consequences
 
 - Every command reachable by mouse is also reachable by key, and the key checks keep proving the commands themselves. A mouse check only has to prove that a click reaches the right key.
-- The HUD's painting and its targets share one source for each area, so a moved button moves its target with it.
+- The HUD's painting and its targets share one source for each area, the rise of a panel coming into place included, so a moved button moves its target with it.
 - A target that refuses shows its reason on hover. A click on it presses nothing.
 - The city cannot be played from the map. A player always clicks a button in the action panel.
 
