@@ -80,6 +80,9 @@ struct SurvivalFrame {
   std::uint32_t last_day_map_changes = 0;
   /// Oldest first.
   std::vector<Event> events;
+  /// The number of `events`' first in the run's whole log, counting from 0,
+  /// so each event keeps one number while it shows.
+  std::uint64_t first_event = 0;
 };
 
 /// A line whose words change with play, and the width its place gives it.

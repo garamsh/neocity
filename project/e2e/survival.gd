@@ -60,6 +60,9 @@ const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 ## limit, well past the camera's eased motion.
 const SETTLE_POLL_MSEC: int = 20
 const SETTLE_LIMIT_MSEC: int = 3000
+## A note shows four seconds and fades over one, on the real clock; the wait
+## for it to go allows that and more.
+const NOTE_FADE_LIMIT_MSEC: int = 8000
 ## The middle of the play area on screen, where the camera draws what it
 ## heads for.
 const FOCUS: Vector2 = Vector2(640, 301)
@@ -69,8 +72,12 @@ const LOOK_AHEAD: float = 80.0
 ## How far apart, in scene pixels, two humans stand when the camera must draw
 ## them smaller than twice the scene's size to frame both.
 const APART: float = 480.0
-## The weight the screen draws every changing line in.
-const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/PixelifySans-SemiBold.ttf"
+## The face the screen draws every changing line in.
+const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
+## When the escape checks begin, which the pause screen names.
+const ESCAPE_GOAL: String = "Escape checks from day 30"
+## What feeding does, which the recipe book on the pause screen names.
+const FEED_RULES: Array[String] = ["New and delicious food holds the acid back.", "Anything else raises it.", "Full acid ends the run."]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -143,6 +150,8 @@ func _run() -> void:
 	if not failed:
 		await _loss_clears_the_offer()
 	if not failed:
+		await _repeated_note_appears()
+	if not failed:
 		await _main_menu_quits()
 
 ## Real keys: Esc, M and Enter over a run, and over a cinematic.
@@ -162,10 +171,13 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not _check(_screen_shows("Pause, keys"), "the top band names Esc as the way to the keys"):
+	if not _check(_drawn("Pause, keys"), "the top band names Esc as the way to the keys"):
 		return
+	var unpaused_rules: bool = FEED_RULES.any(func(rule: String) -> bool: return _drawn(rule))
 	await _tap(KEY_ESCAPE)
 	if not _check(_str("interruption") == "paused", "Esc pauses the run"):
+		return
+	if not _check(not unpaused_rules and FEED_RULES.all(func(rule: String) -> bool: return _drawn(rule)), "the recipe book on the pause screen, and only there, says what feeding does"):
 		return
 	var keys: String = str(_lines("pause_keys"))
 	if not _check(keys.contains("Run: Shift") and keys.contains("Swap actor: Tab") and keys.contains("WASD or arrows"), "the pause screen lists one player's keys: %s" % keys):
@@ -271,6 +283,39 @@ func _hand_off_shows_the_keys_left() -> void:
 		return
 	_check(_str("hand_off") == "", "one player from the start gets no hand-off notice")
 
+## A line the log repeats once the same line has dropped out of it shows as a
+## new note: the chef sets out and returns with the AI appraiser, which fills
+## the log, and sets out again after the first note has faded.
+func _repeated_note_appears() -> void:
+	await _leave_run()
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	if not await _until("the party sets out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 60):
+		return
+	if not _check(_drawn("Chef set out."), "a new note shows: %s" % [_drawn_lines()]):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
+		return
+	# The pause holds the run while the notes go on fading on the real clock.
+	await _tap(KEY_ESCAPE)
+	var start: int = Time.get_ticks_msec()
+	while _drawn("Chef set out.") and Time.get_ticks_msec() - start < NOTE_FADE_LIMIT_MSEC:
+		await _frames(1)
+	var faded: bool = not _drawn("Chef set out.")
+	await _tap(KEY_ESCAPE)
+	if not _check(faded, "a note fades a few seconds after it appears"):
+		return
+	var log: Array = _events()
+	if not _check(log.size() == 4 and str(log[0]) == "Chef set out." and log.count("Chef set out.") == 1, "the log is full with the first note's line oldest: %s" % [log]):
+		return
+	await _tap(KEY_Q)
+	if not await _until("the chef sets out again", func() -> bool: return _where("chef") == "city", 30):
+		return
+	_check(_events().count("Chef set out.") == 1 and _drawn("Chef set out."), "the repeated line shows as a new note after the first dropped out: %s %s" % [_events(), _drawn_lines()])
+
 func _start_two_players() -> void:
 	await _leave_run()
 	await _tap(KEY_1)
@@ -305,7 +350,7 @@ func _menus() -> void:
 		return
 	if not _check(_next().contains("Set out"), "the screen tells a new player to set out"):
 		return
-	if not _check(_goal_shown(), "the base shows when escape checks begin"):
+	if not _check(await _pause_shows_escape_goal(), "the pause screen over the base, and not the base, shows when escape checks begin"):
 		return
 
 func _first_day() -> void:
@@ -333,9 +378,9 @@ func _first_day() -> void:
 		return
 	if not _points_to_goal("the first city screen"):
 		return
-	if not _check(_goal_shown(), "the city shows when escape checks begin"):
+	if not _check(await _pause_shows_escape_goal(), "the pause screen over the city, and not the city, shows when escape checks begin"):
 		return
-	if not _check(_actions() == ["[E] USE"] and _head_caps().is_empty() and _screen_shows("WASD move  Shift run  Space jump  Q base"), "away from a source the action button shows E as use, no key cap is over the head, and the move, run, jump and travel keys show: %s %s" % [_actions(), _head_caps()]):
+	if not _check(_actions() == ["[E] USE"] and _drawn("[E] USE") and _head_caps().is_empty() and _drawn("WASD move  Shift run  Space jump  Q base"), "away from a source the action button shows E as use, no key cap is over the head, and the move, run, jump and travel keys show: %s %s" % [_actions(), _head_caps()]):
 		return
 	await _run_east()
 	if failed:
@@ -344,7 +389,8 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the cart's fish", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	if not _check(_actions() == ["[E] COLLECT"] and _head_caps() == ["E"], "at a source the action button offers E to collect and E's cap is over the head: %s %s" % [_actions(), _head_caps()]):
+	var cart: String = "[E] COLLECT " + _place("Vendor Cart")
+	if not _check(_actions() == [cart] and _drawn(cart) and _head_caps() == ["E"], "at a source the action button offers E to collect from it by its name and E's cap is over the head: %s %s" % [_actions(), _head_caps()]):
 		return
 	if not _check(not _next().begins_with("[E] ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
 		return
@@ -776,6 +822,8 @@ func _set_out_before_feeding() -> void:
 		return
 	if not _check(_int("remaining_ms") > 0 and _next().contains("Set out"), "with time and stock left the screen sets out before feeding"):
 		return
+	if not _check(_drawn_says("[F] Feed " + str(_stored()[0]) + ": this ends the day."), "the task card keeps the feed key for the stored dish: %s" % [_drawn_lines()]):
+		return
 	await _tap(KEY_Q)
 
 ## Plays on what NEXT says alone to an escape. A dish the monster hated stays
@@ -1065,7 +1113,7 @@ func _human_repairs_the_ladder() -> void:
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	await _until("the screen offers the repair", func() -> bool: return _next().contains("Repair Roof Ladder"), 30)
-	if not _check(_next().contains("Repair Roof Ladder") and _actions().has("[E] REPAIR"), "the screen offers the repair in reach"):
+	if not _check(_next().contains("Repair Roof Ladder") and _actions().has("[E] REPAIR " + _place("Roof Ladder")) and _drawn("[E] REPAIR " + _place("Roof Ladder")), "the screen offers the repair in reach and names what it repairs: %s" % [_actions()]):
 		return
 	_key(KEY_W, true)
 	await _frames(24)
@@ -1094,7 +1142,7 @@ func _two_players() -> void:
 		return
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: [U] Set out into the city"), "the player left at base is told to set out: %s" % _next()):
 		return
-	if not _check(_screen_shows("; jump  U set out") and not _screen_shows("; jump  U base") and _screen_shows("Space jump  Q base"), "each player's keys name their own jump and U as setting out for player two at base"):
+	if not _check(_drawn("IJKL move  H run  ; jump  U set out") and not _drawn("IJKL move  H run  ; jump  U base") and _drawn("WASD move  Shift run  Space jump  Q base"), "each player's keys name their own jump and U as setting out for player two at base: %s" % [_drawn_lines()]):
 		return
 	if not _text_fits("one player out and one at base"):
 		return
@@ -1113,7 +1161,7 @@ func _two_players() -> void:
 		return
 	if not _text_fits("two players in the city"):
 		return
-	if not _check(_screen_shows("WASD move  Shift run") and _screen_shows("Space jump  Q base") and _screen_shows("IJKL move  H run") and _screen_shows("; jump  U base"), "each player's row names that key set's move, run and jump keys"):
+	if not _check(_drawn("WASD move  Shift run  Space jump  Q base") and _drawn("IJKL move  H run  ; jump  U base"), "each player's row names that key set's move, run, jump and travel keys: %s" % [_drawn_lines()]):
 		return
 	if not _plates_apart("two players in the city"):
 		return
@@ -1236,12 +1284,16 @@ func _player_two_errand_alone_sets_out() -> void:
 	await _frames(2)
 	if not _check(_actor("appraiser", "collecting_ms") > 0 and _actions().size() == 2 and _action(1).begins_with("COLLECTING ") and not _action(0).begins_with("COLLECTING "), "player two's button shows how long player two's hold has left: %s" % [_actions()]):
 		return
+	if not _check(_drawn("IJKL move  H run  ; jump") and _drawn("WASD move  Shift run  Space jump  Q set out"), "player two's keys leave out travel while the hold keeps player two in place: %s" % [_drawn_lines()]):
+		return
 	if not _text_fits("player two's hold"):
 		return
 	if not await _until("player two's wrench collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _frames(2)
-	if not _check(_actions().size() == 2 and _action(1) == "[O] USE" and _screen_shows("; jump  U base"), "player two's button shows the interact key again once the hold ends: %s" % [_actions()]):
+	if not _check(_actions().size() == 2 and _action(1) == "[O] USE" and _drawn("IJKL move  H run  ; jump  U base"), "player two's button shows the interact key again once the hold ends: %s" % [_actions()]):
+		return
+	if not _check(_bag_holds("Wrench", "P2") and not _bag_holds("Wrench", "P1"), "the bag marks the wrench as player two's: %s" % [scene.get_meta("bag", [])]):
 		return
 	await _tap(KEY_U)
 	if not await _until("player two brings the wrench home", func() -> bool: return _str("phase") == "workshop", 30):
@@ -1331,15 +1383,40 @@ func _result_says(words: String) -> bool:
 			return true
 	return false
 
-func _goal_shown() -> bool:
-	return _str("goal") == "Escape checks from day 30" and _screen_says("Escape checks from day 30")
+## Pauses and continues, and tells whether the escape goal was drawn over
+## the pause screen and not on the screen under it.
+func _pause_shows_escape_goal() -> bool:
+	var before: bool = _drawn_says(ESCAPE_GOAL)
+	await _tap(KEY_ESCAPE)
+	var paused: bool = _str("interruption") == "paused" and _drawn_says(ESCAPE_GOAL)
+	await _tap(KEY_ESCAPE)
+	return _str("goal") == ESCAPE_GOAL and not before and paused and _str("interruption") == ""
 
-## Whether one changing line reads exactly `words`, as a button's label does.
-func _screen_shows(words: String) -> bool:
-	for line: Dictionary in _changing_text():
-		if line["text"] == words:
+## The lines the screen drew in its last frame, in drawing order.
+func _drawn_lines() -> PackedStringArray:
+	return scene.get_meta("screen_text", PackedStringArray())
+
+## Whether the last frame drew a line reading exactly `words`.
+func _drawn(words: String) -> bool:
+	return _drawn_lines().has(words)
+
+## Whether the last frame drew a line holding `words`.
+func _drawn_says(words: String) -> bool:
+	for line: String in _drawn_lines():
+		if line.contains(words):
 			return true
 	return false
+
+## Whether the bag drawn in the last frame holds `item` carried by `owner`.
+func _bag_holds(item: String, owner: String) -> bool:
+	for slot: Dictionary in scene.get_meta("bag", []):
+		if slot["name"] == item and slot["owner"] == owner:
+			return true
+	return false
+
+## The name the screen gives a city object.
+func _place(object: String) -> String:
+	return str(_status()["places"][object])
 
 ## What each human's action button reads, the chef's first.
 func _actions() -> Array:
@@ -1352,13 +1429,6 @@ func _action(index: int) -> String:
 ## The keys of the caps drawn over the humans' heads in the last frame.
 func _head_caps() -> Array:
 	return scene.get_meta("head_caps", [])
-
-func _screen_says(words: String) -> bool:
-	for line: Dictionary in _changing_text():
-		var text: String = line["text"]
-		if text.contains(words):
-			return true
-	return false
 
 ## Measures every changing line in the font and weight the screen draws it with.
 func _text_fits(where: String) -> bool:

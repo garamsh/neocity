@@ -35,7 +35,10 @@ struct SurvivalFeatures {
 /// exploration time from it. No step runs once the run is over.
 class SurvivalRun {
 public:
-  SurvivalRun(SurvivalFeatures rules, survival::ControlMap players);
+  /// `first_event` numbers the run's first logged event; the screen tells
+  /// notes apart by these numbers, so each run continues the last one's.
+  SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
+              std::uint64_t first_event);
   /// Retains this frame's input and runs every step the frame time completes;
   /// returns the events those steps recorded, oldest first.
   std::vector<hud::Event>
@@ -57,6 +60,8 @@ public:
   [[nodiscard]] float acid_fill() const;
   /// Reports the screen's values by name for host integration assertions.
   [[nodiscard]] godot::Dictionary status() const;
+  /// The number the next logged event takes.
+  [[nodiscard]] std::uint64_t next_event() const;
 
 private:
   [[nodiscard]] bool over() const;
@@ -91,6 +96,8 @@ private:
   std::uint32_t map_changes = 0;
   std::uint32_t last_day_map_changes = 0;
   std::deque<hud::Event> events;
+  /// The number of the log's oldest event.
+  std::uint64_t first_logged = 0;
   /// The events recorded since the current `advance` began.
   std::vector<hud::Event> fresh;
 };

@@ -5,6 +5,7 @@
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/variant/packed_string_array.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -108,6 +109,9 @@ void Session::enter(Screen destination) {
     playback.reset();
   }
   screen = destination;
+  if (run) {
+    next_event = run->next_event();
+  }
   run.reset();
   interruption.reset();
   bursts.clear();
@@ -190,7 +194,7 @@ void Session::advance_setup(const Command &command) {
 
 void Session::start_run(survival::ControlMap control) {
   enter(Screen::Survival);
-  run.emplace(start(), control);
+  run.emplace(start(), control, next_event);
   play(hud::Cinematic::Intro);
 }
 
@@ -448,6 +452,18 @@ void Session::keep_music() const {
 
 void Session::paint(godot::Node2D &canvas,
                     const rendering::Art &drawing) const {
+  // Lines another canvas wrote since are not this one's.
+  static_cast<void>(drawing.take_written());
+  paint_screen(canvas, drawing);
+  godot::PackedStringArray lines;
+  for (const auto &line : drawing.take_written()) {
+    lines.push_back(line);
+  }
+  canvas.set_meta("screen_text", lines);
+}
+
+void Session::paint_screen(godot::Node2D &canvas,
+                           const rendering::Art &drawing) const {
   switch (screen) {
   case Screen::Main:
     hud::paint_title(canvas, drawing, hud::TITLE_ENTRIES.at(cursor));

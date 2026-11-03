@@ -5,6 +5,7 @@
 #include <survival/escape.hpp>
 
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <algorithm>
@@ -47,37 +48,39 @@ constexpr float MARGIN = 8.0F;
 constexpr float GAP = 6.0F;
 /// Words that change with play draw in this weight, the one the harness
 /// measures them in.
-constexpr Weight CHANGING = Weight::SemiBold;
-constexpr int BUTTON_SIZE = 18;
+constexpr Weight CHANGING = Weight::Regular;
 constexpr float BUTTON_PAD = 14.0F;
-/// The smallest words on the screen.
-constexpr int SMALL_SIZE = 13;
+/// The smallest words on the screen: the face at two screen pixels to each
+/// of its own.
+constexpr int SMALL_SIZE = 2 * rendering::FONT_GRID;
+/// The face's capitals stand five of its eight pixels per em.
+constexpr float CAP_HEIGHT = 0.625F;
 /// The top corners: the day at the left, the acid in the middle, the time at
 /// the right, and the goal line under the acid.
 constexpr float BAND_Y = MARGIN;
 constexpr float BAND_HEIGHT = 48.0F;
-constexpr float BAND_BASELINE = BAND_Y + 34.0F;
-constexpr int BIG_SIZE = 26;
+constexpr float BAND_BASELINE = BAND_Y + 32.0F;
+constexpr int BIG_SIZE = 3 * rendering::FONT_GRID;
 constexpr float DAY_WIDTH = 184.0F;
 constexpr float TIME_WIDTH = 148.0F;
 constexpr float TIME_X = SCREEN_WIDTH - MARGIN - TIME_WIDTH;
 constexpr float ACID_WIDTH = 360.0F;
 constexpr float ACID_X = (SCREEN_WIDTH - ACID_WIDTH) / 2.0F;
-constexpr int ACID_SIZE = 22;
+constexpr int ACID_SIZE = BIG_SIZE;
 /// Where the acid's gauge starts inside its panel, after its words.
 constexpr float ACID_GAUGE_X = 132.0F;
 constexpr float GOAL_Y = BAND_Y + BAND_HEIGHT + GAP;
-constexpr int GOAL_SIZE = 16;
+constexpr int GOAL_SIZE = SMALL_SIZE;
 constexpr float GOAL_PAD = 14.0F;
 /// The goal line may run the screen's width, between the corners above and
 /// the Esc hint and notes below.
 constexpr float GOAL_WIDTH = SCREEN_WIDTH - 2.0F * MARGIN;
-constexpr int HAND_OFF_SIZE = 13;
+constexpr int HAND_OFF_SIZE = SMALL_SIZE;
 constexpr float HINT_Y = GOAL_Y + 60.0F;
 /// The log's notes, right-aligned under the Esc hint; each shows this long,
 /// then fades.
 constexpr float NOTE_Y = HINT_Y + 12.0F;
-constexpr float NOTE_WIDTH = 300.0F;
+constexpr float NOTE_WIDTH = 340.0F;
 constexpr float NOTE_HEIGHT = 24.0F;
 constexpr float NOTE_SECONDS = 4.0F;
 constexpr float NOTE_FADE_SECONDS = 1.0F;
@@ -108,16 +111,19 @@ constexpr float ICON = 48.0F;
 constexpr float ACTION_X = BAG_X + BAG_WIDTH + GAP;
 constexpr float ACTION_WIDTH = SCREEN_WIDTH - MARGIN - ACTION_X;
 constexpr float ACTION_INNER = ACTION_WIDTH - 2.0F * 10.0F;
-constexpr int ACTION_SIZE = 20;
-constexpr float SOLO_BUTTON_HEIGHT = 44.0F;
-/// Two humans' rows: a player tag, a button, and two lines of keys.
-constexpr float PLAYER_TAG = 26.0F;
-constexpr float DUO_BUTTON = 146.0F;
-constexpr float DUO_ROW = 34.0F;
-constexpr int DUO_SIZE = 15;
-constexpr float DUO_KEYS = ACTION_INNER - PLAYER_TAG - DUO_BUTTON - GAP;
+constexpr int ACTION_SIZE = SMALL_SIZE;
+constexpr float SOLO_BUTTON_HEIGHT = 36.0F;
+/// Two humans' rows, each a player tag and a button over a line of keys, in
+/// a panel taller than the other corners'.
+constexpr float PLAYER_TAG = 30.0F;
+constexpr float DUO_BUTTON = ACTION_INNER - PLAYER_TAG;
+constexpr float DUO_BUTTON_HEIGHT = 26.0F;
+constexpr float DUO_ROW = 44.0F;
+constexpr float DUO_HEIGHT = 2.0F * DUO_ROW + 12.0F;
+constexpr int DUO_SIZE = SMALL_SIZE;
 /// The key cap over the head of a human whose interact key acts now: above
-/// the map's tag, which stands CELL + 38 scene pixels over the feet.
+/// the map's tag, which `paint_city_labels` in src/rendering/survival.cpp
+/// raises CELL + TAG_RISE, 32 + 38 scene pixels, over the feet.
 constexpr float HEAD_TAG_RISE = 70.0F;
 constexpr float CAP = 26.0F;
 /// The base's task card over the bottom corners.
@@ -125,21 +131,22 @@ constexpr float TASK_WIDTH = 820.0F;
 constexpr float TASK_X = (SCREEN_WIDTH - TASK_WIDTH) / 2.0F;
 constexpr float TASK_HEIGHT = 104.0F;
 constexpr float TASK_Y = FOOT_Y - GAP - TASK_HEIGHT;
-constexpr int TASK_SIZE = 22;
-constexpr int DETAIL_SIZE = 16;
-constexpr int TASK_NOTE_SIZE = 14;
+constexpr int TASK_SIZE = BIG_SIZE;
+constexpr int DETAIL_SIZE = SMALL_SIZE;
+constexpr int TASK_NOTE_SIZE = SMALL_SIZE;
 constexpr float TASK_INNER = TASK_WIDTH - 2.0F * INSET;
 /// The unidentified ingredients float over the appraiser's head in the
-/// kitchen.
+/// kitchen, copied from where `paint_workshop` in src/rendering/survival.cpp
+/// draws the appraiser's idle frame: x 150, standing on the kitchen floor.
 constexpr float APPRAISER_HEAD_X = 216.0F;
 constexpr float APPRAISER_HEAD_Y = 206.0F;
-/// The day's result, over the kitchen, clear of the notes at the right.
-constexpr float RESULT_WIDTH = 700.0F;
-constexpr float RESULT_X =
-    SCREEN_WIDTH - MARGIN - NOTE_WIDTH - GAP - RESULT_WIDTH;
-constexpr float RESULT_Y = HINT_Y - 15.0F;
+/// The day's result, over the task card and clear of the appraiser's
+/// ingredients, the kitchen's people and the notes.
+constexpr float RESULT_WIDTH = TASK_WIDTH;
+constexpr float RESULT_X = TASK_X;
+constexpr float RESULT_BOTTOM = TASK_Y - GAP;
 constexpr float RESULT_LINE_HEIGHT = 22.0F;
-constexpr int RESULT_SIZE = 16;
+constexpr int RESULT_SIZE = SMALL_SIZE;
 /// The pause screen: the keys at the left over the volumes, the recipe book
 /// at the right.
 constexpr float PAUSE_BOX_X = 40.0F;
@@ -154,14 +161,18 @@ constexpr float PAUSE_INSET = 32.0F;
 constexpr float KEY_FIRST = 330.0F;
 constexpr float KEY_SECOND = 470.0F;
 constexpr float KEY_ROWS_WIDTH = 600.0F;
-constexpr int KEY_ROW_SIZE = 15;
+constexpr int KEY_ROW_SIZE = SMALL_SIZE;
 constexpr float BOOK_X = 680.0F;
 constexpr float BOOK_RIGHT = PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_INSET;
 constexpr float BOOK_NEEDS = 150.0F;
 constexpr float BOOK_MARK = 400.0F;
 constexpr float BOOK_ROW = 24.0F;
-constexpr int BOOK_SIZE = 14;
+constexpr int BOOK_SIZE = SMALL_SIZE;
 constexpr std::size_t EATEN_PER_LINE = 6;
+/// What feeding does, under the recipe book.
+constexpr std::array FEED_RULES{"New and delicious food holds the acid back.",
+                                "Anything else raises it.",
+                                "Full acid ends the run."};
 /// The volume rows' part at the bottom of the pause screen.
 constexpr float VOLUME_AREA = 104.0F;
 constexpr float VOLUME_ROW_HEIGHT = 34.0F;
@@ -169,14 +180,14 @@ constexpr float VOLUME_BLOCK_STEP = 18.0F;
 constexpr float VOLUME_BLOCKS_X = 240.0F;
 constexpr const char *VOLUME_KEYS =
     "SOUND   W/S or up/down: choose   A/D or left/right: change";
-constexpr int PAUSE_ROW_SIZE = 18;
+constexpr int PAUSE_ROW_SIZE = SMALL_SIZE;
 constexpr float NOTICE_BOX_X = 290.0F;
 constexpr float NOTICE_BOX_Y = 236.0F;
 constexpr float NOTICE_BOX_WIDTH = 700.0F;
 constexpr float NOTICE_BOX_HEIGHT = 240.0F;
 constexpr float NOTICE_TEXT_X = 326.0F;
-constexpr int INTERRUPTION_TITLE_SIZE = 34;
-constexpr int INTERRUPTION_LINE_SIZE = 20;
+constexpr int INTERRUPTION_TITLE_SIZE = 4 * rendering::FONT_GRID;
+constexpr int INTERRUPTION_LINE_SIZE = BIG_SIZE;
 /// A panel's entrance lifts it this far into place.
 constexpr float ENTRANCE_LIFT = 18.0F;
 /// The pause key's hint under the time, where a first player looks for keys.
@@ -344,11 +355,17 @@ survival::ToolId role_replacement(const survival::WorkshopConfig &workshop,
   std::abort();
 }
 
-String clock(std::chrono::microseconds remaining) {
+/// A number with at least two digits, as the screen shows it.
+String two_digits(std::uint64_t value) {
+  return (value < 10 ? String("0") : String()) + number(value);
+}
+
+/// The time left as minutes and seconds of two digits each, as every
+/// screen shows it: 04:32.
+String corner_clock(std::chrono::microseconds remaining) {
   const auto seconds = std::chrono::ceil<std::chrono::seconds>(remaining);
   const auto whole = static_cast<std::uint64_t>(seconds.count());
-  return number(whole / 60) + (whole % 60 < 10 ? ":0" : ":") +
-         number(whole % 60);
+  return two_digits(whole / 60) + ":" + two_digits(whole % 60);
 }
 
 /// A short span in seconds to a tenth, rounded up: 2.5s.
@@ -469,7 +486,8 @@ void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
   const float lip = marked ? 4.0F : 0.0F;
   keyed_text(canvas, drawing, area.position.x + BUTTON_PAD,
              area.position.y +
-                 (area.size.y - lip + static_cast<float>(size) * 0.72F) / 2.0F,
+                 (area.size.y - lip + static_cast<float>(size) * CAP_HEIGHT) /
+                     2.0F,
              text, size, marked ? tones.ink : tones.white,
              marked ? color(110, 70, 10, 1.0F) : tones.gold);
 }
@@ -691,7 +709,8 @@ String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
   }
   if (worth_setting_out(frame)) {
     return set_out_keys(frame) + "Set out into the city: " +
-           clock(frame.view.progression.remaining_exploration) + " left today.";
+           corner_clock(frame.view.progression.remaining_exploration) +
+           " left today.";
   }
   return key(keys.end_day) + "End the day unfed: acid rises by " +
          number(frame.content.get().companion.unfed_penalty.value) + ".";
@@ -813,19 +832,7 @@ String end_day_job(const SurvivalFrame &frame) {
 /// A small caption, as the pause screen's columns open.
 void caption(godot::Node2D &canvas, const rendering::Art &drawing, float x,
              float baseline, const String &text, godot::Color tint) {
-  drawing.text(canvas, x, baseline, text, SMALL_SIZE, tint, Weight::SemiBold);
-}
-
-/// A number with at least two digits, as the corners show it.
-String two_digits(std::uint64_t value) {
-  return (value < 10 ? String("0") : String()) + number(value);
-}
-
-/// The time left as minutes and seconds of two digits each: 04:32.
-String corner_clock(std::chrono::microseconds remaining) {
-  const auto seconds = std::chrono::ceil<std::chrono::seconds>(remaining);
-  const auto whole = static_cast<std::uint64_t>(seconds.count());
-  return two_digits(whole / 60) + ":" + two_digits(whole % 60);
+  drawing.text(canvas, x, baseline, text, SMALL_SIZE, tint);
 }
 
 /// A trough sunk into a panel with its eased fill, lit along its top.
@@ -925,13 +932,13 @@ void paint_goal(godot::Node2D &canvas, const rendering::Art &drawing,
 void paint_notes(godot::Node2D &canvas, const rendering::Art &drawing,
                  const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  // A line repeated in the log is a new note each time, told apart by how
-  // many of the same words come before it.
+  // Each event is its own note by its number in the session's log, so a line
+  // repeated after older ones drop out still appears afresh.
   std::vector<std::pair<String, String>> notes;
-  std::map<String, std::uint64_t> repeats;
+  notes.reserve(frame.events.size());
+  std::uint64_t serial = frame.first_event;
   for (const auto &event : frame.events) {
-    const String text = describe(frame.view, event);
-    notes.emplace_back(text, "note" + number(repeats[text]++) + text);
+    notes.emplace_back(describe(frame.view, event), "note" + number(serial++));
   }
   float y = NOTE_Y;
   for (const auto &[text, name] : std::ranges::reverse_view(notes)) {
@@ -968,10 +975,15 @@ void paint_hearts(godot::Node2D &canvas, const rendering::Art &drawing, float x,
   }
 }
 
+/// Who plays an actor: P1, P2 or AI.
+String player_tag(const SurvivalFrame &frame, Actor actor) {
+  const auto keys = survival::key_set(frame.control, actor);
+  return keys ? "P" + number(*keys + 1) : String("AI");
+}
+
 /// Who plays an actor and where it is, as its block's top line shows.
 String actor_status(const SurvivalFrame &frame, Actor actor) {
-  const auto keys = survival::key_set(frame.control, actor);
-  return (keys ? "P" + number(*keys + 1) : String("AI")) + "  " +
+  return player_tag(frame, actor) + "  " +
          (state_of(frame.view, actor).location == Location::City ? "in city"
                                                                  : "at base");
 }
@@ -1025,96 +1037,133 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-/// One kind of thing in the bag.
+/// One kind of thing in the bag; a spare tool names who carries it, since
+/// a repair or a replacement takes the acting actor's own.
 struct BagItem {
   std::string_view name;
   std::uint32_t count = 0;
   bool known = true;
+  String owner;
 };
 
-/// The ingredients both actors carry, then their spare tools.
-std::vector<BagItem> bag_of(const GameView &view) {
+/// The ingredients both actors carry, then each actor's spare tools.
+std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
+  const auto &view = frame.view;
   std::vector<BagItem> items;
   for (const auto &[value, count] : pack_of(view)) {
     const auto ingredient = IngredientId{value};
     items.push_back({.name = survival::ingredient_name(ingredient),
                      .count = count,
-                     .known = identified(view, ingredient)});
+                     .known = identified(view, ingredient),
+                     .owner = {}});
   }
-  std::map<std::uint32_t, std::uint32_t> tools;
   for (const auto actor : ACTORS) {
+    std::map<std::uint32_t, std::uint32_t> tools;
     for (const auto tool : state_of(view, actor).tools) {
       ++tools[tool.value];
     }
-  }
-  for (const auto &[value, count] : tools) {
-    items.push_back({.name = survival::tool_name(survival::ToolId{value}),
-                     .count = count,
-                     .known = true});
+    for (const auto &[value, count] : tools) {
+      items.push_back({.name = survival::tool_name(survival::ToolId{value}),
+                       .count = count,
+                       .known = true,
+                       .owner = player_tag(frame, actor)});
+    }
   }
   return items;
 }
 
 /// The bag at the bottom middle: numbered slots with each item's icon and
-/// count, and a mark on an ingredient not yet identified.
+/// count, a mark on an ingredient not yet identified and a spare tool's
+/// owner. Leaves on the canvas the drawn items as the `bag` meta.
 void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
                const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   rendering::panel(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
-  const auto items = bag_of(frame.view);
+  const auto items = bag_of(frame);
   const std::size_t slots = std::max(BAG_SLOTS, items.size());
-  // More kinds than slots share the bag's width.
+  // More kinds than slots share the bag's width, each slot showing its
+  // left part under the next.
   const float pitch = slots > BAG_SLOTS ? (BAG_WIDTH - 20.0F - SLOT) /
                                               static_cast<float>(slots - 1)
                                         : SLOT_PITCH;
+  const float shown = std::min(SLOT, pitch - 2.0F);
+  const auto slot_at = [pitch](std::size_t index) {
+    return Vector2(BAG_X + 10.0F + static_cast<float>(index) * pitch,
+                   FOOT_Y + (FOOT_HEIGHT - SLOT) / 2.0F);
+  };
   for (std::size_t index = 0; index < slots; ++index) {
-    const Vector2 at(BAG_X + 10.0F + static_cast<float>(index) * pitch,
-                     FOOT_Y + (FOOT_HEIGHT - SLOT) / 2.0F);
+    const auto at = slot_at(index);
     rendering::inset(canvas, rect(at.x, at.y, SLOT, SLOT));
+    if (index < items.size()) {
+      paint_item(canvas, drawing, items.at(index).name,
+                 at + Vector2(4.0F, 4.0F));
+    }
+  }
+  // The marks go over every slot, so a crowded bag hides none of them.
+  godot::Array drawn;
+  for (std::size_t index = 0; index < slots; ++index) {
+    const auto at = slot_at(index);
     drawing.text(canvas, at.x + 5.0F, at.y + 15.0F, number(index + 1),
                  SMALL_SIZE, tones.faint, Weight::Bold);
     if (index >= items.size()) {
       continue;
     }
     const auto &item = items.at(index);
-    paint_item(canvas, drawing, item.name, at + Vector2(4.0F, 4.0F));
     const String count = number(item.count);
     chip(canvas, drawing,
-         at.x + SLOT - drawing.text_width(count, SMALL_SIZE, CHANGING) - 6.0F,
+         at.x + shown - drawing.text_width(count, SMALL_SIZE, CHANGING) - 6.0F,
          at.y + SLOT - 5.0F, count, SMALL_SIZE, tones.white);
     if (!item.known) {
-      chip(canvas, drawing, at.x + SLOT - 13.0F, at.y + 16.0F, "?", SMALL_SIZE,
+      chip(canvas, drawing, at.x + shown - 13.0F, at.y + 16.0F, "?", SMALL_SIZE,
            tones.gold);
     }
+    if (!item.owner.is_empty()) {
+      chip(canvas, drawing,
+           at.x + shown - drawing.text_width(item.owner, SMALL_SIZE, CHANGING) -
+               6.0F,
+           at.y + 16.0F, item.owner, SMALL_SIZE, tones.cyan);
+    }
+    godot::Dictionary entry;
+    entry.set("name", from(item.name));
+    entry.set("count", item.count);
+    entry.set("known", item.known);
+    entry.set("owner", item.owner);
+    drawn.push_back(entry);
   }
+  canvas.set_meta("bag", drawn);
 }
 
-/// What one human's interact key does in the city, or how long the
-/// collection under way still holds the actor, for its button.
+/// What one human's interact key does in the city and to what, or how long
+/// the collection under way still holds the actor, for its button.
 String interact_label(const SurvivalFrame &frame, Actor actor,
                       const KeyLabels &keys) {
   if (const auto &held = collecting_of(frame.view, actor)) {
     return "COLLECTING " + seconds(held->remaining);
   }
   const auto &offer = frame.offers.at(index_of(actor)).interact;
-  const char *verb = "USE";
-  if (offer && std::holds_alternative<survival::Collect>(*offer)) {
-    verb = "COLLECT";
-  } else if (offer && std::holds_alternative<survival::Repair>(*offer)) {
-    verb = "REPAIR";
+  if (const auto *collect =
+          offer ? std::get_if<survival::Collect>(&*offer) : nullptr) {
+    return key(keys.interact) + "COLLECT " +
+           rendering::place_name(frame.view, collect->source);
   }
-  return key(keys.interact) + verb;
+  if (const auto *repair =
+          offer ? std::get_if<survival::Repair>(&*offer) : nullptr) {
+    return key(keys.interact) + "REPAIR " +
+           rendering::place_name(frame.view, repair->target);
+  }
+  return key(keys.interact) + "USE";
 }
 
-/// The movement keys of one human.
-String move_hint(const KeyLabels &keys) {
-  return from(keys.move) + " move  " + from(keys.run) + " run";
-}
-
-/// The jump key, and the travel key with where it takes this human.
-String jump_hint(const SurvivalFrame &frame, Actor actor,
-                 const KeyLabels &keys) {
-  return from(keys.jump) + " jump  " + from(keys.travel) +
+/// The movement, run, jump and travel keys of one human, with where travel
+/// takes it; a collection holds the actor, so travel is left out then.
+String key_hint(const SurvivalFrame &frame, Actor actor,
+                const KeyLabels &keys) {
+  String moves = from(keys.move) + " move  " + from(keys.run) + " run  " +
+                 from(keys.jump) + " jump";
+  if (collecting_of(frame.view, actor)) {
+    return moves;
+  }
+  return moves + String("  ") + from(keys.travel) +
          (state_of(frame.view, actor).location == Location::City ? " base"
                                                                  : " set out");
 }
@@ -1130,41 +1179,41 @@ std::vector<std::pair<Actor, std::size_t>> humans(const SurvivalFrame &frame) {
   return found;
 }
 
-/// The action at the bottom right: each human's interact key as a button,
-/// lit while it acts now, with that human's move, run, jump and travel keys.
+/// The action at the bottom right: each human's interact key as a button
+/// naming what it acts on, lit while it acts now, over that human's keys.
 void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  rendering::panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
   const float left = ACTION_X + 10.0F;
   const auto players = humans(frame);
   if (players.size() == 1) {
     const auto [actor, set] = players.front();
     const auto &keys = KEY_LABELS.at(set);
+    rendering::panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
     paint_button(canvas, drawing,
                  rect(left, FOOT_Y + 8.0F, ACTION_INNER, SOLO_BUTTON_HEIGHT),
                  interact_label(frame, actor, keys), ACTION_SIZE,
                  frame.offers.at(index_of(actor)).interact.has_value());
-    drawing.text(canvas, left + 2.0F, FOOT_Y + FOOT_HEIGHT - 13.0F,
-                 move_hint(keys) + "  " + jump_hint(frame, actor, keys),
-                 SMALL_SIZE, tones.muted, CHANGING);
+    drawing.text(canvas, left + 2.0F, FOOT_Y + FOOT_HEIGHT - 14.0F,
+                 key_hint(frame, actor, keys), SMALL_SIZE, tones.muted,
+                 CHANGING);
     return;
   }
-  float row = FOOT_Y + 8.0F;
+  const float top = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT;
+  rendering::panel(canvas, rect(ACTION_X, top, ACTION_WIDTH, DUO_HEIGHT));
+  float row = top + 8.0F;
   for (const auto &[actor, set] : players) {
     const auto &keys = KEY_LABELS.at(set);
-    drawing.text(canvas, left, row + 22.0F, "P" + number(set + 1), 14,
+    drawing.text(canvas, left, row + 18.0F, "P" + number(set + 1), SMALL_SIZE,
                  tones.cyan, Weight::Bold);
     paint_button(canvas, drawing,
-                 rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_ROW - 1.0F),
+                 rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_BUTTON_HEIGHT),
                  interact_label(frame, actor, keys), DUO_SIZE,
                  frame.offers.at(index_of(actor)).interact.has_value());
-    const float hints = left + PLAYER_TAG + DUO_BUTTON + GAP;
-    drawing.text(canvas, hints, row + 13.0F, move_hint(keys), SMALL_SIZE,
-                 tones.muted, CHANGING);
-    drawing.text(canvas, hints, row + 28.0F, jump_hint(frame, actor, keys),
-                 SMALL_SIZE, tones.muted, CHANGING);
-    row += DUO_ROW + 2.0F;
+    drawing.text(canvas, left + PLAYER_TAG + 2.0F, row + DUO_ROW - 4.0F,
+                 key_hint(frame, actor, keys), SMALL_SIZE, tones.muted,
+                 CHANGING);
+    row += DUO_ROW;
   }
 }
 
@@ -1183,14 +1232,15 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
     const auto point = rendering::map_point(
         chef ? frame.view.exploration.chef.body.position
              : frame.view.exploration.appraiser.body.position);
-    // The same eased feet the city draws the actor on.
+    // The same eased feet the city draws the actor on, under the names
+    // `feet_of` in src/rendering/survival.cpp gives them.
     const Vector2 feet = rendering::to_screen(
         shot.camera,
         Vector2(
             drawing.glide(chef ? "chef_feet_x" : "appraiser_feet_x", point.x),
             drawing.glide(chef ? "chef_feet_y" : "appraiser_feet_y", point.y)));
     const String cap = from(KEY_LABELS.at(set).interact);
-    const float words = drawing.text_width(cap, 16, Weight::Bold);
+    const float words = drawing.text_width(cap, SMALL_SIZE, Weight::Bold);
     const float width = std::max(CAP, words + 14.0F);
     const Vector2 at =
         Vector2(feet.x - width / 2.0F,
@@ -1201,8 +1251,8 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
                      color(204, 136, 28, 1.0F));
     canvas.draw_rect(rect(at.x + 2.0F, at.y + 2.0F, width - 4.0F, CAP - 7.0F),
                      tones.gold);
-    drawing.text(canvas, at.x + (width - words) / 2.0F, at.y + 18.0F, cap, 16,
-                 tones.ink, Weight::Bold);
+    drawing.text(canvas, at.x + (width - words) / 2.0F, at.y + 17.0F, cap,
+                 SMALL_SIZE, tones.ink, Weight::Bold);
     godot::PackedVector2Array pointer;
     pointer.push_back(Vector2(at.x + width / 2.0F - 5.0F, at.y + CAP));
     pointer.push_back(Vector2(at.x + width / 2.0F + 5.0F, at.y + CAP));
@@ -1213,14 +1263,36 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
   canvas.set_meta("head_caps", caps);
 }
 
-/// The base's second line: what feeding asks while a stored dish can be
-/// fed, otherwise what the offered dish would score.
+/// The feed key of the first human whose feed key would feed a stored dish,
+/// and that dish: "[F] Feed Fish Stew".
+std::optional<String> feed_job(const SurvivalFrame &frame) {
+  for (const auto actor : ACTORS) {
+    const auto keys = survival::key_set(frame.control, actor);
+    const auto &offer = frame.offers.at(index_of(actor)).feed;
+    const auto *feed = offer ? std::get_if<survival::Feed>(&*offer) : nullptr;
+    if (keys && feed != nullptr) {
+      return key(KEY_LABELS.at(*keys).feed) + "Feed " +
+             from(survival::food_name(feed->food));
+    }
+  }
+  return std::nullopt;
+}
+
+/// The base's second line: while a stored dish can be fed, its feed key
+/// unless the task already names it, and what feeding asks; otherwise what
+/// the offered dish would score.
 String task_detail(const SurvivalFrame &frame) {
   if (!dish_to_feed(frame)) {
     return offered_forecast(frame);
   }
-  return "Feeding ends the day. A dish needs a score of " +
-         number(frame.content.get().companion.workshop.satisfying_score) + ".";
+  const String needs =
+      "A dish needs a score of " +
+      number(frame.content.get().companion.workshop.satisfying_score) + ".";
+  const auto feed = feed_job(frame);
+  if (!feed || next_step(frame).begins_with(*feed)) {
+    return "Feeding ends the day. " + needs;
+  }
+  return *feed + String(": this ends the day. ") + needs;
 }
 
 /// How many recipes can be cooked now, and where the rest are.
@@ -1291,7 +1363,8 @@ void paint_appraisal(godot::Node2D &canvas, const rendering::Art &drawing,
     }
     paint_item(canvas, drawing, survival::ingredient_name(ingredient),
                Vector2(left, y + 8.0F));
-    chip(canvas, drawing, left + ICON - 10.0F, y + 22.0F, "?", 15, tones.gold);
+    chip(canvas, drawing, left + ICON - 10.0F, y + 22.0F, "?", SMALL_SIZE,
+         tones.gold);
     left += 52.0F;
   }
 }
@@ -1313,7 +1386,7 @@ void paint_dishes(godot::Node2D &canvas, const rendering::Art &drawing,
                    drawing.text_width(needs, SMALL_SIZE, Weight::Bold),
                FOOT_Y + 22.0F, needs, SMALL_SIZE, tones.gold, Weight::Bold);
   if (workshop.foods.empty()) {
-    drawing.text(canvas, left, FOOT_Y + 54.0F, NO_DISH, 14, tones.faint,
+    drawing.text(canvas, left, FOOT_Y + 54.0F, NO_DISH, SMALL_SIZE, tones.faint,
                  CHANGING);
     return;
   }
@@ -1351,11 +1424,11 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
     return;
   }
   const auto tones = rendering::palette();
-  rendering::panel(
-      canvas,
-      rect(RESULT_X, RESULT_Y, RESULT_WIDTH,
-           RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 24.0F));
-  float y = RESULT_Y + 14.0F + static_cast<float>(RESULT_SIZE);
+  const float height =
+      RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 18.0F;
+  const float top = RESULT_BOTTOM - height;
+  rendering::panel(canvas, rect(RESULT_X, top, RESULT_WIDTH, height));
+  float y = top + 10.0F + static_cast<float>(RESULT_SIZE);
   bool headline = true;
   for (const auto &line : lines) {
     drawing.text(canvas, RESULT_X + INSET, y, line, RESULT_SIZE,
@@ -1561,6 +1634,103 @@ std::vector<KeyRow> rows_for(bool together) {
   return rows;
 }
 
+/// Every refusal a feature can answer with.
+constexpr std::array<survival::ActionResult, 35> REFUSALS{
+    survival::Result::NotExploring,
+    survival::Result::NoExplorationTime,
+    survival::Result::Busy,
+    survival::Result::InvalidElapsed,
+    survival::Result::NotInWorkshop,
+    survival::Result::MissingIngredients,
+    survival::Result::MissingTool,
+    survival::Result::RunOver,
+    survival::CollectionResult::Depleted,
+    survival::CollectionResult::Unavailable,
+    survival::CollectionResult::OutOfRange,
+    survival::CollectionResult::Busy,
+    survival::CollectionResult::NotExploring,
+    survival::CollectionResult::UnknownSource,
+    survival::RepairResult::OutOfRange,
+    survival::RepairResult::ToolNotCarried,
+    survival::RepairResult::WrongTool,
+    survival::RepairResult::Busy,
+    survival::RepairResult::UnknownObject,
+    survival::RepairResult::NotDamaged,
+    survival::RepairResult::NotRepairable,
+    survival::RepairResult::NotExploring,
+    survival::WorkshopResult::NotInWorkshop,
+    survival::WorkshopResult::ToolIntact,
+    survival::WorkshopResult::NotCarried,
+    survival::WorkshopResult::NoFood,
+    survival::WorkshopResult::WrongRole,
+    survival::WorkshopResult::AlreadyIdentified,
+    survival::WorkshopResult::NotIdentified,
+    survival::WorkshopResult::UnknownRecipe,
+    survival::Result::Applied,
+    survival::CollectionResult::Applied,
+    survival::RepairResult::Applied,
+    survival::WorkshopResult::Applied,
+    survival::WorkshopResult::Failed};
+
+/// Every sentence the log can show in this run: each actor's, place's,
+/// ingredient's and dish's, and every refusal.
+std::vector<String> every_note(const SurvivalFrame &frame) {
+  const auto &view = frame.view;
+  const auto &tuning = frame.content.get().companion;
+  // A day number of three digits stands for any day a run reaches.
+  std::vector<Event> events{TimeUpEvent{}, EscapeMissEvent{.day = 100}};
+  const auto acted = [&events](Actor actor, survival::Action action,
+                               survival::ActionResult result) {
+    events.emplace_back(
+        ActionEvent{.actor = actor, .action = action, .result = result});
+  };
+  for (const auto actor : ACTORS) {
+    events.emplace_back(HazardEvent{.actor = actor, .exhausted = false});
+    events.emplace_back(HazardEvent{.actor = actor, .exhausted = true});
+    events.emplace_back(FallEvent{.actor = actor});
+    for (const auto result : REFUSALS) {
+      acted(actor, survival::Enter{}, result);
+      acted(actor, survival::ReturnToBase{}, result);
+      acted(actor, survival::ReplaceTool{}, result);
+    }
+    for (const auto &object : view.world.objects) {
+      acted(actor, survival::Collect{.source = object.id},
+            survival::CollectionResult::Applied);
+      acted(actor, survival::Repair{.target = object.id, .tool = {}},
+            survival::RepairResult::Applied);
+    }
+  }
+  for (const auto &object : view.world.objects) {
+    events.emplace_back(WorldEvent{.object = object.id,
+                                   .state = survival::ObjectState::Destroyed});
+    events.emplace_back(WorldEvent{.object = object.id,
+                                   .state = survival::ObjectState::Intact});
+  }
+  for (const auto &flavor : tuning.workshop.flavors) {
+    for (const auto result : {survival::WorkshopResult::Applied,
+                              survival::WorkshopResult::Failed}) {
+      acted(Actor::Appraiser,
+            survival::Appraise{.ingredient = flavor.ingredient}, result);
+    }
+  }
+  for (const auto &recipe : tuning.workshop.recipes) {
+    for (const auto result : {survival::WorkshopResult::Applied,
+                              survival::WorkshopResult::Failed}) {
+      acted(Actor::Chef, survival::Cook{.food = recipe.food}, result);
+    }
+    acted(Actor::Chef, survival::Feed{.food = recipe.food},
+          survival::WorkshopResult::Applied);
+  }
+  acted(Actor::Chef, survival::EndDayUnfed{.penalty = tuning.unfed_penalty},
+        survival::WorkshopResult::Applied);
+  std::vector<String> notes;
+  notes.reserve(events.size());
+  for (const auto &event : events) {
+    notes.push_back(describe(view, event));
+  }
+  return notes;
+}
+
 /// The name and the line under it of one choice of players.
 std::array<String, 2> setup_label(SetupEntry entry) {
   switch (entry) {
@@ -1614,9 +1784,9 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
     }
     const auto ink = chosen ? tones.ink : tones.white;
     drawing.text(canvas, SETUP_X + 160.0F, y + 52.0F,
-                 number(number_key) + "   " + label.at(0), 28, ink,
+                 number(number_key) + "   " + label.at(0), 32, ink,
                  Weight::Bold);
-    drawing.text(canvas, SETUP_X + 160.0F, y + 86.0F, label.at(1), 19,
+    drawing.text(canvas, SETUP_X + 160.0F, y + 86.0F, label.at(1), 24,
                  chosen ? tones.ink : tones.muted);
     y += SETUP_PITCH;
     ++number_key;
@@ -1626,11 +1796,11 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.text(canvas, 30.0F, 642.0F,
                "Gather by day, appraise and cook at base, and feed the monster "
                "before the acid wrecks the city.",
-               20, tones.white);
+               24, tones.white);
   drawing.text(canvas, 30.0F, 680.0F,
                "W/S or up/down: choose     Enter: select     1, 2, 3: jump "
                "straight in     M: main menu",
-               17, tones.muted);
+               16, tones.muted);
 }
 
 namespace {
@@ -1661,7 +1831,7 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
                        tones.raised);
     }
     drawing.text(canvas, PAUSE_TEXT_X, y, row.name, PAUSE_ROW_SIZE,
-                 row.marked ? tones.gold : tones.white, Weight::SemiBold);
+                 row.marked ? tones.gold : tones.white);
     const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
     for (std::uint8_t step = 0; step < row.steps; ++step) {
       const auto block =
@@ -1692,7 +1862,7 @@ String eaten_mark(const SurvivalFrame &frame, survival::FoodId food) {
 }
 
 /// Every recipe with what it still needs, the monster's mark and its taste,
-/// then the ingredients eaten so far, from `top`.
+/// then the ingredients eaten so far and what feeding does, from `top`.
 void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame, float top) {
   const auto tones = rendering::palette();
@@ -1730,6 +1900,12 @@ void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
   for (const auto &line : eaten_lines(frame.view.workshop.eaten_ingredients)) {
     drawing.text(canvas, BOOK_X, y, line, SMALL_SIZE, tones.muted, CHANGING);
     y += 18.0F;
+  }
+  y += 12.0F;
+  caption(canvas, drawing, BOOK_X, y, "FEEDING", tones.gold);
+  for (const auto *rule : FEED_RULES) {
+    y += 20.0F;
+    drawing.text(canvas, BOOK_X, y, rule, SMALL_SIZE, tones.white);
   }
 }
 
@@ -1874,14 +2050,14 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                 godot::Vector2(280.0F, 300.0F), 2.0F);
   switch (cinematic) {
   case Cinematic::Intro:
-    drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 46, tones.white,
+    drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
                  Weight::Bold);
     drawing.text(canvas, 130.0F, 230.0F,
                  "A monster ate the city. Keep it fed, and look for a way out.",
                  24, tones.white);
     break;
   case Cinematic::Ending:
-    drawing.text(canvas, 130.0F, 170.0F, "ESCAPED", 46, tones.gold,
+    drawing.text(canvas, 130.0F, 170.0F, "ESCAPED", 48, tones.gold,
                  Weight::Bold);
     drawing.text(canvas, 130.0F, 230.0F,
                  "The party got out of the monster after " +
@@ -1889,7 +2065,7 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                  24, tones.white);
     break;
   case Cinematic::Loss:
-    drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 46, tones.success,
+    drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 48, tones.success,
                  Weight::Bold);
     drawing.text(canvas, 130.0F, 230.0F,
                  "The acid filled the monster's mouth after " +
@@ -1898,8 +2074,8 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
     break;
   }
   drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
-               20, tones.muted);
-  drawing.text(canvas, 130.0F, 640.0F, "E: skip   M: main menu", 22,
+               24, tones.muted);
+  drawing.text(canvas, 130.0F, 640.0F, "E: skip   M: main menu", 24,
                tones.muted);
 }
 
@@ -2138,9 +2314,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
     lines.push_back(fitted(next_step(frame), GOAL_SIZE, goal_inner));
   }
   lines.push_back(fitted(hand_off_notice(frame), HAND_OFF_SIZE, goal_inner));
-  for (const auto &event : frame.events) {
-    lines.push_back(
-        fitted(describe(frame.view, event), SMALL_SIZE, NOTE_WIDTH - 20.0F));
+  for (const auto &note : every_note(frame)) {
+    lines.push_back(fitted(note, SMALL_SIZE, NOTE_WIDTH - 20.0F));
   }
   for (const auto &line : day_result(frame)) {
     lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 2.0F * INSET));
@@ -2153,25 +2328,25 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   lines.push_back(fitted(String("AI  at base  ") + DAMAGED_TOOL, SMALL_SIZE,
                          ACTOR_TEXT_WIDTH));
   // The city's action: a lone human's button and keys, or each of two
-  // humans' rows, with the hold's words in place of the verb.
+  // humans' rows, with every place its key can act on in the button, and
+  // the hold's words in place of the verb.
   const auto players = humans(frame);
-  const String hold = "COLLECTING " + collection_clock(frame);
+  const bool alone = players.size() == 1;
+  const float button = (alone ? ACTION_INNER : DUO_BUTTON) - padding;
+  const float hint = alone ? ACTION_INNER - 2.0F : DUO_BUTTON - 2.0F;
+  std::vector<String> labels{"COLLECTING " + collection_clock(frame)};
   for (const auto &[actor, set] : players) {
     const auto &keys = KEY_LABELS.at(set);
-    const String label = interact_label(frame, actor, keys);
-    if (players.size() == 1) {
-      lines.push_back(fitted(label, ACTION_SIZE, ACTION_INNER - padding));
-      lines.push_back(fitted(hold, ACTION_SIZE, ACTION_INNER - padding));
-      lines.push_back(
-          fitted(move_hint(keys) + "  " + jump_hint(frame, actor, keys),
-                 SMALL_SIZE, ACTION_INNER - 2.0F));
-    } else {
-      lines.push_back(fitted(label, DUO_SIZE, DUO_BUTTON - padding));
-      lines.push_back(fitted(hold, DUO_SIZE, DUO_BUTTON - padding));
-      lines.push_back(fitted(move_hint(keys), SMALL_SIZE, DUO_KEYS));
-      lines.push_back(
-          fitted(jump_hint(frame, actor, keys), SMALL_SIZE, DUO_KEYS));
+    labels.push_back(interact_label(frame, actor, keys));
+    lines.push_back(fitted(key_hint(frame, actor, keys), SMALL_SIZE, hint));
+    for (const auto &object : frame.view.world.objects) {
+      const String place = rendering::place_name(frame.view, object.id);
+      labels.push_back(key(keys.interact) + "COLLECT " + place);
+      labels.push_back(key(keys.interact) + "REPAIR " + place);
     }
+  }
+  for (const auto &label : labels) {
+    lines.push_back(fitted(label, alone ? ACTION_SIZE : DUO_SIZE, button));
   }
   // The base's task card.
   const String end = end_day_job(frame);
@@ -2179,11 +2354,18 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   lines.push_back(fitted(end, TASK_NOTE_SIZE, TASK_INNER / 2.0F));
   lines.push_back(
       fitted(cookable_note(frame), TASK_NOTE_SIZE, TASK_INNER / 2.0F - 20.0F));
-  lines.push_back(fitted(NO_DISH, 14, ACTION_INNER));
+  lines.push_back(fitted(NO_DISH, SMALL_SIZE, ACTION_INNER));
   const auto &tuning = frame.content.get().companion.workshop;
   for (const auto &recipe : tuning.recipes) {
     lines.push_back(
         fitted(cook_forecast(frame, recipe.food), DETAIL_SIZE, TASK_INNER));
+    for (const auto &keys : KEY_LABELS) {
+      lines.push_back(fitted(
+          key(keys.feed) + "Feed " + from(survival::food_name(recipe.food)) +
+              ": this ends the day. A dish needs a score of " +
+              number(tuning.satisfying_score) + ".",
+          DETAIL_SIZE, TASK_INNER));
+    }
     lines.push_back(fitted(from(survival::food_name(recipe.food)), BOOK_SIZE,
                            BOOK_NEEDS - 8.0F));
     const auto subsets = std::size_t{1} << recipe.ingredients.size();
@@ -2202,6 +2384,9 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   }
   for (const auto &line : eaten_lines(every_ingredient)) {
     lines.push_back(fitted(line, SMALL_SIZE, BOOK_RIGHT - BOOK_X));
+  }
+  for (const auto *rule : FEED_RULES) {
+    lines.push_back(fitted(rule, SMALL_SIZE, BOOK_RIGHT - BOOK_X));
   }
   for (const auto &rows : {key_rows(frame), control_rows()}) {
     for (const auto &row : rows) {
