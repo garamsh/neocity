@@ -12,20 +12,25 @@
 namespace neocity::hud {
 
 /// The title screen's entries.
-enum class TitleEntry : std::uint8_t { NewGame, Controls, Quit };
+enum class TitleEntry : std::uint8_t { NewGame, Controls, HowToPlay, Quit };
 
 /// The title entries top to bottom; number key n chooses entry n.
 inline constexpr std::array TITLE_ENTRIES{
-    TitleEntry::NewGame, TitleEntry::Controls, TitleEntry::Quit};
+    TitleEntry::NewGame, TitleEntry::Controls, TitleEntry::HowToPlay,
+    TitleEntry::Quit};
 
 /// Draws the title screen with `selected` marked.
 void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                  TitleEntry selected);
 /// Draws every key of both players and the way back to the title.
 void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing);
+/// Draws the How to play page: what the game asks, each first-play tip's
+/// line, and the way back to the title.
+void paint_how_to_play(godot::Node2D &canvas, const rendering::Art &drawing);
 /// The title screen's entries, each clicked as its number key.
 [[nodiscard]] std::vector<Target> title_targets();
-/// The controls page's way back to the title.
+/// The way back to the title from the controls page or the How to play page,
+/// which share its place.
 [[nodiscard]] std::vector<Target>
 controls_targets(const rendering::Art &drawing);
 

@@ -94,6 +94,10 @@ const FONT_GRID: int = 8
 const MIN_TEXT_SIZE: int = 16
 ## When the escape checks begin, which the pause screen names.
 const ESCAPE_GOAL: String = "Escape checks from day 30"
+## How many first-play tips there are, one per concept.
+const TIP_COUNT: int = 10
+## The screen, where a tip must stand whole.
+const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
 ## What feeding does, which the recipe book on the pause screen names.
 const FEED_RULES: Array[String] = ["New and delicious food holds the acid back.", "Anything else raises it.", "Full acid ends the run."]
 
@@ -111,6 +115,18 @@ var walker: String = "chef"
 ## since the last check of them.
 var covered_on_the_way: Array[String] = []
 var awaiting_quit: bool = false
+## The tips the open run has opened, by their line, as the screen drew them;
+## the lines a run opened a second time; every line any run opened; and
+## whether a run opened a line an earlier run had opened.
+var run_tips: Array[String] = []
+var repeated_tips: Array[String] = []
+var every_tip: Dictionary[String, bool] = {}
+var tip_reopened: bool = false
+var last_tip: String = ""
+## What a drawn tip covered or where it stood off the screen, and how many
+## frames drew one at base and over the city's words.
+var tip_overlaps: Array[String] = []
+var tip_frames: Dictionary[String, int] = {"base": 0, "city": 0}
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -123,6 +139,7 @@ func _finalize() -> void:
 func _run() -> void:
 	await _frames(2)
 	scene = current_scene as MainScene
+	process_frame.connect(_watch_tips)
 	if not _check(scene != null and scene.screen_name() == "main", "configured startup main menu"):
 		return
 	scene.pin_survival_seed(SEED)
@@ -490,15 +507,76 @@ func _start_two_players() -> void:
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 
-## 3 ends the application: the pass line prints from `_finalize` only.
+## 4 ends the application: the pass line prints from `_finalize` only.
 func _main_menu_quits() -> void:
 	await _leave_run()
 	if not _check(scene.screen_name() == "main", "back at the main menu"):
 		return
+	if not _tips_opened_once_each():
+		return
 	awaiting_quit = true
-	await _tap(KEY_3)
+	await _tap(KEY_4)
 	await _frames(30)
-	_check(false, "3 on the main menu quits")
+	_check(false, "4 on the main menu quits")
+
+## Reads the tip the last frame drew, every frame: which opened, and whether,
+## while the run was not held, it stood whole on the screen clear of the HUD's
+## panels, every target and, over the city, the map's words. A run's tips
+## start afresh off its screen.
+func _watch_tips() -> void:
+	if scene == null or scene.screen_name() != "survival":
+		run_tips.clear()
+		last_tip = ""
+		return
+	var tip: Dictionary = scene.get_meta("hud_tip", {})
+	var text: String = str(tip.get("text", ""))
+	if text != "" and text != last_tip:
+		if run_tips.has(text):
+			repeated_tips.append(text)
+		else:
+			run_tips.append(text)
+			tip_reopened = tip_reopened or every_tip.has(text)
+			every_tip[text] = true
+	last_tip = text
+	# A pause or a question holds the screen under a veil, tip and all, and
+	# draws its own targets over it.
+	if text == "" or tip.get("held", false):
+		return
+	var area: Rect2 = tip["rect"]
+	var panels: Array = scene.get_meta("hud_panels", [])
+	var covered: Array = panels.duplicate()
+	for target: Dictionary in scene.get_meta("pointer_targets", []):
+		covered.append(target["rect"])
+	var city: bool = tip["city"]
+	var plates: Array = []
+	if city:
+		plates = scene.get_meta("map_plates", [])
+	covered.append_array(plates)
+	for other: Rect2 in covered:
+		if other.intersects(area):
+			tip_overlaps.append("%s over %s" % [text, other])
+	if not SCREEN.encloses(area):
+		tip_overlaps.append("%s off the screen at %s" % [text, area])
+	if city and not plates.is_empty():
+		tip_frames["city"] += 1
+	elif not city:
+		tip_frames["base"] += 1
+
+## Every concept's tip opened, none twice in one run, a later run opened one
+## again, and no drawn tip covered the HUD, a target or the map's words; the
+## control is that tips were drawn at base and over the city's words.
+func _tips_opened_once_each() -> bool:
+	if not _check(every_tip.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
+		return false
+	if not _check(repeated_tips.is_empty() and tip_reopened, "no tip opened twice in one run, and a new run opened one again: %s" % [repeated_tips]):
+		return false
+	var keyed: Array[String] = []
+	for line: String in every_tip:
+		if line.contains("[") or line.contains("Esc") or line.contains("Enter"):
+			keyed.append(line)
+	if not _check(keyed.is_empty(), "the tips name actions and not keys: %s" % [keyed]):
+		return false
+	return _check(tip_overlaps.is_empty() and tip_frames["base"] > 0 and tip_frames["city"] > 0, "a tip covers no HUD panel, target or map word and stays on the screen: %s in %s" % [tip_overlaps.slice(0, 5), tip_frames])
 
 func _menus() -> void:
 	await _tap(KEY_1)
@@ -524,6 +602,20 @@ func _menus() -> void:
 		return
 	if not _check(await _pause_shows_escape_goal(), "the pause screen over the base, and not the base, shows when escape checks begin"):
 		return
+	if not await _a_click_closes_the_tip():
+		return
+
+## The run's first tip says to set out; a click on it closes it and presses
+## nothing, so the run stays at base on day one with its time.
+func _a_click_closes_the_tip() -> bool:
+	var tip: Dictionary = scene.get_meta("hud_tip", {})
+	if not _check(_str("tip") == "set_out" and str(tip.get("text", "")).begins_with("Set out"), "the first tip at base says to set out: %s" % [tip]):
+		return false
+	var remaining: int = _int("remaining_ms")
+	var area: Rect2 = tip["rect"]
+	await _click_at(area.get_center())
+	var drawn: Dictionary = scene.get_meta("hud_tip", {})
+	return _check(_str("tip") == "" and drawn.is_empty() and _int("day") == 1 and _str("phase") == "workshop" and _int("remaining_ms") == remaining, "a click on the tip closes it and presses nothing")
 
 func _first_day() -> void:
 	var start: Dictionary = _status()

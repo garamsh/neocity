@@ -21,7 +21,7 @@ constexpr float MARGIN = 8.0F;
 constexpr float LOGO_X = 24.0F;
 constexpr float LOGO_Y = -44.0F;
 constexpr float ENTRY_X = 790.0F;
-constexpr float ENTRY_Y = 300.0F;
+constexpr float ENTRY_Y = 214.0F;
 constexpr float ENTRY_WIDTH = 460.0F;
 constexpr float ENTRY_HEIGHT = 88.0F;
 constexpr float ENTRY_PITCH = 96.0F;
@@ -36,6 +36,10 @@ constexpr float CONTROLS_TEXT_X = 230.0F;
 constexpr float CONTROLS_ROW_Y = 140.0F;
 constexpr float CONTROLS_ROW_HEIGHT = 38.0F;
 constexpr const char *CONTROLS_BACK = "Back to the title";
+/// The How to play page shares the controls page's panel and way back.
+constexpr float HOW_LEAD_Y = 136.0F;
+constexpr float HOW_ROW_Y = 190.0F;
+constexpr float HOW_ROW_HEIGHT = 42.0F;
 
 godot::Rect2 entry_area(std::size_t index) {
   return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
@@ -53,6 +57,8 @@ const char *entry_label(TitleEntry entry) {
     return "NEW GAME";
   case TitleEntry::Controls:
     return "CONTROLS";
+  case TitleEntry::HowToPlay:
+    return "HOW TO PLAY";
   case TitleEntry::Quit:
     return "QUIT";
   }
@@ -65,6 +71,8 @@ const char *entry_summary(TitleEntry entry) {
     return "Play the chef, the appraiser, or both with a friend.";
   case TitleEntry::Controls:
     return "Every key for player one and player two.";
+  case TitleEntry::HowToPlay:
+    return "What a day asks of you, in a line each.";
   case TitleEntry::Quit:
     return "Close the game.";
   }
@@ -136,6 +144,25 @@ void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
                tones.white, rendering::Weight::Bold);
   paint_key_rows(canvas, drawing, control_rows(), CONTROLS_TEXT_X,
                  CONTROLS_ROW_Y, CONTROLS_ROW_HEIGHT);
+  rendering::button(canvas, back_area(drawing), false);
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
+               CONTROLS_BACK, 24, tones.white);
+}
+
+void paint_how_to_play(godot::Node2D &canvas, const rendering::Art &drawing) {
+  const auto tones = rendering::palette();
+  backdrop(canvas, drawing, 0.6F);
+  rendering::panel(
+      canvas, rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "How to play", 40,
+               tones.white, rendering::Weight::Bold);
+  drawing.text(canvas, CONTROLS_TEXT_X, HOW_LEAD_Y,
+               "Keep the monster fed until the way out opens.", 24, tones.gold);
+  float y = HOW_ROW_Y;
+  for (const Tip tip : TIPS) {
+    drawing.text(canvas, CONTROLS_TEXT_X, y, tip_text(tip), 16, tones.white);
+    y += HOW_ROW_HEIGHT;
+  }
   rendering::button(canvas, back_area(drawing), false);
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
                CONTROLS_BACK, 24, tones.white);

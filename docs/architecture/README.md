@@ -20,10 +20,11 @@ Current architecture of the system and the decisions behind it. This file is the
 
 ## Index
 
-The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `survival` library holds the rules of Monster Mouth Escape, the one game, with no Godot dependency. The C++/Godot host opens on the game's title screen, which starts the game, shows the controls, or quits.
+The C++ sources are partitioned into purpose folders under `src/`, and the Godot project lives in `project/`. The `survival` library holds the rules of Monster Mouth Escape, the one game, with no Godot dependency. The C++/Godot host opens on the game's title screen, which starts the game, shows the controls or How to play, or quits.
 
 - [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
-- [`session.md`](session.md) — title screen, controls page, run lifetime, input isolation, and fixed-step delivery to the survival game.
+- [`session.md`](session.md) — title screen, controls and How to play pages, run lifetime, first-play tips, input isolation, and fixed-step delivery to the survival game.
+- [`adr/0016-teach-each-concept-once-in-a-tip-that-never-holds-the-run.md`](adr/0016-teach-each-concept-once-in-a-tip-that-never-holds-the-run.md) — each concept gets one line, opened the first time a run shows it and never again in that run, which never holds the run and stands clear of the HUD, the targets and the map's words; the same lines make a How to play page on the title screen; the placeholder cinematic cards are skipped by a click.
 - [`adr/0014-name-the-action-and-show-only-the-movement-keys.md`](adr/0014-name-the-action-and-show-only-the-movement-keys.md) — the screen names each action and not its key, and during play shows only the movement keys; every key stays bound and listed on the pause screen and the controls page; the key cap over a human's head is removed; supersedes ADR 0010's key cap and Esc hint.
 - [`adr/0013-click-what-the-screen-shows-as-its-key.md`](adr/0013-click-what-the-screen-shows-as-its-key.md) — a click presses the key the thing under the mouse stands for, every key kept; with one mouse for two players, the role decides at base and each human's own button in the city.
 - [`adr/0012-finish-the-city-in-a-pixel-grid-light-pass.md`](adr/0012-finish-the-city-in-a-pixel-grid-light-pass.md) — one full-screen shader pass over the drawn city, under the interface, that moves the acid and spreads light in dithered steps on the pixels of the art beneath, with the throat, flesh, steam and spores moving on the real clock; the engine's glow and 2D HDR rejected as smooth.

@@ -68,6 +68,7 @@ add_library(
     src/session/session.cpp
     src/session/sound.cpp
     src/session/survival_run.cpp
+    src/session/tips.cpp
 )
 target_link_libraries(neocity PRIVATE survival godot-cpp)
 target_compile_options(neocity PRIVATE ${NEOCITY_WARNINGS})

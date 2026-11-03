@@ -102,6 +102,11 @@ option_3={
 "events":[Object(InputEventKey,"physical_keycode":51)]
 }
 
+option_4={
+"deadzone":0.2,
+"events":[Object(InputEventKey,"physical_keycode":52)]
+}
+
 survival_1_left={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":65),Object(InputEventKey,"physical_keycode":4194319)]
