@@ -75,6 +75,11 @@ const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Inter-Sem
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
+## The run's status as last read, and the frame it was read on: building it
+## costs more than a frame, and nothing it reports changes before the next
+## frame, which is also when the key events sent in this one arrive.
+var status_read: Dictionary = {}
+var status_frame: int = -1
 var failed: bool = false
 var walker: String = "chef"
 ## Plates found over a source other than its own count on any frame walked
@@ -149,7 +154,7 @@ func _pause_and_leave() -> void:
 	if not _check(_str("cinematic") == "intro" and _str("interruption") == "", "Esc does not pause a cinematic"):
 		return
 	await _tap(KEY_M)
-	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "M during a cinematic leaves at once"):
+	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M during a cinematic leaves at once"):
 		return
 	await _tap(KEY_1)
 	await _tap(KEY_1)
@@ -184,7 +189,7 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_M)
 	_key(KEY_ENTER, true)
 	await _frames(4)
-	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "Enter ends the run for the main menu"):
+	if not _check(scene.screen_name() == "main" and _status().is_empty(), "Enter ends the run for the main menu"):
 		return
 	await _tap(KEY_1)
 	if not _check(scene.screen_name() == "main", "Enter held into the main menu holds its keys back"):
@@ -304,7 +309,7 @@ func _menus() -> void:
 		return
 
 func _first_day() -> void:
-	var start: Dictionary = scene.survival_status()
+	var start: Dictionary = _status()
 	await _frames(30)
 	var budget: int = start["remaining_ms"]
 	if not _check(_int("remaining_ms") == budget, "exploration time stands still at base"):
@@ -372,7 +377,7 @@ func _run_east() -> void:
 		return
 	var line: String = _next()
 	var target: String = line.get_slice(" to ", 1).get_slice(".", 0)
-	var objects: Dictionary = scene.survival_status()["objects"]
+	var objects: Dictionary = _status()["objects"]
 	_check(line.contains(" to ") and objects.has(target), "the screen names the object to move to: %s" % line)
 
 ## Stops before anything is collected, so the fall leaves time on the clock.
@@ -984,7 +989,7 @@ func _collect_from_the_tomato_machine() -> void:
 
 func _appraiser_run() -> void:
 	await _leave_run()
-	if not _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "M ends the run"):
+	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M ends the run"):
 		return
 	await _tap(KEY_1)
 	await _tap(KEY_2)
@@ -1312,13 +1317,13 @@ func _next() -> String:
 	return _str("next")
 
 func _out_of_reach() -> Array:
-	return scene.survival_status()["out_of_reach"]
+	return _status()["out_of_reach"]
 
 func _changing_text() -> Array:
-	return scene.survival_status()["changing_text"]
+	return _status()["changing_text"]
 
 func _lines(field: String) -> Array:
-	return scene.survival_status()[field]
+	return _status()[field]
 
 func _result_says(words: String) -> bool:
 	for line: String in _lines("day_result"):
@@ -1369,8 +1374,8 @@ func _text_fits(where: String) -> bool:
 ## drawn although its vendor is gone.
 func _gone_bags_leave_the_map() -> bool:
 	var drawn: Array = scene.get_meta("map_sources", [])
-	var objects: Dictionary = scene.survival_status()["objects"]
-	var stock: Dictionary = scene.survival_status()["stock"]
+	var objects: Dictionary = _status()["objects"]
+	var stock: Dictionary = _status()["stock"]
 	var gone: Array[String] = []
 	var kept: Array[String] = []
 	for source: String in stock:
@@ -1547,39 +1552,47 @@ func _next_event_has(text: String) -> bool:
 	return false
 
 func _events() -> Array:
-	return scene.survival_status()["events"]
+	return _status()["events"]
 
 func _stored() -> Array:
-	return scene.survival_status()["stored_foods"]
+	return _status()["stored_foods"]
 
 func _spatula() -> String:
 	return _str("spatula")
 
+## The run's status, built at most once a frame.
+func _status() -> Dictionary:
+	var frame: int = Engine.get_process_frames()
+	if frame != status_frame:
+		status_read = scene.survival_status()
+		status_frame = frame
+	return status_read
+
 func _str(field: String) -> String:
-	var value: String = scene.survival_status().get(field, "")
+	var value: String = _status().get(field, "")
 	return value
 
 func _int(field: String) -> int:
-	var value: int = scene.survival_status().get(field, 0)
+	var value: int = _status().get(field, 0)
 	return value
 
 func _where(who: String) -> String:
-	var actor: Dictionary = scene.survival_status()[who]
+	var actor: Dictionary = _status()[who]
 	var location: String = actor["location"]
 	return location
 
 func _actor(who: String, field: String) -> int:
-	var actor: Dictionary = scene.survival_status()[who]
+	var actor: Dictionary = _status()[who]
 	var value: int = actor[field]
 	return value
 
 func _stock(source: String) -> int:
-	var stock: Dictionary = scene.survival_status()["stock"]
+	var stock: Dictionary = _status()["stock"]
 	var remaining: int = stock[source]
 	return remaining
 
 func _object(object: String) -> String:
-	var objects: Dictionary = scene.survival_status()["objects"]
+	var objects: Dictionary = _status()["objects"]
 	var state: String = objects[object]
 	return state
 
@@ -1622,7 +1635,7 @@ func _walk_to(x: int, y: int) -> bool:
 	return _check(false, "%s walks to %d, %d" % [walker, x, y])
 
 func _stance(who: String) -> String:
-	var actor: Dictionary = scene.survival_status()[who]
+	var actor: Dictionary = _status()[who]
 	var stance: String = actor["stance"]
 	return stance
 
@@ -1638,13 +1651,13 @@ func _until(name: String, condition: Callable, limit: int) -> bool:
 ## the title screen takes its marked entry, so it is pressed only to answer the
 ## question, and the title must show before the next menu key.
 func _leave_run() -> void:
-	var status: Dictionary = scene.survival_status()
+	var status: Dictionary = _status()
 	if status.has("cinematic"):
 		await _tap(KEY_M)
 	elif not status.is_empty():
 		await _tap(KEY_M)
 		await _tap(KEY_ENTER)
-	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and scene.survival_status().is_empty(), 30)
+	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and _status().is_empty(), 30)
 
 func _tap(code: Key) -> void:
 	_key(code, true)
