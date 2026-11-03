@@ -43,8 +43,12 @@ func _run() -> void:
 	await _quit_ends_the_game()
 
 func _cursor_chooses_each_entry() -> bool:
+	if not _names_no_key("the title screen", "Click an entry to choose it. Controls lists every key."):
+		return false
 	await _tap(KEY_ENTER)
 	if not _check(scene.screen_name() == "survival_setup", "Enter on the first entry, New game, opens the choice of players"):
+		return false
+	if not _names_no_key("the choice of players", "Click who is playing."):
 		return false
 	await _tap(KEY_ESCAPE)
 	if not _check(scene.screen_name() == "main", "Esc goes back from the choice of players"):
@@ -187,6 +191,17 @@ func _quit_ends_the_game() -> void:
 	await _tap(KEY_ENTER)
 	await _frames(30)
 	_check(false, "Enter on Quit ends the game")
+
+## Whether the last frame drew `hint` and no Enter, Esc, W/S or M: key, as
+## the screen's keys are left to the controls page.
+func _names_no_key(where: String, hint: String) -> bool:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var keyed: Array[String] = []
+	for line: String in lines:
+		for key: String in ["Enter", "Esc", "W/S", "M:"]:
+			if line.contains(key):
+				keyed.append(line)
+	return _check(lines.has(hint) and keyed.is_empty(), "%s names no key: %s" % [where, keyed])
 
 func _actor(who: String, field: String) -> int:
 	var actor: Dictionary = scene.survival_status()[who]

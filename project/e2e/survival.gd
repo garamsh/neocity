@@ -76,6 +76,11 @@ const APART: float = 480.0
 ## Where the workshop draws the ingredients waiting for appraisal, over the
 ## appraiser's head.
 const APPRAISER_HEAD: Vector2 = Vector2(216, 166)
+## The screen pixels the HUD's panels and chips covered while it named every
+## key, measured by `_hud_area` at commit d72f34c55a70c3d212f0eb9b0e51dbb4b2f6712f on the
+## same seeded states: day one at base, and the chef at the Vendor Cart.
+const BASE_HUD_AREA_WITH_KEYS: float = 226079.0
+const CITY_HUD_AREA_WITH_KEYS: float = 152779.0
 ## How far left of a volume row's first block its name is drawn.
 const VOLUME_NAME_OFFSET: float = 200.0
 ## The screen's middle height: the kitchen's people stand above it and the
@@ -334,7 +339,7 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not _check(_drawn("Pause, keys"), "the top band names Esc as the way to the keys"):
+	if not _check(_drawn("Pause, keys"), "the top band offers the pause, where the keys are"):
 		return
 	var unpaused_rules: bool = FEED_RULES.any(func(rule: String) -> bool: return _drawn(rule))
 	await _tap(KEY_ESCAPE)
@@ -406,7 +411,7 @@ func _hand_off_shows_the_keys_left() -> void:
 		return
 	if not _check(_actor("appraiser", "key_set") == 0, "the player left moves to the first key set"):
 		return
-	if not _check(_str("hand_off").contains("Appraiser") and _str("hand_off").contains("WASD move") and _str("hand_off").contains("Tab swap"), "the screen names the keys of the player left"):
+	if not _check(_str("hand_off").contains("Appraiser") and _str("hand_off").contains("WASD move") and not _str("hand_off").contains("Tab"), "the screen names the movement keys of the player left, and no other key: %s" % _str("hand_off")):
 		return
 	if not _text_fits("the hand-off notice"):
 		return
@@ -513,6 +518,10 @@ func _menus() -> void:
 		return
 	if not _check(_next().contains("Set out"), "the screen tells a new player to set out"):
 		return
+	if not _names_no_action_key("the base"):
+		return
+	if not _check(_hud_area() < BASE_HUD_AREA_WITH_KEYS, "the base's HUD covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), BASE_HUD_AREA_WITH_KEYS]):
+		return
 	if not _check(await _pause_shows_escape_goal(), "the pause screen over the base, and not the base, shows when escape checks begin"):
 		return
 
@@ -545,7 +554,9 @@ func _first_day() -> void:
 		return
 	if not _check(await _pause_shows_escape_goal(), "the pause screen over the city, and not the city, shows when escape checks begin"):
 		return
-	if not _check(_actions() == ["[E] USE"] and _drawn("[E] USE") and _head_caps().is_empty() and _drawn("WASD move  Shift run  Space jump  Q base"), "away from a source the action button shows E as use, no key cap is over the head, and the move, run, jump and travel keys show: %s %s" % [_actions(), _head_caps()]):
+	if not _check(_actions() == ["USE"] and _drawn("USE") and _drawn("WASD move  Shift run  Space jump  To base"), "away from a source the action button reads use, and the move, run and jump keys show beside the way to base: %s" % [_actions()]):
+		return
+	if not _names_no_action_key("the first city screen"):
 		return
 	await _run_east()
 	if failed:
@@ -554,10 +565,12 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the cart's fish", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	var cart: String = "[E] COLLECT " + _place("Vendor Cart")
-	if not _check(_actions() == [cart] and _drawn(cart) and _head_caps() == ["E"], "at a source the action button offers E to collect from it by its name and E's cap is over the head: %s %s" % [_actions(), _head_caps()]):
+	var cart: String = "COLLECT " + _place("Vendor Cart")
+	if not _check(_actions() == [cart] and _drawn(cart), "at a source the action button offers to collect from it by its name: %s" % [_actions()]):
 		return
-	if not _check(not _next().begins_with("[E] ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
+	if not _check(_hud_area() < CITY_HUD_AREA_WITH_KEYS, "the city's HUD at a source covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), CITY_HUD_AREA_WITH_KEYS]):
+		return
+	if not _check(not _next().begins_with("Collect from ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
@@ -645,7 +658,7 @@ func _third_day_falls() -> void:
 		return
 	if not await _until("AI appraises before the chef goes out again", func() -> bool: return not _next().contains("identifying"), 300):
 		return
-	if not _check(_next().contains("Set out") or _next().contains("[E] "), "with time left the screen offers more to do"):
+	if not _check(_next().contains("Set out") or _names_interact(_next()), "with time left the screen offers more to do: %s" % _next()):
 		return
 	await _tap(KEY_Q)
 	if not await _until("chef goes out again with time left", func() -> bool: return _where("chef") == "city", 30):
@@ -764,7 +777,7 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 	_key(KEY_TAB, false)
 	if not swapped:
 		return
-	_check(spatula == "damaged" and line.begins_with("[F] Feed "), "a dish to feed comes before the AI chef replacing the spatula: %s" % line)
+	_check(spatula == "damaged" and line.begins_with("Feed "), "a dish to feed comes before the AI chef replacing the spatula: %s" % line)
 
 func _workshop_day_one() -> void:
 	if not await _until("AI appraises the finds", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 300):
@@ -774,7 +787,7 @@ func _workshop_day_one() -> void:
 	await _cook()
 	if failed:
 		return
-	if not _check(_next().contains("[F] Feed"), "the screen offers feeding the stored dish"):
+	if not _check(_next().begins_with("Feed "), "the screen offers feeding the stored dish: %s" % _next()):
 		return
 	if not _text_fits("the workshop"):
 		return
@@ -989,7 +1002,7 @@ func _set_out_before_feeding() -> void:
 		return
 	if not _check(_int("remaining_ms") > 0 and _next().contains("Set out"), "with time and stock left the screen sets out before feeding"):
 		return
-	if not _check(_drawn_says("[F] Feed " + str(_stored()[0]) + ": this ends the day."), "the task card keeps the feed key for the stored dish: %s" % [_drawn_lines()]):
+	if not _check(_drawn_says("Feed " + str(_stored()[0]) + ": this ends the day."), "the task card keeps feeding the stored dish in view: %s" % [_drawn_lines()]):
 		return
 	await _tap(KEY_Q)
 
@@ -1011,7 +1024,7 @@ func _follow_next_to_an_escape() -> void:
 		if line.contains("End the day unfed"):
 			beside = _stored().filter(func(dish: String) -> bool: return not hated.has(dish))
 		await _follow_next()
-		if _int("day") != day and line.contains("[F] Feed") and _str("reaction") == "disliked":
+		if _int("day") != day and line.begins_with("Feed ") and _str("reaction") == "disliked":
 			hated.append(line.get_slice("Feed ", 1).get_slice(" to the monster", 0))
 		steps = 0 if _int("day") != day else steps + 1
 		day = _int("day")
@@ -1094,10 +1107,10 @@ func _wrench_stops_setting_out_with_no_stock_behind() -> void:
 func _gather_unfed_until_nothing_is_left() -> bool:
 	var day: int = _int("day")
 	var steps: int = 0
-	while not ((_next().contains("End the day unfed") or _next().contains("[F] Feed")) and _int("remaining_ms") >= LADDER_WALK_MS):
+	while not ((_next().contains("End the day unfed") or _next().begins_with("Feed ")) and _int("remaining_ms") >= LADDER_WALK_MS):
 		if _str("phase") == "escaped" or _str("phase") == "lost" or _int("day") >= LONG_RUN_DAYS:
 			return _check(false, "the stock runs out before the run ends")
-		if _next().contains("[F] Feed"):
+		if _next().begins_with("Feed "):
 			await _tap(KEY_G)
 		else:
 			await _follow_next()
@@ -1107,18 +1120,27 @@ func _gather_unfed_until_nothing_is_left() -> bool:
 			return _check(false, "following NEXT keeps the days moving")
 	return true
 
-## Presses the one key NEXT names, or waits while it names none.
+## Whether NEXT names what the interact key does: collect, repair, appraise
+## or cook, as the controls page lists for it.
+func _names_interact(line: String) -> bool:
+	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+		if line.begins_with(verb):
+			return true
+	return false
+
+## Presses the key for the one action NEXT names, as the controls page lists
+## it, or waits while it names none.
 func _follow_next() -> void:
 	var line: String = _next()
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
-	elif line.contains("[F] Feed"):
+	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
-	elif line.contains("[R] "):
+	elif line.begins_with("Replace "):
 		await _tap(KEY_R)
-	elif line.contains("[G] "):
+	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
-	elif line.contains("[E] "):
+	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		await _walk_a_cell(line)
@@ -1229,7 +1251,7 @@ func _appraiser_run() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
 		return
-	if not _check(_next().contains("Appraise") and _str("appraise_job").contains("[E] Appraise"), "the human appraiser is told to appraise"):
+	if not _check(_next().contains("Appraise") and _str("appraise_job").begins_with("Appraise "), "the human appraiser is told to appraise"):
 		return
 	var by_mouse: int = _int("identified")
 	var failed_before: bool = _next_event_has("appraisal failed")
@@ -1284,7 +1306,7 @@ func _human_repairs_the_ladder() -> void:
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	await _until("the screen offers the repair", func() -> bool: return _next().contains("Repair Roof Ladder"), 30)
-	if not _check(_next().contains("Repair Roof Ladder") and _actions().has("[E] REPAIR " + _place("Roof Ladder")) and _drawn("[E] REPAIR " + _place("Roof Ladder")), "the screen offers the repair in reach and names what it repairs: %s" % [_actions()]):
+	if not _check(_next().contains("Repair Roof Ladder") and _actions().has("REPAIR " + _place("Roof Ladder")) and _drawn("REPAIR " + _place("Roof Ladder")), "the screen offers the repair in reach and names what it repairs: %s" % [_actions()]):
 		return
 	_key(KEY_W, true)
 	await _frames(24)
@@ -1304,16 +1326,16 @@ func _two_players() -> void:
 	await _start_two_players()
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
-	if not _check(_next().begins_with("[Q]/[U] Set out into the city"), "the base line names both players' set-out keys: %s" % _next()):
+	if not _check(_next().begins_with("Set out into the city"), "the base line tells two players to set out: %s" % _next()):
 		return
 	if not _text_fits("two players at base before setting out"):
 		return
 	await _tap(KEY_Q)
 	if not await _until("player one sets out alone", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: [U] Set out into the city"), "the player left at base is told to set out: %s" % _next()):
+	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: Set out into the city"), "the player left at base is told to set out: %s" % _next()):
 		return
-	if not _check(_drawn("IJKL move  H run  ; jump  U set out") and not _drawn("IJKL move  H run  ; jump  U base") and _drawn("WASD move  Shift run  Space jump  Q base"), "each player's keys name their own jump and U as setting out for player two at base: %s" % [_drawn_lines()]):
+	if not _check(_drawn("IJKL move  H run  ; jump  Set out") and not _drawn("IJKL move  H run  ; jump  To base") and _drawn("WASD move  Shift run  Space jump  To base"), "each player's keys name their own jump and U as setting out for player two at base: %s" % [_drawn_lines()]):
 		return
 	if not _text_fits("one player out and one at base"):
 		return
@@ -1332,7 +1354,7 @@ func _two_players() -> void:
 		return
 	if not _text_fits("two players in the city"):
 		return
-	if not _check(_drawn("WASD move  Shift run  Space jump  Q base") and _drawn("IJKL move  H run  ; jump  U base"), "each player's row names that key set's move, run, jump and travel keys: %s" % [_drawn_lines()]):
+	if not _check(_drawn("WASD move  Shift run  Space jump  To base") and _drawn("IJKL move  H run  ; jump  To base"), "each player's row names that key set's move, run and jump keys and the way to base: %s" % [_drawn_lines()]):
 		return
 	if not _plates_apart("two players in the city"):
 		return
@@ -1391,7 +1413,7 @@ func _a_hated_dish_is_not_fed_again() -> void:
 	await _tap(KEY_Q)
 	await _until("player one comes home again", func() -> bool: return _str("phase") == "workshop", 120)
 	var attempts: int = 0
-	while _next().contains("[O] Appraise") and attempts < 40:
+	while _next().begins_with("Appraise ") and attempts < 40:
 		attempts += 1
 		await _tap(KEY_O)
 	while _str("dish_offered") != "Pickle Surprise" and attempts < 40 + MENU_PRESSES:
@@ -1412,7 +1434,7 @@ func _a_hated_dish_is_not_fed_again() -> void:
 	await _frames(30)
 	if not _check(_int("day") == 3 and _stored() == ["Pickle Surprise"], "F does not feed a hated dish again"):
 		return
-	_check(_next().begins_with("[E] Cook ") and not _next().contains("Feed"), "with only a hated dish stored the screen cooks: %s" % _next())
+	_check(_next().begins_with("Cook ") and not _next().contains("Feed"), "with only a hated dish stored the screen cooks: %s" % _next())
 
 ## Cooks, the first time by a click on the task card's step, and feeds the last
 ## of the pack, so only the hated dish is left and nothing can be cooked: the
@@ -1431,7 +1453,7 @@ func _a_hated_dish_alone_sets_out_then_ends_the_day() -> void:
 		return
 	if not _check(_stored() == ["Pickle Surprise"] and _str("dish_offered") == "" and _int("remaining_ms") > 0, "only the hated dish is left, nothing can be cooked and the day has time"):
 		return
-	if not _check(_next().begins_with("[Q]/[U] Set out into the city"), "with nothing to cook or feed the line sets out while the day has time: %s" % _next()):
+	if not _check(_next().begins_with("Set out into the city"), "with nothing to cook or feed the line sets out while the day has time: %s" % _next()):
 		return
 	await _tap(KEY_Q)
 	if not await _until("player one sets out", func() -> bool: return _where("chef") == "city", 30):
@@ -1440,7 +1462,7 @@ func _a_hated_dish_alone_sets_out_then_ends_the_day() -> void:
 		return
 	if not _check(_int("remaining_ms") == 0 and _stored() == ["Pickle Surprise"] and _str("dish_offered") == "", "the day ran out with only the hated dish and nothing to cook"):
 		return
-	_check(_next().begins_with("[G] End the day unfed"), "with nothing to cook or feed and no time left the line ends the day unfed: %s" % _next())
+	_check(_next().begins_with("End the day unfed"), "with nothing to cook or feed and no time left the line ends the day unfed: %s" % _next())
 
 ## Player two takes the only wrench, and acid leaves stock only behind broken
 ## passages: player one has nothing to do, yet the base line sets out.
@@ -1458,14 +1480,14 @@ func _player_two_errand_alone_sets_out() -> void:
 	await _frames(2)
 	if not _check(_actor("appraiser", "collecting_ms") > 0 and _actions().size() == 2 and _action(1).begins_with("COLLECTING ") and not _action(0).begins_with("COLLECTING "), "player two's button shows how long player two's hold has left: %s" % [_actions()]):
 		return
-	if not _check(_drawn("IJKL move  H run  ; jump") and _drawn("WASD move  Shift run  Space jump  Q set out"), "player two's keys leave out travel while the hold keeps player two in place: %s" % [_drawn_lines()]):
+	if not _check(_drawn("IJKL move  H run  ; jump") and _drawn("WASD move  Shift run  Space jump  Set out"), "player two's keys leave out travel while the hold keeps player two in place: %s" % [_drawn_lines()]):
 		return
 	if not _text_fits("player two's hold"):
 		return
 	if not await _until("player two's wrench collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _frames(2)
-	if not _check(_actions().size() == 2 and _action(1) == "[O] USE" and _drawn("IJKL move  H run  ; jump  U base"), "player two's button shows the interact key again once the hold ends: %s" % [_actions()]):
+	if not _check(_actions().size() == 2 and _action(1) == "USE" and _drawn("IJKL move  H run  ; jump  To base"), "player two's button names its action again once the hold ends: %s" % [_actions()]):
 		return
 	if not _check(_bag_holds("Wrench", "P2") and not _bag_holds("Wrench", "P1"), "the bag marks the wrench as player two's: %s" % [scene.get_meta("bag", [])]):
 		return
@@ -1502,7 +1524,7 @@ func _player_two_errand_alone_sets_out() -> void:
 		return
 	if not _check(_object("Roof Ladder") == "destroyed" and _stock("Roof Bag") > 0 and _int("remaining_ms") > 0, "stock is left behind the broken ladder and the day has time"):
 		return
-	if not _check(_next().begins_with("[Q]/[U] Set out into the city"), "the base line sets out for player two's errand alone: %s" % _next()):
+	if not _check(_next().begins_with("Set out into the city"), "the base line sets out for player two's errand alone: %s" % _next()):
 		return
 	await _tap(KEY_U)
 	if not await _until("player two sets out for the repair", func() -> bool: return _where("appraiser") == "city", 30):
@@ -1618,8 +1640,22 @@ func _action(index: int) -> String:
 	return str(_actions()[index])
 
 ## The keys of the caps drawn over the humans' heads in the last frame.
-func _head_caps() -> Array:
-	return scene.get_meta("head_caps", [])
+## The screen pixels the HUD's panels, chips and caps covered in the last
+## frame, from the areas the HUD laid them out at.
+func _hud_area() -> float:
+	var area: float = 0.0
+	for panel: Rect2 in scene.get_meta("hud_panels", []):
+		area += panel.get_area()
+	return area
+
+## Whether the last frame drew no key cap, such as "[E]", and no Esc, while
+## it drew the pause chip, as the control that it drew the HUD's words.
+func _names_no_action_key(where: String) -> bool:
+	var keyed: Array[String] = []
+	for line: String in _drawn_lines():
+		if line.contains("[") or line.contains("Esc"):
+			keyed.append(line)
+	return _check(keyed.is_empty() and _drawn("Pause, keys"), "%s names no key but the movement keys: %s" % [where, keyed])
 
 ## Every place the map names has its button and its log lines among the
 ## changing lines, so the measure covers each name and not only some.
@@ -1631,7 +1667,7 @@ func _every_place_measured() -> bool:
 	var missing: Array[String] = []
 	for object: String in places:
 		var place: String = str(places[object])
-		var listed: bool = texts.has("[E] COLLECT " + place) and texts.has("Chef repaired " + place + ".") and texts.has(place + " appeared.")
+		var listed: bool = texts.has("COLLECT " + place) and texts.has("Chef repaired " + place + ".") and texts.has(place + " appeared.")
 		if not listed and not missing.has(place):
 			missing.append(place)
 	return _check(not places.is_empty() and missing.is_empty(), "every place's lines are measured: %s" % [missing])

@@ -35,7 +35,7 @@ constexpr float CONTROLS_HEIGHT = 680.0F;
 constexpr float CONTROLS_TEXT_X = 230.0F;
 constexpr float CONTROLS_ROW_Y = 140.0F;
 constexpr float CONTROLS_ROW_HEIGHT = 38.0F;
-constexpr const char *CONTROLS_BACK = "Esc or M: back to the title";
+constexpr const char *CONTROLS_BACK = "Back to the title";
 
 godot::Rect2 entry_area(std::size_t index) {
   return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
@@ -124,8 +124,7 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   foot(canvas, drawing,
        "Gather, cook, and feed the monster that swallowed the city.",
-       "W/S or up/down: choose     Enter: select     1, 2, 3: jump straight "
-       "in");
+       "Click an entry to choose it. Controls lists every key.");
 }
 
 void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
