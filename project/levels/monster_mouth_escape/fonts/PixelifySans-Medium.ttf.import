@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://ccssvftexlj47"
-path="res://.godot/imported/Inter-SemiBold.ttf-3515102c96a63f6ccc498be2e8631a6b.fontdata"
+uid="uid://dnxudkxhksjpi"
+path="res://.godot/imported/PixelifySans-Medium.ttf-a99704db5ae065b8616124f18fa2862b.fontdata"
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/fonts/Inter-SemiBold.ttf"
-dest_files=["res://.godot/imported/Inter-SemiBold.ttf-3515102c96a63f6ccc498be2e8631a6b.fontdata"]
+source_file="res://levels/monster_mouth_escape/fonts/PixelifySans-Medium.ttf"
+dest_files=["res://.godot/imported/PixelifySans-Medium.ttf-a99704db5ae065b8616124f18fa2862b.fontdata"]
 
 [params]
 
@@ -22,8 +22,8 @@ msdf_size=48
 allow_system_fallback=true
 force_autohinter=false
 modulate_color_glyphs=false
-hinting=3
-subpixel_positioning=4
+hinting=0
+subpixel_positioning=0
 keep_rounding_remainders=true
 oversampling=0.0
 Fallbacks=null
@@ -33,4 +33,6 @@ compress=true
 preload=[]
 language_support={}
 script_support={}
-opentype_features={}
+opentype_features={
+1818847073: 0
+}

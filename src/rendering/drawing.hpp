@@ -1,5 +1,6 @@
 #pragma once
 
+#include <survival/companion.hpp>
 #include <survival/exploration.hpp>
 #include <survival/simulation.hpp>
 
@@ -26,11 +27,19 @@ godot::Rect2 rect(float x, float y, float w, float h);
 /// Fills `area` on `canvas` with `fill`, its corners rounded by `radius`.
 void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
              godot::Color fill);
-/// Draws an opaque flat panel filling `area`: rounded, with a soft shadow and
-/// a one-pixel edge.
+/// Draws an opaque pixel panel filling `area`: a dark fill inside a thick
+/// light rim, lit from above, between dark lines, its corners cut back.
 void panel(godot::Node2D &canvas, godot::Rect2 area);
-/// Draws a flat button filling `area`, in the accent when `marked`.
+/// Draws a pixel button filling `area` in a panel's frame, filled in the
+/// accent with a darker lip along its bottom when `marked`.
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
+/// Draws a dark slot sunk into a panel, filling `area`.
+void inset(godot::Node2D &canvas, godot::Rect2 area);
+/// The one name the screen gives a city object, so the map, the goal line,
+/// the action button and the log agree: a source by what it holds and what it
+/// is, "Fish cart", anything else by `survival::object_name`.
+[[nodiscard]] godot::String place_name(const survival::GameView &view,
+                                       survival::ObjectId object);
 
 /// The colour tokens of the world's labels and the interface.
 struct Palette {
@@ -50,10 +59,10 @@ struct Palette {
   godot::Color surface;
   /// A row, slot, chip or idle button on a panel.
   godot::Color raised;
-  /// The one-pixel edge of a panel or an idle button.
+  /// The dark lines around a frame and a slot.
   godot::Color outline;
-  /// The soft shadow under a panel.
-  godot::Color shadow;
+  /// The light rim of a panel or an idle button.
+  godot::Color rim;
   /// The least important text.
   godot::Color faint;
   godot::Color danger;
@@ -226,6 +235,9 @@ public:
   /// How far, from 0 to 1 and eased, `name` has come in since it appeared;
   /// one missing from the last drawn frame appears afresh.
   [[nodiscard]] float entrance(const godot::String &name) const;
+  /// How many seconds of the real clock `name` has been on the screen; one
+  /// missing from the last drawn frame appears afresh.
+  [[nodiscard]] float shown_for(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Records `actor`'s `body` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.

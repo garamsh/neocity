@@ -1,16 +1,16 @@
-Monster-mouth escape interface font provenance, 2026-11-03, issue #107
+Monster-mouth escape interface font provenance, 2026-11-03, issue #119
 
-Font: Inter 4.1, by The Inter Project Authors, https://github.com/rsms/inter
-Release: https://github.com/rsms/inter/releases/tag/v4.1, tag v4.1 at commit e3a3d4c57d5ecc01453a575621882a384c1995a3
-Archive: https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip
-Archive SHA-256: 9883fdd4a49d4fb66bd8177ba6625ef9a64aa45899767dde3d36aa425756b11e
-Licence: SIL Open Font License 1.1. The archive's LICENSE.txt is committed unchanged as project/levels/monster_mouth_escape/fonts/OFL.txt, beside the fonts, as the licence requires for redistribution.
+Font: Pixelify Sans, by Stefie Justprince and The Pixelify Sans Project Authors, https://github.com/eifetx/Pixelify-Sans
+Source: commit 39df74aba80df8157546034b878e8be1eb565ced of https://github.com/eifetx/Pixelify-Sans, the commit google/fonts records for the family in ofl/pixelifysans/METADATA.pb at google/fonts commit 8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5
+Download: https://raw.githubusercontent.com/eifetx/Pixelify-Sans/39df74aba80df8157546034b878e8be1eb565ced/<path> for each path below
+Licence: SIL Open Font License 1.1. The repository's OFL.txt, identical to google/fonts' ofl/pixelifysans/OFL.txt at the commit above, is committed unchanged as project/levels/monster_mouth_escape/fonts/OFL.txt, beside the fonts, as the licence requires for redistribution.
 
-Files taken unchanged from the archive's extras/ttf/ folder, with their SHA-256:
-- Inter-Medium.ttf 97ad806f526e41546d46365bb3a393145f75b7b1568913db74549ad8b8dba872
-- Inter-SemiBold.ttf 78a843fade9d4612a5567302fb595b56976eb5fcebf4fea5a5912d638bafcde3
-- Inter-Bold.ttf 288316099b1e0a47a4716d159098005eef7c0066921f34e3200393dbdb01947f
-- LICENSE.txt (committed as OFL.txt) 262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a
+Files taken unchanged from the repository's fonts/ttf/ folder, with their SHA-256:
+- PixelifySans-Medium.ttf 5219b5ad08fde84e82b4a926614766c253379757eca86f56b766b0bdbfff69af
+- PixelifySans-SemiBold.ttf a4b54982991cd47450df317a451a7f066bf6b91aa033e105643aba2cf7bd35c3
+- PixelifySans-Bold.ttf 3c3c203a3f3b862b944e836e4ec0fce201eddc1952cbca0d682e382d668b293c
+- OFL.txt b66ba46f511a851ab09998b5a5a9fdbb102545a3864cb993095e1745996873a7
 
-Runtime: project/levels/monster_mouth_escape/fonts/. Godot imports each file with its default font import settings; the .import files beside them are Godot's.
+Runtime: project/levels/monster_mouth_escape/fonts/. Godot imports each file with greyscale antialiasing, hinting off, subpixel positioning off and the liga feature (tag 1818847073) off, set in the .import files beside them; the rest are Godot's defaults.
 No glyph is edited and the font is not renamed. The licence's copyright line declares no Reserved Font Name.
+Replaces Inter 4.1 of issue #107, which the interface no longer uses.

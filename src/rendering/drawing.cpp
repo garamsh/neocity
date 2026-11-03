@@ -5,12 +5,15 @@
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 
+#include <survival/content.hpp>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <numbers>
+#include <string_view>
 #include <utility>
 
 namespace neocity::rendering {
@@ -19,10 +22,12 @@ namespace {
 
 using godot::Vector2;
 
-constexpr float PANEL_RADIUS = 12.0F;
-constexpr float BUTTON_RADIUS = 10.0F;
-/// How far a panel's shadow falls below it.
-constexpr float SHADOW_DROP = 4.0F;
+/// A frame's layers, outside in: a dark line, a light rim, its shaded lower
+/// part, and the inner dark line, each on whole pixels.
+constexpr float FRAME_LINE = 2.0F;
+constexpr float FRAME_RIM = 3.0F;
+/// How far a frame's corners are cut back, so they read as pixel-rounded.
+constexpr float FRAME_NOTCH = 2.0F;
 /// The darker lip along a marked button's bottom edge.
 constexpr float LIP = 4.0F;
 /// Points on each rounded corner.
@@ -31,8 +36,9 @@ constexpr std::uint64_t GLIDE_MICROSECONDS = 280000;
 constexpr std::uint64_t ENTRANCE_MICROSECONDS = 220000;
 
 /// The interface font's weights, in `Weight` order.
-constexpr std::array FONT_FILES{"Inter-Medium.ttf", "Inter-SemiBold.ttf",
-                                "Inter-Bold.ttf"};
+constexpr std::array FONT_FILES{"PixelifySans-Medium.ttf",
+                                "PixelifySans-SemiBold.ttf",
+                                "PixelifySans-Bold.ttf"};
 
 constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
 
@@ -299,6 +305,21 @@ std::uint64_t now() {
           .count());
 }
 
+/// What a source is, as its name ends.
+const char *source_word(survival::SourceKind kind) {
+  switch (kind) {
+  case survival::SourceKind::VendingMachine:
+    return "machine";
+  case survival::SourceKind::Npc:
+    return "cart";
+  case survival::SourceKind::Shop:
+    return "shop";
+  case survival::SourceKind::Bag:
+    return "bag";
+  }
+  std::abort();
+}
+
 } // namespace
 
 godot::Color color(std::uint8_t r, std::uint8_t g, std::uint8_t b, float a) {
@@ -313,25 +334,80 @@ void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
   canvas.draw_colored_polygon(rounded_outline(area, radius), fill);
 }
 
+namespace {
+
+/// Fills `area` with its corners cut back by `notch`, on whole pixels.
+void notched(godot::Node2D &canvas, godot::Rect2 area, float notch,
+             godot::Color fill) {
+  const godot::Rect2 whole(area.position.round(), area.size.round());
+  canvas.draw_rect(whole.grow_individual(-notch, 0.0F, -notch, 0.0F), fill);
+  canvas.draw_rect(whole.grow_individual(0.0F, -notch, 0.0F, -notch), fill);
+}
+
+/// The dark line and light rim every frame shares, with `fill` inside them.
+void frame(godot::Node2D &canvas, godot::Rect2 area, godot::Color rim,
+           godot::Color fill) {
+  const auto tones = palette();
+  notched(canvas, area, FRAME_NOTCH, tones.outline);
+  const auto lit = area.grow(-FRAME_LINE);
+  notched(canvas, lit, FRAME_NOTCH, rim);
+  // The rim's lower part is in shade, lit from above like the art.
+  notched(canvas, lit.grow_individual(0.0F, -lit.size.y / 2.0F, 0.0F, 0.0F),
+          FRAME_NOTCH, rim.darkened(0.25F));
+  notched(canvas, lit.grow(-FRAME_RIM), 1.0F, tones.outline);
+  canvas.draw_rect(lit.grow(-FRAME_RIM - 1.0F), fill);
+}
+
+} // namespace
+
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
   const auto tones = palette();
   if (!marked) {
-    rounded(canvas, area, BUTTON_RADIUS, tones.outline);
-    rounded(canvas, area.grow(-1.0F), BUTTON_RADIUS - 1.0F, tones.raised);
+    frame(canvas, area, tones.rim, tones.raised);
     return;
   }
-  rounded(canvas, area, BUTTON_RADIUS, color(204, 136, 28, 1.0F));
-  rounded(canvas, godot::Rect2(area.position, area.size - Vector2(0.0F, LIP)),
-          BUTTON_RADIUS, tones.gold);
+  frame(canvas, area, tones.gold.lightened(0.3F), tones.gold);
+  const auto inner = area.grow(-FRAME_LINE - FRAME_RIM - 1.0F);
+  canvas.draw_rect(
+      inner.grow_individual(0.0F, LIP - inner.size.y, 0.0F, 0.0F).abs(),
+      color(204, 136, 28, 1.0F));
 }
 
 void panel(godot::Node2D &canvas, godot::Rect2 area) {
   const auto tones = palette();
-  rounded(canvas,
-          godot::Rect2(area.position + Vector2(0.0F, SHADOW_DROP), area.size),
-          PANEL_RADIUS, tones.shadow);
-  rounded(canvas, area, PANEL_RADIUS, tones.outline);
-  rounded(canvas, area.grow(-1.0F), PANEL_RADIUS - 1.0F, tones.surface);
+  frame(canvas, area, tones.rim, tones.surface);
+}
+
+void inset(godot::Node2D &canvas, godot::Rect2 area) {
+  const auto tones = palette();
+  notched(canvas, area, 1.0F, tones.outline);
+  canvas.draw_rect(area.grow_individual(-2.0F, -2.0F, -1.0F, -1.0F).round(),
+                   tones.background);
+}
+
+godot::String place_name(const survival::GameView &view,
+                         survival::ObjectId object) {
+  const auto &objects = view.world.objects;
+  const auto &sources = view.exploration.sources;
+  const auto found =
+      std::ranges::find(objects, object, &survival::ObjectSnapshot::id);
+  const auto stock =
+      std::ranges::find(sources, object, &survival::SourceStock::id);
+  const auto named = [](std::string_view text) {
+    return godot::String::utf8(text.data(),
+                               static_cast<std::int64_t>(text.size()));
+  };
+  if (found == objects.end() || stock == sources.end()) {
+    return named(survival::object_name(object));
+  }
+  if (const auto &tool = found->tool) {
+    return named(survival::tool_name(*tool)) + " " + source_word(stock->kind);
+  }
+  if (const auto &ingredient = found->ingredient) {
+    return named(survival::ingredient_name(*ingredient)) + " " +
+           source_word(stock->kind);
+  }
+  return named(survival::object_name(object));
 }
 
 Palette palette() {
@@ -341,10 +417,10 @@ Palette palette() {
           .gold = color(255, 196, 70, 1.0F),
           .ink = color(28, 22, 12, 1.0F),
           .background = color(9, 10, 20, 1.0F),
-          .surface = color(21, 24, 40, 1.0F),
-          .raised = color(36, 40, 64, 1.0F),
-          .outline = color(60, 66, 100, 1.0F),
-          .shadow = color(0, 0, 0, 0.45F),
+          .surface = color(24, 24, 38, 1.0F),
+          .raised = color(42, 44, 66, 1.0F),
+          .outline = color(8, 8, 16, 1.0F),
+          .rim = color(150, 154, 178, 1.0F),
           .faint = color(122, 130, 164, 1.0F),
           .danger = color(255, 104, 104, 1.0F),
           .success = color(140, 235, 92, 1.0F)};
@@ -455,6 +531,11 @@ float Art::entrance(const godot::String &name) const {
   const auto &kept = tween(name, 0.0F);
   return ease_out(static_cast<float>(kept.seen - kept.started) /
                   static_cast<float>(ENTRANCE_MICROSECONDS));
+}
+
+float Art::shown_for(const godot::String &name) const {
+  const auto &kept = tween(name, 0.0F);
+  return static_cast<float>(kept.seen - kept.started) / 1.0e6F;
 }
 
 Vector2 Art::size(Image image) const {
