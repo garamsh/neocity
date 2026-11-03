@@ -251,6 +251,13 @@ bool visible(const ObjectSnapshot &object) {
   return object.state != ObjectState::Dormant;
 }
 
+/// A bag emptied or carried off leaves the map; the next bag may land on its
+/// cell. Every other source keeps showing its count.
+bool gone(const survival::SourceStock &stock, const ObjectSnapshot &object) {
+  return stock.kind == SourceKind::Bag &&
+         (stock.remaining == 0 || object.state == ObjectState::Destroyed);
+}
+
 /// The landmark picture `object` shows, if it has one.
 std::optional<LandmarkKind> landmark(const survival::Content &content,
                                      survival::ObjectId object) {
@@ -1147,7 +1154,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(objects, stock.id, &ObjectSnapshot::id);
-    if (object != objects.end() && visible(*object)) {
+    if (object != objects.end() && visible(*object) && !gone(stock, *object)) {
       const bool stocked_open =
           object->material_available && stock.remaining > 0;
       const bool walkable =
