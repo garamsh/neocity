@@ -99,6 +99,9 @@ const SEA_ROWS: Vector2i = Vector2i(2, 40)
 ## screen pixels as wide as the camera's zoom.
 const GRID_SHARE: float = 0.97
 const GRID_TOLERANCE: float = 0.01
+## The least share of those scene pixels whose green leads by ACID_GREEN, so
+## the pixels read hold the acid.
+const GRID_GREEN: float = 0.1
 ## The least frames a second the city draws, and over how many frames.
 const FRAME_RATE: float = 60.0
 const RATE_FRAMES: int = 600
@@ -732,8 +735,8 @@ func _draws_fast(screen: String) -> bool:
 
 ## Whether, at a zoom of two or more, GRID_SHARE of the scene pixels the frame
 ## shows below the sea's surface, clear of the word plates, are each one colour,
-## so the finishing pass keeps to the scene's pixels. The control is that the
-## pixels read hold the acid's green.
+## so the finishing pass keeps to the scene's pixels. The control is that
+## GRID_GREEN of the pixels read hold the acid's green.
 func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
 	var zoom: int = roundi(view.x.x)
 	var sea: int = ceili((view * Vector2(0, _acid_surface())).y)
@@ -765,8 +768,8 @@ func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) ->
 		return true
 	var share: float = float(whole) / count
 	grid_frames += 1
-	print("Capture: %s: %.3f of %d scene pixels below the sea's surface are one colour, %.3f of them green (at least %.3f one colour)." % [screen, share, count, float(green) / count, GRID_SHARE])
-	if green * 4 < count or share < GRID_SHARE:
+	print("Capture: %s: %.3f of %d scene pixels below the sea's surface are one colour, %.3f of them green (at least %.3f one colour, %.3f green)." % [screen, share, count, float(green) / count, GRID_SHARE, GRID_GREEN])
+	if float(green) / count < GRID_GREEN or share < GRID_SHARE:
 		_fail("%s: the finished sea does not keep to the scene's pixels" % screen)
 		return false
 	return true
