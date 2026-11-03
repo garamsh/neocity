@@ -74,6 +74,7 @@ var city_frames: int = 0
 var ground_frames: int = 0
 var wall_frames: int = 0
 var stairs_frames: int = 0
+var parity_frames: int = 0
 var slab_frames: int = 0
 
 func _initialize() -> void:
@@ -251,10 +252,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or wall_frames == 0 or stairs_frames == 0 or slab_frames == 0:
-		_fail("a look was never measured: ground %d, wall %d, stairs %d, slab %d frames" % [ground_frames, wall_frames, stairs_frames, slab_frames])
+	if ground_frames == 0 or wall_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0:
+		_fail("a look was never measured: ground %d, wall %d, stairs %d, stairs beside the deck %d, slab %d frames" % [ground_frames, wall_frames, stairs_frames, parity_frames, slab_frames])
 		return
-	print("Capture: the ground was measured in %d, the walls in %d, the stairs in %d and the slab in %d city frames." % [ground_frames, wall_frames, stairs_frames, slab_frames])
+	print("Capture: the ground was measured in %d, the walls in %d, the stairs in %d, the stairs beside the deck in %d and the slab in %d city frames." % [ground_frames, wall_frames, stairs_frames, parity_frames, slab_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
@@ -523,10 +524,10 @@ func _walls_recede(frame: Image, view: Transform2D, screen: String) -> bool:
 	return true
 
 ## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
-## on, lead the EDGE_ROWS just under it by STEP_LEAD and read at STAIR_PARITY
-## of the STAIR_DECK_CELLS' top EDGE_ROWS, when the frame shows both stairs
-## and that deck; the columns at the cell's ends, where a band would leave the
-## cell, are left out.
+## on, lead the EDGE_ROWS just under it by STEP_LEAD, when the frame shows both
+## stairs, and read at STAIR_PARITY of the STAIR_DECK_CELLS' top EDGE_ROWS,
+## when it shows that deck too; the columns at the cell's ends, where a band
+## would leave the cell, are left out.
 func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	var walked: float = 0.0
 	var under: float = 0.0
@@ -535,13 +536,6 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
 		if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(CELL, CELL + 2 * EDGE_ROWS)):
 			return true
-	var deck: float = 0.0
-	for cell: Vector2i in STAIR_DECK_CELLS:
-		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
-		if not _shows(view, corner, Vector2(CELL, EDGE_ROWS)):
-			return true
-		deck += _luminance(frame, view, corner, EDGE_ROWS)
-	deck /= STAIR_DECK_CELLS.size()
 	for cell: Vector2i in STAIR_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
 		walked += _band(frame, view, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
@@ -553,6 +547,14 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	if under <= 0.0 or walked - under < STEP_LEAD:
 		_fail("%s: the stairs' walked-on part does not read over the part under it" % screen)
 		return false
+	var deck: float = 0.0
+	for cell: Vector2i in STAIR_DECK_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+		if not _shows(view, corner, Vector2(CELL, EDGE_ROWS)):
+			return true
+		deck += _luminance(frame, view, corner, EDGE_ROWS)
+	deck /= STAIR_DECK_CELLS.size()
+	parity_frames += 1
 	print("Capture: %s: the stairs' walked-on part reads at %.3f of the deck's top edge (walked %.3f, deck %.3f, at least %.3f)." % [screen, walked / deck, walked, deck, STAIR_PARITY])
 	if deck <= 0.0 or walked < STAIR_PARITY * deck:
 		_fail("%s: the stairs' walked-on part reads darker than the deck's top edge" % screen)
