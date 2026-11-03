@@ -4,6 +4,7 @@
 
 #include <survival/escape.hpp>
 
+#include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <algorithm>
@@ -1172,6 +1173,7 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
 void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
                      const SurvivalFrame &frame, const rendering::Shot &shot) {
   const auto tones = rendering::palette();
+  godot::Array caps;
   for (const auto &[actor, set] : humans(frame)) {
     if (state_of(frame.view, actor).location != Location::City ||
         !frame.offers.at(index_of(actor)).interact) {
@@ -1206,7 +1208,9 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
     pointer.push_back(Vector2(at.x + width / 2.0F + 5.0F, at.y + CAP));
     pointer.push_back(Vector2(at.x + width / 2.0F, at.y + CAP + 6.0F));
     canvas.draw_colored_polygon(pointer, tones.gold);
+    caps.push_back(cap);
   }
+  canvas.set_meta("head_caps", caps);
 }
 
 /// The base's second line: what feeding asks while a stored dish can be
@@ -1794,6 +1798,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_goal(canvas, drawing, next_step(frame), hand_off_notice(frame));
   } else {
     drawing.shift(canvas, {});
+    canvas.set_meta("head_caps", godot::Array());
     paint_workshop_screen(canvas, drawing, frame);
     rendering::paint_workshop_bursts(canvas, drawing, bursts);
     // The task card names the step at base; the goal line keeps the notice.
@@ -2219,6 +2224,14 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
                            notice_width - padding + BUTTON_PAD));
   }
   return lines;
+}
+
+std::vector<String> action_labels(const SurvivalFrame &frame) {
+  std::vector<String> labels;
+  for (const auto &[actor, set] : humans(frame)) {
+    labels.push_back(interact_label(frame, actor, KEY_LABELS.at(set)));
+  }
+  return labels;
 }
 
 String describe(const GameView &view, const Event &event) {

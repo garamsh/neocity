@@ -149,7 +149,9 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const std::vector<rendering::Burst> &bursts);
 /// Draws over the scene the city's words and its pointers to each human's
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
-/// phase opens, with the HUD and the flourishes under way.
+/// phase opens, with the HUD and the flourishes under way. Leaves on the
+/// canvas the keys of the caps over the humans' heads as the `head_caps`
+/// meta, an array of strings.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts);
@@ -202,6 +204,9 @@ out_of_reach(const SurvivalFrame &frame);
 /// Every changing line of this frame, with the cook panel's status in each form
 /// any pack could give it.
 [[nodiscard]] std::vector<FittedText> changing_text(const SurvivalFrame &frame);
+/// What each human's action button reads, the chef's first.
+[[nodiscard]] std::vector<godot::String>
+action_labels(const SurvivalFrame &frame);
 /// The sentence the log shows for `event`, naming places as `view` does.
 [[nodiscard]] godot::String describe(const survival::GameView &view,
                                      const Event &event);

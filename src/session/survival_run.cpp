@@ -582,6 +582,12 @@ godot::Dictionary SurvivalRun::status() const {
                 state_name(object.state));
   }
   status.set("objects", objects);
+  godot::Dictionary places;
+  for (const auto &object : view.world.objects) {
+    places.set(from(survival::object_name(object.id)),
+               rendering::place_name(view, object.id));
+  }
+  status.set("places", places);
   godot::Dictionary stock;
   for (const auto &source : view.exploration.sources) {
     stock.set(from(survival::object_name(source.id)), source.remaining);
@@ -622,6 +628,11 @@ godot::Dictionary SurvivalRun::status() const {
     fitted.push_back(entry);
   }
   status.set("changing_text", fitted);
+  godot::Array actions;
+  for (const auto &label : hud::action_labels(current)) {
+    actions.push_back(label);
+  }
+  status.set("actions", actions);
   godot::Array log;
   for (const auto &event : current.events) {
     log.push_back(hud::describe(view, event));
