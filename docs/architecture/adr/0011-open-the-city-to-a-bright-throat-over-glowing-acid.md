@@ -22,7 +22,7 @@ The space under the walkways is open: no building walls are drawn there, and eve
 
 ## Consequences
 
-- The capture checks measure the three layers on the city frames: the walkway faces darker than the backdrop above them, the acid band brighter than the backdrop, and at acid 0 the acid band glowing green in the play area.
+- The capture checks measure the three layers on the city frames: the walkway faces darker than the backdrop above them, and, where the acid sea in the scene does not cover the acid band, the band glowing green and brighter than the backdrop, at acid 0 as at every other level.
 - A walkway reads over the backdrop by its lit top edge, not by its face, so the ground-contrast check of [#105](https://github.com/garamsh/neocity/issues/105) measures that edge.
 - The sunken buildings' walls, fixtures and waterline leave the art set, and the check that the walkway's edge reads over those walls goes with them.
 - The backdrop behind the map is brighter and busier than under the haze, so words on the map keep their opaque plates.

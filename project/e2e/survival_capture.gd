@@ -3,7 +3,7 @@ extends SceneTree
 ## Captures real rendered frames of a played survival run into user://survival/,
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
-## band does not show green at no acid, the stairs' walked-on part does not
+## band behind the map does not show green at no acid, the stairs' walked-on part does not
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
 ## lit top edge does not run along its tilt, or one of its word plates covers
 ## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
@@ -33,7 +33,7 @@ const CELL: int = 32
 const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(21, 2), Vector2i(22, 2), Vector2i(8, 11), Vector2i(10, 11)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
 ## edge under those cells reads than the scenery in the cells, above the deck.
-const GROUND_LEAD: float = 0.05
+const GROUND_LEAD: float = 0.12
 ## The rows of a walkway's lit top edge, as the city draws it: the ground a
 ## player walks on, read over the scenery above it.
 const EDGE_ROWS: int = 4
@@ -48,9 +48,10 @@ const BAND_HIGH: int = 240
 ## acid.
 const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
-## than the backdrop above them, and how much brighter the acid band reads than
-## that backdrop.
-const LAYER_GAP: float = 0.05
+## than the backdrop above them, and how much brighter the acid band's glowing
+## pixels read than that backdrop.
+const FACE_GAP: float = 0.1
+const ACID_GAP: float = 0.05
 ## How much a pixel's green channel leads its red and blue, from 0 to 1, for
 ## it to read as glowing acid, and the least share of the band's pixels that
 ## read so, with its sunken trains, the pillars and the walkways in front.
@@ -63,6 +64,9 @@ const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
 const ACID_LOW: int = 518
+## How far above that surface the sea in the scene, with the light over it,
+## covers the acid band behind the map.
+const SEA_REACH: int = 32
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
@@ -91,6 +95,7 @@ var stairs_frames: int = 0
 var parity_frames: int = 0
 var slab_frames: int = 0
 var layer_frames: int = 0
+var acid_frames: int = 0
 var band_frames: int = 0
 
 func _initialize() -> void:
@@ -268,10 +273,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or layer_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d frames" % [ground_frames, layer_frames, band_frames, stairs_frames, parity_frames, slab_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d and the slab in %d city frames." % [ground_frames, layer_frames, band_frames, stairs_frames, parity_frames, slab_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d and the slab in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
@@ -477,7 +482,7 @@ func _save_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -514,9 +519,10 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 
 ## Whether the frame's values fall in three layers, over the LEAD_CELLS it
 ## shows, when it shows two or more: the walkways' faces darkest, the backdrop
-## in the cells above them brighter by LAYER_GAP, and the acid where the band
-## under its surface shows it brighter than the backdrop by LAYER_GAP. The control is that the
-## faces are not black.
+## in the cells above them brighter by FACE_GAP, and, where the frame shows the
+## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
+## those pixels brighter than the backdrop by ACID_GAP. The control is that
+## the faces are not black.
 func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
 	var face: float = 0.0
 	var behind: float = 0.0
@@ -532,27 +538,29 @@ func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
 		return true
 	face /= shown
 	behind /= shown
-	var acid: float = _acid_band(frame)["glow"]
 	layer_frames += 1
-	print("Capture: %s: the layers read face %.3f, backdrop %.3f, acid %.3f over %d cells (gaps at least %.3f)." % [screen, face, behind, acid, shown, LAYER_GAP])
-	if face <= 0.0 or behind - face < LAYER_GAP or acid - behind < LAYER_GAP:
-		_fail("%s: the walkways, the backdrop and the acid do not read dark to bright" % screen)
+	print("Capture: %s: the walkways' faces read %.3f under the backdrop's %.3f over %d cells (at least %.3f darker)." % [screen, face, behind, shown, FACE_GAP])
+	if face <= 0.0 or behind - face < FACE_GAP:
+		_fail("%s: the walkways do not read darker than the backdrop" % screen)
+		return false
+	if not _band_clear(view):
+		return true
+	var band: Vector2 = _acid_band(frame)
+	acid_frames += 1
+	print("Capture: %s: the acid band glows green over %.3f of it, at %.3f over the backdrop's %.3f (at least %.3f of it, %.3f brighter)." % [screen, band.x, band.y, behind, ACID_SHARE, ACID_GAP])
+	if band.x < ACID_SHARE or band.y - behind < ACID_GAP:
+		_fail("%s: the acid band does not read brighter than the backdrop" % screen)
 		return false
 	return true
 
-## Whether a frame at no acid shows the acid band in the play area, glowing
-## green over ACID_SHARE of it. The control is that the band's rows lie in the
-## play area.
-func _band_shows(frame: Image, screen: String) -> bool:
-	if _int("acid") != 0:
+## Whether a frame at no acid that shows the acid band clear of the sea shows
+## it glowing green over ACID_SHARE of it.
+func _band_shows(frame: Image, view: Transform2D, screen: String) -> bool:
+	if _int("acid") != 0 or not _band_clear(view):
 		return true
-	var top: int = _band_top()
-	if not PLAY.encloses(Rect2(0, top + BAND_ROWS.x, PLAY.size.x, BAND_ROWS.y - BAND_ROWS.x)):
-		_fail("%s: the acid band's surface at row %d is off the play area" % [screen, top])
-		return false
-	var share: float = _acid_band(frame)["share"]
+	var share: float = _acid_band(frame).x
 	band_frames += 1
-	print("Capture: %s: the acid band at row %d glows green over %.3f of it (at least %.3f)." % [screen, top, share, ACID_SHARE])
+	print("Capture: %s: the acid band at row %d glows green over %.3f of it (at least %.3f)." % [screen, _band_top(), share, ACID_SHARE])
 	if share < ACID_SHARE:
 		_fail("%s: the acid band does not show green at no acid" % screen)
 		return false
@@ -565,10 +573,15 @@ func _band_top() -> int:
 	var full: int = status["full_acid"]
 	return floori(BAND_LOW - clampf(float(acid) / full, 0.0, 1.0) * (BAND_LOW - BAND_HIGH))
 
+## Whether the sea in the scene, drawn over the acid band, reaches none of the
+## BAND_ROWS under the band's surface.
+func _band_clear(view: Transform2D) -> bool:
+	return (view * Vector2(0, _acid_surface() - SEA_REACH)).y >= _band_top() + BAND_ROWS.y
+
 ## Over the BAND_ROWS under the acid band's surface across the screen, every
 ## other column: the share of pixels whose green leads their red and blue by
-## ACID_GREEN, as "share", and their mean luminance, as "glow".
-func _acid_band(frame: Image) -> Dictionary:
+## ACID_GREEN, as x, and their mean luminance, as y.
+func _acid_band(frame: Image) -> Vector2:
 	var top: int = _band_top()
 	var glow: float = 0.0
 	var green: int = 0
@@ -580,7 +593,7 @@ func _acid_band(frame: Image) -> Dictionary:
 			if pixel.g - maxf(pixel.r, pixel.b) >= ACID_GREEN:
 				green += 1
 				glow += pixel.get_luminance()
-	return {"share": float(green) / count, "glow": glow / maxi(green, 1)}
+	return Vector2(float(green) / count, glow / maxi(green, 1))
 
 ## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
 ## on, lead the EDGE_ROWS just under it by STEP_LEAD, when the frame shows both
