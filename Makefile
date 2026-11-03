@@ -57,21 +57,13 @@ format: $(TOOLS_STAMP)
 
 # Godot 4.7.2 crashes on exit when an import finds a new extension and regenerates
 # docs (godotengine/godot#111048); a listed extension loads at boot and is not new.
-# Godot 4.7.2 can also crash importing two fonts at once (godotengine/godot#111039,
-# fixed for 4.8), so an import a signal kills runs again, at most twice, and says so.
 build: $(TOOLS_STAMP)
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR)
 	@test "$$("$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
 	mkdir -p $(PROJECT_DIR)/.godot
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
-	@attempt=1; while :; do \
-		echo '"$(GODOT)" --headless --path $(PROJECT_DIR) --import'; \
-		"$(GODOT)" --headless --path $(PROJECT_DIR) --import; status=$$?; \
-		test "$$status" -gt 128 && test "$$attempt" -lt 3 || exit "$$status"; \
-		echo "Godot import killed by signal $$((status - 128)) on attempt $$attempt of 3; importing again (godotengine/godot#111039)." >&2; \
-		attempt=$$((attempt + 1)); \
-	done
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
 # A --main-loop harness that fails to parse raises a dialog and waits on it even
 # with --headless; --check-only answers with its exit status instead.
