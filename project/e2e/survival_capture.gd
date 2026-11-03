@@ -7,14 +7,21 @@ extends SceneTree
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
 ## lit top edge does not run along its tilt, the acid's light does not rise
 ## above its surface, the acid stands still between two
-## frames a moment apart, the finishing pass breaks the scene's pixels below the
-## sea's surface into smaller ones, the city draws fewer than 60 frames a second,
+## frames a moment apart on the finishing pass's clock, the finishing pass
+## breaks the scene's pixels below the sea's surface into smaller ones, the
+## city draws fewer than 60 frames a second,
 ## or one of its word plates covers another or a source other than the source's
 ## own count. The camera shows a part of the city, so each look is measured on
 ## every city frame that shows what it looks at, and fails when none does.
+## The finishing pass's clock is pinned and moves only when the capture moves
+## it, so every look at the finished acid reads the same moment on every run.
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
+## On Wayland, Godot 4.7.2 can hang after quit() (godotengine/godot#123059,
+## docs/architecture/godot-runtime.md), so run it under a watchdog that ends
+## Godot 30 seconds after it prints "Capture: finished: pass" or
+## "Capture: finished: fail: <reason>", and read the result from that line.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
@@ -86,10 +93,12 @@ const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i
 ## the floor line of its first cell to that of the row below at its right end.
 const SLAB_CELL: Vector2i = Vector2i(20, 6)
 const SLAB_CELLS: int = 2
-## How long apart, in real milliseconds, the two frames of the acid's motion
-## are taken; how much a pixel's colour must change in a channel, from 0 to 1,
-## to count as moved; and the least share of the acid's pixels that move.
-const MOTION_MSEC: int = 250
+## Where the finishing pass's clock is pinned, in seconds; how far apart on
+## that clock the two frames of the acid's motion are taken; how much a pixel's
+## colour must change in a channel, from 0 to 1, to count as moved; and the
+## least share of the acid's pixels that move.
+const FINISH_CLOCK: float = 0.0
+const MOTION_SECONDS: float = 0.25
 const MOTION_STEP: float = 0.04
 const MOTION_SHARE: float = 0.05
 ## The screen rows just above the acid's surface that its light falls on, and
@@ -133,6 +142,10 @@ var acid_frames: int = 0
 var band_frames: int = 0
 var grid_frames: int = 0
 var light_frames: int = 0
+## Where the finishing pass's clock stands.
+var clock: float = FINISH_CLOCK
+## Set once the run has printed its result line.
+var finished: bool = false
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -141,6 +154,7 @@ func _run() -> void:
 	await _frames(2)
 	scene = current_scene as MainScene
 	scene.pin_survival_seed(11)
+	scene.pin_finish_clock(clock)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
 	await _tap(KEY_2)
@@ -319,20 +333,30 @@ func _run() -> void:
 	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d and the acid light in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
+	_finish("pass")
 	quit(0)
 
-## Presses the one key NEXT names, or lets the day run while it names none.
+## Whether NEXT names what the interact key does: collect, repair, appraise
+## or cook, as the controls page lists for it.
+func _names_interact(line: String) -> bool:
+	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+		if line.begins_with(verb):
+			return true
+	return false
+
+## Presses the key for the one action NEXT names, as the controls page lists
+## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = scene.survival_status().get("next", "")
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
-	elif line.contains("[F] Feed"):
+	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
-	elif line.contains("[R] "):
+	elif line.begins_with("Replace "):
 		await _tap(KEY_R)
-	elif line.contains("[G] "):
+	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
-	elif line.contains("[E] "):
+	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
@@ -691,11 +715,11 @@ func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
 	return true
 
 ## Whether, while the camera rests, MOTION_SHARE of the acid's pixels change
-## between two frames MOTION_MSEC apart: of the pixels whose green leads by
-## ACID_GREEN in the first, in the BAND_ROWS under the acid band's surface
-## where the sea does not cover them, else in the SEA_ROWS under the sea's
-## surface. The control is that the camera did not move between the frames and
-## that the rows read are on the play area.
+## between two frames MOTION_SECONDS apart on the finishing pass's clock: of
+## the pixels whose green leads by ACID_GREEN in the first, in the BAND_ROWS
+## under the acid band's surface where the sea does not cover them, else in
+## the SEA_ROWS under the sea's surface. The control is that the camera did not
+## move between the frames and that the rows read are on the play area.
 func _acid_moves(screen: String) -> bool:
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	var top: int = _band_top() + BAND_ROWS.x
@@ -707,7 +731,8 @@ func _acid_moves(screen: String) -> bool:
 		bottom = sea + SEA_ROWS.y
 		which = "sea"
 	var first: Image = await _frame()
-	OS.delay_msec(MOTION_MSEC)
+	clock += MOTION_SECONDS
+	scene.pin_finish_clock(clock)
 	var second: Image = await _frame()
 	var still: Transform2D = scene.get_meta("map_view", Transform2D())
 	if not still.is_equal_approx(view) or top < PLAY.position.y or bottom > PLAY.end.y:
@@ -725,7 +750,7 @@ func _acid_moves(screen: String) -> bool:
 			if maxf(absf(before.r - after.r), maxf(absf(before.g - after.g), absf(before.b - after.b))) >= MOTION_STEP:
 				moved += 1
 	var share: float = float(moved) / maxi(count, 1)
-	print("Capture: %s: %.3f of the %d green pixels of the %s in rows %d to %d moved in %dms (at least %.3f)." % [screen, share, count, which, top, bottom, MOTION_MSEC, MOTION_SHARE])
+	print("Capture: %s: %.3f of the %d green pixels of the %s in rows %d to %d moved in %.2fs of the finishing pass's clock (at least %.3f)." % [screen, share, count, which, top, bottom, MOTION_SECONDS, MOTION_SHARE])
 	if share < MOTION_SHARE:
 		_fail("%s: the %s stands still" % [screen, which])
 		return false
@@ -863,7 +888,15 @@ func _pixel(frame: Image, view: Transform2D, point: Vector2) -> float:
 
 func _fail(message: String) -> void:
 	push_error(message)
+	_finish("fail: " + message)
 	quit(1)
+
+## Prints the run's result line once: a failure can be followed by another
+## before quit() takes effect.
+func _finish(result: String) -> void:
+	if not finished:
+		finished = true
+		print("Capture: finished: ", result)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

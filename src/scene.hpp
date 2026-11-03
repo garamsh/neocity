@@ -67,6 +67,9 @@ public:
   [[nodiscard]] static godot::PackedStringArray controls_keys();
   /// Pins the seed of every later survival run, for repeatable host checks.
   void pin_survival_seed(std::int64_t seed);
+  /// Pins the finishing pass's clock at `seconds` from then on, so host checks
+  /// read the moving acid at a moment they choose.
+  void pin_finish_clock(double seconds);
   /// Reports what the speakers played and play now, for host checks; empty
   /// before the scene is ready.
   [[nodiscard]] godot::Dictionary sound_status() const;
@@ -87,6 +90,7 @@ private:
 
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
+  std::optional<float> pinned_clock;
   session::Session session;
   std::optional<rendering::Art> drawing;
   std::optional<audio::Speaker> speaker;
