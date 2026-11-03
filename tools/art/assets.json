@@ -1597,8 +1597,17 @@
     "tolerance": 48
    },
    "largest_only": true,
+   "recolour": [
+    {
+     "hues": [
+      200,
+      295
+     ],
+     "lightness": 0.0
+    }
+   ],
    "edge": "lit",
-   "depicts": "Dead neon sign box, its magenta tube frame round a blank face"
+   "depicts": "Dead neon sign box, the broken pieces of its magenta tube round a blank black face"
   },
   {
    "path": "world/wall_shutter.png",
