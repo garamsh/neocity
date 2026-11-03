@@ -47,8 +47,8 @@ constexpr int ACID_FADE_STEPS = 6;
 constexpr float ACID_FADE_STEP = 6.0F;
 /// The rows of a ground tile's top edge, which a player walks on.
 constexpr float GROUND_EDGE = 4.0F;
-/// The rise of each step of stairs, cut from a walkway slab, and the first row
-/// of the slab's face, which stairs show under their steps.
+/// The rise of each step of stairs, cut from a walkway deck, and the first row
+/// of the deck's face, which stairs show under their steps.
 constexpr float STAIR_STEP = 8.0F;
 constexpr float STAIR_FACE = 10.0F;
 /// The distant city's bottom edge, under the acid at acid 0.
@@ -344,7 +344,7 @@ bool has_ground(std::span<const survival::GroundCell> cells,
       cells, [&](const auto &ground) { return ground.cell == cell; });
 }
 
-/// The slab picture of a whole cell of plain road, varied along the row so no
+/// The deck picture of a whole cell of plain road, varied along the row so no
 /// block repeats across the screen.
 Image plain_deck(survival::GridPosition cell) {
   static constexpr std::array PLAIN{Image::Deck, Image::DeckRivets, Image::Deck,
@@ -361,7 +361,7 @@ void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
                  rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
 }
 
-/// A walkway slab with its top at `at`, eaten by the acid when `corroded`; a
+/// A walkway deck with its top at `at`, eaten by the acid when `corroded`; a
 /// snapped end keeps its torn shape.
 void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at,
                 bool corroded) {
@@ -388,13 +388,13 @@ Rise rise(std::span<const survival::GroundCell> cells, std::int32_t first,
   return Rise::Level;
 }
 
-/// A tilted walkway slab, `width` pixels long from `at`, its high end on that
+/// A tilted walkway deck, `width` pixels long from `at`, its high end on that
 /// floor line and its low end a row down. Each column of pixels is lowered
-/// along the tilt on its own, so the slab is one straight piece on whole
+/// along the tilt on its own, so the deck is one straight piece on whole
 /// pixels.
-void paint_slab(godot::Node2D &canvas, const Art &art, Image slab, Vector2 at,
+void paint_slab(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at,
                 int width, Rise rises) {
-  const Vector2 deck = art.size(slab);
+  const Vector2 size = art.size(deck);
   for (int column = 0; column < width; ++column) {
     const int along = rises == Rise::Right ? width - 1 - column : column;
     const float drop = rises == Rise::Level
@@ -403,43 +403,43 @@ void paint_slab(godot::Node2D &canvas, const Art &art, Image slab, Vector2 at,
                                         static_cast<float>(width));
     const float x = at.x + static_cast<float>(column);
     const float y = at.y + drop;
-    const float source = std::fmod(static_cast<float>(column), deck.x);
-    art.image_part(canvas, slab, rect(source, 0.0F, 1.0F, deck.y),
-                   rect(x, y, 1.0F, deck.y), ground_tint());
-    art.image_part(canvas, slab, rect(source, 0.0F, 1.0F, GROUND_EDGE),
+    const float source = std::fmod(static_cast<float>(column), size.x);
+    art.image_part(canvas, deck, rect(source, 0.0F, 1.0F, size.y),
+                   rect(x, y, 1.0F, size.y), ground_tint());
+    art.image_part(canvas, deck, rect(source, 0.0F, 1.0F, GROUND_EDGE),
                    rect(x, y, 1.0F, GROUND_EDGE), ground_edge_tint());
   }
 }
 
-/// Stairs cut from a walkway slab, one cell wide, falling to the right from
+/// Stairs cut from a walkway deck, one cell wide, falling to the right from
 /// the floor line at `at` to the row below in steps of STAIR_STEP. Each step
-/// is the slab's top, drawn brightest down to the diagonal the stairs span,
-/// where a player walks on them, over the slab's face below that in its own
+/// is the deck's top, drawn brightest down to the diagonal the stairs span,
+/// where a player walks on them, over the deck's face below that in its own
 /// colours, a stringer facing away from the light.
-void paint_stairs(godot::Node2D &canvas, const Art &art, Image slab,
+void paint_stairs(godot::Node2D &canvas, const Art &art, Image deck,
                   Vector2 at) {
-  const Vector2 deck = art.size(slab);
+  const Vector2 size = art.size(deck);
   for (int column = 0; column < static_cast<int>(CELL); ++column) {
     const auto diagonal = static_cast<float>(column);
     const float drop = std::floor(diagonal / STAIR_STEP) * STAIR_STEP;
     const float lit = std::max(GROUND_EDGE, diagonal - drop + 1.0F);
     const float x = at.x + diagonal;
     const float y = at.y + drop;
-    const float source = std::fmod(diagonal, deck.x);
-    art.image_part(canvas, slab, rect(source, 0.0F, 1.0F, lit),
+    const float source = std::fmod(diagonal, size.x);
+    art.image_part(canvas, deck, rect(source, 0.0F, 1.0F, lit),
                    rect(x, y, 1.0F, lit), ground_edge_tint());
-    art.image_part(canvas, slab,
-                   rect(source, STAIR_FACE, 1.0F, deck.y - STAIR_FACE),
-                   rect(x, y + lit, 1.0F, deck.y - STAIR_FACE), untinted());
+    art.image_part(canvas, deck,
+                   rect(source, STAIR_FACE, 1.0F, size.y - STAIR_FACE),
+                   rect(x, y + lit, 1.0F, size.y - STAIR_FACE), untinted());
   }
 }
 
 /// Tilted ground. A run of it along one row is a fallen slab, drawn whole from
 /// its first cell. A single cell is a step between floors: a ramp, one cell
-/// of slab tilted, where it rises to the right, stairs cut from the slab where
+/// of deck tilted, where it rises to the right, stairs cut from the deck where
 /// it rises to the left, each spanning from the floor line of its own cell
-/// down to the row below, and a level slab with no step or floor on a
-/// diagonal. A slab the acid has reached is `corroded`.
+/// down to the row below, and a level deck with no step or floor on a
+/// diagonal. A deck the acid has reached is `corroded`.
 void paint_tilted(godot::Node2D &canvas, const Art &art,
                   std::span<const survival::GroundCell> cells,
                   const survival::GroundCell &ground, bool corroded) {
@@ -468,13 +468,13 @@ void paint_tilted(godot::Node2D &canvas, const Art &art,
 }
 
 /// Whether the acid surface at `surface` has risen over the bottom of the
-/// walkway slab whose top is at `top`.
+/// walkway deck whose top is at `top`.
 bool corroded(const Art &art, float top, float surface) {
   return surface < top + art.size(Image::Deck).y;
 }
 
 /// Draws one ground cell of standing terrain under the floor line of its
-/// cell, eaten by the acid once its surface at `surface` reaches the slab. A
+/// cell, eaten by the acid once its surface at `surface` reaches the deck. A
 /// landmark's terrain shows its own picture: the pier's iron deck in place of
 /// the walkway, the rotten bridge's frame under its planks, and the ferry's
 /// hull, drawn whole, in place of every cell it covers.
@@ -868,12 +868,12 @@ void paint_sunken_buildings(godot::Node2D &canvas, const Art &art,
   }
 }
 
-/// Whether flesh has grown over the front edge of a cell of walkway slab.
+/// Whether flesh has grown over the front edge of a cell of walkway deck.
 bool overgrown(const survival::GroundCell &ground) {
-  const bool slab = ground.kind == GroundKind::Road ||
-                    ground.kind == GroundKind::CrackedRoad ||
-                    ground.kind == GroundKind::Pothole;
-  return slab && (ground.cell.x * 5 + ground.cell.y * 3) % 7 == 3;
+  const bool plain = ground.kind == GroundKind::Road ||
+                     ground.kind == GroundKind::CrackedRoad ||
+                     ground.kind == GroundKind::Pothole;
+  return plain && (ground.cell.x * 5 + ground.cell.y * 3) % 7 == 3;
 }
 
 /// The ferry's hull, then each walkway of standing terrain on its floor line,
@@ -1043,8 +1043,8 @@ bool stands_in_front(LandmarkKind kind) {
 }
 
 /// A shop front hung from the walkway above a building with a shop inside:
-/// its roof under the slab, which is drawn over it, and its floor on a
-/// footing of slab across the building's width, held up by a support under
+/// its roof under the deck, which is drawn over it, and its floor on a
+/// footing of deck across the building's width, held up by a support under
 /// each end down to the walkway below or into the acid at `surface`.
 void paint_storefront(godot::Node2D &canvas, const Art &art,
                       const survival::WorldArea &area,
