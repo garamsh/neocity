@@ -714,8 +714,11 @@ constexpr float FAR_SHADE = 0.6F;
 constexpr float LEAN_ROWS = 20.0F;
 /// The shadow a slab casts on the wall under it.
 constexpr float SLAB_SHADOW = 6.0F;
-/// How far a broken corner falls away from the slab at a snapped end.
+/// How far a broken corner falls away from the slab at a snapped end, and the
+/// jagged steps along its edge.
 constexpr float BREAK_DROP = 40.0F;
+constexpr float BREAK_JAG = 2.0F;
+constexpr int BREAK_JAGS = 5;
 /// The strips a broken corner is drawn in, across a cell.
 constexpr float BREAK_STRIP = 2.0F;
 constexpr int BREAK_STRIPS = static_cast<int>(CELL / BREAK_STRIP);
@@ -750,50 +753,56 @@ void paint_sunken_building(godot::Node2D &canvas, const Art &art,
       FAR_SHADE + (1.0F - FAR_SHADE) * std::min(1.0F, top / ACID_LOW);
   const godot::Color base = wall_tint(ordinal);
   const godot::Color tint(base.r * depth, base.g * depth, base.b * depth);
-  const auto lean = static_cast<float>(static_cast<int>(ordinal % 3) - 1);
+  const int leaning = static_cast<int>(ordinal % 3) - 1;
   const auto shift = [&](float y) {
-    return lean * std::floor((y - top) / LEAN_ROWS);
+    return static_cast<float>(leaning) * std::floor((y - top) / LEAN_ROWS);
   };
   const Vector2 anchor(static_cast<float>(ordinal * 23 % 64), top);
   const float left = cell_x(run.first);
   const float right = cell_x(run.last + 1);
   const float body_left = run.torn_left ? left + CELL : left;
   const float body_right = run.torn_right ? right - CELL : right;
-  // The broken corner falls away toward the snapped edge, in a jagged line.
+  // The broken corner falls away toward the snapped edge, in a jagged line
+  // that ends above `broken_bottom`; under it the wall spans the whole run.
   const auto broken_top = [&](float from_edge) {
-    const auto jag = static_cast<float>(static_cast<int>(from_edge) * 7 % 5);
-    return top + BREAK_DROP * (1.0F - from_edge / CELL) + 2.0F * jag;
+    const auto jag =
+        static_cast<float>(static_cast<int>(from_edge) * 7 % BREAK_JAGS);
+    return top + BREAK_DROP * (1.0F - from_edge / CELL) + BREAK_JAG * jag;
   };
-  const auto bands = static_cast<int>(std::ceil((bottom - top) / LEAN_ROWS));
-  for (int index = 0; index < bands; ++index) {
-    const float band = top + static_cast<float>(index) * LEAN_ROWS;
-    const float band_bottom = std::min(band + LEAN_ROWS, bottom);
-    const float offset = shift(band);
-    const Vector2 moved = anchor + Vector2(offset, 0.0F);
-    if (body_right > body_left) {
-      tile(canvas, art, wall,
-           rect(body_left + offset, band, body_right - body_left,
-                band_bottom - band),
-           moved, tint);
+  const float broken_bottom =
+      run.torn_left || run.torn_right
+          ? std::min(bottom, top + BREAK_DROP +
+                                 BREAK_JAG * static_cast<float>(BREAK_JAGS - 1))
+          : top;
+  // The wall's rows from `from` to `to` between `x_from` and `x_to`, at once
+  // where it stands straight and a band of LEAN_ROWS at a time where it leans.
+  const auto paint_wall = [&](float from, float to, float x_from, float x_to) {
+    for (float y = from; y < to;) {
+      const float end =
+          leaning == 0
+              ? to
+              : std::min(to, top + (std::floor((y - top) / LEAN_ROWS) + 1.0F) *
+                                       LEAN_ROWS);
+      const float offset = shift(y);
+      tile(canvas, art, wall, rect(x_from + offset, y, x_to - x_from, end - y),
+           anchor + Vector2(offset, 0.0F), tint);
+      y = end;
     }
-    for (int column = 0; column < BREAK_STRIPS; ++column) {
-      const float strip = static_cast<float>(column) * BREAK_STRIP;
-      const float from_edge = strip + BREAK_STRIP / 2.0F;
-      const float strip_top = std::max(band, broken_top(from_edge));
-      const auto paint = [&](float x) {
-        if (strip_top < band_bottom) {
-          tile(
-              canvas, art, wall,
-              rect(x + offset, strip_top, BREAK_STRIP, band_bottom - strip_top),
-              moved, tint);
-        }
-      };
-      if (run.torn_left && left + strip < body_right) {
-        paint(left + strip);
-      }
-      if (run.torn_right && right - strip - BREAK_STRIP >= body_left) {
-        paint(right - strip - BREAK_STRIP);
-      }
+  };
+  if (body_right > body_left) {
+    paint_wall(top, broken_bottom, body_left, body_right);
+  }
+  paint_wall(broken_bottom, bottom, left, right);
+  for (int column = 0; column < BREAK_STRIPS; ++column) {
+    const float strip = static_cast<float>(column) * BREAK_STRIP;
+    const float strip_top = broken_top(strip + BREAK_STRIP / 2.0F);
+    if (run.torn_left && left + strip < body_right) {
+      paint_wall(strip_top, broken_bottom, left + strip,
+                 left + strip + BREAK_STRIP);
+    }
+    if (run.torn_right && right - strip - BREAK_STRIP >= body_left) {
+      paint_wall(strip_top, broken_bottom, right - strip - BREAK_STRIP,
+                 right - strip);
     }
   }
   const auto fixture = [&](Image image, float x, float y, godot::Color lit) {
