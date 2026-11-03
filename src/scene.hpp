@@ -9,6 +9,8 @@
 #include <survival/escape.hpp>
 
 #include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/ref.hpp>
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
@@ -81,16 +83,20 @@ private:
   session::SurvivalFeatures start_survival();
   void draw_world();
   void draw_glow();
+  void draw_finish();
 
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
   std::optional<rendering::Art> drawing;
   std::optional<audio::Speaker> speaker;
-  /// The layers drawn behind this node's own drawing: the scene, then the
-  /// light added over it. The tree owns them.
+  /// The layers drawn behind this node's own drawing: the scene, the light
+  /// added over it, and the pass that finishes both. The tree owns them.
   godot::Node2D *world = nullptr;
   godot::Node2D *glow = nullptr;
+  godot::Node2D *finish = nullptr;
+  /// The finishing pass's shader material.
+  godot::Ref<godot::Resource> finishing;
 };
 
 } // namespace neocity

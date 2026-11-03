@@ -25,6 +25,25 @@ constexpr const char *CINEMATIC_FINISHED = "finished";
 /// The material that makes the glow layer add its light to what is under it.
 constexpr const char *GLOW_MATERIAL =
     "res://levels/monster_mouth_escape/art/glow.tres";
+/// The shader material of the pass that finishes the scene and its light.
+constexpr const char *FINISH_MATERIAL =
+    "res://levels/monster_mouth_escape/art/finish.tres";
+/// The canvas the finishing pass covers.
+constexpr godot::Vector2 SCREEN_SIZE(1280.0F, 720.0F);
+
+/// Loads a layer's material and gives it to `layer`, stopping the host when
+/// either fails.
+godot::Ref<godot::Resource> dress(godot::Node2D &layer, const char *file) {
+  const godot::Ref<godot::Resource> material =
+      godot::ResourceLoader::get_singleton()->load(file);
+  CRASH_COND_MSG(material.is_null(),
+                 godot::String("Material must load: ") + file);
+  // The trimmed bindings have no material setter; the property takes it.
+  layer.set("material", material);
+  CRASH_COND_MSG(layer.get("material") != godot::Variant(material),
+                 godot::String("Layer must take its material: ") + file);
+  return material;
+}
 
 } // namespace
 
@@ -93,22 +112,20 @@ void MainScene::_ready() {
   }
   drawing = rendering::Art::load();
   speaker = audio::Speaker::attach(*this);
-  const godot::Ref<godot::Resource> adding =
-      godot::ResourceLoader::get_singleton()->load(GLOW_MATERIAL);
-  CRASH_COND_MSG(adding.is_null(), "Glow material must load");
   world = memnew(godot::Node2D);
   glow = memnew(godot::Node2D);
-  // The trimmed bindings have no material setter; the property takes it.
-  glow->set("material", adding);
-  CRASH_COND_MSG(glow->get("material") != godot::Variant(adding),
-                 "Glow layer must take the adding material");
+  finish = memnew(godot::Node2D);
+  dress(*glow, GLOW_MATERIAL);
+  finishing = dress(*finish, FINISH_MATERIAL);
   world->set_name("World");
-  for (godot::Node2D *layer : {world, glow}) {
+  finish->set_name("Finish");
+  for (godot::Node2D *layer : {world, glow, finish}) {
     layer->set_draw_behind_parent(true);
     add_child(layer);
   }
   world->connect("draw", callable_mp(this, &MainScene::draw_world));
   glow->connect("draw", callable_mp(this, &MainScene::draw_glow));
+  finish->connect("draw", callable_mp(this, &MainScene::draw_finish));
   godot::UtilityFunctions::print(
       "Host: title screen and Monster Mouth Escape ready.");
 }
@@ -129,9 +146,11 @@ void MainScene::_process(double delta) {
     session.aim(*drawing);
   }
   queue_redraw();
-  if (world != nullptr && glow != nullptr) {
+  // Finish redraws last: it reads the waterline the world just drew.
+  if (world != nullptr && glow != nullptr && finish != nullptr) {
     world->queue_redraw();
     glow->queue_redraw();
+    finish->queue_redraw();
   }
 }
 
@@ -145,6 +164,25 @@ void MainScene::draw_glow() {
   if (drawing && glow != nullptr) {
     session.paint_glow(*glow, *drawing);
   }
+}
+
+void MainScene::draw_finish() {
+  if (!drawing || finish == nullptr) {
+    return;
+  }
+  // Only a frame that drew the acid is finished.
+  const auto line = drawing->take_waterline();
+  if (!line) {
+    return;
+  }
+  finishing->set("shader_parameter/time", drawing->seconds());
+  finishing->set("shader_parameter/band", line->band);
+  finishing->set("shader_parameter/band_left", line->band_left);
+  finishing->set("shader_parameter/sea", line->sea);
+  finishing->set("shader_parameter/grid_origin", line->origin);
+  finishing->set("shader_parameter/grid", line->zoom);
+  finish->draw_rect(godot::Rect2(0.0F, 0.0F, SCREEN_SIZE.x, SCREEN_SIZE.y),
+                    godot::Color(1.0F, 1.0F, 1.0F));
 }
 
 void MainScene::_draw() {

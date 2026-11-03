@@ -5,8 +5,12 @@ extends SceneTree
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
 ## band behind the map does not show green at no acid, the stairs' walked-on part does not
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
-## lit top edge does not run along its tilt, or one of its word plates covers
-## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
+## lit top edge does not run along its tilt, the acid's light does not rise
+## above its surface, the acid stands still between two
+## frames a moment apart, the finishing pass breaks the scene's pixels below the
+## sea's surface into smaller ones, the city draws fewer than 60 frames a second,
+## or one of its word plates covers another or a source other than the source's
+## own count. The camera shows a part of the city, so each look is measured on
 ## every city frame that shows what it looks at, and fails when none does.
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
@@ -82,6 +86,36 @@ const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i
 ## the floor line of its first cell to that of the row below at its right end.
 const SLAB_CELL: Vector2i = Vector2i(20, 6)
 const SLAB_CELLS: int = 2
+## How long apart, in real milliseconds, the two frames of the acid's motion
+## are taken; how much a pixel's colour must change in a channel, from 0 to 1,
+## to count as moved; and the least share of the acid's pixels that move.
+const MOTION_MSEC: int = 250
+const MOTION_STEP: float = 0.04
+const MOTION_SHARE: float = 0.05
+## The screen rows just above the acid's surface that its light falls on, and
+## the rows of backdrop higher up that they are held against; how much more,
+## in mean green lead from 0 to 1, the lit rows read.
+const LIT_ROWS: Vector2i = Vector2i(-16, 0)
+const UNLIT_ROWS: Vector2i = Vector2i(-96, -64)
+const LIGHT_GAP: float = 0.03
+## The screen rows under the acid's surface where a column shows the acid, and
+## the least share of the columns that must show it for the light to be read.
+const ACID_UNDER: Array[int] = [6, 12, 24]
+const LIGHT_COLUMNS: float = 0.1
+## The screen rows under the sea's surface that the motion is read over.
+const SEA_ROWS: Vector2i = Vector2i(2, 40)
+## The least share of the scene's pixels below the sea's surface that the
+## finished frame draws as one colour, and how far apart, from 0 to 1 in a
+## channel, two screen pixels of one may be. A scene pixel is a square of
+## screen pixels as wide as the camera's zoom.
+const GRID_SHARE: float = 0.97
+const GRID_TOLERANCE: float = 0.01
+## The least share of those scene pixels whose green leads by ACID_GREEN, so
+## the pixels read hold the acid.
+const GRID_GREEN: float = 0.05
+## The least frames a second the city draws, and over how many frames.
+const FRAME_RATE: float = 60.0
+const RATE_FRAMES: int = 600
 ## How far one 100ms movement unit carries a running actor, in sub-cells.
 const RUN_UNIT: int = 50
 ## Longer than the screen's longest eased motion.
@@ -97,6 +131,8 @@ var slab_frames: int = 0
 var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
+var grid_frames: int = 0
+var light_frames: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -119,6 +155,8 @@ func _run() -> void:
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 7)
 	await _save_city("4-city-collect-prompt")
+	if not await _acid_moves("4-city-collect-prompt") or not await _draws_fast("4-city-collect-prompt"):
+		return
 	# A jump in place on the flat street comes down where it rose.
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
@@ -207,6 +245,8 @@ func _run() -> void:
 	await _frames(40)
 	await _walk(KEY_D, 6)
 	await _save_city("26-city-middle-acid")
+	if not await _acid_moves("26-city-middle-acid"):
+		return
 	await _tap(KEY_Q)
 	await _until_phase("workshop")
 	while _int("acid") < HIGH_ACID:
@@ -273,10 +313,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d and the slab in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d and the acid light in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
@@ -482,7 +522,7 @@ func _save_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -649,6 +689,144 @@ func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
 		_fail("%s: the fallen slab's top edge does not run along its tilt" % screen)
 		return false
 	return true
+
+## Whether, while the camera rests, MOTION_SHARE of the acid's pixels change
+## between two frames MOTION_MSEC apart: of the pixels whose green leads by
+## ACID_GREEN in the first, in the BAND_ROWS under the acid band's surface
+## where the sea does not cover them, else in the SEA_ROWS under the sea's
+## surface. The control is that the camera did not move between the frames and
+## that the rows read are on the play area.
+func _acid_moves(screen: String) -> bool:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var top: int = _band_top() + BAND_ROWS.x
+	var bottom: int = _band_top() + BAND_ROWS.y
+	var which: String = "acid band"
+	if not _band_clear(view):
+		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		top = sea + SEA_ROWS.x
+		bottom = sea + SEA_ROWS.y
+		which = "sea"
+	var first: Image = await _frame()
+	OS.delay_msec(MOTION_MSEC)
+	var second: Image = await _frame()
+	var still: Transform2D = scene.get_meta("map_view", Transform2D())
+	if not still.is_equal_approx(view) or top < PLAY.position.y or bottom > PLAY.end.y:
+		_fail("%s: the acid's motion cannot be read: the camera moved from %s to %s, or rows %d to %d leave the play area" % [screen, view, still, top, bottom])
+		return false
+	var moved: int = 0
+	var count: int = 0
+	for y: int in range(top, bottom):
+		for x: int in range(0, int(PLAY.size.x), 2):
+			var before: Color = first.get_pixel(x, y)
+			var after: Color = second.get_pixel(x, y)
+			if before.g - maxf(before.r, before.b) < ACID_GREEN:
+				continue
+			count += 1
+			if maxf(absf(before.r - after.r), maxf(absf(before.g - after.g), absf(before.b - after.b))) >= MOTION_STEP:
+				moved += 1
+	var share: float = float(moved) / maxi(count, 1)
+	print("Capture: %s: %.3f of the %d green pixels of the %s in rows %d to %d moved in %dms (at least %.3f)." % [screen, share, count, which, top, bottom, MOTION_MSEC, MOTION_SHARE])
+	if share < MOTION_SHARE:
+		_fail("%s: the %s stands still" % [screen, which])
+		return false
+	return true
+
+## Whether the city draws FRAME_RATE frames a second or more over RATE_FRAMES
+## frames while the camera rests; run with vsync off, so frames are not held to
+## the display's rate.
+func _draws_fast(screen: String) -> bool:
+	await _frames(2)
+	var start: int = Time.get_ticks_usec()
+	await _frames(RATE_FRAMES)
+	var rate: float = RATE_FRAMES / ((Time.get_ticks_usec() - start) / 1000000.0)
+	print("Capture: %s: the city drew %.1f frames a second over %d frames at %s (at least %.0f)." % [screen, rate, RATE_FRAMES, root.get_texture().get_size(), FRAME_RATE])
+	if rate < FRAME_RATE:
+		_fail("%s: the city draws fewer than %.0f frames a second" % [screen, FRAME_RATE])
+		return false
+	return true
+
+## Whether, at a zoom of two or more, GRID_SHARE of the scene pixels the frame
+## shows below the sea's surface, clear of the word plates, are each one colour,
+## so the finishing pass keeps to the scene's pixels. The control is that
+## GRID_GREEN of the pixels read hold the acid's green.
+func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
+	var zoom: int = roundi(view.x.x)
+	var sea: int = ceili((view * Vector2(0, _acid_surface())).y)
+	if zoom < 2 or sea >= PLAY.end.y - 8 * zoom:
+		return true
+	var origin: Vector2i = Vector2i(view.origin.round())
+	var first_x: int = posmod(origin.x, zoom)
+	var first_y: int = maxi(sea, int(PLAY.position.y))
+	first_y += posmod(origin.y - first_y, zoom)
+	var whole: int = 0
+	var count: int = 0
+	var green: int = 0
+	for y: int in range(first_y, int(PLAY.end.y) - zoom + 1, zoom):
+		for x: int in range(first_x, int(PLAY.size.x) - zoom + 1, zoom):
+			var block: Rect2 = Rect2(x, y, zoom, zoom)
+			if plates.any(func(plate: Rect2) -> bool: return plate.intersects(block)):
+				continue
+			var corner: Color = frame.get_pixel(x, y)
+			var one: bool = true
+			for dy: int in range(zoom):
+				for dx: int in range(zoom):
+					var other: Color = frame.get_pixel(x + dx, y + dy)
+					if maxf(absf(corner.r - other.r), maxf(absf(corner.g - other.g), absf(corner.b - other.b))) > GRID_TOLERANCE:
+						one = false
+			count += 1
+			whole += 1 if one else 0
+			green += 1 if corner.g - maxf(corner.r, corner.b) >= ACID_GREEN else 0
+	if count == 0:
+		return true
+	var share: float = float(whole) / count
+	grid_frames += 1
+	print("Capture: %s: %.3f of %d scene pixels below the sea's surface are one colour, %.3f of them green (at least %.3f one colour, %.3f green)." % [screen, share, count, float(green) / count, GRID_SHARE, GRID_GREEN])
+	if float(green) / count < GRID_GREEN or share < GRID_SHARE:
+		_fail("%s: the finished sea does not keep to the scene's pixels" % screen)
+		return false
+	return true
+
+## Whether, over the columns where the acid shows under its surface, the band's
+## where the sea does not cover it and the sea's otherwise, the LIT_ROWS above
+## that surface lead the UNLIT_ROWS of backdrop higher up in green by
+## LIGHT_GAP, when the play area shows both. The control is that the acid shows
+## under the surface in LIGHT_COLUMNS of the columns read.
+func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
+	var surface: int = _band_top() if _band_clear(view) else floori((view * Vector2(0, _acid_surface())).y)
+	if surface + UNLIT_ROWS.x < PLAY.position.y or surface + ACID_UNDER.back() >= PLAY.end.y:
+		return true
+	var lit: float = 0.0
+	var unlit: float = 0.0
+	var columns: int = 0
+	var read: int = 0
+	for x: int in range(0, int(PLAY.size.x), 2):
+		read += 1
+		if not ACID_UNDER.any(func(row: int) -> bool: return _green(frame.get_pixel(x, surface + row)) >= ACID_GREEN):
+			continue
+		columns += 1
+		for y: int in range(LIT_ROWS.x, LIT_ROWS.y):
+			lit += maxf(_green(frame.get_pixel(x, surface + y)), 0.0)
+		for y: int in range(UNLIT_ROWS.x, UNLIT_ROWS.y):
+			unlit += maxf(_green(frame.get_pixel(x, surface + y)), 0.0)
+	var share: float = float(columns) / read
+	lit /= maxi(columns, 1) * (LIT_ROWS.y - LIT_ROWS.x)
+	unlit /= maxi(columns, 1) * (UNLIT_ROWS.y - UNLIT_ROWS.x)
+	light_frames += 1
+	print("Capture: %s: over %.3f of the columns, where the acid shows under its surface at row %d, the rows above it lead the backdrop above them in green by %.3f (lit %.3f, backdrop %.3f, at least %.3f)." % [screen, share, surface, lit - unlit, lit, unlit, LIGHT_GAP])
+	if share < LIGHT_COLUMNS or lit - unlit < LIGHT_GAP:
+		_fail("%s: the acid's light does not rise above its surface" % screen)
+		return false
+	return true
+
+## How far a colour's green leads its red and blue, from -1 to 1.
+func _green(pixel: Color) -> float:
+	return pixel.g - maxf(pixel.r, pixel.b)
+
+## The next drawn frame.
+func _frame() -> Image:
+	await process_frame
+	await RenderingServer.frame_post_draw
+	return root.get_texture().get_image()
 
 ## The scene row of the acid's surface in the frame the status describes.
 func _acid_surface() -> float:

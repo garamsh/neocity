@@ -18,6 +18,7 @@
 #include <chrono>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <vector>
 
 namespace neocity::rendering {
@@ -200,6 +201,21 @@ struct Motion {
   std::chrono::microseconds landed_at{-1};
 };
 
+/// Where the last backdrop drawn put the acid's surfaces and the scene's
+/// pixels on the screen, for the pass that finishes the scene.
+struct Waterline {
+  /// The screen row of the acid band's surface, and the screen column its
+  /// art's pixel grid starts from.
+  float band = 0.0F;
+  float band_left = 0.0F;
+  /// The screen row of the surface of the sea in the scene.
+  float sea = 0.0F;
+  /// The screen position of the scene's origin.
+  godot::Vector2 origin;
+  /// How many screen pixels one scene pixel spans.
+  float zoom = 1.0F;
+};
+
 /// Draws text and the monster-mouth escape art onto a Godot canvas, and
 /// remembers how each actor moved between frames.
 class Art {
@@ -249,6 +265,15 @@ public:
   /// missing from the last drawn frame appears afresh.
   [[nodiscard]] float shown_for(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
+  /// Seconds of a steady real clock since the art loaded; the scene's
+  /// ambient motion runs on it and moves nothing in the rules.
+  [[nodiscard]] float seconds() const;
+  /// Notes the acid band's surface at row `band` with its art's grid from
+  /// column `band_left`, both drawn through the last shift, and the sea's at
+  /// scene row `sea`, drawn through the last look.
+  void note_waterline(float band, float band_left, float sea) const;
+  /// The waterline noted since the last call, if any.
+  [[nodiscard]] std::optional<Waterline> take_waterline() const;
   /// Records `actor`'s `body` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.
   Motion track(survival::Actor actor, const survival::Body &body,
@@ -295,6 +320,9 @@ private:
   mutable std::map<godot::String, Tween> tweens;
   mutable std::vector<Written> written;
   mutable std::vector<int> sizes;
+  mutable std::optional<Waterline> waterline;
+  /// The steady clock's reading when the art loaded.
+  std::uint64_t loaded;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;
