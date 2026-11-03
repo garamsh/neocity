@@ -140,6 +140,11 @@ constexpr float TASK_INNER = TASK_WIDTH - 2.0F * INSET;
 /// draws the appraiser's idle frame: x 150, standing on the kitchen floor.
 constexpr float APPRAISER_HEAD_X = 216.0F;
 constexpr float APPRAISER_HEAD_Y = 206.0F;
+/// Where the workshop scene stands the chef: its left edge, the floor under
+/// its feet, and the scale it is drawn at.
+constexpr float CHEF_FIGURE_X = 560.0F;
+constexpr float KITCHEN_FLOOR = 310.0F;
+constexpr float FIGURE_SCALE = 2.0F;
 /// The day's result, over the task card and clear of the appraiser's
 /// ingredients, the kitchen's people and the notes.
 constexpr float RESULT_WIDTH = TASK_WIDTH;
@@ -627,28 +632,37 @@ String city_step(const SurvivalFrame &frame, Actor actor,
          from(keys.travel) + " returns.";
 }
 
-std::optional<String> role_step(const SurvivalFrame &frame, Actor actor,
-                                const char *busy) {
+/// A step the base names, and the press a click on it stands for; none while
+/// it waits on AI.
+struct Job {
+  String text;
+  std::optional<PlayerPress> press;
+};
+
+std::optional<Job> role_step(const SurvivalFrame &frame, Actor actor,
+                             const char *busy) {
   const auto keys = survival::key_set(frame.control, actor);
   if (!keys) {
-    return busy;
+    return Job{.text = busy, .press = std::nullopt};
   }
   const auto &offer = frame.offers.at(index_of(actor)).interact;
   if (offer) {
-    return offered_step(frame.view, *offer, KEY_LABELS.at(*keys));
+    return Job{.text = offered_step(frame.view, *offer, KEY_LABELS.at(*keys)),
+               .press = PlayerPress{actor, PlayerKey::Interact}};
   }
   return std::nullopt;
 }
 
-std::optional<String> replacement_step(const SurvivalFrame &frame) {
+std::optional<Job> replacement_step(const SurvivalFrame &frame) {
   const auto &workshop = frame.content.get().companion.workshop;
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
     if (keys &&
         role_tool_state(frame.view, actor) == survival::ToolState::Damaged &&
         carried(frame.view, role_replacement(workshop, actor))) {
-      return key(KEY_LABELS.at(*keys).replace_tool) + "Replace the damaged " +
-             role_tool_name(actor);
+      return Job{.text = key(KEY_LABELS.at(*keys).replace_tool) +
+                         "Replace the damaged " + role_tool_name(actor),
+                 .press = PlayerPress{actor, PlayerKey::ReplaceTool}};
     }
   }
   return std::nullopt;
@@ -668,7 +682,7 @@ bool dish_to_feed(const SurvivalFrame &frame) {
       frame.offers, [](const auto &offers) { return offers.feed.has_value(); });
 }
 
-std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
+std::optional<Job> workshop_craft_step(const SurvivalFrame &frame) {
   if (has_unidentified(frame.view)) {
     if (auto step = role_step(frame, Actor::Appraiser,
                               "The appraiser is identifying your finds.")) {
@@ -682,12 +696,14 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
   if (chef_keys && !dish_to_feed(frame)) {
     const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
     if (offer) {
-      return offered_step(frame.view, *offer, KEY_LABELS.at(*chef_keys));
+      return Job{
+          .text = offered_step(frame.view, *offer, KEY_LABELS.at(*chef_keys)),
+          .press = PlayerPress{Actor::Chef, PlayerKey::Interact}};
     }
   }
   // An AI chef cooks on its next step, so the day must not end unfed first.
   if (frame.ai_chef_working && !dish_to_feed(frame)) {
-    return "The AI chef is cooking.";
+    return Job{.text = "The AI chef is cooking.", .press = std::nullopt};
   }
   // Feeding ends the day, and a stored dish keeps while the city still gives.
   if (worth_setting_out(frame)) {
@@ -697,23 +713,33 @@ std::optional<String> workshop_craft_step(const SurvivalFrame &frame) {
     const auto keys = survival::key_set(frame.control, actor);
     const auto &offer = frame.offers.at(index_of(actor)).feed;
     if (keys && offer) {
-      return offered_step(frame.view, *offer, KEY_LABELS.at(*keys));
+      return Job{.text = offered_step(frame.view, *offer, KEY_LABELS.at(*keys)),
+                 .press = PlayerPress{actor, PlayerKey::Feed}};
     }
   }
   return std::nullopt;
 }
 
-String workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
+/// The human whose keys are player one's.
+Actor first_player(const SurvivalFrame &frame) {
+  return survival::key_set(frame.control, Actor::Chef) == 0 ? Actor::Chef
+                                                            : Actor::Appraiser;
+}
+
+Job workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
   if (auto step = workshop_craft_step(frame)) {
     return *step;
   }
   if (worth_setting_out(frame)) {
-    return set_out_keys(frame) + "Set out into the city: " +
-           corner_clock(frame.view.progression.remaining_exploration) +
-           " left today.";
+    return {.text = set_out_keys(frame) + "Set out into the city: " +
+                    corner_clock(frame.view.progression.remaining_exploration) +
+                    " left today.",
+            .press = PlayerPress{std::nullopt, PlayerKey::Travel}};
   }
-  return key(keys.end_day) + "End the day unfed: acid rises by " +
-         number(frame.content.get().companion.unfed_penalty.value) + ".";
+  return {.text = key(keys.end_day) + "End the day unfed: acid rises by " +
+                  number(frame.content.get().companion.unfed_penalty.value) +
+                  ".",
+          .press = PlayerPress{first_player(frame), PlayerKey::EndDay}};
 }
 
 float acid_ratio(const SurvivalFrame &frame) {
@@ -851,6 +877,15 @@ void gauge(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
+/// The pause key's chip under the clock.
+godot::Rect2 pause_chip(const rendering::Art &drawing) {
+  const float cap =
+      drawing.text_width(MENU_KEYS.pause, SMALL_SIZE, Weight::Bold) + 10.0F;
+  const float width =
+      cap + drawing.text_width(PAUSE_HINT, SMALL_SIZE, CHANGING) + 18.0F;
+  return rect(SCREEN_WIDTH - MARGIN - width, HINT_Y - 15.0F, width, 21.0F);
+}
+
 /// The day at the top left, the acid in the middle and the time at the
 /// right, with the pause key under the time.
 void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -891,10 +926,9 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
                tones.white, Weight::Bold);
   const String esc = MENU_KEYS.pause;
   const float cap = drawing.text_width(esc, SMALL_SIZE, Weight::Bold) + 10.0F;
-  const float width =
-      cap + drawing.text_width(PAUSE_HINT, SMALL_SIZE, CHANGING) + 18.0F;
-  const float x = SCREEN_WIDTH - MARGIN - width;
-  canvas.draw_rect(rect(x, HINT_Y - 15.0F, width, 21.0F), tones.outline);
+  const auto chip_area = pause_chip(drawing);
+  const float x = chip_area.position.x;
+  canvas.draw_rect(chip_area, tones.outline);
   canvas.draw_rect(rect(x + 3.0F, HINT_Y - 12.0F, cap, 15.0F), tones.raised);
   drawing.text(canvas, x + 8.0F, HINT_Y, esc, SMALL_SIZE, tones.white,
                Weight::Bold);
@@ -1156,16 +1190,26 @@ String interact_label(const SurvivalFrame &frame, Actor actor,
 
 /// The movement, run, jump and travel keys of one human, with where travel
 /// takes it; a collection holds the actor, so travel is left out then.
-String key_hint(const SurvivalFrame &frame, Actor actor,
-                const KeyLabels &keys) {
-  String moves = from(keys.move) + " move  " + from(keys.run) + " run  " +
-                 from(keys.jump) + " jump";
+String move_keys(const KeyLabels &keys) {
+  return from(keys.move) + " move  " + from(keys.run) + " run  " +
+         from(keys.jump) + " jump  ";
+}
+
+/// The travel key and where it takes the actor; none while collecting.
+std::optional<String> travel_hint(const SurvivalFrame &frame, Actor actor,
+                                  const KeyLabels &keys) {
   if (collecting_of(frame.view, actor)) {
-    return moves;
+    return std::nullopt;
   }
-  return moves + String("  ") + from(keys.travel) +
+  return from(keys.travel) +
          (state_of(frame.view, actor).location == Location::City ? " base"
                                                                  : " set out");
+}
+
+String key_hint(const SurvivalFrame &frame, Actor actor,
+                const KeyLabels &keys) {
+  const auto travel = travel_hint(frame, actor, keys);
+  return travel ? move_keys(keys) + *travel : move_keys(keys).strip_edges();
 }
 
 /// The humans, chef first, with their key sets.
@@ -1179,41 +1223,69 @@ std::vector<std::pair<Actor, std::size_t>> humans(const SurvivalFrame &frame) {
   return found;
 }
 
+/// One human's row of the action panel: its button, and where its keys'
+/// line starts on its baseline.
+struct ActionRow {
+  Actor actor = Actor::Chef;
+  std::size_t set = 0;
+  godot::Rect2 button;
+  Vector2 hint;
+};
+
+/// The action panel's rows, one for a lone human, a smaller one for each of
+/// two.
+std::vector<ActionRow> action_rows(const SurvivalFrame &frame) {
+  const float left = ACTION_X + 10.0F;
+  const auto players = humans(frame);
+  std::vector<ActionRow> rows;
+  if (players.size() == 1) {
+    const auto [actor, set] = players.front();
+    rows.push_back(
+        {.actor = actor,
+         .set = set,
+         .button = rect(left, FOOT_Y + 8.0F, ACTION_INNER, SOLO_BUTTON_HEIGHT),
+         .hint = Vector2(left + 2.0F, FOOT_Y + FOOT_HEIGHT - 14.0F)});
+    return rows;
+  }
+  float row = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT + 8.0F;
+  for (const auto &[actor, set] : players) {
+    rows.push_back(
+        {.actor = actor,
+         .set = set,
+         .button = rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_BUTTON_HEIGHT),
+         .hint = Vector2(left + PLAYER_TAG + 2.0F, row + DUO_ROW - 4.0F)});
+    row += DUO_ROW;
+  }
+  return rows;
+}
+
 /// The action at the bottom right: each human's interact key as a button
 /// naming what it acts on, lit while it acts now, over that human's keys.
 void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  const float left = ACTION_X + 10.0F;
-  const auto players = humans(frame);
-  if (players.size() == 1) {
-    const auto [actor, set] = players.front();
-    const auto &keys = KEY_LABELS.at(set);
+  const auto rows = action_rows(frame);
+  const bool alone = rows.size() == 1;
+  if (alone) {
     rendering::panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
-    paint_button(canvas, drawing,
-                 rect(left, FOOT_Y + 8.0F, ACTION_INNER, SOLO_BUTTON_HEIGHT),
-                 interact_label(frame, actor, keys), ACTION_SIZE,
-                 frame.offers.at(index_of(actor)).interact.has_value());
-    drawing.text(canvas, left + 2.0F, FOOT_Y + FOOT_HEIGHT - 14.0F,
-                 key_hint(frame, actor, keys), SMALL_SIZE, tones.muted,
-                 CHANGING);
-    return;
+  } else {
+    rendering::panel(canvas, rect(ACTION_X, SCREEN_HEIGHT - MARGIN - DUO_HEIGHT,
+                                  ACTION_WIDTH, DUO_HEIGHT));
   }
-  const float top = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT;
-  rendering::panel(canvas, rect(ACTION_X, top, ACTION_WIDTH, DUO_HEIGHT));
-  float row = top + 8.0F;
-  for (const auto &[actor, set] : players) {
-    const auto &keys = KEY_LABELS.at(set);
-    drawing.text(canvas, left, row + 18.0F, "P" + number(set + 1), SMALL_SIZE,
-                 tones.cyan, Weight::Bold);
-    paint_button(canvas, drawing,
-                 rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_BUTTON_HEIGHT),
-                 interact_label(frame, actor, keys), DUO_SIZE,
-                 frame.offers.at(index_of(actor)).interact.has_value());
-    drawing.text(canvas, left + PLAYER_TAG + 2.0F, row + DUO_ROW - 4.0F,
-                 key_hint(frame, actor, keys), SMALL_SIZE, tones.muted,
+  for (const auto &row : rows) {
+    const auto &keys = KEY_LABELS.at(row.set);
+    if (!alone) {
+      drawing.text(canvas, ACTION_X + 10.0F, row.button.position.y + 18.0F,
+                   "P" + number(row.set + 1), SMALL_SIZE, tones.cyan,
+                   Weight::Bold);
+    }
+    paint_button(canvas, drawing, row.button,
+                 interact_label(frame, row.actor, keys),
+                 alone ? ACTION_SIZE : DUO_SIZE,
+                 frame.offers.at(index_of(row.actor)).interact.has_value());
+    drawing.text(canvas, row.hint.x, row.hint.y,
+                 key_hint(frame, row.actor, keys), SMALL_SIZE, tones.muted,
                  CHANGING);
-    row += DUO_ROW;
   }
 }
 
@@ -1265,6 +1337,18 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
 
 /// The feed key of the first human whose feed key would feed a stored dish,
 /// and that dish: "[F] Feed Fish Stew".
+/// The first human whose feed key would feed a stored dish.
+std::optional<Actor> feeder(const SurvivalFrame &frame) {
+  for (const auto actor : ACTORS) {
+    const auto &offer = frame.offers.at(index_of(actor)).feed;
+    if (survival::key_set(frame.control, actor) && offer &&
+        std::holds_alternative<survival::Feed>(*offer)) {
+      return actor;
+    }
+  }
+  return std::nullopt;
+}
+
 std::optional<String> feed_job(const SurvivalFrame &frame) {
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
@@ -1330,8 +1414,16 @@ void paint_task(godot::Node2D &canvas, const rendering::Art &drawing,
              y + 89.0F, end, TASK_NOTE_SIZE, tones.muted, tones.gold);
 }
 
+/// The panel over the appraiser's head that holds `count` ingredients.
+godot::Rect2 appraisal_area(std::size_t count) {
+  const float width = static_cast<float>(count) * 52.0F + 14.0F;
+  return rect(std::max(MARGIN, APPRAISER_HEAD_X - width / 2.0F),
+              APPRAISER_HEAD_Y - 72.0F, width, 64.0F);
+}
+
 /// The ingredients not yet identified, over the appraiser's head, the one
 /// its key would appraise ringed.
+
 void paint_appraisal(godot::Node2D &canvas, const rendering::Art &drawing,
                      const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
@@ -1346,10 +1438,10 @@ void paint_appraisal(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
   const auto *next = offer ? std::get_if<survival::Appraise>(&*offer) : nullptr;
-  const float width = static_cast<float>(unknown.size()) * 52.0F + 14.0F;
-  const float x = std::max(MARGIN, APPRAISER_HEAD_X - width / 2.0F);
-  const float y = APPRAISER_HEAD_Y - 72.0F;
-  rendering::panel(canvas, rect(x, y, width, 64.0F));
+  const auto area = appraisal_area(unknown.size());
+  const float x = area.position.x;
+  const float y = area.position.y;
+  rendering::panel(canvas, area);
   godot::PackedVector2Array pointer;
   pointer.push_back(Vector2(APPRAISER_HEAD_X - 7.0F, y + 62.0F));
   pointer.push_back(Vector2(APPRAISER_HEAD_X + 7.0F, y + 62.0F));
@@ -1927,6 +2019,21 @@ void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
 }
 
 /// The pause screen's subtitle, with when the escape checks begin.
+/// The pause screen's button at its top right, risen by `lift`.
+godot::Rect2 continue_area(const rendering::Art &drawing, const String &text,
+                           float lift = 0.0F) {
+  const float width = button_width(drawing, text, INTERRUPTION_LINE_SIZE);
+  return rect(PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_INSET - width,
+              PAUSE_BOX_Y + lift + 36.0F, width, 48.0F);
+}
+
+/// A notice's button under its line, risen by `lift`.
+godot::Rect2 notice_button_area(const rendering::Art &drawing,
+                                const String &text, float lift = 0.0F) {
+  return rect(NOTICE_TEXT_X - BUTTON_PAD, NOTICE_BOX_Y + lift + 150.0F,
+              button_width(drawing, text, INTERRUPTION_LINE_SIZE), 48.0F);
+}
+
 String pause_line(const std::array<String, 3> &text) {
   return text.at(1) + String(" ") + escape_goal() + String(".");
 }
@@ -2023,13 +2130,8 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_key_rows(canvas, drawing, key_rows(frame), PAUSE_TEXT_X,
                    PAUSE_ROWS_Y + lift, PAUSE_ROW_HEIGHT);
     paint_recipe_book(canvas, drawing, frame, PAUSE_ROWS_Y + lift);
-    const float continue_width =
-        button_width(drawing, text.at(2), INTERRUPTION_LINE_SIZE);
-    paint_button(
-        canvas, drawing,
-        rect(PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_INSET - continue_width,
-             PAUSE_BOX_Y + lift + 36.0F, continue_width, 48.0F),
-        text.at(2), INTERRUPTION_LINE_SIZE, false);
+    paint_button(canvas, drawing, continue_area(drawing, text.at(2), lift),
+                 text.at(2), INTERRUPTION_LINE_SIZE, false);
     paint_volumes(canvas, drawing, volumes, lift);
     return;
   }
@@ -2040,10 +2142,7 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + lift + 116.0F, text.at(1),
                INTERRUPTION_LINE_SIZE, tones.muted, CHANGING);
   if (!text.at(2).is_empty()) {
-    paint_button(canvas, drawing,
-                 rect(NOTICE_TEXT_X - BUTTON_PAD, NOTICE_BOX_Y + lift + 150.0F,
-                      button_width(drawing, text.at(2), INTERRUPTION_LINE_SIZE),
-                      48.0F),
+    paint_button(canvas, drawing, notice_button_area(drawing, text.at(2), lift),
                  text.at(2), INTERRUPTION_LINE_SIZE, false);
   }
 }
@@ -2187,7 +2286,7 @@ String next_step(const SurvivalFrame &frame) {
     return "The acid has filled the mouth.";
   }
   if (view.progression.phase == Phase::Workshop) {
-    return workshop_step(frame, KEY_LABELS.at(0));
+    return workshop_step(frame, KEY_LABELS.at(0)).text;
   }
   const bool two_humans = std::ranges::all_of(ACTORS, [&frame](Actor actor) {
     return survival::key_set(frame.control, actor).has_value();
@@ -2466,6 +2565,185 @@ String describe(const GameView &view, const Event &event) {
         }
       },
       event);
+}
+
+namespace {
+
+/// A line of text drawn from `x` on `baseline`, as a target's area.
+godot::Rect2 line_area(const rendering::Art &drawing, float x, float baseline,
+                       const String &text, int size) {
+  return rect(x - 4.0F, baseline - static_cast<float>(size) - 2.0F,
+              drawing.text_width(text, size, CHANGING) + 8.0F,
+              static_cast<float>(size) + 8.0F);
+}
+
+/// A button whose words name two keys, split where `second` begins, so
+/// each key's words are a target of their own.
+std::pair<godot::Rect2, godot::Rect2>
+split_button(const rendering::Art &drawing, godot::Rect2 button,
+             const String &text, const String &second, int size) {
+  const float x =
+      button.position.x + BUTTON_PAD +
+      drawing.text_width(text.substr(0, text.find(second)), size, CHANGING) -
+      6.0F;
+  return {rect(button.position.x, button.position.y, x - button.position.x,
+               button.size.y),
+          rect(x, button.position.y, button.get_end().x - x, button.size.y)};
+}
+
+void city_targets(std::vector<Target> &targets, const rendering::Art &drawing,
+                  const SurvivalFrame &frame) {
+  for (const auto &row : action_rows(frame)) {
+    const auto &keys = KEY_LABELS.at(row.set);
+    String refusal;
+    if (collecting_of(frame.view, row.actor)) {
+      refusal = "Collecting: wait until it is done.";
+    } else if (!frame.offers.at(index_of(row.actor)).interact) {
+      refusal = "Nothing within reach to collect or repair.";
+    }
+    targets.push_back({.area = row.button,
+                       .press = PlayerPress{row.actor, PlayerKey::Interact},
+                       .refusal = refusal});
+    if (const auto travel = travel_hint(frame, row.actor, keys)) {
+      const float x = row.hint.x +
+                      drawing.text_width(move_keys(keys), SMALL_SIZE, CHANGING);
+      targets.push_back(
+          {.area = line_area(drawing, x, row.hint.y, *travel, SMALL_SIZE),
+           .press = PlayerPress{row.actor, PlayerKey::Travel}});
+    }
+  }
+}
+
+void workshop_targets(std::vector<Target> &targets,
+                      const rendering::Art &drawing,
+                      const SurvivalFrame &frame) {
+  const auto job = workshop_step(frame, KEY_LABELS.at(0));
+  targets.push_back(
+      {.area = rect(TASK_X, TASK_Y, TASK_WIDTH, 48.0F),
+       .press = job.press.value_or(PlayerPress{}),
+       .refusal = job.press ? String() : String("The AI is working.")});
+  if (const auto actor = feeder(frame);
+      actor && job.press && job.press->key != PlayerKey::Feed) {
+    targets.push_back({.area = rect(TASK_X, TASK_Y + 48.0F, TASK_WIDTH, 22.0F),
+                       .press = PlayerPress{*actor, PlayerKey::Feed}});
+  }
+  if (survival::key_set(frame.control, Actor::Chef)) {
+    const auto &recipes = frame.content.get().companion.workshop.recipes;
+    const auto ready =
+        std::ranges::count_if(recipes, [&frame](const auto &recipe) {
+          return recipe_ready(frame.view, recipe);
+        });
+    targets.push_back(
+        {.area = line_area(drawing, TASK_X + INSET, TASK_Y + 89.0F,
+                           cookable_note(frame), TASK_NOTE_SIZE),
+         .press = DishPress{survival::Direction::Down},
+         .refusal = ready > 1 ? String() : String("No other dish to choose.")});
+  }
+  const String end = end_day_job(frame);
+  const float end_width = drawing.text_width(end, TASK_NOTE_SIZE, CHANGING);
+  targets.push_back(
+      {.area = line_area(drawing, TASK_X + TASK_WIDTH - INSET - end_width,
+                         TASK_Y + 89.0F, end, TASK_NOTE_SIZE),
+       .press = PlayerPress{first_player(frame), PlayerKey::EndDay}});
+  if (survival::key_set(frame.control, Actor::Chef)) {
+    const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
+    const auto figure = drawing.size(rendering::Image::ChefIdle) * FIGURE_SCALE;
+    targets.push_back(
+        {.area =
+             rect(CHEF_FIGURE_X, KITCHEN_FLOOR - figure.y, figure.x, figure.y),
+         .press = PlayerPress{Actor::Chef, PlayerKey::Interact},
+         .refusal = offer && std::holds_alternative<survival::Cook>(*offer)
+                        ? String()
+                        : String("No dish can be cooked now.")});
+  }
+  const auto unknown =
+      std::ranges::count_if(pack_of(frame.view), [&frame](const auto &entry) {
+        return !identified(frame.view, IngredientId{entry.first});
+      });
+  if (unknown > 0) {
+    const bool human =
+        survival::key_set(frame.control, Actor::Appraiser).has_value();
+    const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
+    String refusal;
+    if (!human) {
+      refusal = "The AI appraiser works here.";
+    } else if (!offer || !std::holds_alternative<survival::Appraise>(*offer)) {
+      refusal = "Nothing to appraise now.";
+    }
+    targets.push_back(
+        {.area = appraisal_area(static_cast<std::size_t>(unknown)),
+         .press = PlayerPress{Actor::Appraiser, PlayerKey::Interact},
+         .refusal = refusal});
+  }
+}
+
+} // namespace
+
+std::vector<Target> setup_targets() {
+  std::vector<Target> targets;
+  for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
+    targets.push_back(
+        {.area =
+             rect(SETUP_X, SETUP_Y + static_cast<float>(index) * SETUP_PITCH,
+                  SETUP_WIDTH, SETUP_HEIGHT),
+         .press = OptionPress{index + 1}});
+  }
+  return targets;
+}
+
+std::vector<Target> survival_targets(const rendering::Art &drawing,
+                                     const SurvivalFrame &frame) {
+  std::vector<Target> targets;
+  if (frame.view.progression.phase == Phase::Exploration) {
+    city_targets(targets, drawing, frame);
+  } else if (frame.view.progression.phase == Phase::Workshop) {
+    workshop_targets(targets, drawing, frame);
+  }
+  targets.push_back({.area = pause_chip(drawing), .press = MenuKey::Pause});
+  return targets;
+}
+
+std::vector<Target>
+interruption_targets(const rendering::Art &drawing, Interruption interruption,
+                     const std::array<VolumeRow, 2> &volumes) {
+  const auto text = interruption_text(interruption);
+  std::vector<Target> targets;
+  switch (interruption) {
+  case Interruption::Paused: {
+    const auto [resume, leave] =
+        split_button(drawing, continue_area(drawing, text.at(2)), text.at(2),
+                     "M:", INTERRUPTION_LINE_SIZE);
+    targets.push_back({.area = resume, .press = MenuKey::Pause});
+    targets.push_back({.area = leave, .press = MenuKey::Menu});
+    float y = PAUSE_BOX_Y + PAUSE_BOX_HEIGHT - VOLUME_AREA + VOLUME_ROW_HEIGHT;
+    for (std::size_t row = 0; row < volumes.size(); ++row) {
+      const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
+      targets.push_back({.area = rect(PAUSE_TEXT_X - 10.0F, y - 22.0F,
+                                      VOLUME_BLOCKS_X - 10.0F, 28.0F),
+                         .press = VolumePress{row, 0}});
+      for (std::uint8_t step = 0; step < volumes.at(row).steps; ++step) {
+        targets.push_back(
+            {.area = rect(blocks + static_cast<float>(step) * VOLUME_BLOCK_STEP,
+                          y - 22.0F, VOLUME_BLOCK_STEP, 28.0F),
+             .press = VolumePress{row, static_cast<std::uint8_t>(step + 1)}});
+      }
+      y += VOLUME_ROW_HEIGHT;
+    }
+    return targets;
+  }
+  case Interruption::ConfirmLeave:
+  case Interruption::ConfirmLeaveFromPause: {
+    const auto [leave, cancel] =
+        split_button(drawing, notice_button_area(drawing, text.at(2)),
+                     text.at(2), "Esc:", INTERRUPTION_LINE_SIZE);
+    targets.push_back({.area = leave, .press = MenuKey::Confirm});
+    targets.push_back({.area = cancel, .press = MenuKey::Pause});
+    return targets;
+  }
+  case Interruption::Resuming:
+    return targets;
+  }
+  std::abort();
 }
 
 } // namespace neocity::hud

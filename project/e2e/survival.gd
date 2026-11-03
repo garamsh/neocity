@@ -1,7 +1,8 @@
 class_name SurvivalPlayCheck
 extends SceneTree
 ## Plays the survival game through the shipped scene with real key events: full
-## days as the chef, a day as the appraiser, and the map and tool changes between.
+## days as the chef, a day as the appraiser, and the map and tool changes between;
+## and the same commands with real mouse events, alone and for two players.
 
 const SEED: int = 11
 const DAY_FRAMES: int = 1200
@@ -104,7 +105,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, quit).")
+		print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, mouse, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -142,11 +143,15 @@ func _run() -> void:
 	if not failed:
 		await _two_players()
 	if not failed:
+		await _two_players_share_the_mouse()
+	if not failed:
 		await _a_hated_dish_is_not_fed_again()
 	if not failed:
 		await _a_hated_dish_alone_sets_out_then_ends_the_day()
 	if not failed:
 		await _player_two_errand_alone_sets_out()
+	if not failed:
+		await _mouse_in_the_city()
 	if not failed:
 		await _pause_and_leave()
 	if not failed:
@@ -157,6 +162,95 @@ func _run() -> void:
 		await _repeated_note_appears()
 	if not failed:
 		await _main_menu_quits()
+
+## At base the chef's commands by mouse: the dish line chooses as S does, the
+## feed line feeds as F does, the lit step cooks as E does, and the end of the
+## day ends it as G does.
+func _mouse_works_the_base() -> void:
+	var offered: String = _str("dish_offered")
+	var dish: Dictionary = _target("dish_down")
+	if not _check(not dish.is_empty() and str(dish["refusal"]) == "", "the dish line takes a click with more than one dish to cook"):
+		return
+	if not _check(await _click("dish_down") and _str("dish_offered") != offered and _str("dish_offered") != "", "a click on the dish line chooses the next dish, as S does"):
+		return
+	_point_at(_target("chef_feed"))
+	await _frames(4)
+	if not _check(_hovered() == "chef_feed", "the feed line lights under the mouse: %s" % [_presses()]):
+		return
+	var day: int = _int("day")
+	if not _check(await _click("chef_feed"), "the feed line takes a click"):
+		return
+	if not await _until("a click on the feed line feeds and ends the day, as F does", func() -> bool: return _int("day") == day + 1 and _str("reaction") != "unfed", 30):
+		return
+	var chosen: String = _str("dish_offered")
+	if not _check(await _click("chef_interact") and (_next_event_has(chosen + " cooked.") or _next_event_has(chosen + " burned")), "a click on the step cooks the offered dish, as E does: %s" % [_presses()]):
+		return
+	day = _int("day")
+	if not _check(await _click("chef_end_day"), "the end of the day takes a click"):
+		return
+	await _until("a click on the end of the day ends it unfed, as G does", func() -> bool: return _int("day") == day + 1 and _str("reaction") == "unfed", 30)
+
+## In the city by mouse: the set-out step sets out, a button with nothing in
+## reach says why, the action button collects, the pause chip pauses, the pause
+## screen's blocks, leave and cancel answer clicks, and the travel key returns.
+func _mouse_in_the_city() -> void:
+	await _leave_run()
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	walker = "chef"
+	if not _check(await _click("party_travel"), "the set-out step takes a click"):
+		return
+	if not await _until("a click on the set-out step sets out, as Q does", func() -> bool: return _where("chef") == "city", 30):
+		return
+	var nothing: Dictionary = _target("chef_interact")
+	_point_at(nothing)
+	await _frames(4)
+	var refusal: String = str(nothing.get("refusal", ""))
+	if not _check(refusal != "" and _drawn(refusal), "a button with nothing in reach says why under the mouse: %s" % refusal):
+		return
+	if not await _walk_route(CRATE_ROUTE):
+		return
+	var tools: int = _actor("chef", "tools")
+	var ingredients: int = _actor("chef", "ingredients")
+	if not _check(await _click("chef_interact") and (_actor("chef", "collecting_ms") > 0 or _actor("chef", "tools") > tools or _actor("chef", "ingredients") > ingredients), "a click on the action button collects, as E does"):
+		return
+	await _until("the collection ends", func() -> bool: return _actor("chef", "collecting_ms") == 0, COLLECT_FRAMES)
+	if not _check(await _click("pause") and _str("interruption") == "paused", "a click on the pause chip pauses, as Esc does"):
+		return
+	var effects: float = scene.sound_status()["effects_level"]
+	var music: float = scene.sound_status()["music_level"]
+	if not _check(await _click("volume_0_3") and _drawn("30%") and scene.sound_status()["effects_level"] < effects and scene.sound_status()["music_level"] == music, "a click on an effects block sets the effects to that level alone"):
+		return
+	if not _check(await _click("menu") and _str("interruption") == "confirm_leave", "a click on leave asks first, as M does"):
+		return
+	if not _check(await _click("pause") and _str("interruption") == "paused", "a click on cancel goes back to the pause"):
+		return
+	if not _check(await _click("pause") and _str("interruption") != "paused", "a click on continue resumes"):
+		return
+	if not await _until("the run continues", func() -> bool: return _str("interruption") == "", 30):
+		return
+	if not _check(await _click("chef_travel"), "the travel key takes a click"):
+		return
+	await _until("a click on the travel key returns to base, as Q does", func() -> bool: return _where("chef") == "base", 30)
+
+## Two players share one mouse: the set-out step sets the party out, each human
+## in the city has their own action button, and a click on one human's travel
+## key moves that human alone.
+func _two_players_share_the_mouse() -> void:
+	await _start_two_players()
+	if not _check(await _click("party_travel"), "the set-out step takes a click with two players"):
+		return
+	if not await _until("one click sets the whole party out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 30):
+		return
+	if not _check(not _target("chef_interact").is_empty() and not _target("appraiser_interact").is_empty(), "each human in the city has their own action button"):
+		return
+	if not _check(await _click("appraiser_travel"), "player two's travel key takes a click"):
+		return
+	if not await _until("a click on player two's travel key moves only the appraiser", func() -> bool: return _where("appraiser") == "base" and _where("chef") == "city", 30):
+		return
+	await _tap(KEY_Q)
+	await _until("player one comes back", func() -> bool: return _str("phase") == "workshop", 30)
 
 ## Real keys: Esc, M and Enter over a run, and over a cinematic.
 func _pause_and_leave() -> void:
@@ -792,7 +886,9 @@ func _chef_chooses_a_dish() -> void:
 	while not _stored().has(fallback) and attempts < 6:
 		attempts += 1
 		await _tap(KEY_E)
-	_check(_stored().has(fallback), "the key cooks the dish it fell back to")
+	if not _check(_stored().has(fallback), "the key cooks the dish it fell back to"):
+		return
+	await _mouse_works_the_base()
 
 ## Gathers until the clock or the stock ends, and ends the day with the finds
 ## appraised.
@@ -1069,6 +1165,10 @@ func _appraiser_run() -> void:
 	if not await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
 		return
 	if not _check(_next().contains("Appraise") and _str("appraise_job").contains("[E] Appraise"), "the human appraiser is told to appraise"):
+		return
+	var by_mouse: int = _int("identified")
+	var failed_before: bool = _next_event_has("appraisal failed")
+	if not _check(await _click("appraiser_interact") and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
 		return
 	var identified: int = _int("identified")
 	var attempts: int = 0
@@ -1782,6 +1882,58 @@ func _tap(code: Key) -> void:
 	await _frames(2)
 	_key(code, false)
 	await _frames(8)
+
+## The target the last frame drew whose click presses `press`; empty with none.
+func _target(press: String) -> Dictionary:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["press"] == press:
+			return target
+	return {}
+
+## What every target the last frame drew presses.
+func _presses() -> Array[String]:
+	var names: Array[String] = []
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		names.append(str(target["press"]))
+	return names
+
+## What the target under the mouse presses; empty over none.
+func _hovered() -> String:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["hovered"]:
+			return str(target["press"])
+	return ""
+
+## Moves the mouse to the middle of `target`, a point on the screen the scene
+## draws, through the window's stretch.
+func _point_at(target: Dictionary) -> void:
+	var area: Rect2 = target.get("rect", Rect2())
+	var event: InputEventMouseMotion = InputEventMouseMotion.new()
+	event.position = root.get_final_transform() * area.get_center()
+	event.global_position = event.position
+	Input.parse_input_event(event)
+
+## Points at the target pressing `press` and clicks it with the left button;
+## false when the screen shows no such target.
+func _click(press: String) -> bool:
+	var target: Dictionary = _target(press)
+	if target.is_empty():
+		return false
+	_point_at(target)
+	await _frames(2)
+	var area: Rect2 = target["rect"]
+	for pressed: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.position = root.get_final_transform() * area.get_center()
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2 if pressed else 8)
+	return true
 
 func _frames(count: int) -> void:
 	for frame: int in range(count):

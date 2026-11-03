@@ -3,6 +3,7 @@
 #include "../rendering/drawing.hpp"
 #include "../rendering/feedback.hpp"
 #include "../rendering/survival.hpp"
+#include "pointer.hpp"
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
@@ -213,5 +214,18 @@ action_labels(const SurvivalFrame &frame);
 /// The sentence the log shows for `event`, naming places as `view` does.
 [[nodiscard]] godot::String describe(const survival::GameView &view,
                                      const Event &event);
+
+/// The choice of players' entries, each clicked as its number key.
+[[nodiscard]] std::vector<Target> setup_targets();
+/// What a click acts on in a survival frame: in the city each human's action
+/// button and travel key, at base the task card's step, feed, dish choice and
+/// end of day and the appraiser's ingredients, and the pause key in both.
+[[nodiscard]] std::vector<Target>
+survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);
+/// What a click acts on over a stopped run: the pause screen's continue,
+/// leave and volume blocks, or a question's answers.
+[[nodiscard]] std::vector<Target>
+interruption_targets(const rendering::Art &drawing, Interruption interruption,
+                     const std::array<VolumeRow, 2> &volumes);
 
 } // namespace neocity::hud

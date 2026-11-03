@@ -55,6 +55,7 @@ add_library(
     src/audio/sound.cpp
     src/audio/speaker.cpp
     src/hud/menus.cpp
+    src/hud/pointer.cpp
     src/hud/survival.cpp
     src/input/menu.cpp
     src/input/survival.cpp

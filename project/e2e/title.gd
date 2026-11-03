@@ -2,7 +2,8 @@ class_name TitleMenuCheck
 extends SceneTree
 ## Drives the title screen with real key events: each entry by cursor and by
 ## number, the controls page and back, the choice of players by cursor, the
-## controls page against the pause screen's keys, a new game, and quitting.
+## controls page against the pause screen's keys, a new game, the same entries
+## with real mouse events, and quitting.
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -16,7 +17,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Title: ", checks, " live checks passed (entries, cursor, wrap, controls, back, shortcuts, player choice, controls keys, new game, quit).")
+		print("Title: ", checks, " live checks passed (entries, cursor, wrap, controls, back, shortcuts, player choice, controls keys, new game, mouse, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -32,6 +33,8 @@ func _run() -> void:
 	if not await _new_game_starts_a_run():
 		return
 	if not await _controls_list_the_pause_keys():
+		return
+	if not await _mouse_drives_the_menus():
 		return
 	await _quit_ends_the_game()
 
@@ -126,6 +129,28 @@ func _new_game_starts_a_run() -> bool:
 	await _tap(KEY_ENTER)
 	return _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "leaving the run returns to the title screen")
 
+## The entry under the mouse lights, and a click chooses what its number key
+## chooses; the controls page's way back goes back. The mouse leaves the
+## entries before the keys take over again.
+func _mouse_drives_the_menus() -> bool:
+	_point_at(_target("option_2"))
+	await _frames(4)
+	if not _check(_hovered() == "option_2", "the entry under the mouse lights"):
+		return false
+	if not _check(await _click("option_2") and scene.screen_name() == "controls", "a click on Controls opens the controls"):
+		return false
+	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the way back returns to the title"):
+		return false
+	if not _check(await _click("option_1") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
+		return false
+	if not _check(await _click("option_3") and scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "a click on Two players starts two players"):
+		return false
+	# The run opens on its intro, which M leaves at once.
+	await _tap(KEY_M)
+	_point_at({"rect": Rect2(0, 0, 1, 1)})
+	await _frames(4)
+	return _check(scene.screen_name() == "main" and _hovered() == "", "the run is left and nothing is lit away from the entries")
+
 ## New game is marked after the run; two steps down mark Quit. The pass line
 ## prints from `_finalize` only.
 func _quit_ends_the_game() -> void:
@@ -142,6 +167,50 @@ func _actor(who: String, field: String) -> int:
 	var actor: Dictionary = scene.survival_status()[who]
 	var value: int = actor[field]
 	return value
+
+## The target the last frame drew whose click presses `press`; empty with none.
+func _target(press: String) -> Dictionary:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["press"] == press:
+			return target
+	return {}
+
+## What the target under the mouse presses; empty over none.
+func _hovered() -> String:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["hovered"]:
+			return str(target["press"])
+	return ""
+
+## Moves the mouse to the middle of `target`, a point on the screen the scene
+## draws, through the window's stretch.
+func _point_at(target: Dictionary) -> void:
+	var area: Rect2 = target["rect"]
+	var event: InputEventMouseMotion = InputEventMouseMotion.new()
+	event.position = root.get_final_transform() * area.get_center()
+	event.global_position = event.position
+	Input.parse_input_event(event)
+
+## Points at the target pressing `press` and clicks it with the left button;
+## false when the screen shows no such target.
+func _click(press: String) -> bool:
+	var target: Dictionary = _target(press)
+	if target.is_empty():
+		return false
+	_point_at(target)
+	await _frames(2)
+	for pressed: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		var area: Rect2 = target["rect"]
+		event.position = root.get_final_transform() * area.get_center()
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2 if pressed else 8)
+	return true
 
 func _tap(code: Key) -> void:
 	_key(code, true)
