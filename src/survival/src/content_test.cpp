@@ -440,17 +440,29 @@ TEST(TemporaryContent, NoStraightRunOfGroundIsLongerThanAThirdOfTheMap) {
 
 TEST(TemporaryContent, AcidDrownsLowGroundAndWhatStandsOnItFirst) {
   const auto content = temporary_content(1);
+  std::set<std::uint32_t> bags;
+  for (const auto &stock : content.companion.exploration.sources) {
+    if (stock.kind == SourceKind::Bag) {
+      bags.insert(stock.id.value);
+    }
+  }
   std::vector<std::pair<std::int32_t, std::uint32_t>> drowning;
   std::size_t terrain = 0;
+  std::size_t timed_bags = 0;
   for (const auto &object : content.objects) {
     const auto &threshold = object.destroyed_after;
-    if (threshold && threshold->acid && !threshold->elapsed) {
+    // A bag's tide is a time threshold beside its acid limit, and the limit
+    // still keeps the row order.
+    const bool bag = bags.contains(object.id.value);
+    if (threshold && threshold->acid && (!threshold->elapsed || bag)) {
       drowning.emplace_back(object.area.y + object.area.height - 1,
                             threshold->acid->value);
       terrain += object.kind == ObjectKind::Terrain ? 1U : 0U;
+      timed_bags += bag && threshold->elapsed ? 1U : 0U;
     }
   }
   EXPECT_GT(terrain, 0U);
+  EXPECT_GT(timed_bags, 0U);
   for (const auto &[low, low_acid] : drowning) {
     for (const auto &[high, high_acid] : drowning) {
       if (low > high) {
