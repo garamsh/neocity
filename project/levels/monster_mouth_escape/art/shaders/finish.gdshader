@@ -55,7 +55,7 @@ const float BURST = 0.82;
 const float GLOW_BAND = 8.0;
 const float GLOW_BANDS = 6.0;
 const vec3 ACID_GLOW = vec3(0.35, 1.0, 0.25);
-const float ACID_LIFT = 0.45;
+const float ACID_LIFT = 0.7;
 const float GLOW_MIX = 0.7;
 const float WADING = 0.7;
 // How much acid's green under the surface lights the bands over it in full.
