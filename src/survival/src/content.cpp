@@ -5,7 +5,10 @@
 #include <chrono>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
 
 namespace neocity::survival {
 namespace {
@@ -63,14 +66,6 @@ constexpr ObjectId SUPPLY_CRATE{28};
 constexpr ObjectId COLD_LOCKER{29};
 constexpr ObjectId ROOF_BAG{30};
 constexpr ObjectId FERRY_BAG{31};
-constexpr ObjectId WASHED_BAG_1{41};
-constexpr ObjectId WASHED_BAG_2{42};
-constexpr ObjectId WASHED_BAG_3{43};
-constexpr ObjectId WASHED_BAG_4{44};
-constexpr ObjectId WASHED_BAG_5{45};
-constexpr ObjectId WASHED_BAG_6{46};
-constexpr ObjectId WASHED_BAG_7{47};
-constexpr ObjectId WASHED_BAG_8{48};
 constexpr ObjectId NEON_LEDGE{51};
 constexpr ObjectId CRACKED_RAMP{52};
 constexpr ObjectId OVERPASS_STUB{53};
@@ -87,7 +82,119 @@ constexpr ObjectId EAST_RUBBLE{63};
 constexpr ObjectId UPPER_RAMP{64};
 constexpr ObjectId MARKET_LADDER{65};
 
-constexpr std::uint32_t BAG_STOCK = 15;
+/// One exploration day, which every world time threshold counts in.
+constexpr auto DAY = 20s;
+constexpr std::uint32_t BAG_STOCK = 2;
+
+/// Landings on the low west, the market and the shallows, which acid drowns
+/// first.
+constexpr std::array LOW_WEST{
+    GridPosition{.x = 16, .y = 13}, GridPosition{.x = 1, .y = 12},
+    GridPosition{.x = 17, .y = 13}, GridPosition{.x = 14, .y = 13},
+    GridPosition{.x = 10, .y = 11}, GridPosition{.x = 13, .y = 12},
+    GridPosition{.x = 9, .y = 11},  GridPosition{.x = 8, .y = 11},
+    GridPosition{.x = 3, .y = 12},  GridPosition{.x = 5, .y = 11},
+    GridPosition{.x = 4, .y = 11},  GridPosition{.x = 12, .y = 11}};
+/// Landings by the fallen kiosk and on the neon ledge, which the west lane
+/// takes once the low west has drowned.
+constexpr std::array HIGH_WEST{
+    GridPosition{.x = 11, .y = 6}, GridPosition{.x = 13, .y = 3},
+    GridPosition{.x = 14, .y = 5}, GridPosition{.x = 9, .y = 2},
+    GridPosition{.x = 11, .y = 3}, GridPosition{.x = 10, .y = 2},
+    GridPosition{.x = 12, .y = 3}};
+/// Landings on the arcade and the overpass.
+constexpr std::array MIDDLE{
+    GridPosition{.x = 3, .y = 2},  GridPosition{.x = 8, .y = 2},
+    GridPosition{.x = 15, .y = 5}, GridPosition{.x = 4, .y = 2},
+    GridPosition{.x = 6, .y = 2},  GridPosition{.x = 12, .y = 5},
+    GridPosition{.x = 5, .y = 2},  GridPosition{.x = 13, .y = 5},
+    GridPosition{.x = 17, .y = 5}, GridPosition{.x = 16, .y = 5},
+    GridPosition{.x = 18, .y = 5}, GridPosition{.x = 7, .y = 2}};
+/// Landings on the east avenue, the plaza and the pier.
+constexpr std::array EAST{
+    GridPosition{.x = 32, .y = 7},  GridPosition{.x = 35, .y = 12},
+    GridPosition{.x = 26, .y = 8},  GridPosition{.x = 24, .y = 7},
+    GridPosition{.x = 21, .y = 6},  GridPosition{.x = 34, .y = 12},
+    GridPosition{.x = 23, .y = 7},  GridPosition{.x = 25, .y = 8},
+    GridPosition{.x = 22, .y = 7},  GridPosition{.x = 32, .y = 12},
+    GridPosition{.x = 33, .y = 12}, GridPosition{.x = 20, .y = 6}};
+
+/// One way the tide washes bags up: the cells they land on in turn and what
+/// they hold in turn, before `LATE_BAG_DAY` and from then on, when meat and
+/// truffle start to wash up.
+struct Lane {
+  std::span<const GridPosition> landings;
+  std::span<const GridPosition> late_landings;
+  std::array<IngredientId, 5> cargo;
+  std::array<IngredientId, 5> late_cargo;
+};
+
+/// Three bags land at the start of every day, one in each lane: the west, the
+/// middle, and the east, so a day's errands cross the map.
+constexpr std::array LANES{
+    Lane{.landings = LOW_WEST,
+         .late_landings = HIGH_WEST,
+         .cargo = {FISH, TOMATO, PICKLES, MUSHROOM, TOMATO},
+         .late_cargo = {PICKLES, TOMATO, MUSHROOM, TOMATO, TOMATO}},
+    Lane{.landings = MIDDLE,
+         .late_landings = MIDDLE,
+         .cargo = {MUSHROOM, KELP, TOMATO, PICKLES, KELP},
+         .late_cargo = {PICKLES, TOMATO, TRUFFLE, TOMATO, PICKLES}},
+    Lane{.landings = EAST,
+         .late_landings = EAST,
+         .cargo = {KELP, FISH, PICKLES, TOMATO, PICKLES},
+         .late_cargo = {TOMATO, MEAT, PICKLES, KELP, FISH}},
+};
+constexpr std::uint32_t LATE_BAG_DAY = 19;
+
+constexpr std::uint32_t FIRST_BAG_DAY = 2;
+constexpr std::uint32_t LAST_BAG_DAY = 50;
+constexpr std::size_t WASHED_BAG_COUNT =
+    LANES.size() * (LAST_BAG_DAY - FIRST_BAG_DAY + 1);
+/// Days a bag lies before the tide takes it back; fewer than any lane has
+/// landings, so a bag is gone before the next one lands on its cell.
+constexpr std::uint32_t BAG_DAYS = 5;
+static_assert(std::ranges::all_of(LANES, [](const Lane &lane) {
+  return BAG_DAYS < lane.landings.size() &&
+         BAG_DAYS < lane.late_landings.size();
+}));
+
+/// One washed-up bag: where it lands, what it holds, and the day it lands
+/// with.
+struct WashedBag {
+  GridPosition cell;
+  IngredientId ingredient;
+  std::uint32_t day = 0;
+};
+
+WashedBag washed_bag_at(std::size_t index) {
+  const auto turn = index / LANES.size();
+  const auto &lane = LANES.at(index % LANES.size());
+  const auto day = FIRST_BAG_DAY + static_cast<std::uint32_t>(turn);
+  const bool late = day >= LATE_BAG_DAY;
+  const auto &cargo = late ? lane.late_cargo : lane.cargo;
+  const auto landings = late ? lane.late_landings : lane.landings;
+  return {.cell = landings[turn % landings.size()],
+          .ingredient = cargo.at(turn % cargo.size()),
+          .day = day};
+}
+
+/// The identity of the washed-up bag at `index`, from the first one.
+constexpr ObjectId FIRST_WASHED_BAG{101};
+ObjectId washed_bag(std::size_t index) {
+  return ObjectId{FIRST_WASHED_BAG.value + static_cast<std::uint32_t>(index)};
+}
+
+std::string_view washed_bag_name(std::size_t index) {
+  static const auto names = [] {
+    std::vector<std::string> list;
+    for (std::size_t bag = 0; bag < WASHED_BAG_COUNT; ++bag) {
+      list.push_back("Washed-up Bag " + std::to_string(bag + 1));
+    }
+    return list;
+  }();
+  return names.at(index);
+}
 
 template <typename Id> struct Named {
   Id id;
@@ -152,14 +259,6 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = COLD_LOCKER, .name = "Cold Locker"},
     Named<ObjectId>{.id = ROOF_BAG, .name = "Roof Bag"},
     Named<ObjectId>{.id = FERRY_BAG, .name = "Ferry Bag"},
-    Named<ObjectId>{.id = WASHED_BAG_1, .name = "Washed-up Bag 1"},
-    Named<ObjectId>{.id = WASHED_BAG_2, .name = "Washed-up Bag 2"},
-    Named<ObjectId>{.id = WASHED_BAG_3, .name = "Washed-up Bag 3"},
-    Named<ObjectId>{.id = WASHED_BAG_4, .name = "Washed-up Bag 4"},
-    Named<ObjectId>{.id = WASHED_BAG_5, .name = "Washed-up Bag 5"},
-    Named<ObjectId>{.id = WASHED_BAG_6, .name = "Washed-up Bag 6"},
-    Named<ObjectId>{.id = WASHED_BAG_7, .name = "Washed-up Bag 7"},
-    Named<ObjectId>{.id = WASHED_BAG_8, .name = "Washed-up Bag 8"},
     Named<ObjectId>{.id = NEON_LEDGE, .name = "Neon Ledge"},
     Named<ObjectId>{.id = CRACKED_RAMP, .name = "Cracked Ramp"},
     Named<ObjectId>{.id = OVERPASS_STUB, .name = "Overpass Stub"},
@@ -179,6 +278,12 @@ constexpr std::array OBJECT_NAMES{
 
 template <typename Id, std::size_t Size>
 std::string_view name_of(const std::array<Named<Id>, Size> &names, Id id) {
+  if constexpr (std::is_same_v<Id, ObjectId>) {
+    const auto bag = id.value - FIRST_WASHED_BAG.value;
+    if (id.value >= FIRST_WASHED_BAG.value && bag < WASHED_BAG_COUNT) {
+      return washed_bag_name(bag);
+    }
+  }
   const auto found = std::ranges::find(names, id, &Named<Id>::id);
   if (found == names.end()) {
     throw std::out_of_range("identity is not in the temporary content");
@@ -220,15 +325,47 @@ ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
   return object;
 }
 
-/// A bag the tide brings in once world time reaches `arrival`. Acid
-/// never brings one: it carries the bag off at `gone`, or sinks it before it
-/// lands, so rising acid only takes supply away.
-ObjectDefinition washed_up(ObjectId id, GridPosition cell,
-                           IngredientId ingredient,
-                           std::chrono::seconds arrival, std::uint32_t gone) {
+/// The acid that carries off a bag on `row`: the lower the row, the sooner, so
+/// a bag's limit keeps the order every acid-only threshold keeps.
+AcidLevel bag_limit(std::int32_t row) {
+  if (row >= 13) {
+    return AcidLevel{35};
+  }
+  if (row >= 12) {
+    return AcidLevel{45};
+  }
+  if (row >= 11) {
+    return AcidLevel{50};
+  }
+  if (row >= 8) {
+    return AcidLevel{55};
+  }
+  if (row >= 7) {
+    return AcidLevel{65};
+  }
+  if (row >= 6) {
+    return AcidLevel{70};
+  }
+  if (row >= 5) {
+    return AcidLevel{75};
+  }
+  if (row >= 3) {
+    return AcidLevel{80};
+  }
+  return AcidLevel{85};
+}
+
+/// A bag the tide brings in once world time reaches the start of its day and
+/// takes back `BAG_DAYS` days later. Acid never brings one: it carries the bag
+/// off at its row's limit, or sinks it before it lands, so rising acid only
+/// takes supply away.
+ObjectDefinition washed_up(std::size_t index) {
+  const auto bag = washed_bag_at(index);
+  const auto landing = (bag.day - 1) * DAY;
   return destroyed(
-      exposed(ingredient_source(id, cell, ingredient), {.elapsed = arrival}),
-      {.acid = AcidLevel{gone}});
+      exposed(ingredient_source(washed_bag(index), bag.cell, bag.ingredient),
+              {.elapsed = landing}),
+      {.elapsed = landing + BAG_DAYS * DAY, .acid = bag_limit(bag.cell.y)});
 }
 
 ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
@@ -248,10 +385,10 @@ ObjectDefinition ladder(ObjectId id, WorldArea area) {
 /// row, and floors meet only by ladder, stairs, ramp, or a jump. Low ground
 /// drowns first, so every acid-only threshold rises with height.
 std::vector<ObjectDefinition> city() {
-  constexpr auto ferry_time = 800s;
+  constexpr auto ferry_time = DAY * 160 / 9;
   const WorldThreshold ferry_arrives{.elapsed = ferry_time,
                                      .acid = AcidLevel{30}};
-  return {
+  std::vector<ObjectDefinition> objects{
       terrain(BASE_DOCK, {.x = 0, .y = 8, .width = 4}),
       terrain(MAIN_STREET, {.x = 4, .y = 8, .width = 6}),
       terrain(CRACKED_RAMP, {.x = 10, .y = 7}),
@@ -262,7 +399,7 @@ std::vector<ObjectDefinition> city() {
       destroyed(terrain(SUNKEN_ASPHALT, {.x = 25, .y = 8, .width = 2}),
                 {.acid = AcidLevel{55}}),
       destroyed(terrain(ROTTEN_BRIDGE, {.x = 27, .y = 8, .width = 2}),
-                {.elapsed = 1080s, .acid = AcidLevel{40}}),
+                {.elapsed = 24 * DAY, .acid = AcidLevel{40}}),
       terrain(EAST_PLAZA, {.x = 29, .y = 7, .width = 4}),
       terrain(COLD_STORE_FLOOR, {.x = 33, .y = 7, .width = 3}),
       ladder(NORTH_LADDER, {.x = 2, .y = 2, .height = 7}),
@@ -281,23 +418,23 @@ std::vector<ObjectDefinition> city() {
       terrain(ROOFTOP, {.x = 18, .y = 2, .width = 6}),
       destroyed(passage(ROOF_LADDER, ObjectKind::Ladder,
                         {.x = 18, .y = 2, .height = 4}),
-                {.elapsed = 240s, .acid = AcidLevel{10}}),
+                {.elapsed = DAY * 16 / 3, .acid = AcidLevel{10}}),
       destroyed(passage(COLD_STORE_DOOR, ObjectKind::Entrance,
                         {.x = 33, .y = 7, .width = 3}),
-                {.elapsed = 400s, .acid = AcidLevel{20}}),
+                {.elapsed = DAY * 80 / 9, .acid = AcidLevel{20}}),
       destroyed(
           building(CORNER_SHOP, {.x = 13, .y = 6, .width = 3, .height = 2}),
-          {.elapsed = 600s, .acid = AcidLevel{25}}),
+          {.elapsed = DAY * 40 / 3, .acid = AcidLevel{25}}),
       building(COLD_STORE, {.x = 33, .y = 5, .width = 3, .height = 3}),
       destroyed(
           building(KIOSK_WRECK, {.x = 9, .y = 1, .width = 2, .height = 2}),
-          {.elapsed = 360s}),
+          {.elapsed = DAY * 8}),
       building(WEST_RUBBLE, {.x = 9, .y = 8}),
       building(EAST_RUBBLE, {.x = 30, .y = 7}),
       destroyed({.id = NOODLE_VENDOR,
                  .kind = ObjectKind::Npc,
                  .area = {.x = 8, .y = 8}},
-                {.elapsed = 480s, .acid = AcidLevel{20}}),
+                {.elapsed = DAY * 32 / 3, .acid = AcidLevel{20}}),
       destroyed(ingredient_source(TOMATO_MACHINE, {.x = 6, .y = 11}, TOMATO),
                 {.acid = AcidLevel{50}}),
       owned(ingredient_source(VENDOR_CART, {.x = 8, .y = 8}, FISH),
@@ -317,15 +454,11 @@ std::vector<ObjectDefinition> city() {
       exposed(owned(ingredient_source(FERRY_BAG, {.x = 25, .y = 13}, KELP),
                     DRIFTED_FERRY),
               {.elapsed = ferry_time}),
-      washed_up(WASHED_BAG_1, {.x = 1, .y = 12}, FISH, 120s, 40),
-      washed_up(WASHED_BAG_2, {.x = 9, .y = 11}, MUSHROOM, 250s, 50),
-      washed_up(WASHED_BAG_3, {.x = 4, .y = 8}, TOMATO, 380s, 55),
-      washed_up(WASHED_BAG_4, {.x = 32, .y = 7}, PICKLES, 510s, 60),
-      washed_up(WASHED_BAG_5, {.x = 22, .y = 7}, KELP, 640s, 65),
-      washed_up(WASHED_BAG_6, {.x = 16, .y = 5}, MEAT, 980s, 75),
-      washed_up(WASHED_BAG_7, {.x = 5, .y = 2}, TRUFFLE, 1160s, 85),
-      washed_up(WASHED_BAG_8, {.x = 24, .y = 7}, TOMATO, 770s, 70),
   };
+  for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
+    objects.push_back(washed_up(index));
+  }
+  return objects;
 }
 
 /// The road surface by row, one character a cell: = road, ~ cracked, o
@@ -435,7 +568,7 @@ std::vector<Landmark> landmarks() {
 }
 
 std::vector<SourceStock> stock() {
-  return {
+  std::vector<SourceStock> sources{
       {.id = TOMATO_MACHINE,
        .kind = SourceKind::VendingMachine,
        .remaining = 6},
@@ -451,15 +584,13 @@ std::vector<SourceStock> stock() {
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = WASHED_BAG_1, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_2, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_3, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_4, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_5, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_6, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_7, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
-      {.id = WASHED_BAG_8, .kind = SourceKind::Bag, .remaining = BAG_STOCK},
   };
+  for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
+    sources.push_back({.id = washed_bag(index),
+                       .kind = SourceKind::Bag,
+                       .remaining = BAG_STOCK});
+  }
+  return sources;
 }
 
 std::vector<Recipe> recipes() {
@@ -494,7 +625,7 @@ std::vector<Flavor> flavors() {
 
 Content temporary_content(std::uint32_t seed) {
   return {
-      .run = {.exploration_budget = 45s,
+      .run = {.exploration_budget = DAY,
               .seed = seed,
               .full_acid = AcidLevel{100}},
       .objects = city(),
@@ -503,7 +634,7 @@ Content temporary_content(std::uint32_t seed) {
                                     .maximum_stamina = 20,
                                     .collection_distance = 1,
                                     .sources = stock(),
-                                    .collection_time = 12s},
+                                    .collection_time = 2s},
                     .workshop = {.recipes = recipes(),
                                  .magnifier = MAGNIFIER,
                                  .spatula = SPATULA,
