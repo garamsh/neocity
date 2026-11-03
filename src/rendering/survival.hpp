@@ -64,19 +64,21 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach);
-/// Draws the city's words on the screen where the shot's camera shows what
+/// Draws the city's marks on the screen where the shot's camera shows what
 /// they name, each on a dark plate over the art so it reads at any acid
-/// level, none covering another or a source other than its own count, and
-/// none for what is off the play area. A source out of reach is named as
-/// having no way there. Each goal whose area is off the play area gets a
-/// pointer at the area's edge, aimed at it, with its name. Leaves on the
-/// canvas the plates drawn as the `map_plates` meta, an array of Rect2; the
-/// names of the sources the city draws as `map_sources`, their areas on the
-/// screen as `map_source_areas`, an array of Rect2, and the names of those
-/// whose count is on the play area as `map_labelled`, with those counts'
-/// plates as `map_counts`; the names pointed at as
-/// `map_pointers`; the camera as `map_view` and where it heads as
-/// `map_heading`, each a Transform2D from the scene's pixels to the screen's.
+/// level, none covering another, a pointer or a source, and none for what is
+/// off the play area or has no free spot near it. Each source shows the icon
+/// of what it holds and its count over its cell, faded and in a dashed rim
+/// when it is out of reach; only the shot's goals are named. Each goal whose
+/// area is off the play area gets a pointer at the area's edge, aimed at it,
+/// with its name. Leaves on the canvas the plates drawn as the `map_plates`
+/// meta, an array of Rect2, and their words as `map_words`; the names of the
+/// sources the city draws as `map_sources`, their areas on the screen as
+/// `map_source_areas`, an array of Rect2, and the names of those whose count
+/// is on the play area as `map_labelled`, with those counts' plates as
+/// `map_counts`; the names pointed at as `map_pointers`; the camera as
+/// `map_view` and where it heads as `map_heading`, each a Transform2D from the
+/// scene's pixels to the screen's.
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content,
                        const survival::GameView &view,

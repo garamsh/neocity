@@ -11,7 +11,8 @@ extends SceneTree
 ## breaks the scene's pixels below the sea's surface into smaller ones, the
 ## city draws fewer than 60 frames a second,
 ## one of its word plates covers another or a source other than the source's
-## own count, the monster's teeth do not show along the top of the play area,
+## own count, its words name a source's kind or a place other than the goals
+## NEXT names, or leave out the goal NEXT names to walk to, the monster's teeth do not show along the top of the play area,
 ## a support reaches down from a walkway too high for it, or the shops, stall
 ## and vending machines do not read warm and lit. The camera shows a part of
 ## the city, so each look is measured on every city frame that shows what it
@@ -155,6 +156,13 @@ const LIT_AREAS: Array[Rect2] = [Rect2(468, 290, 120, 114), Rect2(52, 52, 120, 1
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
 const LIT_SHARE: float = 0.15
+
+## The words of a source's kind the map once wrote beside its supply.
+const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
+## The map's words that are neither a place's name nor a number, such as a
+## count or the health an acid drip takes: a broken passage's mark and the
+## actors' tags.
+const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -549,8 +557,9 @@ func _save(screen: String) -> Image:
 
 ## Saves a city frame and fails it when one word plate covers another, or a
 ## plate other than a source's count covers a source, when it
-## drew fewer plates than a count and a name for each source labelled, or when
-## a look it shows is wrong.
+## drew no plate beyond a count for each source labelled, when its words name
+## a source's kind or anything but the goals NEXT names, or leave out the goal
+## NEXT names to walk to, or when a look it shows is wrong.
 func _save_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
 	var plates: Array = scene.get_meta("map_plates", [])
@@ -564,7 +573,7 @@ func _save_city(screen: String) -> Image:
 			if one.intersects(other):
 				_fail("%s: the plate at %s covers the plate at %s" % [screen, one, other])
 				return frame
-	if sources == 0 or plates.size() <= 2 * sources:
+	if sources == 0 or plates.size() <= sources:
 		_fail("%s: %d plates for %d sources" % [screen, plates.size(), sources])
 		return frame
 	var areas: Array = scene.get_meta("map_source_areas", [])
@@ -576,11 +585,33 @@ func _save_city(screen: String) -> Image:
 			if area.intersects(plate):
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
+	var misnamed: String = _misnamed()
+	if misnamed != "":
+		_fail("%s: %s" % [screen, misnamed])
+		return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
 	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
+
+## What is wrong with the map's words, or nothing: a word naming a source's
+## kind, a name other than of the goals NEXT names, or a goal NEXT names to
+## walk to left unnamed on the map and by its pointer.
+func _misnamed() -> String:
+	var words: Array = scene.get_meta("map_words", [])
+	var line: String = scene.survival_status().get("next", "")
+	for word: String in words:
+		for part: String in word.split(" "):
+			if KIND_WORDS.has(part):
+				return "the map names a source's kind: %s" % word
+		if not (word.is_valid_int() or MAP_MARKS.has(word) or line.contains(word)):
+			return "the map names %s, which the NEXT line %s does not" % [word, line]
+	if line.contains(" to ") and (line.begins_with("Walk ") or line.begins_with("Jump ") or line.begins_with("Climb ")):
+		var goal: String = line.get_slice(" to ", 1).get_slice(".", 0)
+		if not words.has(goal):
+			return "the map leaves out the goal %s: %s" % [goal, words]
+	return ""
 
 ## Whether the frame shows the scene's rectangle at corner of size whole, inside
 ## the play area.

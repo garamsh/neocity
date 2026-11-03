@@ -98,6 +98,12 @@ const ESCAPE_GOAL: String = "Escape checks from day 30"
 const TIP_COUNT: int = 10
 ## The screen, where a tip must stand whole.
 const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
+## The words of a source's kind the map once wrote beside its supply.
+const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
+## The map's words that are neither a place's name nor a number, such as a
+## count or the health an acid drip takes: a broken passage's mark and the
+## actors' tags.
+const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
 ## What feeding does, which the recipe book on the pause screen names.
 const FEED_RULES: Array[String] = ["New and delicious food holds the acid back.", "Anything else raises it.", "Full acid ends the run."]
 
@@ -1800,8 +1806,8 @@ func _gone_bags_leave_the_map() -> bool:
 	return _check(not gone.is_empty() and hidden and shown and drawn.has("Vendor Cart") and _object("Noodle Vendor") == "destroyed", "a bag carried off or emptied leaves the map while the rest stay: gone %s, drawn %s" % [gone, drawn])
 
 ## No word plate on the map covers another; the control is that the plates
-## read are the city's: more than a count and a name for each source whose
-## count is on the play area.
+## read are the city's: more than a count for each source whose count is on
+## the play area.
 func _plates_apart(where: String) -> bool:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
@@ -1813,7 +1819,7 @@ func _plates_apart(where: String) -> bool:
 			var other: Rect2 = plates[second]
 			if one.intersects(other):
 				covered.append("%s over %s" % [one, other])
-	return _check(sources > 0 and plates.size() > 2 * sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
+	return _check(sources > 0 and plates.size() > sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
 
 ## Where a human's feet are in the scene.
 func _feet(who: String) -> Vector2:
@@ -1941,12 +1947,14 @@ func _plates_over_sources() -> Dictionary:
 	return {"plates": plates.size(), "counts": counts, "covered": covered}
 
 ## The goal the NEXT line names for the human gets a pointer at the screen's
-## edge exactly when its count is not on the play area.
+## edge exactly when its count is not on the play area, and the map's words
+## name it and no other place, and no source's kind; the control is that the
+## map drew its sources' counts.
 func _points_to_goal(where: String) -> bool:
 	var line: String = _next()
 	if not (line.begins_with("Walk ") or line.begins_with("Jump ") or line.begins_with("Climb ")):
 		var none: Array = scene.get_meta("map_pointers", [])
-		return _check(none.is_empty(), "nothing is pointed at while no goal is named on %s: %s" % [where, line])
+		return _check(none.is_empty() and _misnamed() == "", "nothing is pointed at while no goal is named on %s, and the map names nothing else: %s, %s" % [where, line, _misnamed()])
 	var goal: String = line.get_slice(" to ", 1).get_slice(".", 0)
 	var drawn: Array = scene.get_meta("map_sources", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
@@ -1957,7 +1965,27 @@ func _points_to_goal(where: String) -> bool:
 	for object: String in places:
 		if places[object] == goal and drawn.has(object) and pointers.has(object) != labelled.has(object):
 			shown = true
-	return _check(line.contains(" to ") and shown, "the goal %s is on the play area or pointed at on %s: labelled %s, pointers %s" % [goal, where, labelled, pointers])
+	var count_plates: Array = scene.get_meta("map_counts", [])
+	var misnamed: String = _misnamed()
+	return _check(line.contains(" to ") and shown and not count_plates.is_empty() and misnamed == "", "the goal %s is on the play area or pointed at on %s, and named alone: labelled %s, pointers %s, %s" % [goal, where, labelled, pointers, misnamed])
+
+## What is wrong with the map's words, or nothing: a word naming a source's
+## kind, a name other than of the goals the NEXT line names, or a goal it
+## names to walk to left unnamed on the map and by its pointer.
+func _misnamed() -> String:
+	var words: Array = scene.get_meta("map_words", [])
+	var line: String = _next()
+	for word: String in words:
+		for part: String in word.split(" "):
+			if KIND_WORDS.has(part):
+				return "the map names a source's kind: %s" % word
+		if not (word.is_valid_int() or MAP_MARKS.has(word) or line.contains(word)):
+			return "the map names %s, which the NEXT line %s does not" % [word, line]
+	if line.contains(" to ") and (line.begins_with("Walk ") or line.begins_with("Jump ") or line.begins_with("Climb ")):
+		var goal: String = line.get_slice(" to ", 1).get_slice(".", 0)
+		if not words.has(goal):
+			return "the map leaves out the goal %s: %s" % [goal, words]
+	return ""
 
 func _next_event_has(text: String) -> bool:
 	for event: String in _events():
