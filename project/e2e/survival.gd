@@ -220,7 +220,10 @@ func _mouse_in_the_city() -> void:
 		return
 	var effects: float = scene.sound_status()["effects_level"]
 	var music: float = scene.sound_status()["music_level"]
-	if not _check(await _click("volume_0_3") and _drawn("30%") and scene.sound_status()["effects_level"] < effects and scene.sound_status()["music_level"] == music, "a click on an effects block sets the effects to that level alone"):
+	var clicked: bool = await _click("volume_0_3")
+	var effects_now: float = scene.sound_status()["effects_level"]
+	var music_now: float = scene.sound_status()["music_level"]
+	if not _check(clicked and _drawn("30%") and effects_now < effects and music_now == music, "a click on an effects block sets the effects to that level alone"):
 		return
 	if not _check(await _click("menu") and _str("interruption") == "confirm_leave", "a click on leave asks first, as M does"):
 		return
