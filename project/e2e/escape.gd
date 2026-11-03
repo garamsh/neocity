@@ -24,6 +24,11 @@ const INTRO_CARD_SLOW_FRAMES: int = 12
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
+## The run's status as last read, and the frame it was read on: building it
+## costs more than a frame, and nothing it reports changes before the next
+## frame, which is also when the key events sent in this one arrive.
+var status_read: Dictionary = {}
+var status_frame: int = -1
 var failed: bool = false
 ## Frames one survival step lasts: one on the 5 frames per second run.
 var step_frames: int = 6
@@ -110,7 +115,7 @@ func _fallback_ending() -> void:
 		return
 	if not _check(_str("dish_offered") == "", "an escaped party is offered no dish"):
 		return
-	var before: Dictionary = scene.survival_status()
+	var before: Dictionary = _status()
 	await _tap(KEY_Q)
 	await _tap(KEY_G)
 	await _tap(KEY_F)
@@ -120,7 +125,7 @@ func _fallback_ending() -> void:
 		return
 	if not await _until("the ending card times out", func() -> bool: return scene.screen_name() == "main", ENDING_CARD_FRAMES + CARD_FRAME_MARGIN):
 		return
-	_check(scene.survival_status().is_empty(), "the ending closes the run")
+	_check(_status().is_empty(), "the ending closes the run")
 
 func _scene_intro() -> void:
 	_stand_in(load(WORKING), INTRO)
@@ -171,7 +176,7 @@ func _menu_leaves_a_cinematic() -> void:
 	_stand_in(load(WORKING), INTRO)
 	await _start()
 	await _tap(KEY_M)
-	_check(scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "M leaves a playing scene and ends the run")
+	_check(scene.screen_name() == "main" and _status().is_empty() and not _mounted(), "M leaves a playing scene and ends the run")
 
 ## The working scene's end returns from the ending to the main menu.
 func _scene_ending() -> void:
@@ -186,7 +191,7 @@ func _scene_ending() -> void:
 		return
 	if not await _until("the ending scene reports its end", func() -> bool: return scene.screen_name() == "main", 120):
 		return
-	_check(not _mounted() and scene.survival_status().is_empty(), "the ending scene returns to the main menu")
+	_check(not _mounted() and _status().is_empty(), "the ending scene returns to the main menu")
 
 ## A scene reporting its end while the host adds it closes. A crash here ends
 ## the process, which `make test` reads as a failure.
@@ -208,7 +213,7 @@ func _instant_ending(fixture: String) -> void:
 	await _tap(KEY_E)
 	rolls_seen = 0
 	await _follow_to_the_end()
-	_check(rolls_seen > 0 and scene.screen_name() == "main" and scene.survival_status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
+	_check(rolls_seen > 0 and scene.screen_name() == "main" and _status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 
 ## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
 ## would run in the frame that escaped.
@@ -252,13 +257,13 @@ func _start() -> void:
 ## the title screen takes its marked entry, so it is pressed only to answer the
 ## question, and the title must show before the next menu key.
 func _leave() -> void:
-	var status: Dictionary = scene.survival_status()
+	var status: Dictionary = _status()
 	if status.has("cinematic"):
 		await _tap(KEY_M)
 	elif not status.is_empty():
 		await _tap(KEY_M)
 		await _tap(KEY_ENTER)
-	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and scene.survival_status().is_empty(), 30)
+	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and _status().is_empty(), 30)
 
 ## Plays on what NEXT says until the run ends: only following it holds the acid.
 func _follow_to_the_end() -> void:
@@ -298,29 +303,37 @@ func _mounted() -> bool:
 
 ## Compares the run's state, leaving out the event log's order of arrival.
 func _same_state(before: Dictionary) -> bool:
-	var now: Dictionary = scene.survival_status()
+	var now: Dictionary = _status()
 	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "escape_rolls", "foods", "chef", "appraiser", "stock", "objects"]:
 		if now[field] != before[field]:
 			return false
 	return true
 
 func _events_say(words: String) -> bool:
-	var events: Array = scene.survival_status()["events"]
+	var events: Array = _status()["events"]
 	for event: String in events:
 		if event.contains(words):
 			return true
 	return false
 
+## The run's status, built at most once a frame.
+func _status() -> Dictionary:
+	var frame: int = Engine.get_process_frames()
+	if frame != status_frame:
+		status_read = scene.survival_status()
+		status_frame = frame
+	return status_read
+
 func _str(field: String) -> String:
-	var value: String = scene.survival_status().get(field, "")
+	var value: String = _status().get(field, "")
 	return value
 
 func _int(field: String) -> int:
-	var value: int = scene.survival_status().get(field, 0)
+	var value: int = _status().get(field, 0)
 	return value
 
 func _where(who: String) -> String:
-	var actor: Dictionary = scene.survival_status()[who]
+	var actor: Dictionary = _status()[who]
 	var location: String = actor["location"]
 	return location
 
