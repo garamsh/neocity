@@ -271,18 +271,27 @@ func _follow_to_the_end() -> void:
 		rolls_seen = _int("escape_rolls")
 		await _follow_next()
 
-## Presses the one key NEXT names, or lets the day run while it names none.
+## Whether NEXT names what the interact key does: collect, repair, appraise
+## or cook, as the controls page lists for it.
+func _names_interact(line: String) -> bool:
+	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+		if line.begins_with(verb):
+			return true
+	return false
+
+## Presses the key for the one action NEXT names, as the controls page lists
+## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = _str("next")
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
-	elif line.contains("[F] Feed"):
+	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
-	elif line.contains("[R] "):
+	elif line.begins_with("Replace "):
 		await _tap(KEY_R)
-	elif line.contains("[G] "):
+	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
-	elif line.contains("[E] "):
+	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk "):
 		await _walk_a_cell(line)
