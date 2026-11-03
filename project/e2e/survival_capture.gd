@@ -8,6 +8,9 @@ extends SceneTree
 ## lit top edge does not run along its tilt, or one of its word plates covers
 ## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
 ## every city frame that shows what it looks at, and fails when none does.
+## Run it where the screen never locks, such as kwin_wayland --virtual
+## --no-lockscreen: a locked screen stops the window drawing, and the capture
+## then waits on a frame that never comes.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
@@ -31,7 +34,8 @@ const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7,
 ## How much brighter, in mean luminance from 0 to 1, the deck under those
 ## cells reads than the scenery in the cells, above the deck.
 const GROUND_LEAD: float = 0.05
-## The rows of a deck under its floor line, as the city draws it.
+## The rows under a walkway's floor line the ground is read in: its lit top
+## edge and the top of its face.
 const DECK_ROWS: int = 10
 ## The rows of a walkway's lit top edge, as the city draws it.
 const EDGE_ROWS: int = 4
