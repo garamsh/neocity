@@ -535,10 +535,10 @@ std::optional<survival::ControlMap> Session::survival_control() const {
 }
 
 godot::Dictionary Session::survival_status() const {
-  if (!run) {
+  if (!run || !framed) {
     return {};
   }
-  auto status = run->status();
+  auto status = run->status(*framed);
   if (playback) {
     status.set("cinematic", cinematic_name(playback->cinematic));
     status.set("cinematic_source", playback->card_left ? "fallback" : "scene");

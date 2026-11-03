@@ -58,8 +58,10 @@ public:
   [[nodiscard]] survival::GameView view() const;
   /// How full the acid is, from 0 to 1 at the rules' full value.
   [[nodiscard]] float acid_fill() const;
-  /// Reports the screen's values by name for host integration assertions.
-  [[nodiscard]] godot::Dictionary status() const;
+  /// Reports the screen's values in `current`, this run's latest `frame()`,
+  /// by name for host integration assertions.
+  [[nodiscard]] godot::Dictionary
+  status(const hud::SurvivalFrame &current) const;
   /// The number the next logged event takes.
   [[nodiscard]] std::uint64_t next_event() const;
 
