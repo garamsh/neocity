@@ -659,6 +659,50 @@ void paint_support(godot::Node2D &canvas, const Art &art, Image image,
   }
 }
 
+/// A support under column `x` from `top`: down to the next walkway below or
+/// out of the map, into the acid, where that is within SUPPORT_REACH, and
+/// otherwise, under an `end` of its run, a brace, whose foot it returns for
+/// the girder it stands on.
+std::optional<godot::Rect2> paint_leg(godot::Node2D &canvas, const Art &art,
+                                      const std::vector<Standing> &ground,
+                                      Image image, std::int32_t x, float top,
+                                      bool end, float map_bottom,
+                                      float surface) {
+  const float bottom = support_bottom(ground, x, top, map_bottom);
+  if (std::min(bottom, ACID_LOW) - top <= SUPPORT_REACH) {
+    paint_support(canvas, art, image, x, top, bottom, surface);
+    return std::nullopt;
+  }
+  if (!end) {
+    return std::nullopt;
+  }
+  paint_support(canvas, art, image, x, top, top + BRACE, surface);
+  return rect(cell_x(x), top + BRACE, CELL, GIRDER);
+}
+
+/// A girder of the deck picture's bottom rows along `span`, the braces' feet
+/// from the first to the last.
+void paint_girder(godot::Node2D &canvas, const Art &art,
+                  const std::optional<godot::Rect2> &span) {
+  if (!span) {
+    return;
+  }
+  const Vector2 deck = art.size(Image::Deck);
+  for (float x = span->position.x; x < span->get_end().x; x += CELL) {
+    art.image_part(canvas, Image::Deck,
+                   rect(0.0F, deck.y - GIRDER, deck.x, GIRDER),
+                   rect(x, span->position.y, deck.x, GIRDER), support_tint());
+  }
+}
+
+/// Grows `span` to take in `brace`, when there is one.
+void join(std::optional<godot::Rect2> &span,
+          const std::optional<godot::Rect2> &brace) {
+  if (brace) {
+    span = span ? span->merge(*brace) : *brace;
+  }
+}
+
 /// The supports under every walkway deck and the pier, but the planks, the
 /// tilted ground and the other landmarks: a support under each end of a run
 /// and under every SUPPORT_SPACING-th cell between, down to the next walkway
@@ -689,19 +733,8 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
              kind(other);
     });
   };
-  const Vector2 deck = art.size(Image::Deck);
   // The span of the braces under the run being drawn.
   std::optional<godot::Rect2> girder;
-  const auto close_girder = [&] {
-    if (girder) {
-      for (float x = girder->position.x; x < girder->get_end().x; x += CELL) {
-        art.image_part(
-            canvas, Image::Deck, rect(0.0F, deck.y - GIRDER, deck.x, GIRDER),
-            rect(x, girder->position.y, deck.x, GIRDER), support_tint());
-      }
-    }
-    girder.reset();
-  };
   std::size_t run = 0;
   for (std::size_t index = 0; index < ground.size(); ++index) {
     const auto &cell = ground.at(index);
@@ -709,7 +742,8 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
       continue;
     }
     if (!beside(index, -1, walkway)) {
-      close_girder();
+      paint_girder(canvas, art, girder);
+      girder.reset();
       ++run;
     }
     const auto [x, y] = cell.ground.cell;
@@ -719,17 +753,11 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
     }
     const float top =
         floor_y(y) + art.size(cell.picture ? Image::Platform : Image::Deck).y;
-    const float bottom = support_bottom(ground, x, top, map_bottom);
-    const Image support = SUPPORTS.at(run % SUPPORTS.size());
-    if (std::min(bottom, ACID_LOW) - top <= SUPPORT_REACH) {
-      paint_support(canvas, art, support, x, top, bottom, surface);
-    } else if (ends) {
-      paint_support(canvas, art, support, x, top, top + BRACE, surface);
-      const auto brace = rect(cell_x(x), top + BRACE, CELL, GIRDER);
-      girder = girder ? girder->merge(brace) : brace;
-    }
+    join(girder,
+         paint_leg(canvas, art, ground, SUPPORTS.at(run % SUPPORTS.size()), x,
+                   top, ends, map_bottom, surface));
   }
-  close_girder();
+  paint_girder(canvas, art, girder);
 }
 
 /// Whether flesh has grown over the front edge of a cell of walkway deck.
@@ -1034,24 +1062,42 @@ bool stands_in_front(LandmarkKind kind) {
   std::abort();
 }
 
-/// Where a building with a shop inside stands: on the walkway over it, as
-/// wide and as tall as the building, so the shop opens onto the walkway its
-/// stock is reached from.
-godot::Rect2 shop_box(const survival::WorldArea &area) {
+/// A lit shop in a building under a walkway: its roof under that walkway's
+/// deck, its floor on a footing of deck across the building's width, which
+/// stands on a support under each end as a walkway does.
+void paint_shop_room(godot::Node2D &canvas, const Art &art,
+                     const survival::WorldArea &area,
+                     const std::vector<Standing> &ground, float map_bottom,
+                     float surface) {
   const auto box = area_rect(area);
-  return {box.position - Vector2(0.0F, box.size.y), box.size};
+  const Vector2 shop = art.size(Image::Shop);
+  const Vector2 deck = art.size(Image::Deck);
+  const float roof = box.position.y + deck.y;
+  art.image(canvas, Image::Shop,
+            Vector2(box.get_center().x - shop.x / 2.0F, roof));
+  const float floor = roof + shop.y;
+  for (std::int32_t x = area.x; x < area.x + area.width; ++x) {
+    art.image(canvas, Image::Deck, Vector2(cell_x(x), floor), 1.0F, false,
+              support_tint());
+  }
+  std::optional<godot::Rect2> girder;
+  for (const std::int32_t x : {area.x, area.x + area.width - 1}) {
+    join(girder, paint_leg(canvas, art, ground, Image::Pillar, x,
+                           floor + deck.y, true, map_bottom, surface));
+  }
+  paint_girder(canvas, art, girder);
 }
 
-/// A building is a wall of windows over its area, a lit shop standing on the
-/// walkway over it where a shop is inside it, its landmark picture standing
-/// in it, or rubble once destroyed, where the shop stood for a shop. A building
-/// whose every cell is rubble ground is that rubble heap already. Only what
-/// stands in front of the ground is drawn when `front`, and only the rest
-/// otherwise.
+/// A building is a wall of windows over its area, a lit shop room where a
+/// shop is inside it, its landmark picture standing in it, or rubble once
+/// destroyed. A building whose every cell is rubble ground is that rubble
+/// heap already. Only what stands in front of the ground is drawn when
+/// `front`, and only the rest otherwise.
 void paint_building(godot::Node2D &canvas, const Art &art,
                     const survival::Content &content,
-                    const ObjectSnapshot &object, bool front, bool shop) {
-  const auto box = shop ? shop_box(object.area) : area_rect(object.area);
+                    const ObjectSnapshot &object, bool front, bool shop,
+                    const std::vector<Standing> &ground, float surface) {
+  const auto box = area_rect(object.area);
   const auto &area = object.area;
   const auto picture = landmark(content, object.id);
   if (front != (object.state == ObjectState::Intact && picture &&
@@ -1092,7 +1138,8 @@ void paint_building(godot::Node2D &canvas, const Art &art,
     return;
   }
   if (shop) {
-    stand_on_floor(canvas, art, Image::Shop, box);
+    paint_shop_room(canvas, art, area, ground, cell_y(content.map.height),
+                    surface);
     return;
   }
   for (std::int32_t y = area.y; y < area.y + area.height; y += TILE_CELLS) {
@@ -1831,7 +1878,8 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       const bool shop = std::ranges::any_of(markers, [&](const auto &marker) {
         return shop_inside(object, marker);
       });
-      paint_building(canvas, art, content, object, front, shop);
+      paint_building(canvas, art, content, object, front, shop, ground,
+                     surface);
     });
   };
   paint_buildings(false);
