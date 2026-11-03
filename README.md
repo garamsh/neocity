@@ -56,6 +56,7 @@ make ci
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rules library and extension, pinned Godot version, and resource import.
 - `make test`: the survival library's unit tests through CTest, configured main-scene readiness, live checks of the title screen, live checks pressing the arrow keys and player two's keys, the survival fixed-step checks at two frame rates and on the real clock, and live checks playing the survival game with real key and mouse events.
+- `make test-unit`, `make test-startup`, `make test-title`, `make test-timing`, `make test-survival`, `make test-escape`, `make test-loss`, `make test-audio`: the parts of `make test`, each runnable alone; each runs `make build` first, as `make test` does.
 - `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed by the first Make entry point, from the repository root:
 
 ```sh
@@ -68,7 +69,7 @@ After `make build`, `godot --headless --path project --main-loop TitleMenuCheck 
 
 C++20, godot-cpp 10.0.0-stable targeting the Godot 4.7 API, and standard Godot 4.7.2 are selected for this slice; [ADR 0003](docs/architecture/adr/0003-implement-the-ascent-domain-in-cpp.md) lists every toolchain pin and its source. The native binding follows the [Godot 4.7 godot-cpp CMake documentation](https://docs.godotengine.org/en/4.7/tutorials/scripting/cpp/build_system/cmake.html). `project/bin/neocity.gdextension` selects the optimized library that `make build` writes into `project/bin/`, for both editor and game; build before importing a fresh checkout.
 
-CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then calls the same `make ci`. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export is selected. Sound plays through Godot's audio players on an Effects and a Music bus; every sound is a CC0 file whose source the [sound provenance](docs/art/production/monster-mouth-escape-sound-provenance.txt) records.
+CI uses the pinned Python setup action and the checksum-verified Linux Godot helper, then runs the targets of `make ci` in parallel jobs: `make lint`, `make format`, and the parts of `make test` in three jobs. Dependabot covers GitHub Actions; @sauce-git maintains Godot pins/runner selection and the C++ toolchain and dependency pins in `Makefile` and the CMake files. No platform export is selected. Sound plays through Godot's audio players on an Effects and a Music bus; every sound is a CC0 file whose source the [sound provenance](docs/art/production/monster-mouth-escape-sound-provenance.txt) records.
 
 ## Contributing
 

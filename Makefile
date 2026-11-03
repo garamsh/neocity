@@ -33,7 +33,7 @@ ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
 endif
 
-.PHONY: lint format build test ci run
+.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio ci run
 
 $(TOOLS_STAMP): Makefile
 	$(PYTHON) -m venv $(TOOLS)
@@ -88,11 +88,21 @@ build: $(TOOLS_STAMP)
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
 	$(PYTHON) -c "$$GODOT_IMPORT_WITH_LIMIT" $(GODOT_IMPORT_LIMIT) "$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
-# A --main-loop harness that fails to parse raises a dialog and waits on it even
-# with --headless; --check-only answers with its exit status instead.
-test: build
+test: test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio
+
+test-unit: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
 	@echo "ctest ran every test registered in $(BUILD_DIR), selected by: gtest_discover_tests in src/survival/CMakeLists.txt"
+	@$(PYTHON) -m unittest discover -s tools/art -p '*_test.py'
+	@echo "unittest ran the tests listed above, selected by: discovery of tools/art/*_test.py"
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	$(PYTHON) tools/art/pixelize.py check $(ART_DIR) > "$$log" 2>&1 || { cat "$$log"; exit 1; }; \
+	tail -n 1 "$$log"
+	@echo "pixelize.py check measured the PNGs listed in $(ART_DIR)/manifest.json"
+
+# A --main-loop harness that fails to parse raises a dialog and waits on it even
+# with --headless; --check-only answers with its exit status instead.
+test-startup: build
 	@files=$$($(GODOT_SCRIPTS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
 	test "$$count" -gt 0 || { echo "no GDScript harness was read" >&2; exit 1; }; \
 	log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
@@ -101,16 +111,11 @@ test: build
 			cat "$$log"; echo "GDScript parse check failed: $$file" >&2; exit 1; }; \
 	done; \
 	echo "Godot parse-checked $$count GDScript files, selected by: $(GODOT_SCRIPTS)"
-	@$(PYTHON) -m unittest discover -s tools/art -p '*_test.py'
-	@echo "unittest ran the tests listed above, selected by: discovery of tools/art/*_test.py"
-	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
-	$(PYTHON) tools/art/pixelize.py check $(ART_DIR) > "$$log" 2>&1 || { cat "$$log"; exit 1; }; \
-	tail -n 1 "$$log"
-	@echo "pixelize.py check measured the PNGs listed in $(ART_DIR)/manifest.json"
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
 
+test-title: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 28 live checks passed (entries, cursor, wrap, controls, back, shortcuts, player choice, controls keys, new game, mouse, quit).' "$$log"
@@ -119,6 +124,7 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop KeyCoverageCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 22 live checks passed (survival player one, survival player two).' "$$log"
 
+test-timing: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 63 integration checks passed.' "$$log"
@@ -131,10 +137,12 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 15 integration checks passed.' "$$log"
 
+test-survival: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 234 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
 
+test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).' "$$log"
@@ -147,6 +155,7 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape real frames: 4 live checks passed.' "$$log"
 
+test-loss: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss: 27 live checks passed (acid, loss, input block, card, skip, scene, broken asset, menu, instant finish).' "$$log"
@@ -155,6 +164,7 @@ test: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss slow frames: 2 live checks passed.' "$$log"
 
+test-audio: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AudioFeedbackCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 33 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, burn, repair, fall, flourishes, effects off, music off).' "$$log"
