@@ -74,6 +74,10 @@ const LOOK_AHEAD: float = 80.0
 const APART: float = 480.0
 ## The face the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
+## The face's grid, in pixels per em, which every drawn size is a multiple of.
+const FONT_GRID: int = 8
+## The smallest size the interface draws a word at.
+const MIN_TEXT_SIZE: int = 16
 ## When the escape checks begin, which the pause screen names.
 const ESCAPE_GOAL: String = "Escape checks from day 30"
 ## What feeding does, which the recipe book on the pause screen names.
@@ -1384,17 +1388,34 @@ func _result_says(words: String) -> bool:
 	return false
 
 ## Pauses and continues, and tells whether the escape goal was drawn over
-## the pause screen and not on the screen under it.
+## the pause screen and not on the screen under it. The screen and the pause
+## over it each draw every word at a whole multiple of the font's grid.
 func _pause_shows_escape_goal() -> bool:
 	var before: bool = _drawn_says(ESCAPE_GOAL)
+	if not _text_on_grid("the screen under the pause"):
+		return false
 	await _tap(KEY_ESCAPE)
 	var paused: bool = _str("interruption") == "paused" and _drawn_says(ESCAPE_GOAL)
+	if not _text_on_grid("the pause screen"):
+		return false
 	await _tap(KEY_ESCAPE)
 	return _str("goal") == ESCAPE_GOAL and not before and paused and _str("interruption") == ""
 
 ## The lines the screen drew in its last frame, in drawing order.
 func _drawn_lines() -> PackedStringArray:
 	return scene.get_meta("screen_text", PackedStringArray())
+
+## Whether every word the last frame drew was drawn at a whole multiple of the
+## font's grid, 16 pixels at the least, and the font is imported without
+## antialiasing; the control is that the frame drew words at all.
+func _text_on_grid(where: String) -> bool:
+	var sizes: PackedInt32Array = scene.get_meta("screen_text_sizes", PackedInt32Array())
+	var off: Array[int] = []
+	for size: int in sizes:
+		if size % FONT_GRID != 0 or size < MIN_TEXT_SIZE:
+			off.append(size)
+	var face: FontFile = load(CHANGING_FONT)
+	return _check(not sizes.is_empty() and off.is_empty() and face.antialiasing == TextServer.FONT_ANTIALIASING_NONE, "every word on %s is drawn at a multiple of %d, %d at the least, in an unsmoothed face: off the grid %s of %s" % [where, FONT_GRID, MIN_TEXT_SIZE, off, sizes])
 
 ## Whether the last frame drew a line reading exactly `words`.
 func _drawn(words: String) -> bool:

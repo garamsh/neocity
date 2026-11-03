@@ -27,7 +27,7 @@ The interface is drawn in pixel panels, filled dark inside a thick light rim bet
 - The city's interface covers two bands, 48 pixels at the top and 84 at the bottom, the action panel 100 with two players, with the goal line and the fading notes over the play area, where the cards covered about 242 pixels before.
 - A player learns the keys from the pause screen, which the Esc hint names, and the recipes from the recipe book there; the screen no longer names every key for the current place.
 - Tiny5 has one weight and capitals five of its pixels tall, so words come in 16, 24, 32, 40 and 48 pixels only and emphasis is size, colour or a word drawn twice a pixel apart; its C differs from its O by a notch one of its pixels high, drawn as a square of whole screen pixels.
-- Changing words keep being listed with the width their place allows, so the checks measure them in the new face.
+- Changing words keep being listed with the width their place allows, so the checks measure them in the new face, and check that every size drawn is on the grid.
 - The source names a player reads come from one function, so the map can use the same words.
 
 ## Signs the decision was wrong

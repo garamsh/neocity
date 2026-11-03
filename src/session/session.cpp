@@ -5,6 +5,7 @@
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/variant/packed_int32_array.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 
 #include <algorithm>
@@ -454,12 +455,18 @@ void Session::paint(godot::Node2D &canvas,
                     const rendering::Art &drawing) const {
   // Lines another canvas wrote since are not this one's.
   static_cast<void>(drawing.take_written());
+  static_cast<void>(drawing.take_sizes());
   paint_screen(canvas, drawing);
   godot::PackedStringArray lines;
   for (const auto &line : drawing.take_written()) {
     lines.push_back(line);
   }
   canvas.set_meta("screen_text", lines);
+  godot::PackedInt32Array sizes;
+  for (const int size : drawing.take_sizes()) {
+    sizes.push_back(size);
+  }
+  canvas.set_meta("screen_text_sizes", sizes);
 }
 
 void Session::paint_screen(godot::Node2D &canvas,

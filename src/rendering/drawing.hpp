@@ -220,6 +220,9 @@ public:
   /// The lines drawn since the last call, in drawing order; words drawn on a
   /// line's baseline where it ends continue that line.
   [[nodiscard]] std::vector<godot::String> take_written() const;
+  /// The sizes `text` actually drew at, one per call since the last call, in
+  /// drawing order: each is the grid size, not the one asked for.
+  [[nodiscard]] std::vector<int> take_sizes() const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
   /// Each colour is multiplied by `tint`.
@@ -294,6 +297,7 @@ private:
   mutable std::array<Trail, 2> trails{};
   mutable std::map<godot::String, Tween> tweens;
   mutable std::vector<Written> written;
+  mutable std::vector<int> sizes;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;

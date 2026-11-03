@@ -454,6 +454,7 @@ void Art::text(godot::Node2D &canvas, float x, float y,
                Weight weight) const {
   const Vector2 at = Vector2(x, y).round();
   const int drawn = on_grid(size);
+  sizes.push_back(drawn);
   canvas.draw_string(font, at, text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1,
                      drawn, tint);
   if (weight == Weight::Bold) {
@@ -486,6 +487,8 @@ std::vector<godot::String> Art::take_written() const {
   written.clear();
   return lines;
 }
+
+std::vector<int> Art::take_sizes() const { return std::exchange(sizes, {}); }
 
 void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
                 float scale, bool mirrored, godot::Color tint) const {
