@@ -55,15 +55,38 @@ format: $(TOOLS_STAMP)
 	$(CLANG_FORMAT) --style=LLVM --dry-run --Werror $$files; \
 	echo "clang-format checked $$count C++ files, selected by: $(CPP_FILES)"
 
+# Runs the Godot import in argv[2:] and stops it once argv[1] seconds pass: SIGQUIT
+# first, which Godot does not handle, so it dumps core where it hung; then SIGKILL.
+define GODOT_IMPORT_WITH_LIMIT
+import signal, subprocess, sys
+limit = int(sys.argv[1])
+child = subprocess.Popen(sys.argv[2:])
+try:
+    status = child.wait(limit)
+except subprocess.TimeoutExpired:
+    print(f"Godot import exceeded the {limit} s limit (GODOT_IMPORT_LIMIT); stopping it with SIGQUIT.", file=sys.stderr, flush=True)
+    child.send_signal(signal.SIGQUIT)
+    try:
+        child.wait(20)
+    except subprocess.TimeoutExpired:
+        child.kill()
+        child.wait()
+    sys.exit(124)
+sys.exit(status if status >= 0 else 128 - status)
+endef
+export GODOT_IMPORT_WITH_LIMIT
+GODOT_IMPORT_LIMIT := 60
+
 # Godot 4.7.2 crashes on exit when an import finds a new extension and regenerates
 # docs (godotengine/godot#111048); a listed extension loads at boot and is not new.
+# A crash inside the allocator can hang Godot's crash handler, so the import has a limit.
 build: $(TOOLS_STAMP)
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR)
 	@test "$$("$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
 	mkdir -p $(PROJECT_DIR)/.godot
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
-	"$(GODOT)" --headless --path $(PROJECT_DIR) --import
+	$(PYTHON) -c "$$GODOT_IMPORT_WITH_LIMIT" $(GODOT_IMPORT_LIMIT) "$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
 # A --main-loop harness that fails to parse raises a dialog and waits on it even
 # with --headless; --check-only answers with its exit status instead.

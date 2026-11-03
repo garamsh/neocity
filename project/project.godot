@@ -34,6 +34,10 @@ gdscript/warnings/unsafe_method_access=2
 gdscript/warnings/unsafe_cast=2
 gdscript/warnings/unsafe_call_argument=2
 
+[editor]
+
+import/use_multiple_threads=false
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
