@@ -570,8 +570,10 @@ Vector2 Art::size(Image image) const {
 }
 
 float Art::seconds() const {
-  return static_cast<float>(now() - loaded) / 1.0e6F;
+  return pinned.value_or(static_cast<float>(now() - loaded) / 1.0e6F);
 }
+
+void Art::pin(float held) { pinned = held; }
 
 void Art::note_waterline(float band, float band_left, float sea) const {
   const float zoom = placed.get_scale().x;

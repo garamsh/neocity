@@ -275,9 +275,12 @@ public:
   /// missing from the last drawn frame appears afresh.
   [[nodiscard]] float shown_for(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
-  /// Seconds of a steady real clock since the art loaded; the scene's
-  /// ambient motion runs on it and moves nothing in the rules.
+  /// Seconds of a steady real clock since the art loaded, or where `pin`
+  /// holds it; the scene's ambient motion and its finishing pass run on it and
+  /// move nothing in the rules.
   [[nodiscard]] float seconds() const;
+  /// Holds `seconds()` at `held` from then on, for repeatable host checks.
+  void pin(float held);
   /// Notes the acid band's surface at row `band` with its art's grid from
   /// column `band_left`, both drawn through the last shift, and the sea's at
   /// scene row `sea`, drawn through the last look.
@@ -333,6 +336,7 @@ private:
   mutable std::optional<Waterline> waterline;
   /// The steady clock's reading when the art loaded.
   std::uint64_t loaded;
+  std::optional<float> pinned;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;
