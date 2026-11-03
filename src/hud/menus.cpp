@@ -35,6 +35,17 @@ constexpr float CONTROLS_HEIGHT = 680.0F;
 constexpr float CONTROLS_TEXT_X = 230.0F;
 constexpr float CONTROLS_ROW_Y = 140.0F;
 constexpr float CONTROLS_ROW_HEIGHT = 38.0F;
+constexpr const char *CONTROLS_BACK = "Esc or M: back to the title";
+
+godot::Rect2 entry_area(std::size_t index) {
+  return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
+              ENTRY_WIDTH, ENTRY_HEIGHT);
+}
+
+godot::Rect2 back_area(const rendering::Art &drawing) {
+  return rect(CONTROLS_TEXT_X - 14.0F, CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
+              drawing.text_width(CONTROLS_BACK, 24) + 28.0F, 46.0F);
+}
 
 const char *entry_label(TitleEntry entry) {
   switch (entry) {
@@ -89,9 +100,7 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto chosen_at = static_cast<float>(
       std::ranges::find(TITLE_ENTRIES, selected) - TITLE_ENTRIES.begin());
   for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
-    rendering::panel(
-        canvas, rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
-                     ENTRY_WIDTH, ENTRY_HEIGHT));
+    rendering::panel(canvas, entry_area(index));
   }
   // The highlight slides to the cursor's entry.
   rendering::button(
@@ -128,14 +137,23 @@ void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
                tones.white, rendering::Weight::Bold);
   paint_key_rows(canvas, drawing, control_rows(), CONTROLS_TEXT_X,
                  CONTROLS_ROW_Y, CONTROLS_ROW_HEIGHT);
-  const godot::String back = "Esc or M: back to the title";
-  rendering::button(canvas,
-                    rect(CONTROLS_TEXT_X - 14.0F,
-                         CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
-                         drawing.text_width(back, 24) + 28.0F, 46.0F),
-                    false);
+  rendering::button(canvas, back_area(drawing), false);
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
-               back, 24, tones.white);
+               CONTROLS_BACK, 24, tones.white);
+}
+
+std::vector<Target> title_targets() {
+  std::vector<Target> targets;
+  targets.reserve(TITLE_ENTRIES.size());
+  for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
+    targets.push_back(
+        {.area = entry_area(index), .press = OptionPress{index + 1}});
+  }
+  return targets;
+}
+
+std::vector<Target> controls_targets(const rendering::Art &drawing) {
+  return {{.area = back_area(drawing), .press = MenuKey::Menu}};
 }
 
 } // namespace neocity::hud

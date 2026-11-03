@@ -9,6 +9,7 @@
 #include "survival_run.hpp"
 
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/vector2.hpp>
 
 #include <array>
 #include <functional>
@@ -41,6 +42,10 @@ struct Command {
   std::array<survival::PlayerInput, 2> survival;
   /// A human chef's up or down press this frame.
   survival::Direction dish_step = survival::Direction::Idle;
+  /// Where the mouse is on the screen.
+  std::optional<godot::Vector2> pointer;
+  /// The mouse button went down this frame, at `pointer`.
+  bool click = false;
 };
 
 /// Plays one cinematic scene at a time for the session, without ever failing
@@ -78,7 +83,8 @@ public:
   /// of the frame time.
   void advance(double delta, Command command);
   /// Works out what the frame the last advance left shows, once, for every
-  /// layer that draws it; nothing paints the open run until it is called.
+  /// layer that draws it, and what a click on it acts on; nothing paints the
+  /// open run until it is called.
   void aim(const rendering::Art &drawing);
   /// Draws the menus or the open game, over what `paint_world` and
   /// `paint_glow` draw, and leaves on `canvas` the lines it wrote as the
@@ -100,6 +106,11 @@ public:
 
 private:
   void advance_screen(double delta, const Command &command);
+  /// Sets the presses a click at `point` stands for in `command`.
+  void click_at(Command &command, godot::Vector2 point);
+  /// What a click acts on in what the open screen shows.
+  [[nodiscard]] std::vector<hud::Target>
+  shown_targets(const rendering::Art &drawing) const;
   /// Draws the current screen for `paint`.
   void paint_screen(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Whether the survival screen is open under no cinematic.
@@ -136,6 +147,10 @@ private:
   std::optional<hud::SurvivalFrame> framed;
   /// What `framed` shows, as the last aim worked it out.
   std::optional<rendering::Shot> shot;
+  /// What a click acts on in what the screen shows, as the last aim worked
+  /// it out; a click acts on what the player saw.
+  std::vector<hud::Target> targets;
+  std::optional<godot::Vector2> pointer;
   CinematicStage stage;
   SoundStage sound;
   Volume volume;

@@ -47,6 +47,11 @@ renderer/rendering_method.mobile="gl_compatibility"
 
 [input]
 
+click={
+"deadzone":0.2,
+"events":[Object(InputEventMouseButton,"button_index":1,"pressed":true)]
+}
+
 pause={
 "deadzone":0.2,
 "events":[Object(InputEventKey,"physical_keycode":4194305)]
