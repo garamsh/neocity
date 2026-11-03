@@ -684,10 +684,13 @@ void paint_girder(godot::Node2D &canvas, const Art &art,
     return;
   }
   const Vector2 deck = art.size(Image::Deck);
-  for (float x = span->position.x; x < span->get_end().x; x += CELL) {
+  const auto cells = static_cast<int>(std::round(span->size.x / CELL));
+  for (int cell = 0; cell < cells; ++cell) {
     art.image_part(canvas, Image::Deck,
                    rect(0.0F, deck.y - GIRDER, deck.x, GIRDER),
-                   rect(x, span->position.y, deck.x, GIRDER), support_tint());
+                   rect(span->position.x + static_cast<float>(cell) * CELL,
+                        span->position.y, deck.x, GIRDER),
+                   support_tint());
   }
 }
 
