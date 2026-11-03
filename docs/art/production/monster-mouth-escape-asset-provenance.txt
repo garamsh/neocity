@@ -1,4 +1,4 @@
-Monster-mouth escape asset provenance, 2026-11-03, issues #90, #98 and #110
+Monster-mouth escape asset provenance, 2026-11-03, issues #90, #98, #110 and #128
 
 Version 4, issue #110: adds the walkway pieces and redraws the characters with walking, running, jumping, falling, landing and climbing frames, removes the ui frames and the road tiles nothing draws any more, and holds every asset to the clean-art rules; see Version 4 changes at the end. Version 3, issue #98, added the ground tiles and decorations and fixed the noodle vendor and the empty heart handed over from the review of PR #96; version 2 was the set after that review. Every asset comes from Recraft, through its MCP connector, personal account. The character frames and two ground sources are Recraft image_edit results, described under Version 4 changes and Ground; image_edit takes no custom style. Every generate_image call used the custom style below; Recraft ran it on model recraftv4_1_raster. No seed is exposed. Recraft returns WebP; the source URL of each generation is kept in tools/art/assets.json.
 Tools: Python 3.13.5 runs tools/art/pixelize.py, standard library only. ImageMagick 7.1.1-43 Q16 x86_64 decodes WebP in pixelize.py fetch (PNG24, or PNG32 for background-removed sources).
@@ -30,10 +30,10 @@ Prompt as sent:
 Pixel art game backdrop layer showing ONLY the inside of a giant monster mouth: a row of huge cream-colored fangs hanging down from a pink and magenta fleshy upper jaw along the top edge, saliva dripping from fang tips, and behind them a deep glowing pink fleshy throat with concentric ridges and a red uvula in the upper middle. Absolutely no buildings, no city, no skyline, no trains, no platforms, no water, no acid, no characters, no text. The lower half is smooth dark magenta and purple flesh with soft folds and little detail.
 Runtime: backgrounds/throat.png
 
-bg_city: generate_image, 16:9, n=2, first rejected. Replaces the version 1 skyline, which filled two thirds of the screen and competed with the walkways.
+bg_city: issue #128, generate_image, 16:9, n=2, second rejected (it drew a green acid sea across the bottom). Replaces the version 4 skyline, a low hazy band that did not read as a city swallowed by the monster. An earlier call of the same kind, n=2, was rejected whole: both images filled the frame to the top edge, which would hide the throat. Each call cost 4 credits.
 Prompt as sent:
-Pixel art far-distant city skyline layer for a side-view game: a low thin band of small hazy indigo and violet skyscraper silhouettes far away, softened by pink haze, tiny warm orange windows, a small tilted elevated train line, all along the bottom quarter of the image only. Low contrast and low detail so it stays in the far background. Everything above the skyline is a plain flat solid white background. No monster, no teeth, no flesh, no water, no acid, no characters, no text.
-Runtime: backgrounds/city.png (the skyline band only, 1344x302 from y 418)
+Isolated pixel art game background strip on a plain flat solid white background: the TOP HALF of the image is completely empty plain flat solid white with nothing in it. In the BOTTOM HALF only, a swallowed city skyline seen from the side: dark indigo and violet skyscrapers tilted at different angles, sunk into bulging pink and magenta flesh mounds with fleshy tendrils wrapped around them, small warm orange lit windows, and a broken elevated railway on rusty girders with a subway train car skewered into the flesh, windows glowing orange. The skyline has an irregular jagged top silhouette against the white and runs edge to edge across the full width. No teeth, no acid, no water, no characters, no text.
+Runtime: backgrounds/city.png (the skyline and the railway, 1344x504 from y 260)
 
 bg_acid: generate_image, 16:9, n=2, second rejected
 Prompt as sent:

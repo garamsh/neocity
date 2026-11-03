@@ -2,6 +2,7 @@
 
 #include "../rendering/drawing.hpp"
 #include "../rendering/feedback.hpp"
+#include "../rendering/survival.hpp"
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
@@ -127,10 +128,30 @@ inline constexpr std::array SETUP_ENTRIES{
 /// Draws the choice of who plays which actor with `selected` marked.
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected);
-/// Draws the city or the workshop, whichever the phase opens, with the HUD
-/// and the flourishes under way.
+/// What `frame` shows, worked out once for every layer that draws it: in the
+/// city the camera easing toward the humans, the sources out of reach and
+/// each human's goal; at base the whole scene. Moves the camera's ease on, so
+/// it is called once a frame.
+[[nodiscard]] rendering::Shot shot_of(const rendering::Art &drawing,
+                                      const SurvivalFrame &frame);
+/// Draws the scene behind the survival screen: the backdrop, and in the city
+/// the map with its flourishes under way, as `shot` shows them. A burn shakes
+/// it.
+void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
+                          const SurvivalFrame &frame,
+                          const rendering::Shot &shot,
+                          const std::vector<rendering::Burst> &bursts);
+/// Draws the light over the scene `paint_survival_world` draws, for a canvas
+/// that blends by adding.
+void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
+                         const SurvivalFrame &frame,
+                         const rendering::Shot &shot,
+                         const std::vector<rendering::Burst> &bursts);
+/// Draws over the scene the city's words and its pointers to each human's
+/// goal off the screen, as `shot` shows them, or the workshop, whichever the
+/// phase opens, with the HUD and the flourishes under way.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const SurvivalFrame &frame,
+                    const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts);
 /// Draws what holds the run over the frozen survival screen; the pause screen
 /// shows `volumes`.

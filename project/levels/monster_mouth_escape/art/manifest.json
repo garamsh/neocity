@@ -15,11 +15,11 @@
    "path": "backgrounds/city.png",
    "size": [
     1280,
-    288
+    480
    ],
    "scale": 4,
    "colours": 32,
-   "depicts": "Middle layer: low, hazy distant skyline with small orange windows; clear above the skyline"
+   "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
   },
   {
    "path": "backgrounds/acid.png",

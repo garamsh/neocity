@@ -397,17 +397,24 @@ void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
     return;
   }
   // A mirroring transform flips the picture in place, then the canvas returns
-  // to the last shift.
-  canvas.draw_set_transform(origin + position.floor() + Vector2(drawn.x, 0.0F),
-                            0.0F, Vector2(-1.0F, 1.0F));
+  // to the last shift or look.
+  canvas.draw_set_transform_matrix(
+      placed * godot::Transform2D(0.0F, Vector2(-1.0F, 1.0F), 0.0F,
+                                  position.floor() + Vector2(drawn.x, 0.0F)));
   canvas.draw_texture_rect(images.at(slot(image)),
                            godot::Rect2(Vector2(), drawn), false, tint);
-  canvas.draw_set_transform(origin, 0.0F, Vector2(1.0F, 1.0F));
+  canvas.draw_set_transform_matrix(placed);
 }
 
 void Art::shift(godot::Node2D &canvas, Vector2 offset) const {
-  origin = offset.round();
-  canvas.draw_set_transform(origin, 0.0F, Vector2(1.0F, 1.0F));
+  shaken = offset.round();
+  placed = godot::Transform2D(0.0F, shaken);
+  canvas.draw_set_transform_matrix(placed);
+}
+
+void Art::look(godot::Node2D &canvas, Vector2 origin, float zoom) const {
+  placed = godot::Transform2D(0.0F, Vector2(zoom, zoom), 0.0F, shaken + origin);
+  canvas.draw_set_transform_matrix(placed);
 }
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,

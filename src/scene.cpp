@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
+#include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -21,6 +22,9 @@ bool in_editor() { return godot::Engine::get_singleton()->is_editor_hint(); }
 
 constexpr const char *CINEMATIC_NODE = "Cinematic";
 constexpr const char *CINEMATIC_FINISHED = "finished";
+/// The material that makes the glow layer add its light to what is under it.
+constexpr const char *GLOW_MATERIAL =
+    "res://levels/monster_mouth_escape/art/glow.tres";
 
 } // namespace
 
@@ -89,6 +93,22 @@ void MainScene::_ready() {
   }
   drawing = rendering::Art::load();
   speaker = audio::Speaker::attach(*this);
+  const godot::Ref<godot::Resource> adding =
+      godot::ResourceLoader::get_singleton()->load(GLOW_MATERIAL);
+  CRASH_COND_MSG(adding.is_null(), "Glow material must load");
+  world = memnew(godot::Node2D);
+  glow = memnew(godot::Node2D);
+  // The trimmed bindings have no material setter; the property takes it.
+  glow->set("material", adding);
+  CRASH_COND_MSG(glow->get("material") != godot::Variant(adding),
+                 "Glow layer must take the adding material");
+  world->set_name("World");
+  for (godot::Node2D *layer : {world, glow}) {
+    layer->set_draw_behind_parent(true);
+    add_child(layer);
+  }
+  world->connect("draw", callable_mp(this, &MainScene::draw_world));
+  glow->connect("draw", callable_mp(this, &MainScene::draw_glow));
   godot::UtilityFunctions::print(
       "Host: title screen and Monster Mouth Escape ready.");
 }
@@ -105,7 +125,26 @@ void MainScene::_process(double delta) {
   }
   session.advance(delta,
                   input::sample_session_input(session.survival_control()));
+  if (drawing) {
+    session.aim(*drawing);
+  }
   queue_redraw();
+  if (world != nullptr && glow != nullptr) {
+    world->queue_redraw();
+    glow->queue_redraw();
+  }
+}
+
+void MainScene::draw_world() {
+  if (drawing && world != nullptr) {
+    session.paint_world(*world, *drawing);
+  }
+}
+
+void MainScene::draw_glow() {
+  if (drawing && glow != nullptr) {
+    session.paint_glow(*glow, *drawing);
+  }
 }
 
 void MainScene::_draw() {

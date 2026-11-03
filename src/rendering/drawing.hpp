@@ -10,6 +10,7 @@
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/rect2.hpp>
 #include <godot_cpp/variant/string.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 #include <array>
@@ -212,8 +213,12 @@ public:
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
   /// Moves everything drawn on `canvas` after it by `offset`, until the next
-  /// shift; a mirrored image keeps it.
+  /// shift or look; a mirrored image keeps it.
   void shift(godot::Node2D &canvas, godot::Vector2 offset) const;
+  /// Draws everything after it on `canvas` `zoom` times its size with its
+  /// origin at `origin`, moved by the last shift's offset, until the next
+  /// shift or look; a mirrored image keeps it.
+  void look(godot::Node2D &canvas, godot::Vector2 origin, float zoom) const;
   /// Eases from the value `name` last showed toward `target` whenever the
   /// target changes; a value missing from the last drawn frame starts at its
   /// target.
@@ -260,8 +265,10 @@ private:
   /// art.
   mutable std::array<Trail, 2> trails{};
   mutable std::map<godot::String, Tween> tweens;
-  /// The canvas offset of the last `shift`.
-  mutable godot::Vector2 origin;
+  /// The offset of the last `shift`, and the canvas transform of the last
+  /// `shift` or `look`.
+  mutable godot::Vector2 shaken;
+  mutable godot::Transform2D placed;
 };
 
 } // namespace neocity::rendering

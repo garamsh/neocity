@@ -824,7 +824,7 @@
    "url": "https://img.recraft.ai/itV-ds6ITpj7bV6RQjwXUpDPfd2BBnZqd2bLljFU4Pc/raw:1/plain/abs://prod/images/f97f1a75-c0c3-4756-a4b7-e4004842c228"
   },
   "bg_city": {
-   "url": "https://img.recraft.ai/CDfUbajyDKOXMpMMlOvefOKv_OXgjQ-aoone9QPiZd8/raw:1/plain/abs://prod/images/cc8e3596-da89-430a-a1e1-73fdf43f0443"
+   "url": "https://img.recraft.ai/dNQOV3i3NlGdc8FVrL50CnTuBbVDpeqGfX5KJO9S-TQ/raw:1/plain/abs://prod/images/30ad4515-2aae-4230-be2a-2157b44b1e02"
   },
   "bg_acid": {
    "url": "https://img.recraft.ai/Nnclea0oiY3cIXz44Aa_GtTOcErlSVZu2ttn4Wa7VxU/raw:1/plain/abs://prod/images/c82cf99f-756e-4aa5-8133-9424eabe93b1"
@@ -998,13 +998,13 @@
    "source": "bg_city",
    "crop": [
     0,
-    418,
+    260,
     1344,
-    302
+    504
    ],
    "size": [
     1280,
-    288
+    480
    ],
    "scale": 4,
    "colours": 32,
@@ -1012,7 +1012,7 @@
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Middle layer: low, hazy distant skyline with small orange windows; clear above the skyline"
+   "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
   },
   {
    "path": "backgrounds/acid.png",

@@ -1506,7 +1506,19 @@ void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
   paint_feed_panel(canvas, drawing, frame, lift);
 }
 
-/// The city's cards; `paint_survival` draws the map under them.
+/// What each human in the city is told to go to, once each.
+std::vector<survival::ObjectId> goals(const SurvivalFrame &frame) {
+  std::vector<survival::ObjectId> found;
+  for (const auto &offers : frame.offers) {
+    if (offers.errand &&
+        std::ranges::find(found, offers.errand->target) == found.end()) {
+      found.push_back(offers.errand->target);
+    }
+  }
+  return found;
+}
+
+/// The city's cards; `paint_survival_world` draws the map under them.
 void paint_city_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame) {
   paint_actor_card(canvas, drawing, frame, Actor::Chef, MARGIN);
@@ -1799,17 +1811,57 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
 
 } // namespace
 
-void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const SurvivalFrame &frame,
-                    const std::vector<rendering::Burst> &bursts) {
-  const auto &progression = frame.view.progression;
-  // A burn shakes the world, not the interface over it.
+rendering::Shot shot_of(const rendering::Art &drawing,
+                        const SurvivalFrame &frame) {
+  if (frame.view.progression.phase != Phase::Exploration) {
+    return {.camera = rendering::whole_scene(),
+            .heading = rendering::whole_scene(),
+            .out_of_reach = {},
+            .goals = {}};
+  }
+  const auto heading =
+      rendering::aim(frame.content.get(), frame.view, frame.control);
+  return {.camera = rendering::follow(drawing, frame.content.get(), heading),
+          .heading = heading,
+          .out_of_reach = out_of_reach(frame),
+          .goals = goals(frame)};
+}
+
+void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
+                          const SurvivalFrame &frame,
+                          const rendering::Shot &shot,
+                          const std::vector<rendering::Burst> &bursts) {
   drawing.shift(canvas, rendering::shake(bursts));
-  rendering::paint_mouth(canvas, drawing, acid_ratio(frame));
-  if (progression.phase == Phase::Exploration) {
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame), shot.camera);
+  if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                          frame.control, out_of_reach(frame));
+                          shot.out_of_reach);
     rendering::paint_city_bursts(canvas, bursts, acid_ratio(frame));
+  }
+  drawing.shift(canvas, {});
+}
+
+void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
+                         const SurvivalFrame &frame,
+                         const rendering::Shot &shot,
+                         const std::vector<rendering::Burst> &bursts) {
+  drawing.shift(canvas, rendering::shake(bursts));
+  rendering::paint_glow(canvas, drawing, acid_ratio(frame), shot.camera);
+  if (frame.view.progression.phase == Phase::Exploration) {
+    rendering::paint_city_glow(canvas, drawing, frame.content.get(),
+                               shot.camera);
+  }
+  drawing.shift(canvas, {});
+}
+
+void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
+                    const SurvivalFrame &frame, const rendering::Shot &shot,
+                    const std::vector<rendering::Burst> &bursts) {
+  if (frame.view.progression.phase == Phase::Exploration) {
+    // A burn shakes the map's words with the map, not the interface.
+    drawing.shift(canvas, rendering::shake(bursts));
+    rendering::paint_city_labels(canvas, drawing, frame.content.get(),
+                                 frame.view, frame.control, shot);
     drawing.shift(canvas, {});
     paint_city_screen(canvas, drawing, frame);
   } else {
@@ -1875,7 +1927,9 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, drawing, acid_ratio(frame));
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
+                         rendering::whole_scene());
+  drawing.shift(canvas, {});
   canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
   drawing.image(canvas, rendering::Image::ChefIdle,
                 godot::Vector2(130.0F, 300.0F), 2.0F);

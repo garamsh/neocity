@@ -4,7 +4,8 @@ extends SceneTree
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## the stairs' walked-on part does not lead the part under it, the fallen slab's
 ## lit top edge does not run along its tilt, or one of its word plates covers
-## another.
+## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
+## every city frame that shows what it looks at, and fails when none does.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
@@ -15,8 +16,11 @@ const ESCAPE_SEED: int = 7
 const DAY_LIMIT: int = 120
 const STEP_FRAMES: int = 6
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
-## The map's top-left corner on screen and its cell size, as the city draws it.
+## The map's top-left corner in the scene and its cell size, as the city draws
+## it; the canvas's map_view meta takes the scene to the screen.
 const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
+## The play area between the top bar and the cards, on screen.
+const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 const CELL: int = 32
 ## Ground cells of the first city frame with nothing but scenery in them: the
 ## arcade, the rooftop and the market. Each walkway's deck runs under its
@@ -35,6 +39,8 @@ const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.09
+## From the entrance down the market ladder into the market.
+const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
 ## The fallen slab's first cell and its width in cells; it falls a row from
 ## the floor line of its first cell to that of the row below at its right end.
 const SLAB_CELL: Vector2i = Vector2i(20, 6)
@@ -47,6 +53,9 @@ const SETTLE_MSEC: int = 400
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var city_frames: int = 0
+var ground_frames: int = 0
+var stairs_frames: int = 0
+var slab_frames: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -68,9 +77,7 @@ func _run() -> void:
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
 	await _walk(KEY_D, 7)
-	var first_city: Image = await _save_city("4-city-collect-prompt")
-	if not _ground_leads(first_city) or not _stairs_lit(first_city) or not _slab_tilts(first_city):
-		return
+	await _save_city("4-city-collect-prompt")
 	# A jump in place on the flat street comes down where it rose.
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
@@ -124,6 +131,19 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_E)
 	await _tap(KEY_F)
+	await _frames(12)
+	# Before the acid rises: down the market ladder, along the market and down
+	# the south stairs, so the camera, low on the map, shows the stairs behind
+	# the chef.
+	await _tap(KEY_Q)
+	await _frames(40)
+	for waypoint: Vector2i in MARKET_ROUTE:
+		await _walk_to(waypoint.x, waypoint.y)
+	await _walk(KEY_D, 17)
+	await _frames(30)
+	await _save_city("31-city-market")
+	await _tap(KEY_Q)
+	await _until_phase("workshop")
 	await _frames(12)
 	await _tap(KEY_G)
 	await _frames(12)
@@ -193,7 +213,11 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	print("Capture: no map plate covers another in ", city_frames, " city frames.")
+	if ground_frames == 0 or stairs_frames == 0 or slab_frames == 0:
+		_fail("a look was never measured: ground %d, stairs %d, slab %d frames" % [ground_frames, stairs_frames, slab_frames])
+		return
+	print("Capture: the ground was measured in %d, the stairs in %d and the slab in %d city frames." % [ground_frames, stairs_frames, slab_frames])
+	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 
@@ -311,6 +335,31 @@ func _climb(y: int) -> void:
 	_key(KEY_W, false)
 	await _frames(3)
 
+## Walks the chef sideways to column x, jumping whatever low block stops it,
+## then climbs to row y.
+func _walk_to(x: int, y: int) -> void:
+	var stalled: int = 0
+	var last: int = -1
+	for frame: int in range(900):
+		var chef: Dictionary = scene.survival_status()["chef"]
+		var at_x: int = chef["x"]
+		var at_y: int = chef["y"]
+		if at_x == x and at_y == y and chef["stance"] != "airborne":
+			break
+		var sideways: bool = at_x != x
+		_key(KEY_A, sideways and x < at_x)
+		_key(KEY_D, sideways and x > at_x)
+		_key(KEY_W, not sideways and y < at_y)
+		_key(KEY_S, not sideways and y > at_y)
+		var sub_x: int = chef["sub_x"]
+		stalled = stalled + 1 if sideways and sub_x == last and chef["stance"] == "standing" else 0
+		last = sub_x
+		_key(KEY_SPACE, stalled > 6)
+		await process_frame
+	for code: Key in [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE]:
+		_key(code, false)
+	await _frames(3)
+
 func _until_phase(phase: String) -> void:
 	for frame: int in range(3000):
 		var now: String = scene.survival_status()["phase"]
@@ -343,13 +392,16 @@ func _save(screen: String) -> Image:
 	print("Capture: ", destination)
 	return frame
 
-## Saves a city frame and fails it when one word plate covers another, or when
-## it drew fewer plates than a count and a name for each source shown.
+## Saves a city frame and fails it when one word plate covers another, or a
+## plate other than a source's count covers a source, when it
+## drew fewer plates than a count and a name for each source labelled, or when
+## a look it shows is wrong.
 func _save_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
 	var plates: Array = scene.get_meta("map_plates", [])
-	var drawn: Array = scene.get_meta("map_sources", [])
-	var sources: int = drawn.size()
+	var labelled: Array = scene.get_meta("map_labelled", [])
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var sources: int = labelled.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
 			var one: Rect2 = plates[first]
@@ -360,76 +412,118 @@ func _save_city(screen: String) -> Image:
 	if sources == 0 or plates.size() <= 2 * sources:
 		_fail("%s: %d plates for %d sources" % [screen, plates.size(), sources])
 		return frame
+	var areas: Array = scene.get_meta("map_source_areas", [])
+	var counts: Array = scene.get_meta("map_counts", [])
+	for plate: Rect2 in plates:
+		if counts.has(plate):
+			continue
+		for area: Rect2 in areas:
+			if area.intersects(plate):
+				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
+				return frame
+	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
+	if not _ground_leads(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
+		return frame
 	city_frames += 1
 	return frame
 
+## Whether the frame shows the scene's rectangle at corner of size whole, inside
+## the play area.
+func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
+	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
+
 ## Whether the deck's mean luminance leads the scenery right above it by
-## GROUND_LEAD; the control is that the scenery is not black.
-func _ground_leads(frame: Image) -> bool:
+## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more;
+## the control is that the scenery is not black.
+func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 	var ground: float = 0.0
 	var behind: float = 0.0
+	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
-		ground += _luminance(frame, MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL, DECK_ROWS)
-		behind += _luminance(frame, MAP_ORIGIN + cell * CELL, CELL)
-	ground /= LEAD_CELLS.size()
-	behind /= LEAD_CELLS.size()
-	print("Capture: the ground leads the scenery above it by %.3f (ground %.3f, scenery %.3f, at least %.3f)." % [ground - behind, ground, behind, GROUND_LEAD])
+		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
+		if not _shows(view, corner, Vector2(CELL, CELL + DECK_ROWS)):
+			continue
+		ground += _luminance(frame, view, corner + Vector2(0, CELL), DECK_ROWS)
+		behind += _luminance(frame, view, corner, CELL)
+		shown += 1
+	if shown < 2:
+		return true
+	ground /= shown
+	behind /= shown
+	ground_frames += 1
+	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground - behind, shown, ground, behind, GROUND_LEAD])
 	if behind <= 0.0 or ground - behind < GROUND_LEAD:
-		_fail("the ground does not read over the scenery behind it")
+		_fail("%s: the ground does not read over the scenery behind it" % screen)
 		return false
 	return true
 
 ## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
-## on, lead the EDGE_ROWS just under it by STEP_LEAD; the columns at the cell's
-## ends, where a band would leave the cell, are left out.
-func _stairs_lit(frame: Image) -> bool:
+## on, lead the EDGE_ROWS just under it by STEP_LEAD, when the frame shows both
+## stairs; the columns at the cell's ends, where a band would leave the cell,
+## are left out.
+func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	var walked: float = 0.0
 	var under: float = 0.0
 	var columns: Vector2i = Vector2i(EDGE_ROWS - 1, CELL - EDGE_ROWS)
 	for cell: Vector2i in STAIR_CELLS:
-		var corner: Vector2i = MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL
-		walked += _band(frame, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
-		under += _band(frame, corner, CELL, columns, Vector2i(1, 1 + EDGE_ROWS))
+		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+		if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(CELL, CELL + 2 * EDGE_ROWS)):
+			return true
+	for cell: Vector2i in STAIR_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+		walked += _band(frame, view, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
+		under += _band(frame, view, corner, CELL, columns, Vector2i(1, 1 + EDGE_ROWS))
 	walked /= STAIR_CELLS.size()
 	under /= STAIR_CELLS.size()
-	print("Capture: the stairs' walked-on part leads the part under it by %.3f (walked %.3f, under %.3f, at least %.3f)." % [walked - under, walked, under, STEP_LEAD])
+	stairs_frames += 1
+	print("Capture: %s: the stairs' walked-on part leads the part under it by %.3f (walked %.3f, under %.3f, at least %.3f)." % [screen, walked - under, walked, under, STEP_LEAD])
 	if under <= 0.0 or walked - under < STEP_LEAD:
-		_fail("the stairs' walked-on part does not read over the part under it")
+		_fail("%s: the stairs' walked-on part does not read over the part under it" % screen)
 		return false
 	return true
 
 ## Whether the fallen slab's lit top edge, the EDGE_ROWS under the line it
 ## tilts along, leads the EDGE_ROWS of scenery just above that line by
-## GROUND_LEAD.
-func _slab_tilts(frame: Image) -> bool:
-	var corner: Vector2i = MAP_ORIGIN + (SLAB_CELL + Vector2i.DOWN) * CELL
+## GROUND_LEAD, when the frame shows the slab.
+func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
+	var corner: Vector2 = Vector2(MAP_ORIGIN + (SLAB_CELL + Vector2i.DOWN) * CELL)
+	if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(SLAB_CELLS * CELL, CELL + 2 * EDGE_ROWS)):
+		return true
 	var columns: Vector2i = Vector2i(0, SLAB_CELLS * CELL)
-	var edge: float = _band(frame, corner, SLAB_CELLS * CELL, columns, Vector2i(0, EDGE_ROWS))
-	var above: float = _band(frame, corner, SLAB_CELLS * CELL, columns, Vector2i(-EDGE_ROWS, 0))
-	print("Capture: the fallen slab's top edge leads the scenery above its tilt by %.3f (edge %.3f, scenery %.3f, at least %.3f)." % [edge - above, edge, above, GROUND_LEAD])
+	var edge: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(0, EDGE_ROWS))
+	var above: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(-EDGE_ROWS, 0))
+	slab_frames += 1
+	print("Capture: %s: the fallen slab's top edge leads the scenery above its tilt by %.3f (edge %.3f, scenery %.3f, at least %.3f)." % [screen, edge - above, edge, above, GROUND_LEAD])
 	if above <= 0.0 or edge - above < GROUND_LEAD:
-		_fail("the fallen slab's top edge does not run along its tilt")
+		_fail("%s: the fallen slab's top edge does not run along its tilt" % screen)
 		return false
 	return true
 
 ## The mean luminance of a band along a line that falls one CELL from corner
-## across width pixels: in each of the columns from columns.x to columns.y, the
-## rows from rows.x to rows.y under the line, a negative row above it.
-func _band(frame: Image, corner: Vector2i, width: int, columns: Vector2i, rows: Vector2i) -> float:
+## across width scene pixels: in each of the columns from columns.x to
+## columns.y, the rows from rows.x to rows.y under the line, a negative row
+## above it. Each scene pixel is read where the camera puts it.
+func _band(frame: Image, view: Transform2D, corner: Vector2, width: int, columns: Vector2i, rows: Vector2i) -> float:
 	var total: float = 0.0
 	for x: int in range(columns.x, columns.y):
-		var line: int = corner.y + floori(float(x * CELL) / width)
+		var line: int = floori(float(x * CELL) / width)
 		for row: int in range(rows.x, rows.y):
-			total += frame.get_pixel(corner.x + x, line + row).get_luminance()
+			total += _pixel(frame, view, corner + Vector2(x, line + row))
 	return total / ((columns.y - columns.x) * (rows.y - rows.x))
 
-## The mean luminance of a cell-wide band of rows whose top-left is corner.
-func _luminance(frame: Image, corner: Vector2i, rows: int) -> float:
+## The mean luminance of a cell-wide band of scene rows whose top-left is
+## corner.
+func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> float:
 	var total: float = 0.0
 	for y: int in range(rows):
 		for x: int in range(CELL):
-			total += frame.get_pixelv(corner + Vector2i(x, y)).get_luminance()
+			total += _pixel(frame, view, corner + Vector2(x, y))
 	return total / (CELL * rows)
+
+## The luminance of the screen pixel at the middle of the scene pixel at point.
+func _pixel(frame: Image, view: Transform2D, point: Vector2) -> float:
+	var at: Vector2 = view * (point + Vector2(0.5, 0.5))
+	return frame.get_pixelv(Vector2i(at.floor())).get_luminance()
 
 func _fail(message: String) -> void:
 	push_error(message)

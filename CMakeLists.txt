@@ -59,6 +59,7 @@ add_library(
     src/input/menu.cpp
     src/input/survival.cpp
     src/register_types.cpp
+    src/rendering/camera.cpp
     src/rendering/drawing.cpp
     src/rendering/feedback.cpp
     src/rendering/survival.cpp

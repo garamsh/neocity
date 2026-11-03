@@ -233,6 +233,21 @@ void Session::finish_cinematic(hud::Cinematic cinematic) {
 }
 
 void Session::advance(double delta, Command command) {
+  advance_screen(delta, command);
+  framed.reset();
+  shot.reset();
+  if (run) {
+    framed = run->frame();
+  }
+}
+
+void Session::aim(const rendering::Art &drawing) {
+  if (framed) {
+    shot = hud::shot_of(drawing, *framed);
+  }
+}
+
+void Session::advance_screen(double delta, const Command &command) {
   if (!volume_sent) {
     send_volume();
     volume_sent = true;
@@ -445,20 +460,37 @@ void Session::paint(godot::Node2D &canvas,
                               hud::SETUP_ENTRIES.at(setup_cursor));
     return;
   case Screen::Survival:
-    if (playback && run) {
+    if (playback && framed) {
       hud::paint_cinematic(canvas, drawing, playback->cinematic,
-                           playback->card_left.has_value(), run->frame());
-    } else if (run) {
-      const auto frame = run->frame();
-      hud::paint_survival(canvas, drawing, frame, bursts);
+                           playback->card_left.has_value(), *framed);
+    } else if (framed && shot) {
+      hud::paint_survival(canvas, drawing, *framed, *shot, bursts);
       if (interruption) {
-        hud::paint_interruption(canvas, drawing, *interruption, frame,
+        hud::paint_interruption(canvas, drawing, *interruption, *framed,
                                 volume_rows(volume));
       }
     }
     return;
   }
   std::abort();
+}
+
+bool Session::playing() const {
+  return screen == Screen::Survival && !playback;
+}
+
+void Session::paint_world(godot::Node2D &canvas,
+                          const rendering::Art &drawing) const {
+  if (playing() && framed && shot) {
+    hud::paint_survival_world(canvas, drawing, *framed, *shot, bursts);
+  }
+}
+
+void Session::paint_glow(godot::Node2D &canvas,
+                         const rendering::Art &drawing) const {
+  if (playing() && framed && shot) {
+    hud::paint_survival_glow(canvas, drawing, *framed, *shot, bursts);
+  }
 }
 
 godot::String Session::screen_name() const {
