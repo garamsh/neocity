@@ -132,8 +132,8 @@ godot::Color deep_acid_tint() { return color(32, 52, 48, 1.0F); }
 godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// The ground is lifted above its own colours, and its walked-on top edge
 /// most of all.
-godot::Color ground_tint() { return {1.15F, 1.1F, 1.2F}; }
-godot::Color ground_edge_tint() { return {1.6F, 1.5F, 1.7F}; }
+godot::Color ground_tint() { return {1.4F, 1.32F, 1.45F}; }
+godot::Color ground_edge_tint() { return {1.95F, 1.8F, 2.05F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
