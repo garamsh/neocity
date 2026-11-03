@@ -943,6 +943,31 @@ TEST(Exploration, ExhaustionEndsACollectionAndKeepsItsItem) {
             CollectionResult::Applied);
 }
 
+TEST(Exploration, AFallEndsACollectionAtBaseAndKeepsItsItem) {
+  auto definitions = city();
+  definitions.front().destroyed_after = WorldThreshold{.elapsed = 150ms};
+  auto settings = tuning();
+  settings.sources = {{.id = SOURCE, .remaining = 5}};
+  settings.collection_time = 2s;
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(definitions);
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.advance(150ms, IDLE, {}), Result::Applied);
+  ASSERT_EQ(world.snapshot().objects.front().state, ObjectState::Destroyed);
+  ASSERT_TRUE(exploration.snapshot().chef.collecting.has_value());
+  ASSERT_EQ(simulation.snapshot().chef.location, Location::City);
+
+  ASSERT_EQ(exploration.advance(1s, IDLE, {}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(at(exploration.snapshot().chef), BASE);
+  EXPECT_EQ(simulation.snapshot().chef.inventory,
+            (std::vector{IngredientId{70}}));
+  EXPECT_EQ(exploration.snapshot().chef.collecting, std::nullopt);
+}
+
 TEST(Exploration, AFinishedDaysUnspentTimeReachesTheWorldOnceFromBase) {
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
