@@ -648,7 +648,8 @@ std::optional<Job> role_step(const SurvivalFrame &frame, Actor actor,
   const auto &offer = frame.offers.at(index_of(actor)).interact;
   if (offer) {
     return Job{.text = offered_step(frame.view, *offer, KEY_LABELS.at(*keys)),
-               .press = PlayerPress{actor, PlayerKey::Interact}};
+               .press =
+                   PlayerPress{.actor = actor, .key = PlayerKey::Interact}};
   }
   return std::nullopt;
 }
@@ -660,9 +661,10 @@ std::optional<Job> replacement_step(const SurvivalFrame &frame) {
     if (keys &&
         role_tool_state(frame.view, actor) == survival::ToolState::Damaged &&
         carried(frame.view, role_replacement(workshop, actor))) {
-      return Job{.text = key(KEY_LABELS.at(*keys).replace_tool) +
-                         "Replace the damaged " + role_tool_name(actor),
-                 .press = PlayerPress{actor, PlayerKey::ReplaceTool}};
+      return Job{
+          .text = key(KEY_LABELS.at(*keys).replace_tool) +
+                  "Replace the damaged " + role_tool_name(actor),
+          .press = PlayerPress{.actor = actor, .key = PlayerKey::ReplaceTool}};
     }
   }
   return std::nullopt;
@@ -698,7 +700,8 @@ std::optional<Job> workshop_craft_step(const SurvivalFrame &frame) {
     if (offer) {
       return Job{
           .text = offered_step(frame.view, *offer, KEY_LABELS.at(*chef_keys)),
-          .press = PlayerPress{Actor::Chef, PlayerKey::Interact}};
+          .press =
+              PlayerPress{.actor = Actor::Chef, .key = PlayerKey::Interact}};
     }
   }
   // An AI chef cooks on its next step, so the day must not end unfed first.
@@ -714,7 +717,7 @@ std::optional<Job> workshop_craft_step(const SurvivalFrame &frame) {
     const auto &offer = frame.offers.at(index_of(actor)).feed;
     if (keys && offer) {
       return Job{.text = offered_step(frame.view, *offer, KEY_LABELS.at(*keys)),
-                 .press = PlayerPress{actor, PlayerKey::Feed}};
+                 .press = PlayerPress{.actor = actor, .key = PlayerKey::Feed}};
     }
   }
   return std::nullopt;
@@ -734,12 +737,14 @@ Job workshop_step(const SurvivalFrame &frame, const KeyLabels &keys) {
     return {.text = set_out_keys(frame) + "Set out into the city: " +
                     corner_clock(frame.view.progression.remaining_exploration) +
                     " left today.",
-            .press = PlayerPress{std::nullopt, PlayerKey::Travel}};
+            .press =
+                PlayerPress{.actor = std::nullopt, .key = PlayerKey::Travel}};
   }
   return {.text = key(keys.end_day) + "End the day unfed: acid rises by " +
                   number(frame.content.get().companion.unfed_penalty.value) +
                   ".",
-          .press = PlayerPress{first_player(frame), PlayerKey::EndDay}};
+          .press = PlayerPress{.actor = first_player(frame),
+                               .key = PlayerKey::EndDay}};
 }
 
 float acid_ratio(const SurvivalFrame &frame) {
@@ -2601,15 +2606,16 @@ void city_targets(std::vector<Target> &targets, const rendering::Art &drawing,
     } else if (!frame.offers.at(index_of(row.actor)).interact) {
       refusal = "Nothing within reach to collect or repair.";
     }
-    targets.push_back({.area = row.button,
-                       .press = PlayerPress{row.actor, PlayerKey::Interact},
-                       .refusal = refusal});
+    targets.push_back(
+        {.area = row.button,
+         .press = PlayerPress{.actor = row.actor, .key = PlayerKey::Interact},
+         .refusal = refusal});
     if (const auto travel = travel_hint(frame, row.actor, keys)) {
       const float x = row.hint.x +
                       drawing.text_width(move_keys(keys), SMALL_SIZE, CHANGING);
       targets.push_back(
           {.area = line_area(drawing, x, row.hint.y, *travel, SMALL_SIZE),
-           .press = PlayerPress{row.actor, PlayerKey::Travel}});
+           .press = PlayerPress{.actor = row.actor, .key = PlayerKey::Travel}});
     }
   }
 }
@@ -2624,8 +2630,9 @@ void workshop_targets(std::vector<Target> &targets,
        .refusal = job.press ? String() : String("The AI is working.")});
   if (const auto actor = feeder(frame);
       actor && job.press && job.press->key != PlayerKey::Feed) {
-    targets.push_back({.area = rect(TASK_X, TASK_Y + 48.0F, TASK_WIDTH, 22.0F),
-                       .press = PlayerPress{*actor, PlayerKey::Feed}});
+    targets.push_back(
+        {.area = rect(TASK_X, TASK_Y + 48.0F, TASK_WIDTH, 22.0F),
+         .press = PlayerPress{.actor = actor, .key = PlayerKey::Feed}});
   }
   if (survival::key_set(frame.control, Actor::Chef)) {
     const auto &recipes = frame.content.get().companion.workshop.recipes;
@@ -2644,14 +2651,15 @@ void workshop_targets(std::vector<Target> &targets,
   targets.push_back(
       {.area = line_area(drawing, TASK_X + TASK_WIDTH - INSET - end_width,
                          TASK_Y + 89.0F, end, TASK_NOTE_SIZE),
-       .press = PlayerPress{first_player(frame), PlayerKey::EndDay}});
+       .press = PlayerPress{.actor = first_player(frame),
+                            .key = PlayerKey::EndDay}});
   if (survival::key_set(frame.control, Actor::Chef)) {
     const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
     const auto figure = drawing.size(rendering::Image::ChefIdle) * FIGURE_SCALE;
     targets.push_back(
         {.area =
              rect(CHEF_FIGURE_X, KITCHEN_FLOOR - figure.y, figure.x, figure.y),
-         .press = PlayerPress{Actor::Chef, PlayerKey::Interact},
+         .press = PlayerPress{.actor = Actor::Chef, .key = PlayerKey::Interact},
          .refusal = offer && std::holds_alternative<survival::Cook>(*offer)
                         ? String()
                         : String("No dish can be cooked now.")});
@@ -2672,7 +2680,8 @@ void workshop_targets(std::vector<Target> &targets,
     }
     targets.push_back(
         {.area = appraisal_area(static_cast<std::size_t>(unknown)),
-         .press = PlayerPress{Actor::Appraiser, PlayerKey::Interact},
+         .press =
+             PlayerPress{.actor = Actor::Appraiser, .key = PlayerKey::Interact},
          .refusal = refusal});
   }
 }
@@ -2681,6 +2690,7 @@ void workshop_targets(std::vector<Target> &targets,
 
 std::vector<Target> setup_targets() {
   std::vector<Target> targets;
+  targets.reserve(SETUP_ENTRIES.size());
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
     targets.push_back(
         {.area =
@@ -2720,12 +2730,13 @@ interruption_targets(const rendering::Art &drawing, Interruption interruption,
       const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
       targets.push_back({.area = rect(PAUSE_TEXT_X - 10.0F, y - 22.0F,
                                       VOLUME_BLOCKS_X - 10.0F, 28.0F),
-                         .press = VolumePress{row, 0}});
+                         .press = VolumePress{.row = row, .level = 0}});
       for (std::uint8_t step = 0; step < volumes.at(row).steps; ++step) {
         targets.push_back(
             {.area = rect(blocks + static_cast<float>(step) * VOLUME_BLOCK_STEP,
                           y - 22.0F, VOLUME_BLOCK_STEP, 28.0F),
-             .press = VolumePress{row, static_cast<std::uint8_t>(step + 1)}});
+             .press = VolumePress{
+                 .row = row, .level = static_cast<std::uint8_t>(step + 1)}});
       }
       y += VOLUME_ROW_HEIGHT;
     }

@@ -144,6 +144,7 @@ void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
 
 std::vector<Target> title_targets() {
   std::vector<Target> targets;
+  targets.reserve(TITLE_ENTRIES.size());
   for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
     targets.push_back(
         {.area = entry_area(index), .press = OptionPress{index + 1}});
