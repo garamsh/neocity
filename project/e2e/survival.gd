@@ -70,7 +70,7 @@ const LOOK_AHEAD: float = 80.0
 ## them smaller than twice the scene's size to frame both.
 const APART: float = 480.0
 ## The weight the screen draws every changing line in.
-const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Inter-SemiBold.ttf"
+const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/PixelifySans-SemiBold.ttf"
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -335,7 +335,7 @@ func _first_day() -> void:
 		return
 	if not _check(_goal_shown(), "the city shows when escape checks begin"):
 		return
-	if not _check(_screen_shows("[E] Use") and not _screen_shows("[E] Collect") and _screen_shows("[Q] Return to base") and _screen_shows("WASD move  Shift run"), "away from a source the action card shows E unlit, Q home and the move keys"):
+	if not _check(_actions() == ["[E] USE"] and _head_caps().is_empty() and _screen_shows("WASD move  Shift run  Space jump  Q base"), "away from a source the action button shows E as use, no key cap is over the head, and the move, run, jump and travel keys show: %s %s" % [_actions(), _head_caps()]):
 		return
 	await _run_east()
 	if failed:
@@ -344,9 +344,9 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the cart's fish", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	if not _check(_screen_shows("[E] Collect") and _screen_shows("Vendor Cart") and not _screen_shows("[E] Use"), "at a source the action card offers E to collect from it"):
+	if not _check(_actions() == ["[E] COLLECT"] and _head_caps() == ["E"], "at a source the action button offers E to collect and E's cap is over the head: %s %s" % [_actions(), _head_caps()]):
 		return
-	if not _check(not _next().begins_with("[E] ") and _next().contains(" to Tomato Machine"), "the screen moves past a kind the party already took: %s" % _next()):
+	if not _check(not _next().begins_with("[E] ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
@@ -377,8 +377,8 @@ func _run_east() -> void:
 		return
 	var line: String = _next()
 	var target: String = line.get_slice(" to ", 1).get_slice(".", 0)
-	var objects: Dictionary = _status()["objects"]
-	_check(line.contains(" to ") and objects.has(target), "the screen names the object to move to: %s" % line)
+	var places: Dictionary = _status()["places"]
+	_check(line.contains(" to ") and places.values().has(target), "the screen names the object to move to: %s" % line)
 
 ## Stops before anything is collected, so the fall leaves time on the clock.
 func _third_day_falls() -> void:
@@ -977,7 +977,7 @@ func _collect_from_the_tomato_machine() -> void:
 		return
 	if not _check(_actor("chef", "collecting_ms") > 0 and left - _int("remaining_ms") < COLLECT_MS, "a collection holds the chef and leaves the shared clock running"):
 		return
-	if not _check(_next().begins_with("Collecting from Tomato Machine: ") and _next().ends_with("s left."), "the line shows how long the hold has left"):
+	if not _check(_next().begins_with("Collecting from Tomato machine: ") and _next().ends_with("s left."), "the line shows how long the hold has left"):
 		return
 	await _tap(KEY_Q)
 	if not _check(_where("chef") == "city", "a held chef cannot return to base"):
@@ -1002,9 +1002,7 @@ func _appraiser_run() -> void:
 	await _tap(KEY_Q)
 	if not await _walk_route(MARKET_ROUTE):
 		return
-	if not _check(_next().contains("Tool Bag") and _next().contains("(takes 1.5s)"), "the screen offers the wrench in reach and its cost in time"):
-		return
-	if not _check(_screen_says("Each collection takes 1.5s"), "the pack says how long every collection takes"):
+	if not _check(_next().contains("Wrench bag") and _next().contains("(takes 1.5s)"), "the screen offers the wrench in reach and its cost in time"):
 		return
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "tools") == 1, "the human collects a tool"):
@@ -1067,7 +1065,7 @@ func _human_repairs_the_ladder() -> void:
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	await _until("the screen offers the repair", func() -> bool: return _next().contains("Repair Roof Ladder"), 30)
-	if not _check(_next().contains("Repair Roof Ladder") and _screen_shows("[E] Repair") and _screen_shows("Roof Ladder"), "the screen offers the repair in reach"):
+	if not _check(_next().contains("Repair Roof Ladder") and _actions().has("[E] REPAIR"), "the screen offers the repair in reach"):
 		return
 	_key(KEY_W, true)
 	await _frames(24)
@@ -1096,7 +1094,7 @@ func _two_players() -> void:
 		return
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: [U] Set out into the city"), "the player left at base is told to set out: %s" % _next()):
 		return
-	if not _check(_screen_shows("[U] Set out") and not _screen_shows("[U] Return to base") and _screen_shows("[Q] Return to base"), "the action card names U as setting out for player two at base"):
+	if not _check(_screen_shows("; jump  U set out") and not _screen_shows("; jump  U base") and _screen_shows("Space jump  Q base"), "each player's keys name their own jump and U as setting out for player two at base"):
 		return
 	if not _text_fits("one player out and one at base"):
 		return
@@ -1114,6 +1112,8 @@ func _two_players() -> void:
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: Walk "), "the screen tells each player where to walk"):
 		return
 	if not _text_fits("two players in the city"):
+		return
+	if not _check(_screen_shows("WASD move  Shift run") and _screen_shows("Space jump  Q base") and _screen_shows("IJKL move  H run") and _screen_shows("; jump  U base"), "each player's row names that key set's move, run and jump keys"):
 		return
 	if not _plates_apart("two players in the city"):
 		return
@@ -1234,14 +1234,14 @@ func _player_two_errand_alone_sets_out() -> void:
 	if not _check(_actor("appraiser", "tools") == 1, "player two carries the wrench"):
 		return
 	await _frames(2)
-	if not _check(_actor("appraiser", "collecting_ms") > 0 and _hold_shown(), "player two's row shows how long player two's hold has left"):
+	if not _check(_actor("appraiser", "collecting_ms") > 0 and _actions().size() == 2 and _action(1).begins_with("COLLECTING ") and not _action(0).begins_with("COLLECTING "), "player two's button shows how long player two's hold has left: %s" % [_actions()]):
 		return
 	if not _text_fits("player two's hold"):
 		return
 	if not await _until("player two's wrench collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _frames(2)
-	if not _check(not _hold_shown() and _screen_shows("[U] Return to base"), "player two's row shows the travel key again once the hold ends"):
+	if not _check(_actions().size() == 2 and _action(1) == "[O] USE" and _screen_shows("; jump  U base"), "player two's button shows the interact key again once the hold ends: %s" % [_actions()]):
 		return
 	await _tap(KEY_U)
 	if not await _until("player two brings the wrench home", func() -> bool: return _str("phase") == "workshop", 30):
@@ -1341,13 +1341,17 @@ func _screen_shows(words: String) -> bool:
 			return true
 	return false
 
-## Whether a changing line, other than NEXT's, reads the hold's time left.
-func _hold_shown() -> bool:
-	for line: Dictionary in _changing_text():
-		var text: String = line["text"]
-		if text.begins_with("Collecting: ") and text.ends_with("s"):
-			return true
-	return false
+## What each human's action button reads, the chef's first.
+func _actions() -> Array:
+	return _status()["actions"]
+
+## What one human's action button reads, by its place in `_actions()`.
+func _action(index: int) -> String:
+	return str(_actions()[index])
+
+## The keys of the caps drawn over the humans' heads in the last frame.
+func _head_caps() -> Array:
+	return scene.get_meta("head_caps", [])
 
 func _screen_says(words: String) -> bool:
 	for line: Dictionary in _changing_text():
@@ -1543,7 +1547,13 @@ func _points_to_goal(where: String) -> bool:
 	var drawn: Array = scene.get_meta("map_sources", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
 	var pointers: Array = scene.get_meta("map_pointers", [])
-	return _check(line.contains(" to ") and drawn.has(goal) and pointers.has(goal) != labelled.has(goal), "the goal %s is on the play area or pointed at on %s: labelled %s, pointers %s" % [goal, where, labelled, pointers])
+	# The map names sources by object name; the line by the screen's name.
+	var places: Dictionary = _status()["places"]
+	var shown: bool = false
+	for object: String in places:
+		if places[object] == goal and drawn.has(object) and pointers.has(object) != labelled.has(object):
+			shown = true
+	return _check(line.contains(" to ") and shown, "the goal %s is on the play area or pointed at on %s: labelled %s, pointers %s" % [goal, where, labelled, pointers])
 
 func _next_event_has(text: String) -> bool:
 	for event: String in _events():
