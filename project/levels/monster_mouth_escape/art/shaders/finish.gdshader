@@ -1,11 +1,13 @@
 // Finishes the drawn city before the interface goes over it: both acid
-// surfaces heave with light running along them, a web of light crawls over
-// the acid and bubbles rise and burst in it, the acid lights whatever stands
-// near it green, bright parts spill light around them, shadows lean to
-// magenta and the edges darken toward violet. Each effect is worked out once
-// per pixel of the art it lies on, the band's own pixels behind the map and
-// the scene's pixels elsewhere, and steps through a few levels with ordered
-// dithering, so it reads as pixel art and not as a smooth blur.
+// surfaces heave under a rim of foam with light running along it, a web of
+// light crawls over the acid near its surface, which sinks to a deeper shade
+// below, bubbles rise and burst into foam, whatever stands over or in the
+// acid takes its light in bands that fade away from the surface, bright parts
+// spill light around them, shadows lean to magenta and the edges darken
+// toward violet. Each effect is worked out once per pixel of the art it lies
+// on, the band's own pixels behind the map and the scene's pixels elsewhere,
+// and soft light steps through a few levels, so it reads as pixel art and not
+// as a smooth blur.
 shader_type canvas_item;
 render_mode unshaded;
 
@@ -27,21 +29,35 @@ uniform float grid = 1.0;
 const vec2 CANVAS = vec2(1280.0, 720.0);
 // The screen pixels of one of the band art's pixels.
 const float BAND_PIXEL = 4.0;
-// Rows under a surface that heave, and that light runs along.
+// Rows near a surface that heave, and that light runs along.
 const float HEAVE_DEPTH = 4.0;
 const float RUN_DEPTH = 2.0;
-// The web's cells, in pixels, how deep it fades over, and how bright its
-// strands are.
+// The web's cells, in pixels, and how deep under the surface it shows and
+// how bright its strands are there.
 const float WEB_CELL = 10.0;
-const float WEB_DEPTH = 80.0;
+const float WEB_DEPTH = 24.0;
 const vec3 WEB_LIGHT = vec3(0.45, 0.6, 0.25);
-const vec3 WEB_SHADE = vec3(0.92, 0.95, 0.92);
-// Bubble lanes across the acid, in pixels, and how deep a bubble starts.
-const float LANE = 11.0;
-const float BUBBLE_DEPTH = 30.0;
-// The green light the acid throws on what is near it, and how strongly.
-const vec3 ACID_LIGHT = vec3(0.10, 0.42, 0.08);
-const float ACID_REACH = 2.6;
+// The acid sinks toward this shade over this many pixels under its surface.
+const vec3 DEEP_SHADE = vec3(0.8, 0.86, 0.8);
+const float DEEP_DEPTH = 48.0;
+// The foam along the surface's top row, and the light running along it.
+const vec3 FOAM = vec3(0.82, 1.0, 0.58);
+const vec3 GLINT = vec3(0.95, 1.0, 0.8);
+// Bubble lanes across the acid, in pixels, how deep a bubble starts, and the
+// share of its rise after which it bursts at the surface.
+const float LANE = 9.0;
+const float BUBBLE_DEPTH = 14.0;
+const float BURST = 0.82;
+// The light the acid throws on what stands over and in it: bands this many
+// screen pixels tall, this many of them, each fainter than the one nearer the
+// surface, which pull a colour toward the acid's green at a brightness this
+// much over its own; what stands in the acid is lit by this share of it.
+const vec3 ACID_GLOW = vec3(0.35, 1.0, 0.25);
+const float ACID_LIFT = 0.45;
+const float GLOW_MIX = 0.55;
+const float WADING = 0.7;
+// How much acid's green under the surface lights the bands over it in full.
+const float GLOW_SHOWS = 6.0;
 // How bright a part must be before it spills light, and how strongly.
 const float BLOOM_FROM = 0.6;
 const float BLOOM = 0.5;
@@ -139,46 +155,65 @@ void fragment() {
 	}
 
 	if (acid(colour) && depth >= 0.0) {
-		// Light running along the top of the acid, each row its own way.
+		// Foam along the top row, light running along the rows under it, each
+		// its own way.
+		colour = mix(colour, FOAM, 0.75 * step(depth * pixel, 3.0));
 		float way = mod(depth, 2.0) < 1.0 ? 1.0 : -1.0;
 		float run = floor((cell.x + way * time * (6.0 + depth * 4.0)) / 5.0);
-		float glint = step(0.78, hash(vec2(run, depth))) * step(depth, RUN_DEPTH);
-		colour = mix(colour, vec3(0.86, 1.0, 0.72), glint * 0.85);
-		// A web of light crawling over the acid, fading with depth, over
-		// acid a shade deeper between its strands.
-		float near = 1.0 - min(depth / WEB_DEPTH, 0.7);
-		if (strand(vec2(cell.x, cell.y * 1.7) / WEB_CELL + vec2(time * 0.05, 0.0))) {
-			colour += WEB_LIGHT * stepped(near, cell);
-		} else {
-			colour *= WEB_SHADE;
+		float glint = step(0.72, hash(vec2(run, depth))) * step(depth, RUN_DEPTH);
+		colour = mix(colour, GLINT, glint * 0.9);
+		// A web of light crawling over the acid near its surface, which sinks
+		// to a deeper shade below.
+		float near = 1.0 - depth / WEB_DEPTH;
+		if (near > 0.0 && strand(vec2(cell.x, cell.y * 1.7) / WEB_CELL + vec2(time * 0.05, 0.0))) {
+			colour += WEB_LIGHT * stepped(near * near, cell);
 		}
-		// A bubble rising in its lane and bursting into a ring at the surface.
+		colour *= mix(vec3(1.0), DEEP_SHADE, min(depth / DEEP_DEPTH, 1.0));
+	}
+	if (depth >= -3.0 && depth <= BUBBLE_DEPTH && (acid(colour) || depth < 0.0)) {
+		// A bubble rising in its lane, bursting into a ring of foam at the
+		// surface.
 		float lane = floor(cell.x / LANE);
-		float period = 2.0 + hash(vec2(lane, 3.0)) * 2.4;
+		float period = 1.6 + hash(vec2(lane, 3.0)) * 2.4;
 		float rise = fract(time / period + hash(vec2(lane, 7.0)));
-		if (hash(vec2(lane, 11.0)) < 0.55) {
-			vec2 bubble = vec2(lane * LANE + 2.0 + floor(hash(vec2(lane, 5.0)) * (LANE - 4.0)), BUBBLE_DEPTH * (1.0 - rise));
-			bubble.x += round(sin(rise * 12.0 + lane) * 0.8);
-			float size = rise < 0.88 ? 0.6 + rise : 0.6 + (rise - 0.88) * 30.0;
-			float ring = step(abs(length(vec2(cell.x, depth) - bubble) - size), 0.7);
-			float fade = rise < 0.88 ? 1.0 : 1.0 - (rise - 0.88) * 8.3;
-			colour = mix(colour, vec3(0.85, 1.0, 0.7), ring * fade);
+		if (hash(vec2(lane, 11.0)) < 0.6) {
+			float x = lane * LANE + 2.0 + floor(hash(vec2(lane, 5.0)) * (LANE - 4.0));
+			vec2 from = vec2(cell.x - x, depth);
+			if (rise < BURST) {
+				vec2 bubble = vec2(round(sin(rise * 12.0 + lane) * 0.8), round(BUBBLE_DEPTH * (1.0 - rise / BURST)));
+				if (acid(colour) && max(abs(from.x - bubble.x), abs(from.y - bubble.y)) <= 1.0 - step(rise, 0.4)) {
+					colour = GLINT;
+				}
+			} else {
+				float size = 1.0 + floor((rise - BURST) / (1.0 - BURST) * 3.0);
+				float ring = step(abs(length(from) - size), 0.6);
+				colour = mix(colour, FOAM, ring);
+			}
 		}
 	}
 
-	// What is near the acid takes its green light, and bright parts spill
-	// light over their neighbours, read from the blurred screen at the middle
-	// of this point's scene pixel.
+	// What stands over the acid, or in it, takes its light in bands that fade
+	// away from the surface: the sea's where it shows, else the band's.
+	float from_sea = sea - scene_centre.y;
+	float from_band = band - scene_centre.y;
+	float from_surface = sea <= band || from_sea >= 0.0 && from_sea < from_band ? from_sea : from_band;
+	float glow_band = floor(abs(from_surface) / GLOW_BAND);
+	if (!acid(colour) && glow_band < GLOW_BANDS) {
+		// Only where acid shows under the surface, in a few steps across.
+		vec2 under = vec2(scene_centre.x, scene_centre.y + from_surface + GLOW_BAND);
+		float shows = greenness(textureLod(screen, SCREEN_UV + (under - canvas_at) * uv_per_unit, 4.0).rgb);
+		float lit = floor(clamp(shows * GLOW_SHOWS, 0.0, 1.0) * 3.0) / 3.0;
+		lit *= (GLOW_BANDS - glow_band) / GLOW_BANDS;
+		lit *= from_surface < 0.0 ? WADING : 1.0;
+		lit *= 0.92 + 0.08 * sin(time * 2.3 + glow_band);
+		colour = mix(colour, ACID_GLOW * (ACID_LIFT + luma(colour)), lit * GLOW_MIX);
+	}
+
+	// Bright parts spill light over their neighbours, read from the blurred
+	// screen at the middle of this point's scene pixel.
 	vec2 at_uv = SCREEN_UV + (scene_centre - canvas_at) * uv_per_unit;
 	vec3 near_blur = textureLod(screen, at_uv, 3.0).rgb;
 	vec3 far_blur = textureLod(screen, at_uv, 5.0).rgb;
-	vec3 wide_blur = textureLod(screen, at_uv, 6.0).rgb;
-	float flicker = 0.9 + 0.1 * sin(time * 2.1 + scene_cell.x * 0.13 + scene_cell.y * 0.07);
-	float green = clamp((greenness(far_blur) + greenness(wide_blur)) * ACID_REACH * flicker, 0.0, 1.0);
-	float lit = stepped(green, scene_cell);
-	if (!acid(colour)) {
-		colour += ACID_LIGHT * lit + colour * vec3(-0.15, 0.55, -0.05) * lit;
-	}
 	vec3 spill = near_blur * max(luma(near_blur) - BLOOM_FROM, 0.0) + far_blur * max(luma(far_blur) - BLOOM_FROM, 0.0);
 	float spill_level = stepped(clamp(luma(spill) * 5.0, 0.0, 1.0), scene_cell);
 	if (luma(own) < BLOOM_FROM) {

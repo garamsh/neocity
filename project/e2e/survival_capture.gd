@@ -5,7 +5,8 @@ extends SceneTree
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
 ## band behind the map does not show green at no acid, the stairs' walked-on part does not
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
-## lit top edge does not run along its tilt, the acid stands still between two
+## lit top edge does not run along its tilt, the acid's light does not rise
+## above its surface, the acid stands still between two
 ## frames a moment apart, the finishing pass breaks the scene's pixels below the
 ## sea's surface into smaller ones, the city draws fewer than 60 frames a second,
 ## or one of its word plates covers another or a source other than the source's
@@ -91,6 +92,12 @@ const SLAB_CELLS: int = 2
 const MOTION_MSEC: int = 250
 const MOTION_STEP: float = 0.04
 const MOTION_SHARE: float = 0.05
+## The screen rows just above the acid's surface that its light falls on, and
+## the rows of backdrop higher up that they are held against; how much more,
+## in mean green lead from 0 to 1, the lit rows read.
+const LIT_ROWS: Vector2i = Vector2i(-16, 0)
+const UNLIT_ROWS: Vector2i = Vector2i(-96, -64)
+const LIGHT_GAP: float = 0.05
 ## The screen rows under the sea's surface that the motion is read over.
 const SEA_ROWS: Vector2i = Vector2i(2, 40)
 ## The least share of the scene's pixels below the sea's surface that the
@@ -121,6 +128,7 @@ var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
 var grid_frames: int = 0
+var light_frames: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -301,10 +309,10 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d and the pixel grid in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d and the acid light in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
@@ -510,7 +518,7 @@ func _save_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -773,6 +781,38 @@ func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) ->
 		_fail("%s: the finished sea does not keep to the scene's pixels" % screen)
 		return false
 	return true
+
+## Whether the LIT_ROWS above the acid's surface, the band's where the sea
+## does not cover it and the sea's otherwise, lead the UNLIT_ROWS of backdrop
+## higher up in green by LIGHT_GAP, over every other column, when the play area
+## shows both. The control is that the unlit rows hold more than black.
+func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
+	var surface: int = _band_top() if _band_clear(view) else floori((view * Vector2(0, _acid_surface())).y)
+	if surface + UNLIT_ROWS.x < PLAY.position.y or surface > PLAY.end.y:
+		return true
+	var lit: float = _green_lead(frame, surface + LIT_ROWS.x, surface + LIT_ROWS.y)
+	var unlit: float = _green_lead(frame, surface + UNLIT_ROWS.x, surface + UNLIT_ROWS.y)
+	var shade: float = 0.0
+	for y: int in range(surface + UNLIT_ROWS.x, surface + UNLIT_ROWS.y):
+		for x: int in range(0, int(PLAY.size.x), 2):
+			shade += frame.get_pixel(x, y).get_luminance()
+	shade /= (UNLIT_ROWS.y - UNLIT_ROWS.x) * PLAY.size.x / 2
+	light_frames += 1
+	print("Capture: %s: the rows above the acid's surface at row %d lead the backdrop above them in green by %.3f (lit %.3f, backdrop %.3f, at least %.3f)." % [screen, surface, lit - unlit, lit, unlit, LIGHT_GAP])
+	if shade <= 0.0 or lit - unlit < LIGHT_GAP:
+		_fail("%s: the acid's light does not rise above its surface" % screen)
+		return false
+	return true
+
+## The mean by which green leads red and blue, 0 where it does not, over the
+## screen rows from `top` to `bottom`, every other column.
+func _green_lead(frame: Image, top: int, bottom: int) -> float:
+	var total: float = 0.0
+	for y: int in range(top, bottom):
+		for x: int in range(0, int(PLAY.size.x), 2):
+			var pixel: Color = frame.get_pixel(x, y)
+			total += maxf(pixel.g - maxf(pixel.r, pixel.b), 0.0)
+	return total / ((bottom - top) * PLAY.size.x / 2)
 
 ## The next drawn frame.
 func _frame() -> Image:
