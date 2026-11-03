@@ -39,8 +39,12 @@ const EDGE_ROWS: int = 4
 ## line down to the row below, so its walked-on part lies above that diagonal.
 const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
 ## Main-street cells whose scenery is the wall of the arcade's sunken building,
-## which stands behind them.
+## which stands behind them while the acid's surface is below them.
 const WALL_CELLS: Array[Vector2i] = [Vector2i(4, 8), Vector2i(5, 8), Vector2i(6, 8)]
+## The scene row of the acid's surface at no acid, under the map's lowest
+## ground row; it rises evenly to the map's top at the acid that ends the run,
+## as the city draws it.
+const ACID_LOW: int = 518
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
 ## EDGE_ROWS under those cells read than the wall in the cells.
 const WALL_LEAD: float = 0.1
@@ -492,15 +496,17 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 	return true
 
 ## Whether the walkway's lit top EDGE_ROWS lead the sunken building's wall
-## right above them by WALL_LEAD, over the WALL_CELLS the frame shows, when it
-## shows two or more; the control is that the wall is not black.
+## right above them by WALL_LEAD, over the WALL_CELLS the frame shows with the
+## acid's surface below them, when it shows two or more; the control is that
+## the wall is not black.
 func _walls_recede(frame: Image, view: Transform2D, screen: String) -> bool:
 	var edge: float = 0.0
 	var wall: float = 0.0
 	var shown: int = 0
+	var surface: float = _acid_surface()
 	for cell: Vector2i in WALL_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
-		if not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
+		if surface < corner.y + CELL or not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
 			continue
 		edge += _luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS)
 		wall += _luminance(frame, view, corner, CELL)
@@ -510,7 +516,7 @@ func _walls_recede(frame: Image, view: Transform2D, screen: String) -> bool:
 	edge /= shown
 	wall /= shown
 	wall_frames += 1
-	print("Capture: %s: the walkway's top edge leads the wall behind it by %.3f over %d cells (edge %.3f, wall %.3f, at least %.3f)." % [screen, edge - wall, shown, edge, wall, WALL_LEAD])
+	print("Capture: %s: the walkway's top edge leads the wall behind it by %.3f over %d cells, the acid's surface at row %.0f (edge %.3f, wall %.3f, at least %.3f)." % [screen, edge - wall, shown, surface, edge, wall, WALL_LEAD])
 	if wall <= 0.0 or edge - wall < WALL_LEAD:
 		_fail("%s: the walkway's top edge does not read over the wall behind it" % screen)
 		return false
@@ -569,6 +575,13 @@ func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
 		_fail("%s: the fallen slab's top edge does not run along its tilt" % screen)
 		return false
 	return true
+
+## The scene row of the acid's surface in the frame the status describes.
+func _acid_surface() -> float:
+	var status: Dictionary = scene.survival_status()
+	var acid: int = status["acid"]
+	var full: int = status["full_acid"]
+	return ACID_LOW - clampf(float(acid) / full, 0.0, 1.0) * (ACID_LOW - MAP_ORIGIN.y)
 
 ## The mean luminance of a band along a line that falls one CELL from corner
 ## across width scene pixels: in each of the columns from columns.x to
