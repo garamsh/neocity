@@ -1724,8 +1724,9 @@ void paint_saliva(godot::Node2D &canvas, const Art &art, Vector2 at) {
 
 /// The monster's upper teeth along the top of the screen whatever the camera
 /// shows, breathing with the throat and sliding sideways with the map, beside
-/// mirrored copies of themselves that meet without a seam. The canvas goes
-/// back to the scene afterwards.
+/// mirrored copies of themselves that meet without a seam, the copies at odd
+/// steps of its width from the one it leaves on the canvas as the `teeth_at`
+/// meta mirrored. The canvas goes back to the scene afterwards.
 void paint_jaw(godot::Node2D &canvas, const Art &art) {
   const Look scene = art.looking();
   const float width = art.size(Image::Jaw).x;
@@ -1736,6 +1737,7 @@ void paint_jaw(godot::Node2D &canvas, const Art &art) {
                               scene.origin.x);
   const float top =
       on_grid(JAW_TOP - breath(art) * BREATH_LIFT, scene.origin.y);
+  canvas.set_meta("teeth_at", Vector2(slide, top));
   art.look(canvas, Vector2(), 1.0F);
   for (int copy = -2; copy <= 2; ++copy) {
     art.image(canvas, Image::Jaw,
