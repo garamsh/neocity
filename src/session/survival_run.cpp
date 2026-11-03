@@ -477,11 +477,19 @@ void SurvivalRun::report_returns(const survival::Snapshot &before,
 
 void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
   const auto now = features.world.get().snapshot();
+  const auto &sources = features.content.get().companion.exploration.sources;
   for (std::size_t index = 0; index < now.objects.size(); ++index) {
     const auto &object = now.objects.at(index);
     const auto then = before.objects.at(index).state;
-    // A repair reports itself as an action.
-    if (object.state != then && then != survival::ObjectState::Destroyed) {
+    // A repair reports itself as an action, and a bag coming and going shows
+    // on the map alone, so the tide's daily bags leave the log to the rest.
+    const auto bag = std::ranges::any_of(
+        sources, [&object](const survival::SourceStock &source) {
+          return source.id == object.id &&
+                 source.kind == survival::SourceKind::Bag;
+        });
+    if (object.state != then && then != survival::ObjectState::Destroyed &&
+        !bag) {
       record(hud::WorldEvent{.object = object.id, .state = object.state});
       ++map_changes;
     }
