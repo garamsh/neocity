@@ -529,7 +529,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Walkway slab: a thick slab of slate stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
+   "depicts": "Walkway deck: a thick deck of violet stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
   },
   {
    "path": "walkway/deck_rivets.png",
@@ -539,7 +539,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Walkway slab variant: a riveted joint plate"
+   "depicts": "Walkway deck variant: a riveted joint plate"
   },
   {
    "path": "walkway/deck_worn.png",
@@ -549,7 +549,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Walkway slab variant: cracked stone blocks"
+   "depicts": "Walkway deck variant: cracked stone blocks"
   },
   {
    "path": "walkway/deck_corroded.png",
@@ -559,7 +559,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Walkway slab eaten by the acid: pitted stone, green stains, holes in the beam"
+   "depicts": "Walkway deck eaten by the acid: pitted stone, green stains, holes in the beam"
   },
   {
    "path": "walkway/flesh_drip.png",
@@ -579,7 +579,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Snapped left end of a walkway slab: jagged stone and bent rebar on its left"
+   "depicts": "Snapped left end of a walkway deck: jagged stone and bent rebar on its left"
   },
   {
    "path": "walkway/end_right.png",
@@ -589,7 +589,7 @@
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Snapped right end of a walkway slab: jagged stone and bent rebar on its right"
+   "depicts": "Snapped right end of a walkway deck: jagged stone and bent rebar on its right"
   },
   {
    "path": "walkway/pillar.png",
