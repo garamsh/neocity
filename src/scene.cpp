@@ -30,15 +30,14 @@ constexpr const char *FINISH_MATERIAL =
     "res://levels/monster_mouth_escape/art/finish.tres";
 /// The canvas the finishing pass covers.
 constexpr godot::Vector2 SCREEN_SIZE(1280.0F, 720.0F);
-/// Below the screen: no acid sea shows.
-constexpr float NO_SURFACE = 100000.0F;
 
 /// Loads a layer's material and gives it to `layer`, stopping the host when
 /// either fails.
 godot::Ref<godot::Resource> dress(godot::Node2D &layer, const char *file) {
   const godot::Ref<godot::Resource> material =
       godot::ResourceLoader::get_singleton()->load(file);
-  CRASH_COND_MSG(material.is_null(), godot::String("Material must load: ") + file);
+  CRASH_COND_MSG(material.is_null(),
+                 godot::String("Material must load: ") + file);
   // The trimmed bindings have no material setter; the property takes it.
   layer.set("material", material);
   CRASH_COND_MSG(layer.get("material") != godot::Variant(material),
@@ -171,13 +170,17 @@ void MainScene::draw_finish() {
   if (!drawing || finish == nullptr) {
     return;
   }
+  // Only a frame that drew the acid is finished.
   const auto line = drawing->take_waterline();
+  if (!line) {
+    return;
+  }
   finishing->set("shader_parameter/time", drawing->seconds());
-  finishing->set("shader_parameter/surface",
-                 line ? line->surface : NO_SURFACE);
-  finishing->set("shader_parameter/grid_origin",
-                 line ? line->origin : godot::Vector2());
-  finishing->set("shader_parameter/grid", line ? line->zoom : 1.0F);
+  finishing->set("shader_parameter/band", line->band);
+  finishing->set("shader_parameter/band_left", line->band_left);
+  finishing->set("shader_parameter/sea", line->sea);
+  finishing->set("shader_parameter/grid_origin", line->origin);
+  finishing->set("shader_parameter/grid", line->zoom);
   finish->draw_rect(godot::Rect2(0.0F, 0.0F, SCREEN_SIZE.x, SCREEN_SIZE.y),
                     godot::Color(1.0F, 1.0F, 1.0F));
 }

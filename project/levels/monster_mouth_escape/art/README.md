@@ -8,7 +8,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 - Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the hearts and status icons from `ui/`, the item icons (`icons/`) and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `walkway/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
-- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. Tiles are one cell wide but the walls of buildings and their flesh-grown foot, which are 64 px wide; `walkway/deck.png`, `platform.png`, `bridge.png` and `world/waterline.png` repeat horizontally, the supports vertically, and `building_wall.png` and the sunken buildings' walls in both directions without a seam.
+- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. Tiles are one cell wide but `building_wall.png`, which is 64 px wide; `walkway/deck.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
 - Every pixel is fully opaque or fully clear.
 - No image contains text except `title/logo.png`. The engine draws every word and number.
@@ -51,16 +51,6 @@ Every walkway is drawn under the floor line of its cell, where an actor's feet a
 
 - Every deck variant has the outer columns of `deck.png` on both sides, and each snapped end on its joined side, so any two placed side by side meet without a seam.
 - A ramp is one cell of deck tilted from the floor line of its own cell down to the row below, and stairs are the same deck cut into steps, both drawn from the deck pictures.
-
-## Sunken buildings
-
-Every run of walkway but the planks, the tilted ground and the terrain of the pier, the ferry and the rotten bridge is the roof or a floor of a building sunk in the acid, whose wall fills the run's width from under the deck down to the acid.
-
-| Piece | File | Size |
-|---|---|---|
-| Walls: cracked concrete, an office tower's window grid, brick with tall windows, a stucco tenement with balconies; each repeats in both directions | `world/facade_concrete.png`, `world/facade_office.png`, `world/facade_brick.png`, `world/facade_tenement.png` | 64×64 |
-| Fixtures on a wall: an air conditioner, a dead neon sign with a blank black face, a rolled-down shutter, a lit shop window, a drainpipe | `world/wall_ac.png`, `world/wall_sign.png`, `world/wall_shutter.png`, `world/wall_shop_window.png`, `world/wall_pipe.png` | 26×18, 30×16, 28×22, 30×30, 12×40 |
-| Flesh grown over a wall's foot where the acid meets it; repeats horizontally, its bottom on the acid surface | `world/waterline.png` | 64×18 |
 
 ## Ground
 

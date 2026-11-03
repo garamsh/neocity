@@ -125,26 +125,6 @@ const char *path(Image image) {
     return "ground/car_buried.png";
   case Image::BuildingWall:
     return "world/building_wall.png";
-  case Image::FacadeConcrete:
-    return "world/facade_concrete.png";
-  case Image::FacadeBrick:
-    return "world/facade_brick.png";
-  case Image::FacadeOffice:
-    return "world/facade_office.png";
-  case Image::FacadeTenement:
-    return "world/facade_tenement.png";
-  case Image::WallAc:
-    return "world/wall_ac.png";
-  case Image::WallSign:
-    return "world/wall_sign.png";
-  case Image::WallShutter:
-    return "world/wall_shutter.png";
-  case Image::WallShopWindow:
-    return "world/wall_shop_window.png";
-  case Image::WallPipe:
-    return "world/wall_pipe.png";
-  case Image::Waterline:
-    return "world/waterline.png";
   case Image::Shop:
     return "world/shop.png";
   case Image::VendingMachine:
@@ -587,9 +567,11 @@ float Art::seconds() const {
   return static_cast<float>(now() - loaded) / 1.0e6F;
 }
 
-void Art::note_waterline(float surface) const {
+void Art::note_waterline(float band, float band_left, float sea) const {
   const float zoom = placed.get_scale().x;
-  waterline = Waterline{.surface = placed.get_origin().y + surface * zoom,
+  waterline = Waterline{.band = shaken.y + band,
+                        .band_left = shaken.x + band_left,
+                        .sea = placed.get_origin().y + sea * zoom,
                         .origin = placed.get_origin(),
                         .zoom = zoom};
 }

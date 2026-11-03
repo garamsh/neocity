@@ -124,16 +124,6 @@ enum class Image : std::uint8_t {
   PlankBridge,
   BuriedCar,
   BuildingWall,
-  FacadeConcrete,
-  FacadeBrick,
-  FacadeOffice,
-  FacadeTenement,
-  WallAc,
-  WallSign,
-  WallShutter,
-  WallShopWindow,
-  WallPipe,
-  Waterline,
   Shop,
   VendingMachine,
   VendorCart,
@@ -211,11 +201,15 @@ struct Motion {
   std::chrono::microseconds landed_at{-1};
 };
 
-/// Where the last backdrop drawn put the acid sea's surface and the scene's
+/// Where the last backdrop drawn put the acid's surfaces and the scene's
 /// pixels on the screen, for the pass that finishes the scene.
 struct Waterline {
-  /// The screen row of the sea's surface.
-  float surface = 0.0F;
+  /// The screen row of the acid band's surface, and the screen column its
+  /// art's pixel grid starts from.
+  float band = 0.0F;
+  float band_left = 0.0F;
+  /// The screen row of the surface of the sea in the scene.
+  float sea = 0.0F;
   /// The screen position of the scene's origin.
   godot::Vector2 origin;
   /// How many screen pixels one scene pixel spans.
@@ -274,9 +268,10 @@ public:
   /// Seconds of a steady real clock since the art loaded; the scene's
   /// ambient motion runs on it and moves nothing in the rules.
   [[nodiscard]] float seconds() const;
-  /// Notes the acid sea's surface at scene row `surface`, drawn through the
-  /// last shift and look.
-  void note_waterline(float surface) const;
+  /// Notes the acid band's surface at row `band` with its art's grid from
+  /// column `band_left`, both drawn through the last shift, and the sea's at
+  /// scene row `sea`, drawn through the last look.
+  void note_waterline(float band, float band_left, float sea) const;
   /// The waterline noted since the last call, if any.
   [[nodiscard]] std::optional<Waterline> take_waterline() const;
   /// Records `actor`'s `body` at `world_time` and returns how it has moved.
