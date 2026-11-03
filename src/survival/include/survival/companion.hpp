@@ -143,9 +143,10 @@ struct Errand {
 class Companion {
 public:
   explicit Companion(CompanionConfig settings);
-  /// Translates `input` for a human; AI ignores it. Read a fresh view for each
-  /// actor after applying the other's action, and advance at most one 100ms
-  /// movement unit between commands, since AI steers from where it stands.
+  /// Translates `input` for a human; AI ignores it. A collecting actor's
+  /// command is empty under either. Read a fresh view for each actor after
+  /// applying the other's action, and advance at most one 100ms movement unit
+  /// between commands, since AI steers from where it stands.
   [[nodiscard]] ActorCommand command(Actor actor, ControlMap control,
                                      const PlayerInput &input,
                                      const GameView &view) const;

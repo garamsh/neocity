@@ -5,9 +5,11 @@ extends SceneTree
 ## keys: a key change edits one row here and its binding in project.godot.
 
 const SEED: int = 11
-const DAY_FRAMES: int = 2900
-## The shared clock one collection spends.
-const COLLECT_MS: int = 12000
+const DAY_FRAMES: int = 1200
+## How long one collection holds the collecting actor.
+const COLLECT_MS: int = 1500
+## Frames of a collection's hold, with a step to spare.
+const COLLECT_FRAMES: int = 102
 const KIOSK_DAYS: int = 10
 const APPRAISE_ATTEMPTS: int = 12
 const COOK_ATTEMPTS: int = 6
@@ -124,12 +126,16 @@ func _two_players() -> bool:
 		return false
 	var remaining: int = _int("remaining_ms")
 	await _tap(KEYS["survival_2_interact"])
-	if not _check(_actor("appraiser", "ingredients") == 1 and remaining - _int("remaining_ms") >= COLLECT_MS, "%s collects for player two and spends the clock" % _name("survival_2_interact")):
+	if not _check(_actor("appraiser", "ingredients") == 1 and _actor("appraiser", "collecting_ms") > 0 and remaining - _int("remaining_ms") < COLLECT_MS, "%s collects for player two and holds player two, not the clock" % _name("survival_2_interact")):
+		return false
+	if not await _until("player two's collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return false
 	if not await _walk_route("appraiser", keys, [Vector2i(7, 11), Vector2i(6, 11)]):
 		return false
 	await _tap(KEYS["survival_2_interact"])
 	if not _check(_actor("appraiser", "ingredients") == 2, "%s collects a second ingredient" % _name("survival_2_interact")):
+		return false
+	if not await _until("player two's second collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return false
 	await _tap(KEY_U)
 	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 60):
@@ -178,6 +184,8 @@ func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 		return false
 	await _tap(KEYS["survival_2_interact"])
 	if not _check(_actor("appraiser", "tools") == 1, "%s collects the magnifier from the arcade" % _name("survival_2_interact")):
+		return false
+	if not await _until("player two's magnifier collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return false
 	await _tap(KEY_U)
 	if not await _until("player two is home with the magnifier", func() -> bool: return _str("phase") == "workshop", 120):

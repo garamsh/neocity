@@ -71,6 +71,21 @@ std::uint32_t stamina_of(const survival::ExplorationSnapshot &snapshot,
   std::abort();
 }
 
+/// How long the collection under way still holds `actor`; zero with none.
+std::chrono::microseconds
+collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
+  const auto held = [&] {
+    switch (actor) {
+    case Actor::Chef:
+      return snapshot.chef.collecting;
+    case Actor::Appraiser:
+      return snapshot.appraiser.collecting;
+    }
+    std::abort();
+  }();
+  return held ? held->remaining : std::chrono::microseconds{};
+}
+
 bool in_hazard(const survival::Content &content, GridPosition position) {
   return std::ranges::any_of(content.hazards,
                              [position](const survival::WorldArea &area) {
@@ -203,6 +218,10 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("stance", stance_name(body.stance));
   status.set("health", state.health);
   status.set("stamina", stamina_of(view.exploration, actor));
+  status.set("collecting_ms",
+             std::chrono::duration_cast<std::chrono::milliseconds>(
+                 collecting_of(view.exploration, actor))
+                 .count());
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
   status.set("tools", static_cast<std::int64_t>(state.tools.size()));
   status.set("exhaustions", state.exhaustions);
@@ -458,11 +477,19 @@ void SurvivalRun::report_returns(const survival::Snapshot &before,
 
 void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
   const auto now = features.world.get().snapshot();
+  const auto &sources = features.content.get().companion.exploration.sources;
   for (std::size_t index = 0; index < now.objects.size(); ++index) {
     const auto &object = now.objects.at(index);
     const auto then = before.objects.at(index).state;
-    // A repair reports itself as an action.
-    if (object.state != then && then != survival::ObjectState::Destroyed) {
+    // A repair reports itself as an action, and a bag coming and going shows
+    // on the map alone, so the tide's daily bags leave the log to the rest.
+    const auto bag = std::ranges::any_of(
+        sources, [&object](const survival::SourceStock &source) {
+          return source.id == object.id &&
+                 source.kind == survival::SourceKind::Bag;
+        });
+    if (object.state != then && then != survival::ObjectState::Destroyed &&
+        !bag) {
       record(hud::WorldEvent{.object = object.id, .state = object.state});
       ++map_changes;
     }

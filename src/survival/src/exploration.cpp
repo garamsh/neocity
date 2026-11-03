@@ -521,6 +521,9 @@ Result Exploration::enter(Actor actor) {
 }
 
 Result Exploration::return_to_base(Actor actor) {
+  if (collecting(actor)) {
+    return Result::Busy;
+  }
   const auto result = simulation.get().return_to_base(actor);
   if (result == Result::Applied) {
     synchronize();
@@ -568,7 +571,14 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
     remaining -= step;
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
-        explorer(actor).remainder += step;
+        auto &state = explorer(actor);
+        state.remainder += step;
+        if (auto &held = state.state.collecting) {
+          held->remaining -= std::min(step, held->remaining);
+          if (held->remaining == 0us) {
+            held.reset();
+          }
+        }
       }
     }
     synchronize();
@@ -590,6 +600,9 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (actor_state(simulation.get().snapshot(), actor).location !=
       Location::City) {
     return CollectionResult::NotExploring;
+  }
+  if (collecting(actor)) {
+    return CollectionResult::Busy;
   }
   const auto stock =
       std::ranges::find_if(config.sources, [source](const SourceStock &entry) {
@@ -619,12 +632,10 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
     require_applied(simulation.get().collect_tool(actor, *object->tool));
   }
   --stock->remaining;
-  const auto spent =
-      std::min(config.collection_time,
-               simulation.get().snapshot().remaining_exploration);
-  require_applied(simulation.get().advance(spent));
-  advance_world(snapshot.progression.acid);
-  synchronize();
+  if (config.collection_time > 0us) {
+    explorer(actor).state.collecting =
+        Collecting{.source = source, .remaining = config.collection_time};
+  }
   return CollectionResult::Applied;
 }
 
@@ -632,6 +643,9 @@ RepairResult Exploration::repair(Actor actor, ObjectId target, ToolId tool) {
   const auto state = actor_state(simulation.get().snapshot(), actor);
   if (state.location != Location::City) {
     return RepairResult::NotExploring;
+  }
+  if (collecting(actor)) {
+    return RepairResult::Busy;
   }
   const auto snapshot = world.get().snapshot();
   const auto object = std::ranges::find_if(
@@ -666,6 +680,10 @@ Exploration::Explorer &Exploration::explorer(Actor actor) {
   std::abort();
 }
 
+bool Exploration::collecting(Actor actor) {
+  return explorer(actor).state.collecting.has_value();
+}
+
 void Exploration::synchronize() {
   const auto snapshot = simulation.get().snapshot();
   for (const auto actor : ACTORS) {
@@ -686,6 +704,9 @@ void Exploration::advance_world(AcidLevel acid) {
 
 void Exploration::tick(Actor actor, ExplorationInput input) {
   auto &state = explorer(actor).state;
+  if (state.collecting) {
+    input = {};
+  }
   input.running =
       input.running && sideways(input.direction) && state.stamina > 0;
   if (input.running) {
@@ -697,7 +718,8 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
     state.body = physics_tick(map, state.body, input);
     if (map.below(cell_of(state.body.position))) {
-      require_applied(return_to_base(actor));
+      require_applied(simulation.get().return_to_base(actor));
+      synchronize();
       return;
     }
   }

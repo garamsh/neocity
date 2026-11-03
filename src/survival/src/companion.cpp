@@ -42,14 +42,18 @@ const ActorSnapshot &state_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
-const Body &body_of(const GameView &view, Actor actor) {
+const ExplorerSnapshot &explorer_of(const GameView &view, Actor actor) {
   switch (actor) {
   case Actor::Chef:
-    return view.exploration.chef.body;
+    return view.exploration.chef;
   case Actor::Appraiser:
-    return view.exploration.appraiser.body;
+    return view.exploration.appraiser;
   }
   std::abort();
+}
+
+const Body &body_of(const GameView &view, Actor actor) {
+  return explorer_of(view, actor).body;
 }
 
 GridPosition cell_of_actor(const GameView &view, Actor actor) {
@@ -356,6 +360,9 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
                        const PlayerInput &input, const GameView &view) {
   ActorCommand command;
   if (state_of(view, actor).location == Location::City) {
+    if (explorer_of(view, actor).collecting) {
+      return command;
+    }
     command.movement = input.movement;
     if (input.travel) {
       command.action = ReturnToBase{};
@@ -415,6 +422,10 @@ ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
 ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
                                ControlMap control, const GameView &view) {
   const auto in_city = state_of(view, actor).location == Location::City;
+  // A collecting actor takes no command until the collection is done.
+  if (in_city && explorer_of(view, actor).collecting) {
+    return {};
+  }
   const auto partner = partner_of(actor);
   // Staying out with a human at base would hold the workshop shut.
   if (controller_of(control, partner) == Controller::Human &&
