@@ -20,6 +20,8 @@ const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up"
 const SLOW_FRAME_MS: int = 500
 ## The intro card's 4 seconds at SLOW_FRAME_MS, and 4 frames of margin.
 const INTRO_CARD_SLOW_FRAMES: int = 12
+## The placeholder card's button: its left part skips, its right part leaves.
+const CARD_BUTTON: String = "Skip     Main menu"
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -64,11 +66,11 @@ func _run() -> void:
 			print("Escape slow frames: ", checks, " live checks passed.")
 			quit(0)
 		return
-	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]:
+	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _clicks_work_the_card, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]:
 		await part.call()
 		if failed:
 			return
-	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, menu, instant finish).")
+	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, click, menu, instant finish).")
 	quit(0)
 
 ## No intro asset exists, so a real run opens on the card, blocked, until it times out.
@@ -123,6 +125,8 @@ func _fallback_ending() -> void:
 	await _frames(30)
 	if not _check(_same_state(before), "no key changes an escaped run"):
 		return
+	if not _check(not _target("party_interact").is_empty() and not _target("menu").is_empty() and _card_names_no_key(), "the ending card offers its skip and the main menu to a click, naming no key"):
+		return
 	if not await _until("the ending card times out", func() -> bool: return scene.screen_name() == "main", ENDING_CARD_FRAMES + CARD_FRAME_MARGIN):
 		return
 	_check(_status().is_empty(), "the ending closes the run")
@@ -170,6 +174,19 @@ func _broken_scenes() -> void:
 		return
 	await _tap(KEY_E)
 	_check(_str("cinematic") == "", "E skips the fallback card")
+
+## The intro stand-in still takes the fallback card. A click on its skip
+## skips it as E does, and a click on its main menu leaves as M does.
+func _clicks_work_the_card() -> void:
+	await _leave()
+	await _start()
+	if not _check(_str("cinematic_source") == "fallback" and _card_names_no_key(), "the intro card names what a click does and no key"):
+		return
+	if not _check(await _click("party_interact") and _str("cinematic") == "" and _int("day") == 1 and _where("chef") == "base", "a click on skip skips the intro card to day one at base"):
+		return
+	await _leave()
+	await _start()
+	_check(await _click("menu") and scene.screen_name() == "main" and _status().is_empty(), "a click on the main menu leaves the card and ends the run")
 
 func _menu_leaves_a_cinematic() -> void:
 	await _leave()
@@ -381,3 +398,43 @@ func _check(condition: bool, name: String) -> bool:
 	failed = true
 	quit(1)
 	return false
+
+## The target the last frame drew whose click presses `press`; empty with none.
+func _target(press: String) -> Dictionary:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["press"] == press:
+			return target
+	return {}
+
+## Points at the target pressing `press` and clicks it with the left button;
+## false when the screen shows no such target.
+func _click(press: String) -> bool:
+	var target: Dictionary = _target(press)
+	if target.is_empty():
+		return false
+	var area: Rect2 = target["rect"]
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * area.get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await _frames(2)
+	for pressed: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.position = motion.position
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2 if pressed else 8)
+	return true
+
+## Whether the last frame drew the placeholder card's button, which names
+## what a click does, and no line naming the skip or leave key.
+func _card_names_no_key() -> bool:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var keyed: Array[String] = []
+	for line: String in lines:
+		if line.contains("E:") or line.contains("M:"):
+			keyed.append(line)
+	return lines.has(CARD_BUTTON) and keyed.is_empty()

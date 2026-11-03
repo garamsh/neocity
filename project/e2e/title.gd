@@ -1,13 +1,17 @@
 class_name TitleMenuCheck
 extends SceneTree
 ## Drives the title screen with real key events: each entry by cursor and by
-## number, the controls page and back, the choice of players by cursor, the
-## controls page against the pause screen's keys, a new game, the same entries
-## with real mouse events, and quitting.
+## number, the controls page and back, the How to play page and back, the
+## choice of players by cursor, the controls page against the pause screen's
+## keys, a new game, the same entries with real mouse events, and quitting.
 
 ## How long, in milliseconds of the real clock, a panel takes to rise into
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
 const ENTRANCE_MS: int = 300
+## A word of each concept the How to play page explains, in its order: set
+## out, move, collect, appraise, cook, feed, tool damage, a hated dish, acid,
+## and the escape.
+const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Collect", "?", "cooks", "Feeding", "tool", "hated", "acid", "way out"]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -21,7 +25,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Title: ", checks, " live checks passed (entries, cursor, wrap, controls, back, shortcuts, player choice, controls keys, new game, mouse, quit).")
+		print("Title: ", checks, " live checks passed (entries, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -31,6 +35,8 @@ func _run() -> void:
 	if not await _cursor_chooses_each_entry():
 		return
 	if not await _numbers_choose_entries():
+		return
+	if not await _how_to_play_explains_each_concept():
 		return
 	if not await _cursor_chooses_each_player():
 		return
@@ -82,6 +88,33 @@ func _numbers_choose_entries() -> bool:
 	await _tap(KEY_ESCAPE)
 	await _tap(KEY_1)
 	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players")
+
+## Starts and ends on the choice of players. 3 opens the How to play page,
+## which draws a line on each concept and names no key, and Esc and M go back.
+func _how_to_play_explains_each_concept() -> bool:
+	await _tap(KEY_ESCAPE)
+	await _tap(KEY_3)
+	if not _check(scene.screen_name() == "how_to_play", "3 opens the How to play page"):
+		return false
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var missing: Array[String] = []
+	for row: int in range(HOW_TO_PLAY_WORDS.size()):
+		# The title, the lead line, then one line per concept.
+		if lines.size() <= row + 2 or not lines[row + 2].contains(HOW_TO_PLAY_WORDS[row]):
+			missing.append(HOW_TO_PLAY_WORDS[row])
+	if not _check(missing.is_empty(), "the How to play page draws a line on each concept, in order: missing %s in %s" % [missing, lines]):
+		return false
+	if not _names_no_key("the How to play page", "Back to the title"):
+		return false
+	await _tap(KEY_ESCAPE)
+	if not _check(scene.screen_name() == "main", "Esc goes back from the How to play page"):
+		return false
+	await _tap(KEY_3)
+	await _tap(KEY_M)
+	if not _check(scene.screen_name() == "main", "M goes back from the How to play page"):
+		return false
+	await _tap(KEY_1)
+	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players after the How to play page")
 
 ## Starts on the choice of players with its first entry marked, and ends there.
 ## M leaves each run at once, during its opening cinematic.
@@ -170,6 +203,10 @@ func _mouse_drives_the_menus() -> bool:
 		return false
 	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the way back returns to the title"):
 		return false
+	if not _check(await _click("option_3") and scene.screen_name() == "how_to_play", "a click on How to play opens its page"):
+		return false
+	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the How to play page's way back returns to the title"):
+		return false
 	if not _check(await _click("option_1") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
 		return false
 	if not _check(await _click("option_3") and scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "a click on Two players starts two players"):
@@ -180,11 +217,12 @@ func _mouse_drives_the_menus() -> bool:
 	await _frames(4)
 	return _check(scene.screen_name() == "main" and _hovered() == "", "the run is left and nothing is lit away from the entries")
 
-## New game is marked after the run; two steps down mark Quit. The pass line
-## prints from `_finalize` only.
+## New game is marked after the run; three steps down mark Quit. The pass
+## line prints from `_finalize` only.
 func _quit_ends_the_game() -> void:
 	await _tap(KEY_DOWN)
 	await _tap(KEY_S)
+	await _tap(KEY_DOWN)
 	if not _check(scene.screen_name() == "main", "stepping the cursor opens nothing"):
 		return
 	awaiting_quit = true

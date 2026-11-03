@@ -11,6 +11,8 @@ const UNSIGNED: String = "res://e2e/cinematic_unsigned_fixture.tscn"
 const FINISHES_IN_READY: String = "res://e2e/cinematic_ready_fixture.tscn"
 const CARD_FRAMES: int = 372
 const DAY_LIMIT: int = 30
+## The placeholder card's button: its left part skips, its right part leaves.
+const CARD_BUTTON: String = "Skip     Main menu"
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -42,11 +44,11 @@ func _run() -> void:
 			print("Loss slow frames: ", checks, " live checks passed.")
 			quit(0)
 		return
-	for part: Callable in [_never_feeding_loses, _skip_the_card, _card_times_out, _scene_loss, _broken_scene, _menu_leaves_the_card, _instant_loss]:
+	for part: Callable in [_never_feeding_loses, _skip_the_card, _click_skips_the_card, _card_times_out, _scene_loss, _broken_scene, _menu_leaves_the_card, _instant_loss]:
 		await part.call()
 		if failed:
 			return
-	print("Loss: ", checks, " live checks passed (acid, loss, input block, card, skip, scene, broken asset, menu, instant finish).")
+	print("Loss: ", checks, " live checks passed (acid, loss, input block, card, skip, click, scene, broken asset, menu, instant finish).")
 	quit(0)
 
 ## Starts a run, skips the intro, and presses only the end-day key until it ends.
@@ -102,6 +104,12 @@ func _skip_the_card() -> void:
 	await _lose()
 	await _tap(KEY_E)
 	_check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "E skips the card and the run is closed")
+
+func _click_skips_the_card() -> void:
+	await _lose()
+	if not _check(_str("cinematic") == "loss" and _card_names_no_key(), "the loss card names what a click does and no key"):
+		return
+	_check(await _click("party_interact") and scene.screen_name() == "main" and scene.survival_status().is_empty(), "a click on skip skips the loss card and the run is closed")
 
 func _card_times_out() -> void:
 	await _lose()
@@ -208,3 +216,43 @@ func _check(condition: bool, name: String) -> bool:
 	failed = true
 	quit(1)
 	return false
+
+## The target the last frame drew whose click presses `press`; empty with none.
+func _target(press: String) -> Dictionary:
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		if target["press"] == press:
+			return target
+	return {}
+
+## Points at the target pressing `press` and clicks it with the left button;
+## false when the screen shows no such target.
+func _click(press: String) -> bool:
+	var target: Dictionary = _target(press)
+	if target.is_empty():
+		return false
+	var area: Rect2 = target["rect"]
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * area.get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	await _frames(2)
+	for pressed: bool in [true, false]:
+		var event: InputEventMouseButton = InputEventMouseButton.new()
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = pressed
+		event.position = motion.position
+		event.global_position = event.position
+		Input.parse_input_event(event)
+		await _frames(2 if pressed else 8)
+	return true
+
+## Whether the last frame drew the placeholder card's button, which names
+## what a click does, and no line naming the skip or leave key.
+func _card_names_no_key() -> bool:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var keyed: Array[String] = []
+	for line: String in lines:
+		if line.contains("E:") or line.contains("M:"):
+			keyed.append(line)
+	return lines.has(CARD_BUTTON) and keyed.is_empty()
