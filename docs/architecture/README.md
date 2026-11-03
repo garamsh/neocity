@@ -24,6 +24,7 @@ The C++ sources are partitioned into purpose folders under `src/`, and the Godot
 
 - [`structure.md`](structure.md) — purpose folders, independent rule boundaries, composition rules, repository layout, and unresolved structural choices.
 - [`session.md`](session.md) — title screen, controls page, run lifetime, input isolation, and fixed-step delivery to the survival game.
+- [`adr/0008-hold-the-collecting-actor-instead-of-the-shared-clock.md`](adr/0008-hold-the-collecting-actor-instead-of-the-shared-clock.md) — a collection holds the actor who makes it while the shared clock runs on, and the supply lands as small bags across the map nearly every day.
 - [`adr/0007-move-actors-through-a-side-view-with-gravity.md`](adr/0007-move-actors-through-a-side-view-with-gravity.md) — side-view exploration: fixed-point sub-cell positions on a fixed physics step, gravity, a capped jump, ladders, stairs and ramps, falls into the acid, and one screen; replaces the temporary four-direction grid.
 - [`adr/0006-ship-one-game-behind-a-title-screen.md`](adr/0006-ship-one-game-behind-a-title-screen.md) — one game behind a title screen, with the developer page, the experiments, and the ascent prototype removed; supersedes ADR 0005 and ADR 0004's `gameplay` and `camera` folders, ascent level scene, and `AscentScene` root.
 - [`adr/0005-isolate-experiment-rules-behind-one-host.md`](adr/0005-isolate-experiment-rules-behind-one-host.md) — one self-contained folder per experiment behind a developer page; supersedes ADR 0004's single rules boundary; superseded by ADR 0006.

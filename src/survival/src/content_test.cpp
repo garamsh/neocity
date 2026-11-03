@@ -440,17 +440,29 @@ TEST(TemporaryContent, NoStraightRunOfGroundIsLongerThanAThirdOfTheMap) {
 
 TEST(TemporaryContent, AcidDrownsLowGroundAndWhatStandsOnItFirst) {
   const auto content = temporary_content(1);
+  std::set<std::uint32_t> bags;
+  for (const auto &stock : content.companion.exploration.sources) {
+    if (stock.kind == SourceKind::Bag) {
+      bags.insert(stock.id.value);
+    }
+  }
   std::vector<std::pair<std::int32_t, std::uint32_t>> drowning;
   std::size_t terrain = 0;
+  std::size_t timed_bags = 0;
   for (const auto &object : content.objects) {
     const auto &threshold = object.destroyed_after;
-    if (threshold && threshold->acid && !threshold->elapsed) {
+    // A bag's tide is a time threshold beside its acid limit, and the limit
+    // still keeps the row order.
+    const bool bag = bags.contains(object.id.value);
+    if (threshold && threshold->acid && (!threshold->elapsed || bag)) {
       drowning.emplace_back(object.area.y + object.area.height - 1,
                             threshold->acid->value);
       terrain += object.kind == ObjectKind::Terrain ? 1U : 0U;
+      timed_bags += bag && threshold->elapsed ? 1U : 0U;
     }
   }
   EXPECT_GT(terrain, 0U);
+  EXPECT_GT(timed_bags, 0U);
   for (const auto &[low, low_acid] : drowning) {
     for (const auto &[high, high_acid] : drowning) {
       if (low > high) {
@@ -563,15 +575,46 @@ TEST(TemporaryContent, AtEveryWorldTimeRisingAcidLeavesNoKindMoreToCollect) {
   }
 }
 
-TEST(TemporaryContent, WithNoAcidStockLandsFasterThanTheClockCanCollectIt) {
+TEST(TemporaryContent, EveryDayBagsLandOnBothSidesOfTheCity) {
   const auto content = temporary_content(1);
-  const auto collection = content.companion.exploration.collection_time;
+  const auto budget = content.run.exploration_budget;
   World world(content.objects);
-  for (auto elapsed = 0s; elapsed <= 1160s; elapsed += SUPPLY_SCAN_STEP) {
+  std::set<std::uint32_t> seen;
+  for (std::uint32_t day = 2; day <= 40; ++day) {
+    ASSERT_EQ(world.update({.elapsed = (day - 1) * budget}),
+              WorldUpdateResult::Applied);
+    std::vector<GridPosition> landed;
+    for (const auto &object : world.snapshot().objects) {
+      if (object_name(object.id).starts_with("Washed-up Bag") &&
+          object.material_available && !seen.contains(object.id.value)) {
+        seen.insert(object.id.value);
+        landed.push_back({.x = object.area.x, .y = object.area.y});
+      }
+    }
+    EXPECT_EQ(landed.size(), 3U) << "day " << day;
+    const auto east = std::ranges::count_if(
+        landed, [](GridPosition cell) { return cell.x >= 20; });
+    EXPECT_EQ(east, 1) << "day " << day;
+  }
+}
+
+TEST(TemporaryContent, NoTwoSourcesShareACellWhileEitherIsOnTheMap) {
+  const auto content = temporary_content(1);
+  World world(content.objects);
+  for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
+       elapsed += ARRIVAL_SCAN_STEP) {
     ASSERT_EQ(world.update({.elapsed = elapsed}), WorldUpdateResult::Applied);
-    const auto landed =
-        stock_in(content, collectable_sources(content, world.snapshot()));
-    EXPECT_GE(total_of(landed) * collection, elapsed) << elapsed.count() << "s";
+    std::set<std::pair<std::int32_t, std::int32_t>> cells;
+    std::size_t standing = 0;
+    for (const auto &stock : content.companion.exploration.sources) {
+      const auto object = object_of(world.snapshot(), stock.id);
+      if (object.state == ObjectState::Intact) {
+        ++standing;
+        EXPECT_TRUE(cells.insert({object.area.x, object.area.y}).second)
+            << object_name(object.id) << " at " << elapsed.count() << "s";
+      }
+    }
+    EXPECT_GT(standing, 0U);
   }
 }
 
@@ -700,8 +743,7 @@ TEST(TemporaryContent,
   EXPECT_GT(short_repeats, 0U);
 }
 
-TEST(TemporaryContent,
-     TheDayEndsByTimeWhileStockRemainsBecauseCollectingTakesTime) {
+TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
   const auto first_trip = [](Content content) {
     Game game(std::move(content));
     game.step(ALL_AI);
@@ -723,10 +765,10 @@ TEST(TemporaryContent,
   const auto [left, stock] = first_trip(content);
   EXPECT_EQ(left, 0us);
   EXPECT_GT(stock, 0U);
-  content.companion.exploration.collection_time = 0us;
-  const auto [free_left, free_stock] = first_trip(content);
-  EXPECT_GT(free_left, 0us);
-  EXPECT_LT(free_stock, stock);
+  content.run.exploration_budget *= 10;
+  const auto [long_left, long_stock] = first_trip(content);
+  EXPECT_GT(long_left, 0us);
+  EXPECT_LT(long_stock, stock);
 }
 
 TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
@@ -743,26 +785,45 @@ TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
 }
 
 TEST(TemporaryContent, TimeBringsAWashedUpBagAndAcidCarriesItAway) {
-  World world(temporary_content(1).objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{39}}), WorldUpdateResult::Applied);
+  const auto content = temporary_content(1);
+  const auto landing = content.run.exploration_budget;
+  World world(content.objects);
+  ASSERT_EQ(world.update({.acid = AcidLevel{34}}), WorldUpdateResult::Applied);
   EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = 120s, .acid = AcidLevel{39}}),
+  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{34}}),
             WorldUpdateResult::Applied);
   EXPECT_TRUE(
       object_named(world.snapshot(), "Washed-up Bag 1").material_available);
-  ASSERT_EQ(world.update({.elapsed = 120s, .acid = AcidLevel{40}}),
+  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{35}}),
             WorldUpdateResult::Applied);
   EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Destroyed);
 }
 
+TEST(TemporaryContent, TheTideTakesAnUncollectedBagBackAfterFiveDays) {
+  const auto content = temporary_content(1);
+  const auto day = content.run.exploration_budget;
+  World world(content.objects);
+  ASSERT_EQ(world.update({.elapsed = 6 * day - 1s}),
+            WorldUpdateResult::Applied);
+  EXPECT_TRUE(
+      object_named(world.snapshot(), "Washed-up Bag 1").material_available);
+  ASSERT_EQ(world.update({.elapsed = 6 * day}), WorldUpdateResult::Applied);
+  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
+            ObjectState::Destroyed);
+  EXPECT_TRUE(
+      object_named(world.snapshot(), "Washed-up Bag 4").material_available);
+}
+
 TEST(TemporaryContent, AcidPastABagsLimitSinksItBeforeItLands) {
-  World world(temporary_content(1).objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{40}}), WorldUpdateResult::Applied);
+  const auto content = temporary_content(1);
+  World world(content.objects);
+  ASSERT_EQ(world.update({.acid = AcidLevel{35}}), WorldUpdateResult::Applied);
   ASSERT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = 120s, .acid = AcidLevel{40}}),
+  ASSERT_EQ(world.update({.elapsed = content.run.exploration_budget,
+                          .acid = AcidLevel{35}}),
             WorldUpdateResult::Applied);
   EXPECT_FALSE(
       object_named(world.snapshot(), "Washed-up Bag 1").material_available);
@@ -770,7 +831,7 @@ TEST(TemporaryContent, AcidPastABagsLimitSinksItBeforeItLands) {
             ObjectState::Destroyed);
 }
 
-TEST(TemporaryContent, WashedUpBagsArriveAcrossTwentySixFullDaysOfTime) {
+TEST(TemporaryContent, ThreeBagsLandWithEachDayFromTheSecond) {
   const auto budget = temporary_content(1).run.exploration_budget;
   const auto bags = [](const WorldSnapshot &world) {
     return std::ranges::count_if(
@@ -780,16 +841,17 @@ TEST(TemporaryContent, WashedUpBagsArriveAcrossTwentySixFullDaysOfTime) {
         });
   };
   World world(temporary_content(1).objects);
-  ASSERT_EQ(world.update({.elapsed = 2 * budget}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update({.elapsed = budget - 1s}), WorldUpdateResult::Applied);
   EXPECT_EQ(bags(world.snapshot()), 0);
-  ASSERT_EQ(world.update({.elapsed = 25 * budget}), WorldUpdateResult::Applied);
-  EXPECT_EQ(bags(world.snapshot()), 7);
-  ASSERT_EQ(world.update({.elapsed = 26 * budget}), WorldUpdateResult::Applied);
-  EXPECT_EQ(bags(world.snapshot()), 8);
+  ASSERT_EQ(world.update({.elapsed = budget}), WorldUpdateResult::Applied);
+  EXPECT_EQ(bags(world.snapshot()), 3);
+  ASSERT_EQ(world.update({.elapsed = 29 * budget}), WorldUpdateResult::Applied);
+  EXPECT_EQ(bags(world.snapshot()), 87);
 }
 
 TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
   Game game(temporary_content(1));
+  const auto budget = game.content().run.exploration_budget;
   const std::array<ExplorationInput, 2> idle{};
   const auto end_days = [&](std::uint32_t days) {
     for (std::uint32_t day = 0; day < days; ++day) {
@@ -799,16 +861,16 @@ TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
     ASSERT_EQ(game.exploration().advance(0us, idle, AcidLevel{}),
               Result::Applied);
   };
-  end_days(2);
-  ASSERT_EQ(game.world().snapshot().progression.elapsed, 90s);
+  end_days(0);
   EXPECT_EQ(object_named(game.world().snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
   end_days(1);
+  ASSERT_EQ(game.world().snapshot().progression.elapsed, budget);
   EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 1")
                   .material_available);
-  end_days(23);
-  ASSERT_EQ(game.world().snapshot().progression.elapsed, 1170s);
-  EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 7")
+  end_days(28);
+  ASSERT_EQ(game.world().snapshot().progression.elapsed, 29 * budget);
+  EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 87")
                   .material_available);
   EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);

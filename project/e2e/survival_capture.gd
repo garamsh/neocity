@@ -112,8 +112,7 @@ func _run() -> void:
 	await _frames(20)
 	await _save("9-next-day")
 	await _tap(KEY_Q)
-	# The AI appraiser's collections spend day one's clock before the chef
-	# reaches the roof ladder, so the ladder frames are day two's.
+	# Feeding started day two, so the ladder frames are day two's.
 	await _walk(KEY_D, 16)
 	await _walk_left(15)
 	await _save_city("23-city-facing-left")
@@ -349,11 +348,8 @@ func _save(screen: String) -> Image:
 func _save_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
 	var plates: Array = scene.get_meta("map_plates", [])
-	var objects: Dictionary = scene.survival_status()["objects"]
-	var sources: int = 0
-	for source: String in scene.survival_status()["stock"]:
-		if objects.get(source, "dormant") != "dormant":
-			sources += 1
+	var drawn: Array = scene.get_meta("map_sources", [])
+	var sources: int = drawn.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
 			var one: Rect2 = plates[first]

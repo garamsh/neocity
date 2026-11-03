@@ -593,6 +593,51 @@ TEST(Companion, KeepsCollectingWhileItsHumanPartnerStaysOut) {
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
 }
 
+TEST(Companion, ACollectingActorWaitsUnderEitherController) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  const auto companion = companion_with();
+  const PlayerInput pressed{.movement = {.direction = Direction::Right},
+                            .travel = true,
+                            .interact = true};
+  const auto free_ai = companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
+  ASSERT_EQ(free_ai.action, std::optional<Action>{Collect{SOURCE}});
+  const auto free_human =
+      companion.command(Actor::Chef, two_players(), pressed, view);
+  ASSERT_EQ(free_human.action, std::optional<Action>{ReturnToBase{}});
+  ASSERT_EQ(free_human.movement.direction, Direction::Right);
+
+  view.exploration.chef.collecting =
+      Collecting{.source = SOURCE, .remaining = 1s};
+  for (const auto control : {ALL_AI, two_players()}) {
+    const auto held = companion.command(Actor::Chef, control, pressed, view);
+    EXPECT_FALSE(held.action.has_value());
+    EXPECT_EQ(held.movement.direction, Direction::Idle);
+  }
+}
+
+TEST(CompanionRun, AnAiPartnerFinishesItsCollectionBeforeFollowingHome) {
+  auto places = tuning({{.id = SOURCE, .remaining = 3}});
+  places.collection_time = 1s;
+  Game game({floor_of(10), ingredient_source(SOURCE, 2)}, places, kitchen(),
+            5s);
+  const auto control = single_player(Actor::Chef);
+  game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
+  while (!game.exploration().snapshot().appraiser.collecting) {
+    ASSERT_EQ(game.simulation().snapshot().appraiser.location, Location::City);
+    game.step(control);
+  }
+  game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
+  ASSERT_EQ(game.simulation().snapshot().chef.location, Location::Base);
+  EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::City);
+  for (int tick = 0; tick < 10; ++tick) {
+    game.step(control);
+  }
+  EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
+  EXPECT_EQ(game.simulation().snapshot().phase, Phase::Workshop);
+  EXPECT_EQ(game.refusals(), 0U);
+}
+
 TEST(Companion, TheAppraiserAppraisesEachCarriedIngredientKindOnce) {
   auto view = base_view();
   view.progression.chef.inventory = {CARROT};

@@ -86,7 +86,8 @@ enum class Result : std::uint8_t {
   NotInWorkshop,
   MissingIngredients,
   MissingTool,
-  RunOver
+  RunOver,
+  Busy
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
