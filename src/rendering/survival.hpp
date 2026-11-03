@@ -24,7 +24,9 @@ namespace neocity::rendering {
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio);
 /// Draws the city grid with its ground, scenery, objects, stock and actors.
 /// Destroyed, depleted and unavailable objects each have a mark; a dormant
-/// object is not drawn, and a repaired one looks intact. A source in
+/// object, and a bag emptied or carried off, is not drawn, and a repaired one
+/// looks intact. The sources drawn are left as the `map_sources` meta, an
+/// array of their names. A source in
 /// `out_of_reach` has stock no player can walk to: it loses the gold frame and
 /// is marked and named as such. Every word sits on a dark plate over the art,
 /// so it reads at any acid level, and no plate covers another or a source; the

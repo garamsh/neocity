@@ -1213,6 +1213,11 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   const auto plates = label_city(art, content, view, control, markers, party);
   plates.paint(canvas, art);
   canvas.set_meta("map_plates", plates.boxes());
+  godot::Array drawn;
+  for (const auto &marker : markers) {
+    drawn.push_back(from(survival::object_name(marker.object.id)));
+  }
+  canvas.set_meta("map_sources", drawn);
 }
 
 void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
