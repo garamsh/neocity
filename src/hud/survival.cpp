@@ -1506,17 +1506,6 @@ void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
   paint_feed_panel(canvas, drawing, frame, lift);
 }
 
-/// What the camera shows: the city as it follows the humans, or the whole
-/// scene at base.
-rendering::View camera_of(const rendering::Art &drawing,
-                          const SurvivalFrame &frame) {
-  if (frame.view.progression.phase != Phase::Exploration) {
-    return rendering::whole_scene();
-  }
-  return rendering::follow(drawing, frame.content.get(), frame.view,
-                           frame.control);
-}
-
 /// What each human in the city is told to go to, once each.
 std::vector<survival::ObjectId> goals(const SurvivalFrame &frame) {
   std::vector<survival::ObjectId> found;
@@ -1822,15 +1811,31 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
 
 } // namespace
 
+rendering::Shot shot_of(const rendering::Art &drawing,
+                        const SurvivalFrame &frame) {
+  if (frame.view.progression.phase != Phase::Exploration) {
+    return {.camera = rendering::whole_scene(),
+            .heading = rendering::whole_scene(),
+            .out_of_reach = {},
+            .goals = {}};
+  }
+  const auto heading =
+      rendering::aim(frame.content.get(), frame.view, frame.control);
+  return {.camera = rendering::follow(drawing, frame.content.get(), heading),
+          .heading = heading,
+          .out_of_reach = out_of_reach(frame),
+          .goals = goals(frame)};
+}
+
 void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
                           const SurvivalFrame &frame,
+                          const rendering::Shot &shot,
                           const std::vector<rendering::Burst> &bursts) {
-  const auto camera = camera_of(drawing, frame);
   drawing.shift(canvas, rendering::shake(bursts));
-  rendering::paint_mouth(canvas, drawing, acid_ratio(frame), camera);
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                          out_of_reach(frame));
+                          shot.out_of_reach);
     rendering::paint_city_bursts(canvas, bursts, acid_ratio(frame));
   }
   drawing.shift(canvas, {});
@@ -1838,25 +1843,25 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
 
 void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const SurvivalFrame &frame,
+                         const rendering::Shot &shot,
                          const std::vector<rendering::Burst> &bursts) {
-  const auto camera = camera_of(drawing, frame);
   drawing.shift(canvas, rendering::shake(bursts));
-  rendering::paint_glow(canvas, drawing, acid_ratio(frame), camera);
+  rendering::paint_glow(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
-    rendering::paint_city_glow(canvas, drawing, frame.content.get(), camera);
+    rendering::paint_city_glow(canvas, drawing, frame.content.get(),
+                               shot.camera);
   }
   drawing.shift(canvas, {});
 }
 
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const SurvivalFrame &frame,
+                    const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts) {
   if (frame.view.progression.phase == Phase::Exploration) {
     // A burn shakes the map's words with the map, not the interface.
     drawing.shift(canvas, rendering::shake(bursts));
     rendering::paint_city_labels(canvas, drawing, frame.content.get(),
-                                 frame.view, frame.control, out_of_reach(frame),
-                                 goals(frame), camera_of(drawing, frame));
+                                 frame.view, frame.control, shot);
     drawing.shift(canvas, {});
     paint_city_screen(canvas, drawing, frame);
   } else {

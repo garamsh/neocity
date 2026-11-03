@@ -100,6 +100,9 @@ void MainScene::_ready() {
   glow = memnew(godot::Node2D);
   // The trimmed bindings have no material setter; the property takes it.
   glow->set("material", adding);
+  CRASH_COND_MSG(glow->get("material") != godot::Variant(adding),
+                 "Glow layer must take the adding material");
+  world->set_name("World");
   for (godot::Node2D *layer : {world, glow}) {
     layer->set_draw_behind_parent(true);
     add_child(layer);
@@ -122,6 +125,9 @@ void MainScene::_process(double delta) {
   }
   session.advance(delta,
                   input::sample_session_input(session.survival_control()));
+  if (drawing) {
+    session.aim(*drawing);
+  }
   queue_redraw();
   if (world != nullptr && glow != nullptr) {
     world->queue_redraw();

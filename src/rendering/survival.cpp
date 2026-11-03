@@ -119,10 +119,11 @@ constexpr int GLOW_STEPS = 6;
 constexpr float GLOW_STEP = 5.0F;
 constexpr float ACID_GLOW = 0.16F;
 
-/// The backdrop layers recede into a warm haze, the farther the deeper, so
-/// the walkways in front of them read first; each keeps its hue.
-godot::Color far_haze() { return color(120, 94, 130, 1.0F); }
-godot::Color middle_haze() { return color(185, 160, 195, 1.0F); }
+/// Translucent hazes laid over the backdrop: the first over the throat, the
+/// second over the throat and the city, so each layer fades toward the
+/// haze's colour the farther back it is and the walkways read first.
+godot::Color far_haze() { return color(40, 22, 48, 0.55F); }
+godot::Color middle_haze() { return color(40, 22, 48, 0.45F); }
 /// The supports under the walkways stand between the backdrop and the play
 /// layer.
 godot::Color support_tint() { return color(150, 140, 190, 1.0F); }
@@ -203,7 +204,8 @@ public:
     }
     static constexpr std::array DIRECTIONS{
         Vector2(0.0F, -1.0F), Vector2(0.0F, 1.0F),   Vector2(-1.0F, 0.0F),
-        Vector2(1.0F, 0.0F),  Vector2(-1.0F, -1.0F), Vector2(1.0F, -1.0F)};
+        Vector2(1.0F, 0.0F),  Vector2(-1.0F, -1.0F), Vector2(1.0F, -1.0F),
+        Vector2(-1.0F, 1.0F), Vector2(1.0F, 1.0F)};
     const Vector2 pitch(PLATE_STEP, wanted.size.y + PLATE_GAP);
     godot::Rect2 box = wanted;
     for (int ring = 1; ring <= PLATE_RINGS && !vacant(box); ++ring) {
@@ -232,6 +234,11 @@ public:
     for (const auto &plate : placed) {
       paint_plate(canvas, art, plate);
     }
+  }
+
+  /// The plate the last successful `add` placed.
+  [[nodiscard]] godot::Rect2 last() const {
+    return placed.at(placed.size() - 1).box;
   }
 
   [[nodiscard]] godot::Array boxes() const {
@@ -722,12 +729,10 @@ decoration_pieces(const Art &art, const survival::Content &content, bool back) {
   return pieces;
 }
 
-/// The scenery behind the ground recedes with the middle backdrop layer.
 void paint_decorations(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content, bool back) {
   for (const auto &piece : decoration_pieces(art, content, back)) {
-    art.image(canvas, piece.image, piece.at, 1.0F, false,
-              back ? middle_haze() : untinted());
+    art.image(canvas, piece.image, piece.at);
   }
 }
 
@@ -1142,19 +1147,21 @@ void paint_pointer(godot::Node2D &canvas, const Pointer &pointer) {
 struct Labels {
   Plates plates;
   std::vector<Pointer> pointers;
-  /// The names of the sources whose count is on the play area.
+  /// The names of the sources whose count is on the play area, and the
+  /// plates of those counts.
   godot::Array labelled;
+  godot::Array counts;
 };
 
-/// Places the map's words on the screen in the order they claim a spot: the
-/// pointers' names, each source's count in its own cell, then what stays put,
-/// then the actors' tags, which move. No word covers a source or a pointer,
-/// and words for a spot off the play area are left out.
+/// Places the map's words on the screen in the order they claim a spot: each
+/// source's count in its own cell, the pointers' names, then what stays put,
+/// then the actors' tags, which move. No word covers a pointer or a source
+/// other than its own count, and words for a spot off the play area are left
+/// out.
 Labels label_city(const Art &art, const survival::Content &content,
                   const survival::GameView &view, survival::ControlMap control,
-                  const std::vector<Marker> &markers,
-                  std::span<const survival::ObjectId> goals,
-                  const View &camera) {
+                  const std::vector<Marker> &markers, const Shot &shot) {
+  const auto &camera = shot.camera;
   const auto tones = palette();
   const auto red = color(255, 150, 150, 1.0F);
   const auto party = party_of(view);
@@ -1162,19 +1169,13 @@ Labels label_city(const Art &art, const survival::Content &content,
     return to_screen(camera, area_rect(area));
   };
   Labels labels{.plates = {},
-                .pointers = pointers_to(view, goals, camera),
-                .labelled = {}};
+                .pointers = pointers_to(view, shot.goals, camera),
+                .labelled = {},
+                .counts = {}};
   auto &plates = labels.plates;
   for (const auto &pointer : labels.pointers) {
     const Vector2 reach(POINTER_SIZE + 6.0F, POINTER_SIZE + 6.0F);
     plates.keep_clear(godot::Rect2(pointer.at - reach, reach * 2.0F));
-  }
-  for (const auto &pointer : labels.pointers) {
-    const float width = art.text_width(pointer.name, 14);
-    const float side =
-        pointer.toward.x > 0.5F ? -POINTER_INSET - width : POINTER_INSET;
-    plates.add(art, pointer.at + Vector2(side, 5.0F), pointer.name, 14,
-               tones.cyan);
   }
   for (const auto &marker : markers) {
     const auto box = on_screen(marker.object.area).grow(-2.0F);
@@ -1182,10 +1183,20 @@ Labels label_city(const Art &art, const survival::Content &content,
                    godot::String::num_int64(marker.stock.remaining), 15,
                    marker.promised ? tones.white : tones.muted)) {
       labels.labelled.push_back(from(survival::object_name(marker.object.id)));
+      labels.counts.push_back(plates.last());
     }
   }
+  // Only a source's own count may stand on it, so the sources are kept clear
+  // once the counts are placed and before any other word.
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
+  }
+  for (const auto &pointer : labels.pointers) {
+    const float width = art.text_width(pointer.name, 14);
+    const float side =
+        pointer.toward.x > 0.5F ? -POINTER_INSET - width : POINTER_INSET;
+    plates.add(art, pointer.at + Vector2(side, 5.0F), pointer.name, 14,
+               tones.cyan);
   }
   const auto base = on_screen(content.objects.front().area);
   plates.add(art, base.position + Vector2(18.0F, 22.0F), "BASE", 18,
@@ -1324,22 +1335,20 @@ void paint_sea(godot::Node2D &canvas, const Art &art, float left, float top,
 /// moved by `drift`, beside mirrored copies of itself that meet it without a
 /// seam, so it covers the screen's width wherever it slides.
 void paint_layer(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
-                 Vector2 drift, godot::Color tint = untinted()) {
+                 Vector2 drift) {
   const float width = art.size(image).x;
   for (int copy = -1; copy <= 1; ++copy) {
     art.image(canvas, image,
               at + drift + Vector2(static_cast<float>(copy) * width, 0.0F),
-              1.0F, copy != 0, tint);
+              1.0F, copy != 0);
   }
 }
 
 /// The acid band nearest behind the map: the silhouettes of sunken trains
 /// and broken pillars in a sea glowing at its surface, pinned to the bottom of
-/// the play area and rising with the acid, sliding sideways a part of the way
-/// the camera moves.
+/// the play area and rising with the acid, slid sideways by `slide`.
 void paint_band(godot::Node2D &canvas, const Art &art, float acid_ratio,
-                const View &view) {
-  const Vector2 slide(drift(view, BAND_DEPTH).x, 0.0F);
+                Vector2 slide) {
   const float surface = std::floor(band_surface(acid_ratio));
   const Vector2 acid = art.size(Image::Acid);
   for (int copy = -1; copy <= 1; ++copy) {
@@ -1377,31 +1386,42 @@ Vector2 map_point(survival::Position position) {
 }
 
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
-                 const View &view) {
+                 const View &camera) {
+  const Vector2 throat(drift(camera, THROAT_DEPTH).x, 0.0F);
+  const Vector2 city = drift(camera, CITY_DEPTH);
+  const Vector2 band(drift(camera, BAND_DEPTH).x, 0.0F);
+  // Wider than the screen, so a shaken screen shows no unhazed edge.
+  const godot::Rect2 hazed =
+      rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT).grow(CELL);
   art.look(canvas, Vector2(), 1.0F);
-  paint_layer(canvas, art, Image::Throat, Vector2(),
-              Vector2(drift(view, THROAT_DEPTH).x, 0.0F), far_haze());
+  paint_layer(canvas, art, Image::Throat, Vector2(), throat);
+  canvas.draw_rect(hazed, far_haze());
   paint_layer(canvas, art, Image::City,
-              Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y),
-              drift(view, CITY_DEPTH), middle_haze());
-  paint_band(canvas, art, acid_ratio, view);
-  art.look(canvas, origin(view), view.zoom);
+              Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), city);
+  canvas.draw_rect(hazed, middle_haze());
+  paint_band(canvas, art, acid_ratio, band);
+  godot::Array layers;
+  layers.push_back(throat);
+  layers.push_back(city);
+  layers.push_back(band);
+  canvas.set_meta("backdrop_layers", layers);
+  art.look(canvas, origin(camera), camera.zoom);
   paint_sea(canvas, art, 0.0F,
             std::floor(acid_surface(acid_ratio) - ACID_SURFACE_DEPTH),
             art.size(Image::Acid).x);
 }
 
 void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
-                const View &view) {
+                const View &camera) {
   art.look(canvas, Vector2(), 1.0F);
   surface_glow(canvas, std::floor(band_surface(acid_ratio)));
-  art.look(canvas, origin(view), view.zoom);
+  art.look(canvas, origin(camera), camera.zoom);
   surface_glow(canvas, acid_surface(acid_ratio));
 }
 
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
-                     const survival::Content &content, const View &view) {
-  art.look(canvas, origin(view), view.zoom);
+                     const survival::Content &content, const View &camera) {
+  art.look(canvas, origin(camera), camera.zoom);
   for (const auto &piece : decoration_pieces(art, content, false)) {
     if (piece.image == Image::LampStanding || piece.image == Image::LampBent) {
       halo(canvas,
@@ -1470,13 +1490,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content,
                        const survival::GameView &view,
-                       survival::ControlMap control,
-                       const std::vector<survival::ObjectId> &out_of_reach,
-                       std::span<const survival::ObjectId> goals,
-                       const View &camera) {
-  const auto markers = markers_of(view, out_of_reach);
-  const auto labels =
-      label_city(art, content, view, control, markers, goals, camera);
+                       survival::ControlMap control, const Shot &shot) {
+  const auto markers = markers_of(view, shot.out_of_reach);
+  const auto labels = label_city(art, content, view, control, markers, shot);
   godot::Array pointed;
   for (const auto &pointer : labels.pointers) {
     paint_pointer(canvas, pointer);
@@ -1484,14 +1500,19 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   }
   labels.plates.paint(canvas, art);
   godot::Array drawn;
+  godot::Array areas;
   for (const auto &marker : markers) {
     drawn.push_back(from(survival::object_name(marker.object.id)));
+    areas.push_back(to_screen(shot.camera, area_rect(marker.object.area)));
   }
   canvas.set_meta("map_plates", labels.plates.boxes());
   canvas.set_meta("map_sources", drawn);
+  canvas.set_meta("map_source_areas", areas);
   canvas.set_meta("map_labelled", labels.labelled);
+  canvas.set_meta("map_counts", labels.counts);
   canvas.set_meta("map_pointers", pointed);
-  canvas.set_meta("map_view", transform(camera));
+  canvas.set_meta("map_view", transform(shot.camera));
+  canvas.set_meta("map_heading", transform(shot.heading));
 }
 
 void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {

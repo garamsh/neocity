@@ -4,7 +4,7 @@ extends SceneTree
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## the stairs' walked-on part does not lead the part under it, the fallen slab's
 ## lit top edge does not run along its tilt, or one of its word plates covers
-## another. The camera shows a part of the city, so each look is measured on
+## another or a source other than the source's own count. The camera shows a part of the city, so each look is measured on
 ## every city frame that shows what it looks at, and fails when none does.
 
 ## One unfed day short of the acid that ends the run.
@@ -217,7 +217,7 @@ func _run() -> void:
 		_fail("a look was never measured: ground %d, stairs %d, slab %d frames" % [ground_frames, stairs_frames, slab_frames])
 		return
 	print("Capture: the ground was measured in %d, the stairs in %d and the slab in %d city frames." % [ground_frames, stairs_frames, slab_frames])
-	print("Capture: no map plate covers another in ", city_frames, " city frames.")
+	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	quit(0)
 
@@ -392,7 +392,8 @@ func _save(screen: String) -> Image:
 	print("Capture: ", destination)
 	return frame
 
-## Saves a city frame and fails it when one word plate covers another, when it
+## Saves a city frame and fails it when one word plate covers another, or a
+## plate other than a source's count covers a source, when it
 ## drew fewer plates than a count and a name for each source labelled, or when
 ## a look it shows is wrong.
 func _save_city(screen: String) -> Image:
@@ -411,6 +412,15 @@ func _save_city(screen: String) -> Image:
 	if sources == 0 or plates.size() <= 2 * sources:
 		_fail("%s: %d plates for %d sources" % [screen, plates.size(), sources])
 		return frame
+	var areas: Array = scene.get_meta("map_source_areas", [])
+	var counts: Array = scene.get_meta("map_counts", [])
+	for plate: Rect2 in plates:
+		if counts.has(plate):
+			continue
+		for area: Rect2 in areas:
+			if area.intersects(plate):
+				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
+				return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
 	if not _ground_leads(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen):
 		return frame

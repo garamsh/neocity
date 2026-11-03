@@ -54,33 +54,43 @@ struct Subject {
   float facing = 1.0F;
 };
 
+/// Where the camera may look: the map's width and the scene's height.
+godot::Rect2 bounds_of(const survival::Content &content) {
+  const Vector2 corner = map_point({.x = 0, .y = 0});
+  const Vector2 far_corner =
+      map_point({.x = content.map.width * survival::SUBCELLS, .y = 0});
+  return {corner.x, 0.0F, far_corner.x - corner.x, SCREEN_HEIGHT};
+}
+
+/// `centre` and `zoom` kept inside `bounds`, with where they rest.
+View placed(Vector2 centre, float zoom, godot::Rect2 bounds) {
+  return {.centre = clamp_centre(centre, zoom, bounds),
+          .zoom = zoom,
+          .rest = clamp_centre(bounds.get_center(), zoom, bounds)};
+}
+
 } // namespace
 
-Vector2 origin(const View &view) {
-  return (FOCUS - view.centre * view.zoom).round();
+Vector2 origin(const View &camera) {
+  return (FOCUS - camera.centre * camera.zoom).round();
 }
 
-Vector2 to_screen(const View &view, Vector2 point) {
-  return origin(view) + point * view.zoom;
+Vector2 to_screen(const View &camera, Vector2 point) {
+  return origin(camera) + point * camera.zoom;
 }
 
-godot::Rect2 to_screen(const View &view, godot::Rect2 area) {
-  return {to_screen(view, area.position), area.size * view.zoom};
+godot::Rect2 to_screen(const View &camera, godot::Rect2 area) {
+  return {to_screen(camera, area.position), area.size * camera.zoom};
 }
 
-godot::Transform2D transform(const View &view) {
-  return {0.0F, Vector2(view.zoom, view.zoom), 0.0F, origin(view)};
+godot::Transform2D transform(const View &camera) {
+  return {0.0F, Vector2(camera.zoom, camera.zoom), 0.0F, origin(camera)};
 }
 
 View whole_scene() { return {.centre = FOCUS, .zoom = 1.0F, .rest = FOCUS}; }
 
-View follow(const Art &art, const survival::Content &content,
-            const survival::GameView &view, survival::ControlMap control) {
-  const Vector2 corner = map_point({.x = 0, .y = 0});
-  const Vector2 far_corner =
-      map_point({.x = content.map.width * survival::SUBCELLS, .y = 0});
-  const godot::Rect2 bounds(corner.x, 0.0F, far_corner.x - corner.x,
-                            SCREEN_HEIGHT);
+View aim(const survival::Content &content, const survival::GameView &view,
+         survival::ControlMap control) {
   std::vector<Subject> subjects;
   for (const auto actor : ACTORS) {
     const auto &state = actor == Actor::Chef ? view.progression.chef
@@ -98,33 +108,34 @@ View follow(const Art &art, const survival::Content &content,
   Vector2 target;
   float zoom = CLOSE;
   if (subjects.empty()) {
-    const auto &entrance = content.objects.front().area;
+    const auto &entrance = content.objects.at(0).area;
     target = map_point({.x = entrance.x * survival::SUBCELLS,
                         .y = entrance.y * survival::SUBCELLS}) -
              Vector2(0.0F, WAIST);
   } else if (subjects.size() == 1) {
-    const auto &one = subjects.front();
+    const auto &one = subjects.at(0);
     target = one.feet + Vector2(one.facing * LOOK_AHEAD, -WAIST);
   } else {
-    const Vector2 first = subjects.front().feet;
-    const Vector2 second = subjects.back().feet;
+    const Vector2 first = subjects.at(0).feet;
+    const Vector2 second = subjects.at(1).feet;
     const Vector2 apart = (first - second).abs();
     zoom = std::clamp(std::min(SCREEN_WIDTH / (apart.x + ROOM_ACROSS),
                                PLAY_HEIGHT / (apart.y + ROOM_UP)),
                       FAR, CLOSE);
     target = (first + second) / 2.0F - Vector2(0.0F, WAIST);
   }
-  View shown{.centre = {}, .zoom = art.glide("camera_zoom", zoom), .rest = {}};
-  shown.rest = clamp_centre(bounds.get_center(), shown.zoom, bounds);
-  target = clamp_centre(target, shown.zoom, bounds);
-  shown.centre = clamp_centre(
-      Vector2(art.glide("camera_x", target.x), art.glide("camera_y", target.y)),
-      shown.zoom, bounds);
-  return shown;
+  return placed(target, zoom, bounds_of(content));
 }
 
-Vector2 drift(const View &view, float depth) {
-  return ((view.rest - view.centre) * view.zoom * depth).round();
+View follow(const Art &art, const survival::Content &content,
+            const View &heading) {
+  return placed(Vector2(art.glide("camera_x", heading.centre.x),
+                        art.glide("camera_y", heading.centre.y)),
+                art.glide("camera_zoom", heading.zoom), bounds_of(content));
+}
+
+Vector2 drift(const View &camera, float depth) {
+  return ((camera.rest - camera.centre) * camera.zoom * depth).round();
 }
 
 } // namespace neocity::rendering

@@ -235,8 +235,15 @@ void Session::finish_cinematic(hud::Cinematic cinematic) {
 void Session::advance(double delta, Command command) {
   advance_screen(delta, command);
   framed.reset();
+  shot.reset();
   if (run) {
     framed = run->frame();
+  }
+}
+
+void Session::aim(const rendering::Art &drawing) {
+  if (framed) {
+    shot = hud::shot_of(drawing, *framed);
   }
 }
 
@@ -456,8 +463,8 @@ void Session::paint(godot::Node2D &canvas,
     if (playback && framed) {
       hud::paint_cinematic(canvas, drawing, playback->cinematic,
                            playback->card_left.has_value(), *framed);
-    } else if (framed) {
-      hud::paint_survival(canvas, drawing, *framed, bursts);
+    } else if (framed && shot) {
+      hud::paint_survival(canvas, drawing, *framed, *shot, bursts);
       if (interruption) {
         hud::paint_interruption(canvas, drawing, *interruption, *framed,
                                 volume_rows(volume));
@@ -468,24 +475,21 @@ void Session::paint(godot::Node2D &canvas,
   std::abort();
 }
 
-const hud::SurvivalFrame *Session::playing() const {
-  if (screen != Screen::Survival || playback || !framed) {
-    return nullptr;
-  }
-  return &*framed;
+bool Session::playing() const {
+  return screen == Screen::Survival && !playback && framed && shot;
 }
 
 void Session::paint_world(godot::Node2D &canvas,
                           const rendering::Art &drawing) const {
-  if (const auto *frame = playing()) {
-    hud::paint_survival_world(canvas, drawing, *frame, bursts);
+  if (playing()) {
+    hud::paint_survival_world(canvas, drawing, *framed, *shot, bursts);
   }
 }
 
 void Session::paint_glow(godot::Node2D &canvas,
                          const rendering::Art &drawing) const {
-  if (const auto *frame = playing()) {
-    hud::paint_survival_glow(canvas, drawing, *frame, bursts);
+  if (playing()) {
+    hud::paint_survival_glow(canvas, drawing, *framed, *shot, bursts);
   }
 }
 
