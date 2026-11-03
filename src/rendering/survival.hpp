@@ -34,7 +34,7 @@ struct Shot {
 /// trains and broken pillars glowing along the bottom of the play area, which
 /// rises with `acid_ratio`. Then the acid sea in the scene, whose surface
 /// rises with `acid_ratio`, from below the map's lowest ground row at 0 to
-/// the top of the map at 1, and fades a little darker below it. Leaves on the
+/// the top of the map at 1, and fades below it to a deep green. Leaves on the
 /// canvas where each layer was drawn as the `backdrop_layers` meta, an array of
 /// Vector2 offsets from where it rests, back to front, and leaves the canvas
 /// drawing the scene as `camera` shows it.
