@@ -9,6 +9,7 @@ permissions: read-all
 
 # The jobs run in parallel and together run every target `make ci` runs: lint,
 # format, and the test targets that `test` lists in Makefile, split by duration.
+# check-ci-coverage.py in the format job fails when the two sets differ.
 jobs:
   lint:
     runs-on: ubuntu-24.04
@@ -33,6 +34,8 @@ jobs:
           cache: 'pip'
           cache-dependency-path: Makefile
       - run: make format
+      - name: Check that the jobs run every target of make ci
+        run: python .github/scripts/check-ci-coverage.py
 
   test:
     name: test (${{ matrix.targets }})
