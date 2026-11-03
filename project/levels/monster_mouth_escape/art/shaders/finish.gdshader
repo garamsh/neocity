@@ -52,12 +52,14 @@ const float BURST = 0.82;
 // screen pixels tall, this many of them, each fainter than the one nearer the
 // surface, which pull a colour toward the acid's green at a brightness this
 // much over its own; what stands in the acid is lit by this share of it.
+const float GLOW_BAND = 8.0;
+const float GLOW_BANDS = 6.0;
 const vec3 ACID_GLOW = vec3(0.35, 1.0, 0.25);
 const float ACID_LIFT = 0.45;
-const float GLOW_MIX = 0.55;
+const float GLOW_MIX = 0.7;
 const float WADING = 0.7;
 // How much acid's green under the surface lights the bands over it in full.
-const float GLOW_SHOWS = 6.0;
+const float GLOW_SHOWS = 8.0;
 // How bright a part must be before it spills light, and how strongly.
 const float BLOOM_FROM = 0.6;
 const float BLOOM = 0.5;
@@ -200,8 +202,9 @@ void fragment() {
 	float glow_band = floor(abs(from_surface) / GLOW_BAND);
 	if (!acid(colour) && glow_band < GLOW_BANDS) {
 		// Only where acid shows under the surface, in a few steps across.
-		vec2 under = vec2(scene_centre.x, scene_centre.y + from_surface + GLOW_BAND);
-		float shows = greenness(textureLod(screen, SCREEN_UV + (under - canvas_at) * uv_per_unit, 4.0).rgb);
+		vec2 under = vec2(scene_centre.x, scene_centre.y + from_surface);
+		vec2 to_under = SCREEN_UV + (under - canvas_at) * uv_per_unit;
+		float shows = max(greenness(textureLod(screen, to_under + vec2(0.0, 12.0) * uv_per_unit, 4.0).rgb), greenness(textureLod(screen, to_under + vec2(0.0, 32.0) * uv_per_unit, 4.0).rgb));
 		float lit = floor(clamp(shows * GLOW_SHOWS, 0.0, 1.0) * 3.0) / 3.0;
 		lit *= (GLOW_BANDS - glow_band) / GLOW_BANDS;
 		lit *= from_surface < 0.0 ? WADING : 1.0;

@@ -97,7 +97,11 @@ const MOTION_SHARE: float = 0.05
 ## in mean green lead from 0 to 1, the lit rows read.
 const LIT_ROWS: Vector2i = Vector2i(-16, 0)
 const UNLIT_ROWS: Vector2i = Vector2i(-96, -64)
-const LIGHT_GAP: float = 0.05
+const LIGHT_GAP: float = 0.03
+## The screen rows under the acid's surface where a column shows the acid, and
+## the least share of the columns that must show it for the light to be read.
+const ACID_UNDER: Array[int] = [6, 12, 24]
+const LIGHT_COLUMNS: float = 0.1
 ## The screen rows under the sea's surface that the motion is read over.
 const SEA_ROWS: Vector2i = Vector2i(2, 40)
 ## The least share of the scene's pixels below the sea's surface that the
@@ -108,7 +112,7 @@ const GRID_SHARE: float = 0.97
 const GRID_TOLERANCE: float = 0.01
 ## The least share of those scene pixels whose green leads by ACID_GREEN, so
 ## the pixels read hold the acid.
-const GRID_GREEN: float = 0.1
+const GRID_GREEN: float = 0.05
 ## The least frames a second the city draws, and over how many frames.
 const FRAME_RATE: float = 60.0
 const RATE_FRAMES: int = 600
@@ -782,37 +786,41 @@ func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) ->
 		return false
 	return true
 
-## Whether the LIT_ROWS above the acid's surface, the band's where the sea
-## does not cover it and the sea's otherwise, lead the UNLIT_ROWS of backdrop
-## higher up in green by LIGHT_GAP, over every other column, when the play area
-## shows both. The control is that the unlit rows hold more than black.
+## Whether, over the columns where the acid shows under its surface, the band's
+## where the sea does not cover it and the sea's otherwise, the LIT_ROWS above
+## that surface lead the UNLIT_ROWS of backdrop higher up in green by
+## LIGHT_GAP, when the play area shows both. The control is that the acid shows
+## under the surface in LIGHT_COLUMNS of the columns read.
 func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 	var surface: int = _band_top() if _band_clear(view) else floori((view * Vector2(0, _acid_surface())).y)
-	if surface + UNLIT_ROWS.x < PLAY.position.y or surface > PLAY.end.y:
+	if surface + UNLIT_ROWS.x < PLAY.position.y or surface + ACID_UNDER.back() >= PLAY.end.y:
 		return true
-	var lit: float = _green_lead(frame, surface + LIT_ROWS.x, surface + LIT_ROWS.y)
-	var unlit: float = _green_lead(frame, surface + UNLIT_ROWS.x, surface + UNLIT_ROWS.y)
-	var shade: float = 0.0
-	for y: int in range(surface + UNLIT_ROWS.x, surface + UNLIT_ROWS.y):
-		for x: int in range(0, int(PLAY.size.x), 2):
-			shade += frame.get_pixel(x, y).get_luminance()
-	shade /= (UNLIT_ROWS.y - UNLIT_ROWS.x) * PLAY.size.x / 2
+	var lit: float = 0.0
+	var unlit: float = 0.0
+	var columns: int = 0
+	var read: int = 0
+	for x: int in range(0, int(PLAY.size.x), 2):
+		read += 1
+		if not ACID_UNDER.any(func(row: int) -> bool: return _green(frame.get_pixel(x, surface + row)) >= ACID_GREEN):
+			continue
+		columns += 1
+		for y: int in range(LIT_ROWS.x, LIT_ROWS.y):
+			lit += maxf(_green(frame.get_pixel(x, surface + y)), 0.0)
+		for y: int in range(UNLIT_ROWS.x, UNLIT_ROWS.y):
+			unlit += maxf(_green(frame.get_pixel(x, surface + y)), 0.0)
+	var share: float = float(columns) / read
+	lit /= maxi(columns, 1) * (LIT_ROWS.y - LIT_ROWS.x)
+	unlit /= maxi(columns, 1) * (UNLIT_ROWS.y - UNLIT_ROWS.x)
 	light_frames += 1
-	print("Capture: %s: the rows above the acid's surface at row %d lead the backdrop above them in green by %.3f (lit %.3f, backdrop %.3f, at least %.3f)." % [screen, surface, lit - unlit, lit, unlit, LIGHT_GAP])
-	if shade <= 0.0 or lit - unlit < LIGHT_GAP:
+	print("Capture: %s: over %.3f of the columns, where the acid shows under its surface at row %d, the rows above it lead the backdrop above them in green by %.3f (lit %.3f, backdrop %.3f, at least %.3f)." % [screen, share, surface, lit - unlit, lit, unlit, LIGHT_GAP])
+	if share < LIGHT_COLUMNS or lit - unlit < LIGHT_GAP:
 		_fail("%s: the acid's light does not rise above its surface" % screen)
 		return false
 	return true
 
-## The mean by which green leads red and blue, 0 where it does not, over the
-## screen rows from `top` to `bottom`, every other column.
-func _green_lead(frame: Image, top: int, bottom: int) -> float:
-	var total: float = 0.0
-	for y: int in range(top, bottom):
-		for x: int in range(0, int(PLAY.size.x), 2):
-			var pixel: Color = frame.get_pixel(x, y)
-			total += maxf(pixel.g - maxf(pixel.r, pixel.b), 0.0)
-	return total / ((bottom - top) * PLAY.size.x / 2)
+## How far a colour's green leads its red and blue, from -1 to 1.
+func _green(pixel: Color) -> float:
+	return pixel.g - maxf(pixel.r, pixel.b)
 
 ## The next drawn frame.
 func _frame() -> Image:
