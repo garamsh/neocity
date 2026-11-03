@@ -172,9 +172,9 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
 /// The pause screen's rows for two players, then the pause and leave keys,
 /// for the controls page.
 [[nodiscard]] std::vector<KeyRow> control_rows();
-/// Draws `rows` as actions and their keys, from baseline `top`.
+/// Draws `rows` as actions and their keys, from `left` and baseline `top`.
 void paint_key_rows(godot::Node2D &canvas, const rendering::Art &drawing,
-                    const std::vector<KeyRow> &rows, float top,
+                    const std::vector<KeyRow> &rows, float left, float top,
                     float row_height);
 /// The title, the explanation, and the keys of what holds the run.
 [[nodiscard]] std::array<godot::String, 3>
@@ -190,7 +190,7 @@ interruption_text(Interruption interruption);
 /// The offered dish's score, plain and fine, against the threshold; empty when
 /// the chef's key offers no dish.
 [[nodiscard]] godot::String offered_forecast(const SurvivalFrame &frame);
-/// The ingredients eaten so far, wrapped for the appraise panel.
+/// The ingredients eaten so far, wrapped for the recipe book.
 [[nodiscard]] std::vector<godot::String>
 eaten_lines(const std::vector<survival::IngredientId> &eaten);
 /// The appraise panel's last line.
@@ -202,7 +202,8 @@ out_of_reach(const SurvivalFrame &frame);
 /// Every changing line of this frame, with the cook panel's status in each form
 /// any pack could give it.
 [[nodiscard]] std::vector<FittedText> changing_text(const SurvivalFrame &frame);
-/// The sentence the event log shows for `event`.
-[[nodiscard]] godot::String describe(const Event &event);
+/// The sentence the log shows for `event`, naming places as `view` does.
+[[nodiscard]] godot::String describe(const survival::GameView &view,
+                                     const Event &event);
 
 } // namespace neocity::hud

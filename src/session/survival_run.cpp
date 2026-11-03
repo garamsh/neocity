@@ -624,7 +624,7 @@ godot::Dictionary SurvivalRun::status() const {
   status.set("changing_text", fitted);
   godot::Array log;
   for (const auto &event : current.events) {
-    log.push_back(hud::describe(event));
+    log.push_back(hud::describe(view, event));
   }
   status.set("events", log);
   return status;

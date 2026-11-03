@@ -127,8 +127,8 @@ void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
       canvas, rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Controls", 38,
                tones.white, rendering::Weight::Bold);
-  paint_key_rows(canvas, drawing, control_rows(), CONTROLS_ROW_Y,
-                 CONTROLS_ROW_HEIGHT);
+  paint_key_rows(canvas, drawing, control_rows(), CONTROLS_TEXT_X,
+                 CONTROLS_ROW_Y, CONTROLS_ROW_HEIGHT);
   const godot::String back = "Esc or M: back to the title";
   rendering::button(
       canvas,
