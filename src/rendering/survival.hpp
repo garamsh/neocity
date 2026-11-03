@@ -9,6 +9,9 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
+#include <optional>
+#include <span>
+#include <string_view>
 #include <vector>
 
 namespace neocity::rendering {
@@ -64,23 +67,29 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach);
-/// Draws the city's words on the screen where the shot's camera shows what
+/// The icon of the ingredient, tool or dish the `survival` library names
+/// `name`, if the art set has one.
+[[nodiscard]] std::optional<Image> item_icon(std::string_view name);
+/// Draws the city's marks on the screen where the shot's camera shows what
 /// they name, each on a dark plate over the art so it reads at any acid
-/// level, none covering another or a source other than its own count, and
-/// none for what is off the play area. A source out of reach is named as
-/// having no way there. Each goal whose area is off the play area gets a
-/// pointer at the area's edge, aimed at it, with its name. Leaves on the
-/// canvas the plates drawn as the `map_plates` meta, an array of Rect2; the
-/// names of the sources the city draws as `map_sources`, their areas on the
-/// screen as `map_source_areas`, an array of Rect2, and the names of those
-/// whose count is on the play area as `map_labelled`, with those counts'
-/// plates as `map_counts`; the names pointed at as
-/// `map_pointers`; the camera as `map_view` and where it heads as
-/// `map_heading`, each a Transform2D from the scene's pixels to the screen's.
+/// level, none covering another, a pointer, a source or any of `covered`, and
+/// none for what is off the play area or has no free spot near it. Each source
+/// shows the icon of what it holds and its count over its cell, faded and in a
+/// dashed rim when it is out of reach, darkened; only the shot's goals are
+/// named. Each goal whose area is off the play area gets a pointer at the
+/// area's edge, aimed at it, with its name. Leaves on the canvas the plates
+/// drawn as the `map_plates` meta, an array of Rect2, and their words as
+/// `map_words`; the names of the sources the city draws as `map_sources`, their
+/// areas on the screen as `map_source_areas`, an array of Rect2, and the names
+/// of those whose count is on the play area as `map_labelled`, with those
+/// counts' plates as `map_counts`; the names pointed at as `map_pointers`; the
+/// camera as `map_view` and where it heads as `map_heading`, each a Transform2D
+/// from the scene's pixels to the screen's.
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content,
                        const survival::GameView &view,
-                       survival::ControlMap control, const Shot &shot);
+                       survival::ControlMap control, const Shot &shot,
+                       std::span<const godot::Rect2> covered);
 /// Draws the base kitchen with the chef and the appraiser, and the monster's
 /// feeding bucket, steaming once `dish_ready`.
 void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready);

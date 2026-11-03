@@ -114,6 +114,11 @@ constexpr float FERRY_SINK = 64.0F;
 /// Where the map's words may stand: below the top bar, above the actor cards.
 constexpr float LABEL_TOP = 62.0F;
 constexpr float LABEL_BOTTOM = 540.0F;
+/// How much of its light an out-of-reach source's icon keeps.
+constexpr float OUT_OF_REACH_SHADE = 0.6F;
+/// The sizes asked for a source's count and a goal's name on the map.
+constexpr int COUNT_SIZE = 16;
+constexpr int NAME_SIZE = 16;
 /// Clear space kept between two plates.
 constexpr float PLATE_GAP = 2.0F;
 /// How far a plate looks sideways per step when its spot is taken.
@@ -250,41 +255,85 @@ void stand_on_floor(godot::Node2D &canvas, const Art &art, Image image,
   stand(canvas, art, image, box);
 }
 
-/// Words on an opaque plate, whose contrast no acid level can change.
+void dashed_frame(godot::Node2D &canvas, const godot::Rect2 &box,
+                  godot::Color tint) {
+  const Vector2 top_left = box.position;
+  const Vector2 bottom_right = box.position + box.size;
+  const Vector2 top_right(bottom_right.x, top_left.y);
+  const Vector2 bottom_left(top_left.x, bottom_right.y);
+  canvas.draw_dashed_line(top_left, top_right, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(top_right, bottom_right, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(bottom_right, bottom_left, tint, 2.0F, DASH);
+  canvas.draw_dashed_line(bottom_left, top_left, tint, 2.0F, DASH);
+}
+
+/// What a plate shows besides its words: an icon before them, and, for stock
+/// no human can walk to, the icon faded inside a dashed rim, so the
+/// difference is not colour alone.
+struct Mark {
+  std::optional<Image> icon;
+  bool out_of_reach = false;
+};
+
+/// Words on an opaque plate, whose contrast no acid level can change, after
+/// the mark's icon if it has one.
 struct Plate {
   godot::Rect2 box;
   godot::String text;
   int size = 0;
   godot::Color tint;
+  Mark mark;
 };
 
-/// The plate behind `text` at `size`, the left end of its baseline at `at`.
+/// The plate behind `text` at `size`, and the mark's icon before it, the left
+/// end of its baseline, or the icon's bottom-left corner, at `at`.
 godot::Rect2 plate_box(const Art &art, Vector2 at, const godot::String &text,
-                       int size) {
+                       int size, const Mark &mark = {}) {
   const auto height = static_cast<float>(size);
+  if (mark.icon) {
+    const Vector2 icon = art.size(*mark.icon);
+    return {at.x - 2.0F, at.y - icon.y - 2.0F,
+            icon.x + art.text_width(text, size) + 6.0F, icon.y + 4.0F};
+  }
   return {at.x - 2.0F, at.y - height, art.text_width(text, size) + 4.0F,
           height * 1.3F};
 }
 
 void paint_plate(godot::Node2D &canvas, const Art &art, const Plate &plate) {
   canvas.draw_rect(plate.box, color(14, 12, 26, 1.0F));
-  art.text(canvas, plate.box.position.x + 2.0F,
-           plate.box.position.y + static_cast<float>(plate.size), plate.text,
-           plate.size, plate.tint);
+  const Vector2 corner = plate.box.position + Vector2(2.0F, 2.0F);
+  if (const auto icon = plate.mark.icon) {
+    const Vector2 size = art.size(*icon);
+    const float shade = plate.mark.out_of_reach ? OUT_OF_REACH_SHADE : 1.0F;
+    art.image(canvas, *icon, corner, 1.0F, false,
+              godot::Color(shade, shade, shade));
+    art.text(canvas, corner.x + size.x + 2.0F, corner.y + size.y - 4.0F,
+             plate.text, plate.size, plate.tint);
+  } else {
+    art.text(canvas, plate.box.position.x + 2.0F,
+             plate.box.position.y + static_cast<float>(plate.size), plate.text,
+             plate.size, plate.tint);
+  }
+  if (plate.mark.out_of_reach) {
+    dashed_frame(canvas, plate.box.grow(-1.0F), plate.tint);
+  }
 }
 
 /// The map's words, none covering another: each takes the spot it asks for,
-/// or the nearest free one, looking farther away step by step.
+/// or the nearest free one, looking farther away step by step, and is left
+/// out where none is free.
 class Plates {
 public:
   /// Keeps words off `area`.
   void keep_clear(godot::Rect2 area) { clear.push_back(area); }
 
-  /// Places `text` with the left end of its baseline at `at`, or nearby, and
-  /// tells whether it did: words for a spot off the play area are left out.
+  /// Places `text`, after the mark's icon if it has one, with the left end of
+  /// its baseline, or the icon's bottom-left corner, at `at`, or nearby, and
+  /// tells whether it did: words for a spot off the play area, or with no
+  /// free spot near it, are left out.
   bool add(const Art &art, Vector2 at, const godot::String &text, int size,
-           godot::Color tint) {
-    const godot::Rect2 wanted = plate_box(art, at, text, size);
+           godot::Color tint, const Mark &mark = {}) {
+    const godot::Rect2 wanted = plate_box(art, at, text, size, mark);
     if (!room().intersects(wanted)) {
       return false;
     }
@@ -305,9 +354,10 @@ public:
       }
     }
     if (!vacant(box)) {
-      box = wanted;
+      return false;
     }
-    placed.push_back({.box = box, .text = text, .size = size, .tint = tint});
+    placed.push_back(
+        {.box = box, .text = text, .size = size, .tint = tint, .mark = mark});
     return true;
   }
 
@@ -335,6 +385,15 @@ public:
     return boxes;
   }
 
+  /// The words of every plate placed, in the order they were placed.
+  [[nodiscard]] godot::Array words() const {
+    godot::Array words;
+    for (const auto &plate : placed) {
+      words.push_back(plate.text);
+    }
+    return words;
+  }
+
 private:
   [[nodiscard]] bool vacant(const godot::Rect2 &box) const {
     const godot::Rect2 spaced = box.grow(PLATE_GAP);
@@ -351,18 +410,6 @@ private:
   std::vector<godot::Rect2> clear;
   std::vector<Plate> placed;
 };
-
-void dashed_frame(godot::Node2D &canvas, const godot::Rect2 &box,
-                  godot::Color tint) {
-  const Vector2 top_left = box.position;
-  const Vector2 bottom_right = box.position + box.size;
-  const Vector2 top_right(bottom_right.x, top_left.y);
-  const Vector2 bottom_left(top_left.x, bottom_right.y);
-  canvas.draw_dashed_line(top_left, top_right, tint, 2.0F, DASH);
-  canvas.draw_dashed_line(top_right, bottom_right, tint, 2.0F, DASH);
-  canvas.draw_dashed_line(bottom_right, bottom_left, tint, 2.0F, DASH);
-  canvas.draw_dashed_line(bottom_left, top_left, tint, 2.0F, DASH);
-}
 
 void cross(godot::Node2D &canvas, const godot::Rect2 &box, godot::Color tint) {
   const Vector2 end = box.position + box.size;
@@ -1186,20 +1233,6 @@ void paint_npc(godot::Node2D &canvas, const Art &art,
   stand_on_floor(canvas, art, Image::NoodleVendor, box);
 }
 
-const char *source_kind_name(SourceKind kind) {
-  switch (kind) {
-  case SourceKind::VendingMachine:
-    return "VEND";
-  case SourceKind::Npc:
-    return "CART";
-  case SourceKind::Shop:
-    return "SHOP";
-  case SourceKind::Bag:
-    return "BAG";
-  }
-  std::abort();
-}
-
 /// A bag of tools is the roped duffel; a bag of food the washed-up backpack.
 Image source_image(SourceKind kind, const ObjectSnapshot &object) {
   switch (kind) {
@@ -1215,14 +1248,15 @@ Image source_image(SourceKind kind, const ObjectSnapshot &object) {
   std::abort();
 }
 
-godot::String supply_name(const ObjectSnapshot &source) {
+/// The icon of what `source` holds, if the art set has one.
+std::optional<Image> supply_icon(const ObjectSnapshot &source) {
+  std::string_view name;
   if (source.tool) {
-    return from(survival::tool_name(*source.tool));
+    name = survival::tool_name(*source.tool);
+  } else if (source.ingredient) {
+    name = survival::ingredient_name(*source.ingredient);
   }
-  if (source.ingredient) {
-    return from(survival::ingredient_name(*source.ingredient));
-  }
-  return "";
+  return item_icon(name);
 }
 
 /// One source as the map shows it.
@@ -1447,6 +1481,8 @@ struct Pointer {
   Vector2 at;
   /// The unit direction from the mark to the goal.
   Vector2 toward;
+  survival::ObjectId goal;
+  /// The goal's screen name.
   godot::String name;
 };
 
@@ -1471,7 +1507,8 @@ std::vector<Pointer> pointers_to(const survival::GameView &view,
     const Vector2 at = centre.clamp(inner.position, inner.get_end());
     found.push_back({.at = at,
                      .toward = (centre - at).normalized(),
-                     .name = from(survival::object_name(goal))});
+                     .goal = goal,
+                     .name = place_name(view, goal)});
   }
   return found;
 }
@@ -1498,13 +1535,15 @@ struct Labels {
 };
 
 /// Places the map's words on the screen in the order they claim a spot: each
-/// source's count in its own cell, the pointers' names, then what stays put,
-/// then the actors' tags, which move. No word covers a pointer or a source
-/// other than its own count, and words for a spot off the play area are left
-/// out.
+/// source's icon and count over its own cell, the pointers' names, the names
+/// of the goals on the play area, then what stays put, then the actors' tags,
+/// which move. Only a goal is named. No word covers a pointer, a source or
+/// `covered`, and words for a spot off the play area, or with no free spot
+/// near it, are left out.
 Labels label_city(const Art &art, const survival::Content &content,
                   const survival::GameView &view, survival::ControlMap control,
-                  const std::vector<Marker> &markers, const Shot &shot) {
+                  const std::vector<Marker> &markers, const Shot &shot,
+                  std::span<const godot::Rect2> covered) {
   const auto &camera = shot.camera;
   const auto tones = palette();
   const auto red = color(255, 150, 150, 1.0F);
@@ -1517,85 +1556,83 @@ Labels label_city(const Art &art, const survival::Content &content,
                 .labelled = {},
                 .counts = {}};
   auto &plates = labels.plates;
+  for (const auto &area : covered) {
+    plates.keep_clear(area);
+  }
   for (const auto &pointer : labels.pointers) {
     const Vector2 reach(POINTER_SIZE + 6.0F, POINTER_SIZE + 6.0F);
     plates.keep_clear(godot::Rect2(pointer.at - reach, reach * 2.0F));
   }
   for (const auto &marker : markers) {
-    const auto box = on_screen(marker.object.area).grow(-2.0F);
-    if (plates.add(art, Vector2(box.position.x + 9.0F, box.position.y + 21.0F),
-                   godot::String::num_int64(marker.stock.remaining), 15,
-                   marker.promised ? tones.white : tones.muted)) {
+    plates.keep_clear(on_screen(marker.object.area));
+  }
+  for (const auto &marker : markers) {
+    const auto cell = on_screen(marker.object.area);
+    const auto count = godot::String::num_int64(marker.stock.remaining);
+    const bool unreachable = marker.stocked_open && !marker.walkable;
+    const Mark mark{.icon = supply_icon(marker.object),
+                    .out_of_reach = unreachable};
+    const float width =
+        plate_box(art, Vector2(), count, COUNT_SIZE, mark).size.x;
+    auto tint = tones.muted;
+    if (marker.promised) {
+      tint = tones.white;
+    } else if (unreachable) {
+      tint = tones.faint;
+    }
+    if (plates.add(art,
+                   Vector2(cell.get_center().x - width / 2.0F + 2.0F,
+                           cell.position.y - 2.0F - PLATE_GAP),
+                   count, COUNT_SIZE, tint, mark)) {
       labels.labelled.push_back(from(survival::object_name(marker.object.id)));
       labels.counts.push_back(plates.last());
     }
   }
-  // Only a source's own count may stand on it, so the sources are kept clear
-  // once the counts are placed and before any other word.
-  for (const auto &marker : markers) {
-    plates.keep_clear(on_screen(marker.object.area));
-  }
   for (const auto &pointer : labels.pointers) {
-    const float width = art.text_width(pointer.name, 14);
+    const float width = art.text_width(pointer.name, NAME_SIZE);
     const float side =
         pointer.toward.x > 0.5F ? -POINTER_INSET - width : POINTER_INSET;
-    plates.add(art, pointer.at + Vector2(side, 5.0F), pointer.name, 14,
+    plates.add(art, pointer.at + Vector2(side, 5.0F), pointer.name, NAME_SIZE,
                tones.cyan);
   }
-  const auto base = on_screen(content.objects.front().area);
-  plates.add(art, base.position + Vector2(18.0F, 22.0F), "BASE", 18,
-             tones.gold);
-  for (const auto &marker : markers) {
-    const auto box = on_screen(marker.object.area).grow(-2.0F);
-    const float label_y =
-        marker.object.area.y == 0 || marker.object.area.y == 13
-            ? box.position.y + box.size.y + 16.0F
-            : box.position.y - 4.0F;
-    plates.add(art, Vector2(box.position.x - 8.0F, label_y),
-               godot::String(source_kind_name(marker.stock.kind)) + " " +
-                   supply_name(marker.object) +
-                   (marker.stocked_open && !marker.walkable
-                        ? godot::String(": no way there")
-                        : godot::String()),
-               13, marker.promised ? tones.white : tones.muted);
-  }
-  for (const auto &object : view.world.objects) {
-    if (!visible(object)) {
+  for (const auto goal : shot.goals) {
+    const auto object =
+        std::ranges::find(view.world.objects, goal, &ObjectSnapshot::id);
+    if (object == view.world.objects.end()) {
       continue;
     }
-    const auto box = on_screen(object.area);
-    const bool broken = object.state == ObjectState::Destroyed;
-    switch (object.kind) {
-    case ObjectKind::Building:
-      plates.add(art, Vector2(box.position.x + 4.0F, box.position.y + 14.0F),
-                 from(survival::object_name(object.id)), 13, tones.muted);
-      break;
-    case ObjectKind::Npc:
-      if (!broken) {
-        plates.add(art,
-                   Vector2(box.position.x - 32.0F,
-                           box.position.y + box.size.y + 13.0F),
-                   from(survival::object_name(object.id)), 13, tones.white);
-      }
-      break;
-    case ObjectKind::Ladder:
-    case ObjectKind::Entrance:
-      if (broken) {
-        plates.add(art, Vector2(box.position.x + 36.0F, box.position.y + 21.0F),
-                   "BROKEN", 13, red);
-      }
-      break;
-    case ObjectKind::Terrain:
-    case ObjectKind::MaterialSource:
-      break;
+    const auto box = on_screen(object->area);
+    if (Plates::room().intersects(box)) {
+      // The name asks for a spot inside the play area even where the goal
+      // stands at its edge, so it is left out only when no spot is free.
+      const auto name = place_name(view, goal);
+      const godot::Rect2 room = Plates::room();
+      const auto size = static_cast<float>(NAME_SIZE);
+      const float width = art.text_width(name, NAME_SIZE);
+      plates.add(
+          art,
+          Vector2(std::clamp(box.position.x, room.position.x + 2.0F,
+                             room.get_end().x - width - 2.0F),
+                  std::clamp(box.get_end().y + size, room.position.y + size,
+                             room.get_end().y - size * 0.3F)),
+          name, NAME_SIZE, tones.cyan);
+    }
+  }
+  for (const auto &object : view.world.objects) {
+    const bool passage = object.kind == ObjectKind::Ladder ||
+                         object.kind == ObjectKind::Entrance;
+    if (visible(object) && passage && object.state == ObjectState::Destroyed) {
+      const auto box = on_screen(object.area);
+      plates.add(art, Vector2(box.position.x + 36.0F, box.position.y + 21.0F),
+                 "BROKEN", 13, red);
     }
   }
   for (const auto &area : content.hazards) {
     const auto box = on_screen(area);
     plates.add(
         art,
-        Vector2(box.position.x - 30.0F, box.position.y + box.size.y + 14.0F),
-        "ACID DRIP: -1 health", 13, color(180, 255, 140, 1.0F));
+        Vector2(box.position.x - 8.0F, box.position.y + box.size.y + 36.0F),
+        "-1", COUNT_SIZE, tones.danger, {.icon = Image::HeartFull});
   }
   const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
     const Vector2 feet = to_screen(camera, feet_of(art, actor, body));
@@ -1917,16 +1954,52 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   }
 }
 
+std::optional<Image> item_icon(std::string_view name) {
+  struct NamedIcon {
+    std::string_view name;
+    Image image;
+  };
+  static constexpr std::array ICONS{
+      NamedIcon{.name = "Tomato", .image = Image::IngredientTomato},
+      NamedIcon{.name = "Fish", .image = Image::IngredientFish},
+      NamedIcon{.name = "Kelp", .image = Image::IngredientKelp},
+      NamedIcon{.name = "Mushroom", .image = Image::IngredientMushroom},
+      NamedIcon{.name = "Pickles", .image = Image::IngredientPickles},
+      NamedIcon{.name = "Meat", .image = Image::IngredientMeat},
+      NamedIcon{.name = "Truffle", .image = Image::IngredientTruffle},
+      NamedIcon{.name = "Magnifier", .image = Image::ToolMagnifier},
+      NamedIcon{.name = "Spatula", .image = Image::ToolSpatula},
+      NamedIcon{.name = "Wrench", .image = Image::ToolWrench},
+      NamedIcon{.name = "Mushroom Soup", .image = Image::DishMushroomSoup},
+      NamedIcon{.name = "Fish Stew", .image = Image::DishFishStew},
+      NamedIcon{.name = "Kelp Wrap", .image = Image::DishKelpWrap},
+      NamedIcon{.name = "Meat Skewer", .image = Image::DishMeatSkewer},
+      NamedIcon{.name = "Truffle Roast", .image = Image::DishTruffleRoast},
+      NamedIcon{.name = "Pickle Surprise", .image = Image::DishPickleSurprise},
+      NamedIcon{.name = "Sea Salad", .image = Image::DishSeaSalad},
+      NamedIcon{.name = "Fish Pie", .image = Image::DishFishPie},
+      NamedIcon{.name = "Meat Stew", .image = Image::DishMeatStew},
+      NamedIcon{.name = "Truffle Soup", .image = Image::DishTruffleSoup},
+      NamedIcon{.name = "Surf and Turf", .image = Image::DishSurfAndTurf}};
+  const auto *found = std::ranges::find(ICONS, name, &NamedIcon::name);
+  if (found == ICONS.end()) {
+    return std::nullopt;
+  }
+  return found->image;
+}
+
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::Content &content,
                        const survival::GameView &view,
-                       survival::ControlMap control, const Shot &shot) {
+                       survival::ControlMap control, const Shot &shot,
+                       std::span<const godot::Rect2> covered) {
   const auto markers = markers_of(view, shot.out_of_reach);
-  const auto labels = label_city(art, content, view, control, markers, shot);
+  const auto labels =
+      label_city(art, content, view, control, markers, shot, covered);
   godot::Array pointed;
   for (const auto &pointer : labels.pointers) {
     paint_pointer(canvas, pointer);
-    pointed.push_back(pointer.name);
+    pointed.push_back(from(survival::object_name(pointer.goal)));
   }
   labels.plates.paint(canvas, art);
   godot::Array drawn;
@@ -1936,6 +2009,7 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
     areas.push_back(to_screen(shot.camera, area_rect(marker.object.area)));
   }
   canvas.set_meta("map_plates", labels.plates.boxes());
+  canvas.set_meta("map_words", labels.plates.words());
   canvas.set_meta("map_sources", drawn);
   canvas.set_meta("map_source_areas", areas);
   canvas.set_meta("map_labelled", labels.labelled);
@@ -1967,7 +2041,8 @@ void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
               {.box = plate_box(art, Vector2(1110.0F, 300.0F), feed, 18),
                .text = feed,
                .size = 18,
-               .tint = palette().gold});
+               .tint = palette().gold,
+               .mark = {}});
 }
 
 } // namespace neocity::rendering
