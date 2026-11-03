@@ -14,7 +14,7 @@ namespace neocity::input {
 namespace {
 
 /// One action per menu number, bound to the digit keys in project.godot.
-constexpr std::array OPTIONS{"option_1", "option_2", "option_3"};
+constexpr std::array OPTIONS{"option_1", "option_2", "option_3", "option_4"};
 
 /// Where the mouse is on the current scene's canvas, which the screen draws
 /// on; none with no scene that draws.

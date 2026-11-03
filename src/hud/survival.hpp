@@ -124,6 +124,26 @@ struct VolumeRow {
   bool marked = false;
 };
 
+/// A first-play tip, one line on one concept of the game.
+enum class Tip : std::uint8_t {
+  SetOut,
+  Move,
+  Collect,
+  Appraise,
+  Cook,
+  Feed,
+  ToolDamage,
+  Rejected,
+  Acid,
+  Escape
+};
+
+/// Every tip, in the order a run opens them when several are due at once and
+/// the How to play page lists them.
+inline constexpr std::array TIPS{
+    Tip::SetOut, Tip::Move,       Tip::Collect,  Tip::Appraise, Tip::Cook,
+    Tip::Feed,   Tip::ToolDamage, Tip::Rejected, Tip::Acid,     Tip::Escape};
+
 /// Who plays which actor, as the choice of players offers it.
 enum class SetupEntry : std::uint8_t { Chef, Appraiser, TwoPlayers };
 
@@ -155,20 +175,27 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const std::vector<rendering::Burst> &bursts);
 /// Draws over the scene the city's words and its pointers to each human's
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
-/// phase opens, with the HUD and the flourishes under way. Leaves on the
-/// canvas the area of every panel and chip of the HUD it drew, the fading
-/// notes left out, as the `hud_panels` meta, an array of `Rect2`.
+/// phase opens, with the HUD, `tip` and the flourishes under way. Leaves on
+/// the canvas the area of every panel and chip of the HUD it drew, the fading
+/// notes and the tip left out, as the `hud_panels` meta, an array of `Rect2`.
+/// The tip stands clear of the HUD, the notes, every target and, in the city,
+/// the map's words; it is left out while no place is clear, and the one drawn
+/// is left as the `hud_tip` meta, a dictionary of its `rect`, its `text` and
+/// whether it is drawn over the `city`.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
-                    const std::vector<rendering::Burst> &bursts);
+                    const std::vector<rendering::Burst> &bursts,
+                    std::optional<Tip> tip);
 /// Draws what holds the run over the frozen survival screen; the pause screen
 /// shows `volumes`. Leaves the button it drew on `canvas` as the
-/// `interruption_button` meta, a `Rect2`, empty with none.
+/// `interruption_button` meta, a `Rect2`, empty with none, and marks the
+/// `hud_tip` under it as `held`.
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame,
                         const std::array<VolumeRow, 2> &volumes);
 /// Draws the dark stage under a cinematic scene or, with `fallback`, the
-/// placeholder card that stands in when no scene can play.
+/// placeholder card that stands in when no scene can play, with its button
+/// to skip it or leave for the main menu.
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
@@ -192,6 +219,10 @@ interruption_text(Interruption interruption);
 [[nodiscard]] godot::String hand_off_notice(const SurvivalFrame &frame);
 /// The one line telling the player what to do next.
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
+/// The line of `tip`, which names the action and not its key.
+[[nodiscard]] godot::String tip_text(Tip tip);
+/// Names `tip` for the Godot checks, such as `set_out`.
+[[nodiscard]] godot::String tip_name(Tip tip);
 /// When the escape checks begin, on every survival screen.
 [[nodiscard]] godot::String escape_goal();
 /// The last finished day's result, line by line; empty before the first.
@@ -225,6 +256,10 @@ action_labels(const SurvivalFrame &frame);
 /// end of day and the appraiser's ingredients, and the pause key in both.
 [[nodiscard]] std::vector<Target>
 survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);
+/// The placeholder card's skip, which presses every human's interact key as
+/// the skip key does, and its way to the main menu.
+[[nodiscard]] std::vector<Target>
+cinematic_targets(const rendering::Art &drawing);
 /// What a click acts on over a stopped run: the pause screen's continue,
 /// leave and volume blocks, or a question's answers.
 [[nodiscard]] std::vector<Target>
