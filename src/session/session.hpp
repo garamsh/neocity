@@ -132,7 +132,7 @@ private:
   /// The number the next run's first logged event takes.
   std::uint64_t next_event = 0;
   /// The open run's frame as the last advance left it, which every layer
-  /// draws, so it is read once a frame.
+  /// draws and the status reports, so it is read once a frame.
   std::optional<hud::SurvivalFrame> framed;
   /// What `framed` shows, as the last aim worked it out.
   std::optional<rendering::Shot> shot;
