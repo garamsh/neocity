@@ -2183,10 +2183,10 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
           fitted(move_hint(keys), 14, action_inner - SOLO_TRAVEL - 10.0F));
     } else {
       lines.push_back(fitted(label, BUTTON_SIZE, DUO_INTERACT - padding));
-      lines.push_back(collecting_of(frame.view, actor)
-                          ? fitted(interact_target(frame, actor), BUTTON_SIZE,
-                                   DUO_TRAVEL)
-                          : fitted(travel, BUTTON_SIZE, DUO_TRAVEL - padding));
+      lines.push_back(
+          collecting_of(frame.view, actor)
+              ? fitted(interact_target(frame, actor), BUTTON_SIZE, DUO_TRAVEL)
+              : fitted(travel, BUTTON_SIZE, DUO_TRAVEL - padding));
     }
   }
   for (const auto &rows : {key_rows(frame), control_rows()}) {
