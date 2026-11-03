@@ -410,50 +410,12 @@ std::map<std::uint32_t, std::uint32_t> pack_of(const GameView &view) {
   return pack;
 }
 
-/// An ingredient, tool or dish name and its icon in the art set.
-struct NamedIcon {
-  std::string_view name;
-  rendering::Image image;
-};
-
-/// Icons by the display names `survival::ingredient_name`, `tool_name` and
-/// `food_name` give.
-constexpr std::array ICONS{
-    NamedIcon{.name = "Tomato", .image = rendering::Image::IngredientTomato},
-    NamedIcon{.name = "Fish", .image = rendering::Image::IngredientFish},
-    NamedIcon{.name = "Kelp", .image = rendering::Image::IngredientKelp},
-    NamedIcon{.name = "Mushroom",
-              .image = rendering::Image::IngredientMushroom},
-    NamedIcon{.name = "Pickles", .image = rendering::Image::IngredientPickles},
-    NamedIcon{.name = "Meat", .image = rendering::Image::IngredientMeat},
-    NamedIcon{.name = "Truffle", .image = rendering::Image::IngredientTruffle},
-    NamedIcon{.name = "Magnifier", .image = rendering::Image::ToolMagnifier},
-    NamedIcon{.name = "Spatula", .image = rendering::Image::ToolSpatula},
-    NamedIcon{.name = "Wrench", .image = rendering::Image::ToolWrench},
-    NamedIcon{.name = "Mushroom Soup",
-              .image = rendering::Image::DishMushroomSoup},
-    NamedIcon{.name = "Fish Stew", .image = rendering::Image::DishFishStew},
-    NamedIcon{.name = "Kelp Wrap", .image = rendering::Image::DishKelpWrap},
-    NamedIcon{.name = "Meat Skewer", .image = rendering::Image::DishMeatSkewer},
-    NamedIcon{.name = "Truffle Roast",
-              .image = rendering::Image::DishTruffleRoast},
-    NamedIcon{.name = "Pickle Surprise",
-              .image = rendering::Image::DishPickleSurprise},
-    NamedIcon{.name = "Sea Salad", .image = rendering::Image::DishSeaSalad},
-    NamedIcon{.name = "Fish Pie", .image = rendering::Image::DishFishPie},
-    NamedIcon{.name = "Meat Stew", .image = rendering::Image::DishMeatStew},
-    NamedIcon{.name = "Truffle Soup",
-              .image = rendering::Image::DishTruffleSoup},
-    NamedIcon{.name = "Surf and Turf",
-              .image = rendering::Image::DishSurfAndTurf}};
-
 /// Draws the 48 px icon of `name` with its top-left corner at `at`; a name the
 /// art set has no icon for is written there instead.
 void paint_item(godot::Node2D &canvas, const rendering::Art &drawing,
                 std::string_view name, Vector2 at) {
-  const auto *icon = std::ranges::find(ICONS, name, &NamedIcon::name);
-  if (icon != ICONS.end()) {
-    drawing.image(canvas, icon->image, at);
+  if (const auto icon = rendering::item_icon(name)) {
+    drawing.image(canvas, *icon, at);
     return;
   }
   drawing.text(canvas, at.x, at.y + 28.0F, from(name), SMALL_SIZE,
@@ -2127,17 +2089,13 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const std::vector<rendering::Burst> &bursts,
                     std::optional<Tip> tip) {
   canvas.set_meta("hud_panels", godot::Array());
-  if (frame.view.progression.phase == Phase::Exploration) {
-    // A burn shakes the map's words with the map, not the interface.
-    drawing.shift(canvas, rendering::shake(bursts));
-    rendering::paint_city_labels(canvas, drawing, frame.content.get(),
-                                 frame.view, frame.control, shot);
-    drawing.shift(canvas, {});
+  drawing.shift(canvas, {});
+  const bool city = frame.view.progression.phase == Phase::Exploration;
+  if (city) {
     paint_foot(canvas, drawing, frame);
     paint_actions(canvas, drawing, frame);
     paint_goal(canvas, drawing, next_step(frame), hand_off_notice(frame));
   } else {
-    drawing.shift(canvas, {});
     paint_workshop_screen(canvas, drawing, frame);
     rendering::paint_workshop_bursts(canvas, drawing, bursts);
     // The task card names the step at base; the goal line keeps the notice.
@@ -2145,6 +2103,25 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   paint_corners(canvas, drawing, frame);
   const auto notes = paint_notes(canvas, drawing, frame);
+  godot::Array note_areas;
+  for (const auto &note : notes) {
+    note_areas.push_back(note);
+  }
+  canvas.set_meta("hud_notes", note_areas);
+  if (city) {
+    // The map's words are placed once the HUD has taken its place, clear of
+    // it however far a burn shakes them with the map.
+    const Vector2 shaken = rendering::shake(bursts);
+    std::vector<godot::Rect2> covered = notes;
+    add_areas(covered, canvas, "hud_panels");
+    for (auto &area : covered) {
+      area = area.grow(shaken.length());
+    }
+    drawing.shift(canvas, shaken);
+    rendering::paint_city_labels(canvas, drawing, frame.content.get(),
+                                 frame.view, frame.control, shot, covered);
+    drawing.shift(canvas, {});
+  }
   if (tip) {
     paint_tip(canvas, drawing, frame, *tip, notes);
   }

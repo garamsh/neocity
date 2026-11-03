@@ -175,9 +175,11 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const std::vector<rendering::Burst> &bursts);
 /// Draws over the scene the city's words and its pointers to each human's
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
-/// phase opens, with the HUD, `tip` and the flourishes under way. Leaves on
-/// the canvas the area of every panel and chip of the HUD it drew, the fading
-/// notes and the tip left out, as the `hud_panels` meta, an array of `Rect2`.
+/// phase opens, with the HUD, `tip` and the flourishes under way; the city's
+/// words stand clear of every panel, chip and note of the HUD. Leaves on the
+/// canvas the area of every panel and chip of the HUD it drew, the fading
+/// notes and the tip left out, as the `hud_panels` meta, and the notes' areas
+/// as `hud_notes`, each an array of `Rect2`.
 /// The tip stands clear of the HUD, the notes, every target and, in the city,
 /// the map's words; it is left out while no place is clear, and the one drawn
 /// is left as the `hud_tip` meta, a dictionary of its `rect`, its `text` and

@@ -1916,9 +1916,10 @@ func _backdrop_slides(before: Dictionary, after: Dictionary, where: String) -> b
 	var ordered: bool = shares.size() == 3 and 0.0 < shares[0] and shares[0] < shares[1] and shares[1] < shares[2] and shares[2] < 1.0
 	return _check(is_equal_approx(first.x.x, second.x.x) and absf(moved) >= 100.0 and ordered, "the backdrop's layers slide less than the map the farther back they are %s: the map moved %.0f, the layers by shares %s" % [where, moved, shares])
 
-## No word plate on the screen but a source's count covers a source, now or
-## on any frame walked since the last such check, as the camera moved. The
-## control is that the plates read now hold counts and other words.
+## No word plate on the screen but a source's count covers a source, and none
+## lies under a HUD panel or note, now or on any frame walked since the last
+## such check, as the camera moved and the notes came and went. The control is
+## that the plates read now hold counts and other words.
 func _plates_clear_of_sources(where: String) -> bool:
 	var found: Dictionary = _plates_over_sources()
 	var counts: int = found["counts"]
@@ -1927,17 +1928,22 @@ func _plates_clear_of_sources(where: String) -> bool:
 	var over: Array[String] = found["covered"]
 	covered.append_array(over)
 	covered_on_the_way.clear()
-	return _check(counts > 0 and plates > counts and covered.is_empty(), "no map plate covers a source but its count on %s or on the way: %d plates, %d counts, %s" % [where, plates, counts, covered])
+	return _check(counts > 0 and plates > counts and covered.is_empty(), "no map plate covers a source but its count or lies under the HUD on %s or on the way: %d plates, %d counts, %s" % [where, plates, counts, covered])
 
-## The plates drawn, the sources' counts among them, and the other plates
-## over a source.
+## The plates drawn, the sources' counts among them, the other plates over a
+## source, and every plate under a HUD panel or note.
 func _plates_over_sources() -> Dictionary:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var areas: Array = scene.get_meta("map_source_areas", [])
 	var count_plates: Array = scene.get_meta("map_counts", [])
+	var panels: Array = scene.get_meta("hud_panels", [])
+	var notes: Array = scene.get_meta("hud_notes", [])
 	var counts: int = 0
 	var covered: Array[String] = []
 	for plate: Rect2 in plates:
+		for area: Rect2 in panels + notes:
+			if plate.intersects(area):
+				covered.append("%s under the HUD at %s" % [plate, area])
 		if count_plates.has(plate):
 			counts += 1
 			continue

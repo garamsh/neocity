@@ -10,8 +10,8 @@ extends SceneTree
 ## frames a moment apart on the scene's clock, the finishing pass
 ## breaks the scene's pixels below the sea's surface into smaller ones, the
 ## city draws fewer than 60 frames a second,
-## one of its word plates covers another or a source other than the source's
-## own count, its words name a source's kind or a place other than the goals
+## one of its word plates covers another, a source other than the source's
+## own count, or lies under a HUD panel or note, its words name a source's kind or a place other than the goals
 ## NEXT names, or leave out the goal NEXT names to walk to, the monster's teeth do not show along the top of the play area,
 ## a support reaches down from a walkway too high for it, or the shops, stall
 ## and vending machines do not read warm and lit. The camera shows a part of
@@ -556,7 +556,8 @@ func _save(screen: String) -> Image:
 	return frame
 
 ## Saves a city frame and fails it when one word plate covers another, or a
-## plate other than a source's count covers a source, when it
+## plate other than a source's count covers a source, when a plate lies under
+## a HUD panel or note, when it
 ## drew no plate beyond a count for each source labelled, when its words name
 ## a source's kind or anything but the goals NEXT names, or leave out the goal
 ## NEXT names to walk to, or when a look it shows is wrong.
@@ -584,6 +585,14 @@ func _save_city(screen: String) -> Image:
 		for area: Rect2 in areas:
 			if area.intersects(plate):
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
+				return frame
+	var panels: Array = scene.get_meta("hud_panels", [])
+	var notes: Array = scene.get_meta("hud_notes", [])
+	var hud: Array = panels + notes
+	for plate: Rect2 in plates:
+		for area: Rect2 in hud:
+			if plate.intersects(area):
+				_fail("%s: the plate at %s lies under the HUD at %s" % [screen, plate, area])
 				return frame
 	var misnamed: String = _misnamed()
 	if misnamed != "":
