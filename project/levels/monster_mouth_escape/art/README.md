@@ -8,7 +8,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 - Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the hearts and status icons from `ui/`, the item icons (`icons/`) and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `walkway/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
-- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. World tiles are one cell wide; `walkway/deck.png`, `walkway/truss.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
+- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. World tiles are one cell wide; `walkway/deck.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
 - Every pixel is fully opaque or fully clear.
 - No image contains text except `title/logo.png`. The engine draws every word and number.
@@ -42,15 +42,16 @@ Every walkway is drawn under the floor line of its cell, where an actor's feet a
 
 | Piece | File | Size |
 |---|---|---|
-| Deck, the walked-on surface; repeats horizontally | `walkway/deck.png` | 32×10 |
-| Deck variants: a plate seam, a riveted joint, worn plates | `walkway/deck_seam.png`, `walkway/deck_rivets.png`, `walkway/deck_worn.png` | 32×10 |
-| Truss under a deck; repeats horizontally | `walkway/truss.png` | 32×16 |
-| Snapped end of a walkway, torn on its left or right | `walkway/end_left.png`, `walkway/end_right.png` | 32×32 |
-| Ramp and stairs, rising left to right | `walkway/ramp.png`, `walkway/stairs.png` | 32×32 |
-| Supports; repeat vertically | `walkway/scaffold.png`, `walkway/column.png`, `walkway/pillar.png` | 24×32, 24×32, 20×32 |
+| Slab, the walked-on surface: slate stone blocks with an orange lit top over a steel beam; repeats horizontally | `walkway/deck.png` | 32×28 |
+| Slab variants: a riveted joint, cracked blocks | `walkway/deck_rivets.png`, `walkway/deck_worn.png` | 32×28 |
+| Slab eaten by the acid: pitted stone, green stains, a holed beam | `walkway/deck_corroded.png` | 32×28 |
+| Snapped end of a slab, torn on its left or right | `walkway/end_left.png`, `walkway/end_right.png` | 32×32 |
+| Stairs of the same stone, rising left to right | `walkway/stairs.png` | 32×32 |
+| Supports; repeat vertically | `walkway/pillar.png`, `walkway/column.png` | 24×32, 24×32 |
+| Flesh grown over a slab's front edge, dripping; hangs from just under its top | `walkway/flesh_drip.png` | 40×32 |
 
-- Every deck variant has the outer columns of `deck.png` on both sides, and each snapped end on its joined side, so any two placed side by side meet without a seam.
-- A ramp or stairs spans from the floor line of its own cell down to the row below; mirror it where the step rises to the left.
+- Every slab variant has the outer columns of `deck.png` on both sides, and each snapped end on its joined side, so any two placed side by side meet without a seam.
+- Stairs span from the floor line of their own cell down to the row below; mirror them where they rise to the left. A ramp is one cell of slab tilted the same way, drawn from the slab pictures.
 
 ## Ground
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://by2qo8dljgcu5"
-path="res://.godot/imported/truss.png-e2e7e8d8ccb4d44afcebffdb8efd0051.ctex"
+uid="uid://bvpnufsqtprix"
+path="res://.godot/imported/deck_corroded.png-e2c551133edfd374d56399fded80de2a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/truss.png"
-dest_files=["res://.godot/imported/truss.png-e2e7e8d8ccb4d44afcebffdb8efd0051.ctex"]
+source_file="res://levels/monster_mouth_escape/art/walkway/deck_corroded.png"
+dest_files=["res://.godot/imported/deck_corroded.png-e2c551133edfd374d56399fded80de2a.ctex"]
 
 [params]
 

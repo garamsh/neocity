@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kfsr10ri24nm"
-path="res://.godot/imported/scaffold.png-2f5e9fecfa8c0ac6fd70cb677fa05498.ctex"
+uid="uid://ci0lt2eptda5h"
+path="res://.godot/imported/flesh_drip.png-2a4acbdc69c5e2a5e942e86aa3b0a3ae.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/scaffold.png"
-dest_files=["res://.godot/imported/scaffold.png-2f5e9fecfa8c0ac6fd70cb677fa05498.ctex"]
+source_file="res://levels/monster_mouth_escape/art/walkway/flesh_drip.png"
+dest_files=["res://.godot/imported/flesh_drip.png-2a4acbdc69c5e2a5e942e86aa3b0a3ae.ctex"]
 
 [params]
 

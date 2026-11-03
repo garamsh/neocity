@@ -101,26 +101,22 @@ const char *path(Image image) {
     return "characters/appraiser_climb.png";
   case Image::Deck:
     return "walkway/deck.png";
-  case Image::DeckSeam:
-    return "walkway/deck_seam.png";
   case Image::DeckRivets:
     return "walkway/deck_rivets.png";
   case Image::DeckWorn:
     return "walkway/deck_worn.png";
-  case Image::Truss:
-    return "walkway/truss.png";
+  case Image::DeckCorroded:
+    return "walkway/deck_corroded.png";
+  case Image::FleshDrip:
+    return "walkway/flesh_drip.png";
   case Image::EndLeft:
     return "walkway/end_left.png";
   case Image::EndRight:
     return "walkway/end_right.png";
-  case Image::Scaffold:
-    return "walkway/scaffold.png";
   case Image::Pillar:
     return "walkway/pillar.png";
   case Image::Column:
     return "walkway/column.png";
-  case Image::Ramp:
-    return "walkway/ramp.png";
   case Image::Stairs:
     return "walkway/stairs.png";
   case Image::Rubble:
