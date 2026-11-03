@@ -15,6 +15,10 @@ extends SceneTree
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
+## On Wayland, Godot 4.7.2 can hang after quit() (godotengine/godot#123059,
+## docs/architecture/godot-runtime.md), so run it under a watchdog that ends
+## Godot 30 seconds after its "Capture: no map plate" or "ERROR:" line, and
+## read the result from that line when the watchdog fired.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
