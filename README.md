@@ -14,6 +14,8 @@ The game opens on the title screen, the monster's mouth behind the game's logo:
 
 On the title screen and on the choice of players, move the cursor with W or up and S or down, and press Enter; 1, 2, and 3 choose an entry directly. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
 
+The mouse does what the keys do, so only movement needs the keyboard. Click a menu entry, the action button to collect or repair, the travel words to set out or return, the chef to cook, the appraiser's ingredients to appraise, the task card's step, its feed and end-of-day lines, the dish line to choose the next dish, or the pause chip. On the pause screen, click continue, leave, or a volume block. Something that can be clicked lights up under the mouse, and one that does nothing now says why. With two players on one mouse, the chef cooks, feeds and ends the day, the appraiser appraises, and in the city each player clicks their own button.
+
 | Input | Player 1 | Player 2 |
 |---|---|---|
 | Move | WASD or arrows | IJKL |
@@ -53,7 +55,7 @@ make ci
 - `make lint`: clang-tidy with warnings as errors.
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rules library and extension, pinned Godot version, and resource import.
-- `make test`: the survival library's unit tests through CTest, configured main-scene readiness, live checks of the title screen, live checks pressing the arrow keys and player two's keys, the survival fixed-step checks at two frame rates and on the real clock, and live checks playing the survival game with real key events.
+- `make test`: the survival library's unit tests through CTest, configured main-scene readiness, live checks of the title screen, live checks pressing the arrow keys and player two's keys, the survival fixed-step checks at two frame rates and on the real clock, and live checks playing the survival game with real key and mouse events.
 - `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed by the first Make entry point, from the repository root:
 
 ```sh
