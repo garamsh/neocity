@@ -18,7 +18,7 @@ jobs:
           python-version: '3.13'
       - name: Set up verified Godot
         run: sh .github/scripts/setup-godot.sh
-      - run: python .github/scripts/run-with-limit.py 1200 make ci
+      - run: python .github/scripts/run-with-limit.py 480 make ci
       - name: Report Godot crash
         if: failure()
         run: sh .github/scripts/report-godot-crash.sh
