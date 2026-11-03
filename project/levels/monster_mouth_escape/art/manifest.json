@@ -312,6 +312,106 @@
    "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
   },
   {
+   "path": "world/facade_concrete.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: cracked violet and magenta concrete, two storeys of windows, a few lit warm orange; tiles in both directions"
+  },
+  {
+   "path": "world/facade_brick.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: deep purple brick with tall windows, one lit; tiles in both directions"
+  },
+  {
+   "path": "world/facade_office.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: a plum office tower's grid of dark blue windows with lit ones and ledges between floors; tiles in both directions"
+  },
+  {
+   "path": "world/facade_tenement.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: pink stucco tenement with shuttered windows and iron balconies; tiles in both directions"
+  },
+  {
+   "path": "world/wall_ac.png",
+   "size": [
+    26,
+    18
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rusty air conditioner unit on a wall"
+  },
+  {
+   "path": "world/wall_sign.png",
+   "size": [
+    30,
+    16
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Dead neon sign box, its magenta tube frame round a blank face"
+  },
+  {
+   "path": "world/wall_shutter.png",
+   "size": [
+    28,
+    22
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rolled-down shop shutter in a door frame"
+  },
+  {
+   "path": "world/wall_shop_window.png",
+   "size": [
+    30,
+    30
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Lit shop window: shelves of jars and a lantern behind it"
+  },
+  {
+   "path": "world/wall_pipe.png",
+   "size": [
+    12,
+    40
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rusty drainpipe with brackets, bent at its foot"
+  },
+  {
+   "path": "world/waterline.png",
+   "size": [
+    64,
+    18
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Flesh and green slime grown over a sunken building's foot where it meets the acid; tiles horizontally"
+  },
+  {
    "path": "world/vending_machine.png",
    "size": [
     48,
@@ -428,7 +528,7 @@
     28
    ],
    "scale": 1,
-   "colours": 11,
+   "colours": 12,
    "depicts": "Walkway slab: a thick slab of slate stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
   },
   {
@@ -448,7 +548,7 @@
     28
    ],
    "scale": 1,
-   "colours": 10,
+   "colours": 12,
    "depicts": "Walkway slab variant: cracked stone blocks"
   },
   {
@@ -458,7 +558,7 @@
     28
    ],
    "scale": 1,
-   "colours": 11,
+   "colours": 12,
    "depicts": "Walkway slab eaten by the acid: pitted stone, green stains, holes in the beam"
   },
   {
@@ -478,7 +578,7 @@
     32
    ],
    "scale": 1,
-   "colours": 11,
+   "colours": 12,
    "depicts": "Snapped left end of a walkway slab: jagged stone and bent rebar on its left"
   },
   {
@@ -510,16 +610,6 @@
    "scale": 1,
    "colours": 11,
    "depicts": "Support: a bolted iron I-beam column; tiles vertically"
-  },
-  {
-   "path": "walkway/stairs.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 8,
-   "depicts": "Stairs: slate stone steps with orange lit treads rising left to right; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",
