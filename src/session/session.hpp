@@ -98,7 +98,7 @@ public:
 
 private:
   void advance_screen(double delta, const Command &command);
-  /// Whether a run plays under no cinematic, with its frame and shot read.
+  /// Whether the survival screen is open under no cinematic.
   [[nodiscard]] bool playing() const;
   void enter(Screen destination);
   void choose(std::size_t option);

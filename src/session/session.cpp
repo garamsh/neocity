@@ -476,19 +476,19 @@ void Session::paint(godot::Node2D &canvas,
 }
 
 bool Session::playing() const {
-  return screen == Screen::Survival && !playback && framed && shot;
+  return screen == Screen::Survival && !playback;
 }
 
 void Session::paint_world(godot::Node2D &canvas,
                           const rendering::Art &drawing) const {
-  if (playing()) {
+  if (playing() && framed && shot) {
     hud::paint_survival_world(canvas, drawing, *framed, *shot, bursts);
   }
 }
 
 void Session::paint_glow(godot::Node2D &canvas,
                          const rendering::Art &drawing) const {
-  if (playing()) {
+  if (playing() && framed && shot) {
     hud::paint_survival_glow(canvas, drawing, *framed, *shot, bursts);
   }
 }
