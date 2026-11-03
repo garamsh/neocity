@@ -1171,7 +1171,7 @@ func _appraiser_run() -> void:
 		return
 	var by_mouse: int = _int("identified")
 	var failed_before: bool = _next_event_has("appraisal failed")
-	if not _check(await _click("appraiser_interact") and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
+	if not _check(await _click_on(_topmost("appraiser_interact")) and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
 		return
 	var identified: int = _int("identified")
 	var attempts: int = 0
@@ -1919,10 +1919,25 @@ func _point_at(target: Dictionary) -> void:
 	event.global_position = event.position
 	Input.parse_input_event(event)
 
+## Of the targets pressing `press`, the one highest on the screen, such as the
+## ingredients over the appraiser's head above the task card; empty with none.
+func _topmost(press: String) -> Dictionary:
+	var found: Dictionary = {}
+	var targets: Array = scene.get_meta("pointer_targets", [])
+	for target: Dictionary in targets:
+		var area: Rect2 = target["rect"]
+		var best: Rect2 = found.get("rect", Rect2(0, INF, 0, 0))
+		if target["press"] == press and area.position.y < best.position.y:
+			found = target
+	return found
+
 ## Points at the target pressing `press` and clicks it with the left button;
 ## false when the screen shows no such target.
 func _click(press: String) -> bool:
-	var target: Dictionary = _target(press)
+	return await _click_on(_target(press))
+
+## Points at `target` and clicks it with the left button; false for none.
+func _click_on(target: Dictionary) -> bool:
 	if target.is_empty():
 		return false
 	_point_at(target)
