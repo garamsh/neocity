@@ -15,6 +15,10 @@ extends SceneTree
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
+## On Wayland, Godot 4.7.2 can hang after quit() (godotengine/godot#123059,
+## docs/architecture/godot-runtime.md), so run it under a watchdog that ends
+## Godot 30 seconds after it prints "Capture: finished: pass" or
+## "Capture: finished: fail: <reason>", and read the result from that line.
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
@@ -133,6 +137,8 @@ var acid_frames: int = 0
 var band_frames: int = 0
 var grid_frames: int = 0
 var light_frames: int = 0
+## Set once the run has printed its result line.
+var finished: bool = false
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -319,20 +325,30 @@ func _run() -> void:
 	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d and the acid light in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
+	_finish("pass")
 	quit(0)
 
-## Presses the one key NEXT names, or lets the day run while it names none.
+## Whether NEXT names what the interact key does: collect, repair, appraise
+## or cook, as the controls page lists for it.
+func _names_interact(line: String) -> bool:
+	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+		if line.begins_with(verb):
+			return true
+	return false
+
+## Presses the key for the one action NEXT names, as the controls page lists
+## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = scene.survival_status().get("next", "")
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
-	elif line.contains("[F] Feed"):
+	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
-	elif line.contains("[R] "):
+	elif line.begins_with("Replace "):
 		await _tap(KEY_R)
-	elif line.contains("[G] "):
+	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
-	elif line.contains("[E] "):
+	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
 		var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
@@ -863,7 +879,15 @@ func _pixel(frame: Image, view: Transform2D, point: Vector2) -> float:
 
 func _fail(message: String) -> void:
 	push_error(message)
+	_finish("fail: " + message)
 	quit(1)
+
+## Prints the run's result line once: a failure can be followed by another
+## before quit() takes effect.
+func _finish(result: String) -> void:
+	if not finished:
+		finished = true
+		print("Capture: finished: ", result)
 
 func _tap(code: Key) -> void:
 	_key(code, true)
