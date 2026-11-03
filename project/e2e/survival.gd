@@ -73,6 +73,9 @@ const LOOK_AHEAD: float = 80.0
 ## How far apart, in scene pixels, two humans stand when the camera must draw
 ## them smaller than twice the scene's size to frame both.
 const APART: float = 480.0
+## Where the workshop draws the ingredients waiting for appraisal, over the
+## appraiser's head.
+const APPRAISER_HEAD: Vector2 = Vector2(216, 166)
 ## The face the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
 ## The face's grid, in pixels per em, which every drawn size is a multiple of.
@@ -1171,7 +1174,7 @@ func _appraiser_run() -> void:
 		return
 	var by_mouse: int = _int("identified")
 	var failed_before: bool = _next_event_has("appraisal failed")
-	if not _check(await _click_on(_topmost("appraiser_interact")) and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
+	if not _check(await _click_on(_target_at(APPRAISER_HEAD)) and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
 		return
 	var identified: int = _int("identified")
 	var attempts: int = 0
@@ -1919,15 +1922,13 @@ func _point_at(target: Dictionary) -> void:
 	event.global_position = event.position
 	Input.parse_input_event(event)
 
-## Of the targets pressing `press`, the one highest on the screen, such as the
-## ingredients over the appraiser's head above the task card; empty with none.
-func _topmost(press: String) -> Dictionary:
+## The target drawn last under `point` on the screen; empty over none.
+func _target_at(point: Vector2) -> Dictionary:
 	var found: Dictionary = {}
 	var targets: Array = scene.get_meta("pointer_targets", [])
 	for target: Dictionary in targets:
 		var area: Rect2 = target["rect"]
-		var best: Rect2 = found.get("rect", Rect2(0, INF, 0, 0))
-		if target["press"] == press and area.position.y < best.position.y:
+		if area.has_point(point):
 			found = target
 	return found
 
