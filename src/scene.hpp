@@ -79,12 +79,18 @@ private:
   [[nodiscard]] bool cinematic_playing() const;
   void stop_cinematic();
   session::SurvivalFeatures start_survival();
+  void draw_world();
+  void draw_glow();
 
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
   session::Session session;
   std::optional<rendering::Art> drawing;
   std::optional<audio::Speaker> speaker;
+  /// The layers drawn behind this node's own drawing: the scene, then the
+  /// light added over it. The tree owns them.
+  godot::Node2D *world = nullptr;
+  godot::Node2D *glow = nullptr;
 };
 
 } // namespace neocity

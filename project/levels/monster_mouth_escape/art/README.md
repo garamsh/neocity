@@ -8,8 +8,8 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 - Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the hearts and status icons from `ui/`, the item icons (`icons/`) and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `walkway/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
-- The map grid is 36×16 cells of 32 px on a 1280×720 screen. World tiles are one cell wide; `walkway/deck.png`, `walkway/truss.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
-- Every PNG is drawn at 1:1 screen pixels. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
+- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. World tiles are one cell wide; `walkway/deck.png`, `walkway/truss.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
+- Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
 - Every pixel is fully opaque or fully clear.
 - No image contains text except `title/logo.png`. The engine draws every word and number.
 
@@ -25,8 +25,10 @@ Every PNG keeps these, and `pixelize.py check` measures them on the art's own pi
 ## Layers
 
 - `backgrounds/throat.png` (1280×720, opaque) is the back layer.
-- `backgrounds/city.png` (1280×288) is a distant skyline band. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
-- `backgrounds/acid.png` (1280×492) is the front layer. Its surface is near the top edge: move the layer so that edge follows the acid level, and fill any screen area below it with its bottom row.
+- `backgrounds/city.png` (1280×480) is the middle layer: a swallowed city of tilted towers sunk in flesh, with an elevated railway and a train skewered into the flesh, clear above the skyline. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
+- `backgrounds/acid.png` (1280×492) is the acid, both the band nearest behind the map and the sea in the scene. Its surface is near the top edge: move the layer so that edge follows the acid level, and fill any screen area below it with its bottom row.
+- The backdrop layers are not tiles; drawn beside a mirrored copy, each meets it without a seam.
+- `glow.tres` is the blend-add material of the layer that adds light over the scene.
 
 ## Characters
 

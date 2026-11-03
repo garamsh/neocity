@@ -77,8 +77,14 @@ public:
   /// Samples edges once and advances the open screen; a survival run takes all
   /// of the frame time.
   void advance(double delta, Command command);
-  /// Draws the menus or the open game.
+  /// Draws the menus or the open game, over what `paint_world` and
+  /// `paint_glow` draw.
   void paint(godot::Node2D &canvas, const rendering::Art &drawing) const;
+  /// Draws the open run's scene, behind everything `paint` draws.
+  void paint_world(godot::Node2D &canvas, const rendering::Art &drawing) const;
+  /// Draws the open run's light over its scene, for a canvas that blends by
+  /// adding.
+  void paint_glow(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Names the current screen.
   [[nodiscard]] godot::String screen_name() const;
   /// Who drives each survival actor, or nothing with no run open.
@@ -88,6 +94,9 @@ public:
   [[nodiscard]] godot::Dictionary survival_status() const;
 
 private:
+  void advance_screen(double delta, const Command &command);
+  /// The open run's frame, when one plays under no cinematic.
+  [[nodiscard]] const hud::SurvivalFrame *playing() const;
   void enter(Screen destination);
   void choose(std::size_t option);
   void select(hud::TitleEntry entry);
@@ -113,6 +122,9 @@ private:
 
   StartSurvival start;
   std::optional<SurvivalRun> run;
+  /// The open run's frame as the last advance left it, which every layer
+  /// draws, so it is read once a frame.
+  std::optional<hud::SurvivalFrame> framed;
   CinematicStage stage;
   SoundStage sound;
   Volume volume;

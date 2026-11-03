@@ -48,6 +48,18 @@ const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2
 ## From the entrance up the ramp, over the overpass and up the roof ladder to
 ## the roof bag.
 const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5), Vector2i(18, 2), Vector2i(23, 2)]
+## The map's top-left corner and size in the scene, as the city draws it; a
+## sub-cell is one scene pixel, and the scene is 720 pixels tall.
+const MAP_ORIGIN: Vector2 = Vector2(64, 70)
+const MAP_SIZE: Vector2 = Vector2(36 * 32, 16 * 32)
+const SCENE_HEIGHT: float = 720.0
+## The play area between the top bar and the cards, on screen.
+const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
+## Longer than the camera's eased motion, which runs on the real clock.
+const SETTLE_MSEC: int = 400
+## How far apart, in scene pixels, two humans stand when the camera must draw
+## them smaller than twice the scene's size to frame both.
+const APART: float = 480.0
 ## The weight the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Inter-SemiBold.ttf"
 
@@ -298,6 +310,10 @@ func _first_day() -> void:
 		return
 	if not _plates_apart("the first city screen"):
 		return
+	if not await _camera_holds("the first city screen"):
+		return
+	if not _points_to_goal("the first city screen"):
+		return
 	if not _check(_goal_shown(), "the city shows when escape checks begin"):
 		return
 	if not _check(_screen_shows("[E] Use") and not _screen_shows("[E] Collect") and _screen_shows("[Q] Return to base") and _screen_shows("WASD move  Shift run"), "away from a source the action card shows E unlit, Q home and the move keys"):
@@ -356,6 +372,10 @@ func _third_day_falls() -> void:
 		return
 	if not await _walk_to(18, 5):
 		return
+	if not await _camera_ignores_partner("the overpass on day three"):
+		return
+	if not _points_to_goal("the overpass on day three"):
+		return
 	var remaining: int = _int("remaining_ms")
 	var pack: int = _actor("chef", "ingredients")
 	# Let go once off the edge: held, the key would carry the fall onto the
@@ -402,6 +422,10 @@ func _exhaust_the_chef() -> void:
 		return
 	await _frames(2)
 	if not _plates_apart("the damaged city at acid %d" % _int("acid")):
+		return
+	if not await _camera_holds("the damaged city"):
+		return
+	if not _points_to_goal("the damaged city"):
 		return
 	if not _gone_bags_leave_the_map():
 		return
@@ -800,6 +824,10 @@ func _wrench_stops_setting_out_with_no_stock_behind() -> void:
 	await _frames(2)
 	if not _plates_apart("the city at acid %d" % _int("acid")):
 		return
+	if not await _camera_holds("the city at acid %d" % _int("acid")):
+		return
+	if not _points_to_goal("the city at acid %d" % _int("acid")):
+		return
 	if not await _walk_route(LADDER_ROUTE):
 		return
 	if not _check(_next().contains("Nothing is within reach"), "beside the dead passage the line names no repair"):
@@ -1051,6 +1079,19 @@ func _two_players() -> void:
 	if not _text_fits("two players in the city"):
 		return
 	if not _plates_apart("two players in the city"):
+		return
+	if not await _camera_holds("two players in the city"):
+		return
+	# Player two climbs to the arcade, rows above player one, so the camera
+	# has to draw both smaller to frame them.
+	var leading: String = walker
+	walker = "appraiser"
+	if not await _walk_route(CRATE_ROUTE):
+		return
+	walker = leading
+	if not _check(absf(_feet("chef").y - _feet("appraiser").y) >= APART / 4.0, "the two players stand apart: %s and %s" % [_feet("chef"), _feet("appraiser")]):
+		return
+	if not await _camera_holds("two players apart"):
 		return
 	await _tap(KEY_Q)
 	if not await _until("player one goes home", func() -> bool: return _where("chef") == "base", 30):
@@ -1310,11 +1351,12 @@ func _gone_bags_leave_the_map() -> bool:
 	return _check(not gone.is_empty() and hidden and shown and drawn.has("Vendor Cart") and _object("Noodle Vendor") == "destroyed", "a bag carried off or emptied leaves the map while the rest stay: gone %s, drawn %s" % [gone, drawn])
 
 ## No word plate on the map covers another; the control is that the plates
-## read are the city's: more than a count and a name for each source drawn.
+## read are the city's: more than a count and a name for each source whose
+## count is on the play area.
 func _plates_apart(where: String) -> bool:
 	var plates: Array = scene.get_meta("map_plates", [])
-	var drawn: Array = scene.get_meta("map_sources", [])
-	var sources: int = drawn.size()
+	var labelled: Array = scene.get_meta("map_labelled", [])
+	var sources: int = labelled.size()
 	var covered: Array[String] = []
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
@@ -1323,6 +1365,65 @@ func _plates_apart(where: String) -> bool:
 			if one.intersects(other):
 				covered.append("%s over %s" % [one, other])
 	return _check(sources > 0 and plates.size() > 2 * sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
+
+## Where a human's feet are in the scene.
+func _feet(who: String) -> Vector2:
+	return MAP_ORIGIN + Vector2(_actor(who, "sub_x"), _actor(who, "sub_y"))
+
+## The humans out in the city.
+func _humans_out() -> Array[String]:
+	var out: Array[String] = []
+	for who: String in ["chef", "appraiser"]:
+		if _actor(who, "key_set") >= 0 and _where(who) == "city":
+			out.append(who)
+	return out
+
+## Once the camera has settled: every human in the city stands on the play
+## area; the view shows nothing past the map's sides or the scene's top and
+## bottom, and centres on the map when wider than it; one human is drawn at
+## twice the scene's size, and two between once and twice, smaller than twice
+## when they stand APART or more.
+func _camera_holds(where: String) -> bool:
+	OS.delay_msec(SETTLE_MSEC)
+	await _frames(2)
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var zoom: float = view.x.x
+	var humans: Array[String] = _humans_out()
+	var shown: bool = humans.all(func(who: String) -> bool: return PLAY.has_point(view * _feet(who)))
+	var left: float = (view * MAP_ORIGIN).x
+	var right: float = (view * (MAP_ORIGIN + MAP_SIZE)).x
+	var inside: bool = (view * Vector2.ZERO).y <= 0.0 and (view * Vector2(0, SCENE_HEIGHT)).y >= SCENE_HEIGHT
+	if right - left >= PLAY.size.x:
+		inside = inside and left <= 0.0 and right >= PLAY.size.x
+	else:
+		inside = inside and absf((left + right) / 2.0 - PLAY.size.x / 2.0) <= 1.0
+	var framed: bool = is_equal_approx(zoom, 2.0)
+	if humans.size() == 2:
+		var apart: Vector2 = (_feet("chef") - _feet("appraiser")).abs()
+		framed = zoom >= 1.0 and zoom <= 2.0 and (zoom < 2.0 or (apart.x < APART and apart.y < APART / 4.0))
+	return _check(not humans.is_empty() and shown and inside and framed, "the camera frames the humans on %s: zoom %.2f, humans %s at %s, map from x %.0f to %.0f" % [where, zoom, humans, humans.map(func(who: String) -> Vector2: return view * _feet(who)), left, right])
+
+## With one human, an AI partner far off does not pull the camera: it stays
+## at twice the scene's size on the human. The control is that the partner
+## stands where a camera framing both would have to draw them smaller.
+func _camera_ignores_partner(where: String) -> bool:
+	var apart: Vector2 = (_feet("chef") - _feet("appraiser")).abs()
+	if not _check(_where("appraiser") == "city" and _actor("appraiser", "key_set") == -1 and (apart.x >= APART or apart.y >= APART / 4.0), "the AI partner stands far off on %s: %s apart" % [where, apart]):
+		return false
+	return await _camera_holds(where)
+
+## The goal the NEXT line names for the human gets a pointer at the screen's
+## edge exactly when its count is not on the play area.
+func _points_to_goal(where: String) -> bool:
+	var line: String = _next()
+	if not (line.begins_with("Walk ") or line.begins_with("Jump ") or line.begins_with("Climb ")):
+		var none: Array = scene.get_meta("map_pointers", [])
+		return _check(none.is_empty(), "nothing is pointed at while no goal is named on %s: %s" % [where, line])
+	var goal: String = line.get_slice(" to ", 1).get_slice(".", 0)
+	var drawn: Array = scene.get_meta("map_sources", [])
+	var labelled: Array = scene.get_meta("map_labelled", [])
+	var pointers: Array = scene.get_meta("map_pointers", [])
+	return _check(line.contains(" to ") and drawn.has(goal) and pointers.has(goal) != labelled.has(goal), "the goal %s is on the play area or pointed at on %s: labelled %s, pointers %s" % [goal, where, labelled, pointers])
 
 func _next_event_has(text: String) -> bool:
 	for event: String in _events():

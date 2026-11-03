@@ -127,8 +127,20 @@ inline constexpr std::array SETUP_ENTRIES{
 /// Draws the choice of who plays which actor with `selected` marked.
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected);
-/// Draws the city or the workshop, whichever the phase opens, with the HUD
-/// and the flourishes under way.
+/// Draws the scene behind the survival screen: the backdrop, and in the city
+/// the map with its flourishes under way, as the camera shows them. A burn
+/// shakes it.
+void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
+                          const SurvivalFrame &frame,
+                          const std::vector<rendering::Burst> &bursts);
+/// Draws the light over the scene `paint_survival_world` draws, for a canvas
+/// that blends by adding.
+void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
+                         const SurvivalFrame &frame,
+                         const std::vector<rendering::Burst> &bursts);
+/// Draws over the scene the city's words and its pointers to each human's
+/// goal off the screen, or the workshop, whichever the phase opens, with the
+/// HUD and the flourishes under way.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame,
                     const std::vector<rendering::Burst> &bursts);

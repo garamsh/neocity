@@ -1,6 +1,6 @@
 # ADR 0007: Move actors through a side view with gravity
 
-> Status: accepted
+> Status: accepted; the one screen superseded by ADR-0009
 > Date: 2026-11-03
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.
