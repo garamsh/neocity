@@ -23,7 +23,7 @@ The city is finished by one full-screen pass over the drawn scene and its light,
 
 ## Consequences
 
-- The pass runs only on a frame whose backdrop noted where the acid lies; the menus, the workshop and the cinematic card are not finished.
+- The pass runs only on a frame whose backdrop noted where the acid lies: the city, and the backdrop under the workshop's kitchen. The menus and the interface are not finished.
 - The headless checks run on the dummy renderer, which draws nothing, so the pass and its shader do not reach them; the capture checks read the finished frame, and measure the acid's motion between two frames, the scene's pixels below the sea's surface, and the frame rate.
 - The pass tells acid from everything else by its colour, green well over red and blue: anything drawn in that green takes the acid's ripple and web.
 - The pass reads the screen once per frame and samples its mipmaps; at 1280×720 it costs a copy of the screen and a few texture reads a pixel.
