@@ -1672,9 +1672,26 @@ constexpr std::array<survival::ActionResult, 35> REFUSALS{
     survival::WorkshopResult::Applied,
     survival::WorkshopResult::Failed};
 
+/// One object for each place name; a line names the place, so objects that
+/// share a name print the same lines.
+std::vector<survival::ObjectId> named_once(const GameView &view) {
+  std::vector<String> names;
+  std::vector<survival::ObjectId> objects;
+  for (const auto &object : view.world.objects) {
+    auto name = rendering::place_name(view, object.id);
+    if (std::ranges::find(names, name) == names.end()) {
+      names.push_back(std::move(name));
+      objects.push_back(object.id);
+    }
+  }
+  return objects;
+}
+
 /// Every sentence the log can show in this run: each actor's, place's,
-/// ingredient's and dish's, and every refusal.
-std::vector<String> every_note(const SurvivalFrame &frame) {
+/// ingredient's and dish's, and every refusal, with `places` from
+/// `named_once`.
+std::vector<String> every_note(const SurvivalFrame &frame,
+                               const std::vector<survival::ObjectId> &places) {
   const auto &view = frame.view;
   const auto &tuning = frame.content.get().companion;
   // A day number of three digits stands for any day a run reaches.
@@ -1693,18 +1710,18 @@ std::vector<String> every_note(const SurvivalFrame &frame) {
       acted(actor, survival::ReturnToBase{}, result);
       acted(actor, survival::ReplaceTool{}, result);
     }
-    for (const auto &object : view.world.objects) {
-      acted(actor, survival::Collect{.source = object.id},
+    for (const auto object : places) {
+      acted(actor, survival::Collect{.source = object},
             survival::CollectionResult::Applied);
-      acted(actor, survival::Repair{.target = object.id, .tool = {}},
+      acted(actor, survival::Repair{.target = object, .tool = {}},
             survival::RepairResult::Applied);
     }
   }
-  for (const auto &object : view.world.objects) {
-    events.emplace_back(WorldEvent{.object = object.id,
+  for (const auto object : places) {
+    events.emplace_back(WorldEvent{.object = object,
                                    .state = survival::ObjectState::Destroyed});
-    events.emplace_back(WorldEvent{.object = object.id,
-                                   .state = survival::ObjectState::Intact});
+    events.emplace_back(
+        WorldEvent{.object = object, .state = survival::ObjectState::Intact});
   }
   for (const auto &flavor : tuning.workshop.flavors) {
     for (const auto result : {survival::WorkshopResult::Applied,
@@ -2305,6 +2322,7 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   // Words on a button stay inside its padding.
   const float padding = 2.0F * BUTTON_PAD;
   const float goal_inner = GOAL_WIDTH - 2.0F * GOAL_PAD;
+  const auto places = named_once(frame.view);
   std::vector<FittedText> lines;
   lines.push_back(fitted(PAUSE_HINT, SMALL_SIZE, TIME_WIDTH - 40.0F));
   // The NEXT step is the goal line in the city and the task card at base.
@@ -2314,7 +2332,7 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
     lines.push_back(fitted(next_step(frame), GOAL_SIZE, goal_inner));
   }
   lines.push_back(fitted(hand_off_notice(frame), HAND_OFF_SIZE, goal_inner));
-  for (const auto &note : every_note(frame)) {
+  for (const auto &note : every_note(frame, places)) {
     lines.push_back(fitted(note, SMALL_SIZE, NOTE_WIDTH - 20.0F));
   }
   for (const auto &line : day_result(frame)) {
@@ -2339,8 +2357,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
     const auto &keys = KEY_LABELS.at(set);
     labels.push_back(interact_label(frame, actor, keys));
     lines.push_back(fitted(key_hint(frame, actor, keys), SMALL_SIZE, hint));
-    for (const auto &object : frame.view.world.objects) {
-      const String place = rendering::place_name(frame.view, object.id);
+    for (const auto object : places) {
+      const String place = rendering::place_name(frame.view, object);
       labels.push_back(key(keys.interact) + "COLLECT " + place);
       labels.push_back(key(keys.interact) + "REPAIR " + place);
     }

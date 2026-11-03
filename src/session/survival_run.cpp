@@ -542,8 +542,7 @@ std::uint64_t SurvivalRun::next_event() const {
   return first_logged + events.size();
 }
 
-godot::Dictionary SurvivalRun::status() const {
-  const auto current = frame();
+godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
   const auto &view = current.view;
   godot::Dictionary status;
   status.set("day", view.progression.day);
