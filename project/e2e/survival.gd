@@ -374,6 +374,8 @@ func _first_day() -> void:
 		return
 	if not _text_fits("the first city screen"):
 		return
+	if not _every_place_measured():
+		return
 	if not _plates_apart("the first city screen"):
 		return
 	if not _plates_clear_of_sources("the first city screen"):
@@ -1450,6 +1452,21 @@ func _action(index: int) -> String:
 ## The keys of the caps drawn over the humans' heads in the last frame.
 func _head_caps() -> Array:
 	return scene.get_meta("head_caps", [])
+
+## Every place the map names has its button and its log lines among the
+## changing lines, so the measure covers each name and not only some.
+func _every_place_measured() -> bool:
+	var texts: Array[String] = []
+	for line: Dictionary in _changing_text():
+		texts.append(str(line["text"]))
+	var places: Dictionary = _status()["places"]
+	var missing: Array[String] = []
+	for object: String in places:
+		var place: String = str(places[object])
+		var listed: bool = texts.has("[E] COLLECT " + place) and texts.has("Chef repaired " + place + ".") and texts.has(place + " appeared.")
+		if not listed and not missing.has(place):
+			missing.append(place)
+	return _check(not places.is_empty() and missing.is_empty(), "every place's lines are measured: %s" % [missing])
 
 ## Measures every changing line in the font and weight the screen draws it with.
 func _text_fits(where: String) -> bool:
