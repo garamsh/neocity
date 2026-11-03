@@ -7,6 +7,7 @@
 #include "../rendering/drawing.hpp"
 #include "sound.hpp"
 #include "survival_run.hpp"
+#include "tips.hpp"
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -18,9 +19,15 @@
 
 namespace neocity::session {
 
-/// The host's screens: the title screen, its controls page, the choice of
-/// players, and the survival game.
-enum class Screen : std::uint8_t { Main, Controls, SurvivalSetup, Survival };
+/// The host's screens: the title screen, its controls and How to play pages,
+/// the choice of players, and the survival game.
+enum class Screen : std::uint8_t {
+  Main,
+  Controls,
+  HowToPlay,
+  SurvivalSetup,
+  Survival
+};
 
 /// A press that moves the cursor of the title screen or the choice of players,
 /// or, left and right, changes a volume on the pause screen.
@@ -89,7 +96,8 @@ public:
   /// Draws the menus or the open game, over what `paint_world` and
   /// `paint_glow` draw, and leaves on `canvas` the lines it wrote as the
   /// `screen_text` meta, an array of strings, and the sizes it drew them at as
-  /// the `screen_text_sizes` meta, an array of integers.
+  /// the `screen_text_sizes` meta, an array of integers. The `hud_tip` meta
+  /// is emptied first, so it holds only a tip this frame drew.
   void paint(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Draws the open run's scene, behind everything `paint` draws.
   void paint_world(godot::Node2D &canvas, const rendering::Art &drawing) const;
@@ -100,8 +108,8 @@ public:
   [[nodiscard]] godot::String screen_name() const;
   /// Who drives each survival actor, or nothing with no run open.
   [[nodiscard]] std::optional<survival::ControlMap> survival_control() const;
-  /// Reports the open survival run and any cinematic over it; empty with no
-  /// run open.
+  /// Reports the open survival run, any cinematic over it, the tip on the
+  /// screen and the tips the run has opened; empty with no run open.
   [[nodiscard]] godot::Dictionary survival_status() const;
 
 private:
@@ -160,6 +168,8 @@ private:
   std::vector<rendering::Burst> bursts;
   std::optional<Playback> playback;
   std::optional<hud::Interruption> interruption;
+  /// The open run's first-play tips; a new run starts them afresh.
+  Tips tips;
   Screen screen = Screen::Main;
   /// The marked title entry, an index into `hud::TITLE_ENTRIES`.
   std::size_t cursor = 0;

@@ -142,6 +142,17 @@ void press_player_key(Command &command, survival::ControlMap control,
   }
 }
 
+/// Whether a human took an action this frame, by a click or a key that is
+/// not movement, which closes the open tip.
+bool acted(const Command &command) {
+  return command.click || command.dish_step != survival::Direction::Idle ||
+         std::ranges::any_of(
+             command.survival, [](const survival::PlayerInput &keys) {
+               return keys.travel || keys.interact || keys.replace_tool ||
+                      keys.feed || keys.end_day;
+             });
+}
+
 /// Ends the application; the running host's main loop is always its SceneTree.
 void quit_game() {
   auto *tree = godot::Object::cast_to<godot::SceneTree>(
@@ -189,6 +200,7 @@ void Session::choose(std::size_t option) {
     }
     return;
   case Screen::Controls:
+  case Screen::HowToPlay:
   case Screen::Survival:
     return;
   }
@@ -202,6 +214,9 @@ void Session::select(hud::TitleEntry entry) {
     return;
   case hud::TitleEntry::Controls:
     enter(Screen::Controls);
+    return;
+  case hud::TitleEntry::HowToPlay:
+    enter(Screen::HowToPlay);
     return;
   case hud::TitleEntry::Quit:
     quit_game();
@@ -251,6 +266,7 @@ void Session::advance_setup(const Command &command) {
 void Session::start_run(survival::ControlMap control) {
   enter(Screen::Survival);
   run.emplace(start(), control, next_event);
+  tips = {};
   play(hud::Cinematic::Intro);
 }
 
@@ -303,6 +319,9 @@ void Session::advance(double delta, Command command) {
   if (run) {
     framed = run->frame();
   }
+  if (framed && playing() && !interruption) {
+    tips.advance(*framed, delta, acted(command));
+  }
 }
 
 void Session::aim(const rendering::Art &drawing) {
@@ -318,10 +337,14 @@ Session::shown_targets(const rendering::Art &drawing) const {
   case Screen::Main:
     return hud::title_targets();
   case Screen::Controls:
+  case Screen::HowToPlay:
     return hud::controls_targets(drawing);
   case Screen::SurvivalSetup:
     return hud::setup_targets();
   case Screen::Survival:
+    if (playback && playback->card_left) {
+      return hud::cinematic_targets(drawing);
+    }
     if (playback || !framed) {
       return {};
     }
@@ -386,6 +409,7 @@ void Session::advance_screen(double delta, const Command &command) {
       enter(Screen::Main);
       return;
     case Screen::Controls:
+    case Screen::HowToPlay:
     case Screen::SurvivalSetup:
       cue(audio::Cue::MenuBack);
       enter(Screen::Main);
@@ -567,6 +591,7 @@ void Session::paint(godot::Node2D &canvas,
   // Lines another canvas wrote since are not this one's.
   static_cast<void>(drawing.take_written());
   static_cast<void>(drawing.take_sizes());
+  canvas.set_meta("hud_tip", godot::Dictionary());
   paint_screen(canvas, drawing);
   hud::paint_pointer(canvas, drawing, targets, pointer);
   godot::PackedStringArray lines;
@@ -590,6 +615,9 @@ void Session::paint_screen(godot::Node2D &canvas,
   case Screen::Controls:
     hud::paint_controls(canvas, drawing);
     return;
+  case Screen::HowToPlay:
+    hud::paint_how_to_play(canvas, drawing);
+    return;
   case Screen::SurvivalSetup:
     hud::paint_survival_setup(canvas, drawing,
                               hud::SETUP_ENTRIES.at(setup_cursor));
@@ -599,7 +627,7 @@ void Session::paint_screen(godot::Node2D &canvas,
       hud::paint_cinematic(canvas, drawing, playback->cinematic,
                            playback->card_left.has_value(), *framed);
     } else if (framed && shot) {
-      hud::paint_survival(canvas, drawing, *framed, *shot, bursts);
+      hud::paint_survival(canvas, drawing, *framed, *shot, bursts, tips.open());
       if (interruption) {
         hud::paint_interruption(canvas, drawing, *interruption, *framed,
                                 volume_rows(volume));
@@ -634,6 +662,8 @@ godot::String Session::screen_name() const {
     return "main";
   case Screen::Controls:
     return "controls";
+  case Screen::HowToPlay:
+    return "how_to_play";
   case Screen::SurvivalSetup:
     return "survival_setup";
   case Screen::Survival:
@@ -660,6 +690,13 @@ godot::Dictionary Session::survival_status() const {
     shown.push_back(rendering::flourish_name(burst.kind));
   }
   status.set("flourishes", shown);
+  const auto tip = tips.open();
+  status.set("tip", tip ? hud::tip_name(*tip) : godot::String());
+  godot::Array opened;
+  for (const auto opened_tip : tips.opened()) {
+    opened.push_back(hud::tip_name(opened_tip));
+  }
+  status.set("tips_opened", opened);
   if (interruption) {
     status.set("interruption", interruption_name(*interruption));
     godot::Array prompt;

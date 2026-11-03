@@ -201,6 +201,16 @@ constexpr float CHIP_PAD = 8.0F;
 /// tuning gives a damaged tool 40% success.
 constexpr const char *DAMAGED_TOOL = "tool 40%";
 constexpr const char *NO_DISH = "None stored yet";
+/// A first-play tip: one line on a panel, and its gold caption.
+constexpr float TIP_HEIGHT = 36.0F;
+constexpr float TIP_PAD = 14.0F;
+constexpr float TIP_BASELINE = 24.0F;
+constexpr const char *TIP_CAPTION = "TIP";
+/// The placeholder card's button, split into its two targets at "Main menu".
+constexpr const char *CARD_BUTTON = "Skip     Main menu";
+constexpr const char *CARD_LEAVE = "Main menu";
+constexpr float CARD_BUTTON_X = 130.0F;
+constexpr float CARD_BUTTON_Y = 610.0F;
 constexpr float SETUP_X = 200.0F;
 constexpr float SETUP_Y = 170.0F;
 constexpr float SETUP_WIDTH = 880.0F;
@@ -937,9 +947,10 @@ void paint_goal(godot::Node2D &canvas, const rendering::Art &drawing,
 }
 
 /// The log as notes at the right edge, newest first, each fading a few
-/// seconds after it appears.
-void paint_notes(godot::Node2D &canvas, const rendering::Art &drawing,
-                 const SurvivalFrame &frame) {
+/// seconds after it appears; returns where it drew them.
+std::vector<godot::Rect2> paint_notes(godot::Node2D &canvas,
+                                      const rendering::Art &drawing,
+                                      const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   // Each event is its own note by its number in the session's log, so a line
   // repeated after older ones drop out still appears afresh.
@@ -949,6 +960,7 @@ void paint_notes(godot::Node2D &canvas, const rendering::Art &drawing,
   for (const auto &event : frame.events) {
     notes.emplace_back(describe(frame.view, event), "note" + number(serial++));
   }
+  std::vector<godot::Rect2> drawn;
   float y = NOTE_Y;
   for (const auto &[text, name] : std::ranges::reverse_view(notes)) {
     const float age = drawing.shown_for(name);
@@ -970,8 +982,91 @@ void paint_notes(godot::Node2D &canvas, const rendering::Art &drawing,
     canvas.draw_rect(rect(x, y, width, NOTE_HEIGHT), plate);
     canvas.draw_rect(rect(x, y, 3.0F, NOTE_HEIGHT), edge);
     drawing.text(canvas, x + 11.0F, y + 17.0F, text, SMALL_SIZE, ink, CHANGING);
+    drawn.push_back(rect(x, y, width, NOTE_HEIGHT));
     y += NOTE_HEIGHT + 4.0F;
   }
+  return drawn;
+}
+
+/// Every `Rect2` in the canvas meta `name`.
+void add_areas(std::vector<godot::Rect2> &areas, const godot::Node2D &canvas,
+               const char *name) {
+  const godot::Array listed = canvas.get_meta(name, godot::Array());
+  for (std::int64_t index = 0; index < listed.size(); ++index) {
+    areas.push_back(listed.get(index));
+  }
+}
+
+/// Where a tip `width` wide stands: the first place clear of `taken`, in rows
+/// from just above the bottom cards up to the goal line, each tried at the
+/// left, the middle and the right; none while every place is taken.
+std::optional<godot::Rect2> tip_place(float width,
+                                      const std::vector<godot::Rect2> &taken) {
+  const std::array columns{MARGIN, std::round((SCREEN_WIDTH - width) / 2.0F),
+                           SCREEN_WIDTH - MARGIN - width};
+  const float bottom = FOOT_Y - GAP - TIP_HEIGHT;
+  const auto rows =
+      static_cast<int>((bottom - GOAL_Y) / (TIP_HEIGHT + GAP)) + 1;
+  for (int row = 0; row < rows; ++row) {
+    const float y = bottom - static_cast<float>(row) * (TIP_HEIGHT + GAP);
+    for (const float x : columns) {
+      const auto place = rect(x, y, width, TIP_HEIGHT);
+      const auto apart = place.grow(GAP / 2.0F);
+      if (std::ranges::none_of(taken, [&apart](const godot::Rect2 &area) {
+            return area.intersects(apart);
+          })) {
+        return place;
+      }
+    }
+  }
+  return std::nullopt;
+}
+
+/// Draws `tip` where it covers no HUD panel, note or target, nor in the city
+/// any of the map's words, and leaves it as the `hud_tip` meta.
+void paint_tip(godot::Node2D &canvas, const rendering::Art &drawing,
+               const SurvivalFrame &frame, Tip tip,
+               const std::vector<godot::Rect2> &notes) {
+  const bool city = frame.view.progression.phase == Phase::Exploration;
+  std::vector<godot::Rect2> taken = notes;
+  add_areas(taken, canvas, "hud_panels");
+  // The map's words stay on the canvas after the city closes.
+  if (city) {
+    add_areas(taken, canvas, "map_plates");
+  }
+  for (const auto &target : survival_targets(drawing, frame)) {
+    taken.push_back(target.area);
+  }
+  const auto tones = rendering::palette();
+  const String text = tip_text(tip);
+  const float caption_width =
+      drawing.text_width(TIP_CAPTION, SMALL_SIZE, Weight::Bold) + TIP_PAD;
+  const auto place =
+      tip_place(caption_width + drawing.text_width(text, SMALL_SIZE, CHANGING) +
+                    2.0F * TIP_PAD,
+                taken);
+  if (!place) {
+    return;
+  }
+  rendering::panel(canvas, *place);
+  const float x = place->position.x + TIP_PAD;
+  const float baseline = place->position.y + TIP_BASELINE;
+  drawing.text(canvas, x, baseline, TIP_CAPTION, SMALL_SIZE, tones.gold,
+               Weight::Bold);
+  drawing.text(canvas, x + caption_width, baseline, text, SMALL_SIZE,
+               tones.white, CHANGING);
+  godot::Dictionary drawn;
+  drawn.set("rect", *place);
+  drawn.set("text", text);
+  drawn.set("city", city);
+  canvas.set_meta("hud_tip", drawn);
+}
+
+/// The placeholder card's button, under its lines.
+godot::Rect2 card_button(const rendering::Art &drawing) {
+  return rect(CARD_BUTTON_X - BUTTON_PAD, CARD_BUTTON_Y,
+              button_width(drawing, CARD_BUTTON, INTERRUPTION_LINE_SIZE),
+              48.0F);
 }
 
 void paint_hearts(godot::Node2D &canvas, const rendering::Art &drawing, float x,
@@ -2029,7 +2124,8 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
 
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
-                    const std::vector<rendering::Burst> &bursts) {
+                    const std::vector<rendering::Burst> &bursts,
+                    std::optional<Tip> tip) {
   canvas.set_meta("hud_panels", godot::Array());
   if (frame.view.progression.phase == Phase::Exploration) {
     // A burn shakes the map's words with the map, not the interface.
@@ -2048,7 +2144,10 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_goal(canvas, drawing, {}, hand_off_notice(frame));
   }
   paint_corners(canvas, drawing, frame);
-  paint_notes(canvas, drawing, frame);
+  const auto notes = paint_notes(canvas, drawing, frame);
+  if (tip) {
+    paint_tip(canvas, drawing, frame, *tip, notes);
+  }
   rendering::paint_screen_bursts(canvas, bursts);
 }
 
@@ -2058,6 +2157,12 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
   const float shown = drawing.entrance("interruption");
+  // The veil falls over the tip with the rest of the held screen.
+  godot::Dictionary tip = canvas.get_meta("hud_tip", godot::Dictionary());
+  if (!tip.is_empty()) {
+    tip.set("held", true);
+    canvas.set_meta("hud_tip", tip);
+  }
   const float lift = interruption_lift(drawing);
   canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
                    color(9, 10, 20, 0.72F * shown));
@@ -2139,8 +2244,68 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
                24, tones.muted);
-  drawing.text(canvas, 130.0F, 640.0F, "E: skip   M: main menu", 24,
-               tones.muted);
+  paint_button(canvas, drawing, card_button(drawing), CARD_BUTTON,
+               INTERRUPTION_LINE_SIZE, false);
+}
+
+String tip_text(Tip tip) {
+  switch (tip) {
+  case Tip::SetOut:
+    return "Set out into the city to gather food. The day's clock runs only "
+           "there.";
+  case Tip::Move:
+    return "Walk, run and jump with the keys under your action button; climb "
+           "ladders.";
+  case Tip::Collect:
+    return "Collect with the action button. It holds you while the clock runs "
+           "on.";
+  case Tip::Appraise:
+    return "A ? marks a find not yet identified: the appraiser does it at "
+           "base.";
+  case Tip::Cook:
+    return "A recipe is ready: the chef cooks it into a dish that keeps until "
+           "fed.";
+  case Tip::Feed:
+    return "Feeding ends the day. New foods and new ingredients score the "
+           "most.";
+  case Tip::ToolDamage:
+    return "A base tool is damaged and fails more often: replace it with a "
+           "spare.";
+  case Tip::Rejected:
+    return "The monster hated that dish, and refuses that food from now on.";
+  case Tip::Acid:
+    return "The acid rises after a day unfed, a hated dish, or a low score.";
+  case Tip::Escape:
+    return "From day " + number(survival::TEMPORARY_ESCAPE.first_day) +
+           " each finished day may open the way out. Hold on until then.";
+  }
+  std::abort();
+}
+
+String tip_name(Tip tip) {
+  switch (tip) {
+  case Tip::SetOut:
+    return "set_out";
+  case Tip::Move:
+    return "move";
+  case Tip::Collect:
+    return "collect";
+  case Tip::Appraise:
+    return "appraise";
+  case Tip::Cook:
+    return "cook";
+  case Tip::Feed:
+    return "feed";
+  case Tip::ToolDamage:
+    return "tool_damage";
+  case Tip::Rejected:
+    return "rejected";
+  case Tip::Acid:
+    return "acid";
+  case Tip::Escape:
+    return "escape";
+  }
+  std::abort();
 }
 
 bool recipe_ready(const GameView &view, const survival::Recipe &recipe) {
@@ -2644,6 +2809,16 @@ std::vector<Target> survival_targets(const rendering::Art &drawing,
   }
   targets.push_back({.area = pause_chip(drawing), .press = MenuKey::Pause});
   return targets;
+}
+
+std::vector<Target> cinematic_targets(const rendering::Art &drawing) {
+  const auto [skip, leave] =
+      split_button(drawing, card_button(drawing), CARD_BUTTON, CARD_LEAVE,
+                   INTERRUPTION_LINE_SIZE);
+  return {
+      {.area = skip,
+       .press = PlayerPress{.actor = std::nullopt, .key = PlayerKey::Interact}},
+      {.area = leave, .press = MenuKey::Menu}};
 }
 
 std::vector<Target>
