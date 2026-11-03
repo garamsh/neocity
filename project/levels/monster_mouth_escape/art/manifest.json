@@ -312,10 +312,110 @@
    "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
   },
   {
+   "path": "world/facade_concrete.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: cracked violet and magenta concrete, two storeys of windows, a few lit warm orange; tiles in both directions"
+  },
+  {
+   "path": "world/facade_brick.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: deep purple brick with tall windows, one lit; tiles in both directions"
+  },
+  {
+   "path": "world/facade_office.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: a plum office tower's grid of dark blue windows with lit ones and ledges between floors; tiles in both directions"
+  },
+  {
+   "path": "world/facade_tenement.png",
+   "size": [
+    64,
+    64
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Sunken building wall: pink stucco tenement with shuttered windows and iron balconies; tiles in both directions"
+  },
+  {
+   "path": "world/wall_ac.png",
+   "size": [
+    26,
+    18
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rusty air conditioner unit on a wall"
+  },
+  {
+   "path": "world/wall_sign.png",
+   "size": [
+    30,
+    16
+   ],
+   "scale": 1,
+   "colours": 7,
+   "depicts": "Dead neon sign box, the broken pieces of its magenta tube round a blank black face"
+  },
+  {
+   "path": "world/wall_shutter.png",
+   "size": [
+    28,
+    22
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rolled-down shop shutter in a door frame"
+  },
+  {
+   "path": "world/wall_shop_window.png",
+   "size": [
+    30,
+    30
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Lit shop window: shelves of jars and a lantern behind it"
+  },
+  {
+   "path": "world/wall_pipe.png",
+   "size": [
+    12,
+    40
+   ],
+   "scale": 1,
+   "colours": 11,
+   "depicts": "Rusty drainpipe with brackets, bent at its foot"
+  },
+  {
+   "path": "world/waterline.png",
+   "size": [
+    64,
+    18
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Flesh and green slime grown over a sunken building's foot where it meets the acid; tiles horizontally"
+  },
+  {
    "path": "world/vending_machine.png",
    "size": [
-    40,
-    48
+    48,
+    60
    ],
    "scale": 1,
    "colours": 12,
@@ -334,8 +434,8 @@
   {
    "path": "world/vendor_cart.png",
    "size": [
-    40,
-    64
+    50,
+    84
    ],
    "scale": 1,
    "colours": 12,
@@ -354,8 +454,8 @@
   {
    "path": "world/kiosk.png",
    "size": [
-    64,
-    64
+    86,
+    86
    ],
    "scale": 1,
    "colours": 12,
@@ -384,8 +484,8 @@
   {
    "path": "world/bag_washed_up.png",
    "size": [
-    32,
-    52
+    40,
+    66
    ],
    "scale": 1,
    "colours": 12,
@@ -394,11 +494,11 @@
   {
    "path": "world/bag_roof.png",
    "size": [
-    32,
-    34
+    44,
+    47
    ],
    "scale": 1,
-   "colours": 10,
+   "colours": 12,
    "depicts": "Roof bag: roped duffel with a sparkle"
   },
   {
@@ -425,51 +525,51 @@
    "path": "walkway/deck.png",
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
-   "colours": 10,
-   "depicts": "Walkway deck: riveted iron plates with a lit top edge, the feet line along its top; tiles horizontally"
-  },
-  {
-   "path": "walkway/deck_seam.png",
-   "size": [
-    32,
-    10
-   ],
-   "scale": 1,
-   "colours": 10,
-   "depicts": "Walkway deck variant: a plate seam"
+   "colours": 12,
+   "depicts": "Walkway deck: a thick deck of violet stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
   },
   {
    "path": "walkway/deck_rivets.png",
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
-   "colours": 10,
-   "depicts": "Walkway deck variant: a riveted joint"
+   "colours": 12,
+   "depicts": "Walkway deck variant: a riveted joint plate"
   },
   {
    "path": "walkway/deck_worn.png",
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
    "colours": 12,
-   "depicts": "Walkway deck variant: worn, rusted plates"
+   "depicts": "Walkway deck variant: cracked stone blocks"
   },
   {
-   "path": "walkway/truss.png",
+   "path": "walkway/deck_corroded.png",
    "size": [
     32,
-    16
+    28
    ],
    "scale": 1,
-   "colours": 9,
-   "depicts": "Truss under the deck: an X-braced iron girder; tiles horizontally"
+   "colours": 12,
+   "depicts": "Walkway deck eaten by the acid: pitted stone, green stains, holes in the beam"
+  },
+  {
+   "path": "walkway/flesh_drip.png",
+   "size": [
+    40,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "depicts": "Flesh grown over a walkway's front edge, dripping; hangs from just under its top"
   },
   {
    "path": "walkway/end_left.png",
@@ -478,8 +578,8 @@
     32
    ],
    "scale": 1,
-   "colours": 10,
-   "depicts": "Snapped left end of a walkway: torn plates, bent girder and dangling debris on its left"
+   "colours": 12,
+   "depicts": "Snapped left end of a walkway deck: jagged stone and bent rebar on its left"
   },
   {
    "path": "walkway/end_right.png",
@@ -488,28 +588,18 @@
     32
    ],
    "scale": 1,
-   "colours": 11,
-   "depicts": "Snapped right end of a walkway: torn plates and bent rebar on its right"
+   "colours": 12,
+   "depicts": "Snapped right end of a walkway deck: jagged stone and bent rebar on its right"
   },
   {
-   "path": "walkway/scaffold.png",
+   "path": "walkway/pillar.png",
    "size": [
     24,
     32
    ],
    "scale": 1,
-   "colours": 11,
-   "depicts": "Support: an X-braced iron scaffold tower; tiles vertically"
-  },
-  {
-   "path": "walkway/pillar.png",
-   "size": [
-    20,
-    32
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Support: a cracked concrete pillar; tiles vertically"
+   "colours": 12,
+   "depicts": "Support: a square pillar of slate stone blocks; tiles vertically"
   },
   {
    "path": "walkway/column.png",
@@ -520,26 +610,6 @@
    "scale": 1,
    "colours": 11,
    "depicts": "Support: a bolted iron I-beam column; tiles vertically"
-  },
-  {
-   "path": "walkway/ramp.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Ramp: an iron plate slab rising left to right on a bracket; mirror it for the other way"
-  },
-  {
-   "path": "walkway/stairs.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 9,
-   "depicts": "Stairs: iron steps rising left to right on a stringer; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",

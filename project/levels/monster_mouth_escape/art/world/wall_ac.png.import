@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://e8js5vp3tp3i"
-path="res://.godot/imported/ramp.png-c8c4478189a39c819e0c8ca53b5ae1e4.ctex"
+uid="uid://u1fe4e4nf6mv"
+path="res://.godot/imported/wall_ac.png-5f0f51f010df538ce1ca1f972233ddf8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/ramp.png"
-dest_files=["res://.godot/imported/ramp.png-c8c4478189a39c819e0c8ca53b5ae1e4.ctex"]
+source_file="res://levels/monster_mouth_escape/art/world/wall_ac.png"
+dest_files=["res://.godot/imported/wall_ac.png-5f0f51f010df538ce1ca1f972233ddf8.ctex"]
 
 [params]
 

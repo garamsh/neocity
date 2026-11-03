@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://3s17j3bow80w"
-path="res://.godot/imported/deck_seam.png-9c3e663decdcc26c53788b6545f16888.ctex"
+uid="uid://ci0lt2eptda5h"
+path="res://.godot/imported/flesh_drip.png-2a4acbdc69c5e2a5e942e86aa3b0a3ae.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/deck_seam.png"
-dest_files=["res://.godot/imported/deck_seam.png-9c3e663decdcc26c53788b6545f16888.ctex"]
+source_file="res://levels/monster_mouth_escape/art/walkway/flesh_drip.png"
+dest_files=["res://.godot/imported/flesh_drip.png-2a4acbdc69c5e2a5e942e86aa3b0a3ae.ctex"]
 
 [params]
 

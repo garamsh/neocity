@@ -101,28 +101,22 @@ const char *path(Image image) {
     return "characters/appraiser_climb.png";
   case Image::Deck:
     return "walkway/deck.png";
-  case Image::DeckSeam:
-    return "walkway/deck_seam.png";
   case Image::DeckRivets:
     return "walkway/deck_rivets.png";
   case Image::DeckWorn:
     return "walkway/deck_worn.png";
-  case Image::Truss:
-    return "walkway/truss.png";
+  case Image::DeckCorroded:
+    return "walkway/deck_corroded.png";
+  case Image::FleshDrip:
+    return "walkway/flesh_drip.png";
   case Image::EndLeft:
     return "walkway/end_left.png";
   case Image::EndRight:
     return "walkway/end_right.png";
-  case Image::Scaffold:
-    return "walkway/scaffold.png";
   case Image::Pillar:
     return "walkway/pillar.png";
   case Image::Column:
     return "walkway/column.png";
-  case Image::Ramp:
-    return "walkway/ramp.png";
-  case Image::Stairs:
-    return "walkway/stairs.png";
   case Image::Rubble:
     return "ground/rubble.png";
   case Image::PlankBridge:
@@ -131,6 +125,26 @@ const char *path(Image image) {
     return "ground/car_buried.png";
   case Image::BuildingWall:
     return "world/building_wall.png";
+  case Image::FacadeConcrete:
+    return "world/facade_concrete.png";
+  case Image::FacadeBrick:
+    return "world/facade_brick.png";
+  case Image::FacadeOffice:
+    return "world/facade_office.png";
+  case Image::FacadeTenement:
+    return "world/facade_tenement.png";
+  case Image::WallAc:
+    return "world/wall_ac.png";
+  case Image::WallSign:
+    return "world/wall_sign.png";
+  case Image::WallShutter:
+    return "world/wall_shutter.png";
+  case Image::WallShopWindow:
+    return "world/wall_shop_window.png";
+  case Image::WallPipe:
+    return "world/wall_pipe.png";
+  case Image::Waterline:
+    return "world/waterline.png";
   case Image::Shop:
     return "world/shop.png";
   case Image::VendingMachine:

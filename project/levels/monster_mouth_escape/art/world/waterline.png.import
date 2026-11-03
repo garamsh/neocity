@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://by2qo8dljgcu5"
-path="res://.godot/imported/truss.png-e2e7e8d8ccb4d44afcebffdb8efd0051.ctex"
+uid="uid://bes0xi0n5hipc"
+path="res://.godot/imported/waterline.png-1473a53fc9ea009caa6835176af4457c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/walkway/truss.png"
-dest_files=["res://.godot/imported/truss.png-e2e7e8d8ccb4d44afcebffdb8efd0051.ctex"]
+source_file="res://levels/monster_mouth_escape/art/world/waterline.png"
+dest_files=["res://.godot/imported/waterline.png-1473a53fc9ea009caa6835176af4457c.ctex"]
 
 [params]
 
