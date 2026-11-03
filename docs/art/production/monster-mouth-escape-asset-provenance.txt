@@ -1,4 +1,6 @@
-Monster-mouth escape asset provenance, 2026-11-03, issues #90, #98, #110 and #128
+Monster-mouth escape asset provenance, 2026-11-03, issues #90, #98, #110, #128 and #141
+
+Version 5, issue #141: redraws the walkways as thick slabs of slate stone on stone pillars, adds a slab eaten by the acid and flesh dripping over slab edges, and draws the kiosk, the street stall, the vending machine and the bags larger; see Version 5 changes at the end.
 
 Version 4, issue #110: adds the walkway pieces and redraws the characters with walking, running, jumping, falling, landing and climbing frames, removes the ui frames and the road tiles nothing draws any more, and holds every asset to the clean-art rules; see Version 4 changes at the end. Version 3, issue #98, added the ground tiles and decorations and fixed the noodle vendor and the empty heart handed over from the review of PR #96; version 2 was the set after that review. Every asset comes from Recraft, through its MCP connector, personal account. The character frames and two ground sources are Recraft image_edit results, described under Version 4 changes and Ground; image_edit takes no custom style. Every generate_image call used the custom style below; Recraft ran it on model recraftv4_1_raster. No seed is exposed. Recraft returns WebP; the source URL of each generation is kept in tools/art/assets.json.
 Tools: Python 3.13.5 runs tools/art/pixelize.py, standard library only. ImageMagick 7.1.1-43 Q16 x86_64 decodes WebP in pixelize.py fetch (PNG24, or PNG32 for background-removed sources).
@@ -213,7 +215,7 @@ Runtime: decor/neon_box.png, decor/neon_blade.png
 decor_flesh: generate_image, 1:1, n=2, second rejected; then remove_background
 Prompt as sent:
 Isolated pixel art game sprites, side view, four separate items in a two by two grid with wide spacing on a plain flat solid white background: top left, a hanging curtain of pink and magenta flesh vines drooping down with wet glossy highlights; top right, a single thick twisting magenta flesh tendril growing upward from a small base; bottom left, a large lumpy pink flesh growth tumor blob with veins and small pustules; bottom right, a small cluster of three round magenta flesh polyps with glossy highlights. Wet, organic, monster-gut look. No ground, no scenery, no text, no letters.
-Runtime: decor/flesh_vines.png, decor/flesh_tendril.png, decor/flesh_tumor.png, decor/flesh_polyps.png
+Runtime: decor/flesh_vines.png, decor/flesh_tendril.png, decor/flesh_tumor.png, decor/flesh_polyps.png, and in version 5 walkway/flesh_drip.png (the flesh vines' crop, 40x32)
 
 decor_pillars: generate_image, 1:1, n=2, second rejected (drew a scene around the items); then the indigo recolour rule on the pillars
 Prompt as sent:
@@ -229,28 +231,12 @@ Version 4 changes, issue #110
 Recraft use for issue #110: 131 credits, personal account (774 before, 643 after by get_user). generate_image with n=2 cost 4 credits a call, remove_background 1, image_edit with n=2 22 and with n=1 11. Two more image_edit calls (n=2, 22 credits each) were charged but their results never arrived, as the connection dropped; they are counted above and feed nothing. The two concept sheets were uploaded to Recraft with request_upload_url as image_edit inputs.
 Clean-art rules: colour limits lowered to 12 for every world, ground and decoration sprite; every asset passes through the lone-pixel merge of steps 7 and 8b; characters, world, walkway, ground and decorations take the lit outline of step 8. The other version 3 assets come from their unchanged generations.
 
-walkway: generate_image, 2:1, n=2, first rejected (slime drips and pillars under the deck)
-Prompt as sent:
-Isolated pixel art game tile strip, side view: one long straight horizontal elevated walkway deck seen from the side, a flat walkable top surface of dark riveted iron plates with a thin warm orange lit top edge, under it a thick band of rusty dark iron girder with a riveted cross-braced truss pattern, light coming from above so the top is brightest and the underside darkest. Clean chunky pixel clusters, limited palette, no noise. Spans the full width. Centered on a plain flat solid white background. No text, no letters, no people, no scenery.
-Runtime: walkway/deck.png (seamless), walkway/deck_seam.png, walkway/deck_rivets.png, walkway/deck_worn.png (each with deck.png's outer columns), walkway/truss.png (seamless)
-A second prompt asking for grey stone and steel instead of purple (2:1, n=2) was rejected: both images were cut off at the bottom.
-Prompt as sent:
-Isolated pixel art game tile strip, side view: one long straight horizontal elevated walkway seen from the side, a thick deck of dark grey stone blocks and riveted grey steel plates with a rusty orange lit top edge where feet walk, under it a dark grey iron girder band with riveted X cross-bracing, light from above so the top edge is brightest and the underside darkest. Neutral grey and charcoal, not purple. Clean chunky pixel clusters, limited palette. Spans the full width. Centered on a plain flat solid white background. No text, no letters, no people, no scenery, no drips.
-
-walkway_ends: generate_image, 2:1, n=2, second rejected (slime and a different deck)
-Prompt as sent:
-Isolated pixel art game sprites, side view, two separate pieces side by side with wide spacing on a plain flat solid white background: left, the snapped broken left end of an elevated walkway, a dark purple riveted iron plate deck with a red-orange lit top edge over a purple iron truss with X cross-bracing, ending in a jagged torn edge with bent rebar and a few hanging chunks of debris; right, the same walkway's snapped broken end mirrored, jagged torn edge facing right with twisted girder ends. Clean chunky pixel clusters, light from above. No text, no letters, no people, no scenery.
-Runtime: walkway/end_left.png (the right piece, torn on its left), walkway/end_right.png (the left piece, torn on its right)
+walkway, walkway_ends and slopes: the version 4 iron deck, truss, snapped ends, ramp and stairs, replaced in version 5 by walkway_stone and walkway_stone_more; see Version 5 changes.
 
 supports: generate_image, 1:1, n=2, second rejected; then remove_background on the kept image, whose background was a pink gradient
 Prompt as sent:
 Isolated pixel art game sprites, side view, three separate tall vertical support columns side by side with wide spacing on a plain flat solid white background, each running straight from the top edge to the bottom edge of the image so it tiles vertically: left, a dark purple riveted iron scaffold tower with X cross-bracing between two thin legs; middle, a thick cracked grey-indigo concrete pillar with rust stains; right, a single riveted dark iron I-beam column with bolted plates. Light from above. Clean chunky pixel clusters, limited palette. No text, no letters, no people, no scenery.
-Runtime: walkway/scaffold.png, walkway/pillar.png, walkway/column.png (seamless vertically)
-
-slopes: generate_image, 2:1, n=2, first rejected (a glossy pink ramp)
-Prompt as sent:
-Isolated pixel art game sprites, side view, two separate pieces side by side with wide spacing on a plain flat solid white background: left, a short straight diagonal ramp rising from bottom left to top right at 45 degrees, a slab of dark purple riveted iron plate with a red-orange lit top edge along the slope, supported underneath by a purple iron bracket; right, a short straight iron staircase rising from bottom left to top right at 45 degrees, four chunky dark purple riveted iron steps with red-orange lit tread edges and a thin rail stringer underneath. Light from above. Clean chunky pixel clusters, limited palette. No text, no letters, no people, no scenery.
-Runtime: walkway/ramp.png, walkway/stairs.png
+Runtime: walkway/column.png (seamless vertically); its scaffold and pillar were replaced in version 5
 
 Characters: every frame is a Recraft image_edit result on its default model, nano_banana_2, over the approved concept sheets docs/art/concept-art/characters/chef-sheet-v1.png (ART-CHAR-001) and detective-sheet-v1.png (ART-CHAR-002), or over an earlier result drawn from them. Each frame is a 395x395 crop around one figure, its bottom 4 px below the feet and centred on the head, keyed on white and reduced to 64x64 by the steps above, so both actors keep one scale.
 

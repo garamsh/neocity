@@ -217,7 +217,7 @@
    1
   ],
   [
-   "walkway/scaffold.png",
+   "walkway/pillar.png",
    4,
    474,
    1,
@@ -238,23 +238,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   0,
-   458,
-   1,
-   1
-  ],
-  [
    "walkway/deck_rivets.png",
    32,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   32,
-   458,
    1,
    1
   ],
@@ -266,23 +252,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   64,
-   458,
-   1,
-   1
-  ],
-  [
-   "walkway/deck_seam.png",
+   "walkway/deck_worn.png",
    96,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   96,
-   458,
    1,
    1
   ],
@@ -294,23 +266,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   128,
-   458,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    160,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   160,
-   458,
    1,
    1
   ],
@@ -322,13 +280,6 @@
    1
   ],
   [
-   "walkway/truss.png",
-   192,
-   458,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    224,
    448,
@@ -336,23 +287,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   224,
-   458,
-   1,
-   1
-  ],
-  [
-   "walkway/deck_seam.png",
+   "walkway/deck_worn.png",
    256,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   256,
-   458,
    1,
    1
   ],
@@ -364,23 +301,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   288,
-   458,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    320,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   320,
-   458,
    1,
    1
   ],
@@ -392,7 +315,7 @@
    1
   ],
   [
-   "walkway/scaffold.png",
+   "walkway/pillar.png",
    516,
    442,
    1,
@@ -420,23 +343,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   544,
-   426,
-   1,
-   1
-  ],
-  [
-   "walkway/deck_seam.png",
+   "walkway/deck_worn.png",
    576,
    416,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   576,
-   426,
    1,
    1
   ],
@@ -448,23 +357,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   608,
-   426,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    640,
    416,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   640,
-   426,
    1,
    1
   ],
@@ -476,13 +371,6 @@
    1
   ],
   [
-   "walkway/truss.png",
-   672,
-   426,
-   1,
-   1
-  ],
-  [
    "walkway/end_right.png",
    704,
    416,
@@ -490,7 +378,7 @@
    1
   ],
   [
-   "walkway/scaffold.png",
+   "walkway/pillar.png",
    836,
    410,
    1,
@@ -518,23 +406,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   864,
-   394,
-   1,
-   1
-  ],
-  [
-   "walkway/deck_seam.png",
+   "walkway/deck_worn.png",
    896,
    384,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   896,
-   394,
    1,
    1
   ],
@@ -546,23 +420,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   928,
-   394,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    960,
    384,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   960,
-   394,
    1,
    1
   ],
@@ -574,23 +434,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   992,
-   394,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    1024,
    384,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   1024,
-   394,
    1,
    1
   ],
@@ -602,7 +448,7 @@
    1
   ],
   [
-   "walkway/scaffold.png",
+   "walkway/pillar.png",
    1124,
    474,
    1,
@@ -630,13 +476,6 @@
    1
   ],
   [
-   "walkway/truss.png",
-   1152,
-   458,
-   1,
-   1
-  ],
-  [
    "walkway/deck.png",
    1184,
    448,
@@ -644,23 +483,9 @@
    1
   ],
   [
-   "walkway/truss.png",
-   1184,
-   458,
-   1,
-   1
-  ],
-  [
-   "walkway/deck_seam.png",
+   "walkway/deck_worn.png",
    1216,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   1216,
-   458,
    1,
    1
   ],
@@ -668,20 +493,6 @@
    "walkway/deck_worn.png",
    1248,
    448,
-   1,
-   1
-  ],
-  [
-   "walkway/truss.png",
-   1248,
-   458,
-   1,
-   1
-  ],
-  [
-   "walkway/ramp.png",
-   480,
-   416,
    1,
    1
   ],
@@ -946,18 +757,9 @@
    "url": "https://img.recraft.ai/Gk59jsJnIKts63gRe0f5_KqtH4RLOP61ddED5noDjz8/raw:1/plain/abs://prod/images/42228a82-b511-48e3-b75a-85cc58e73d8a",
    "edited_from": "ground_broken"
   },
-  "walkway": {
-   "url": "https://img.recraft.ai/IqanH3fXIfLariiyJP2-0Aze3WEgYQ0hSXJKn_wtS_U/raw:1/plain/abs://prod/images/a59fa887-33d2-4609-acdf-1cfb9c6801e5"
-  },
-  "walkway_ends": {
-   "url": "https://img.recraft.ai/b9XVm8gRNkI3BUdg9NfwrwFukndUq0K8h4NhP9CGJJU/raw:1/plain/abs://prod/images/464ba9a2-4c90-4072-9ec1-b58cbe51e279"
-  },
   "supports": {
    "url": "https://img.recraft.ai/IYyTb1ABebFoBt_Z_tZStDcChRcoBeJQ9EAWwA3iC2I/raw:1/plain/abs://prod/images/24062f0c-cda3-4e41-89b6-a5bbfa096460",
    "alpha": true
-  },
-  "slopes": {
-   "url": "https://img.recraft.ai/FRBjR4lyvIKQZHo6rZLf50zyQKUQW1o2YTO20p98JFM/raw:1/plain/abs://prod/images/a83088ad-ec03-4a1b-86d6-358f60df44b8"
   },
   "chef_moves": {
    "url": "https://img.recraft.ai/MjvxEZCO5M-JtfK711N5sS3B2E6zMVPUXvZuBoSRID0/raw:1/plain/abs://prod/images/753c2d65-3560-42f5-a8dc-c0f14d7fe324"
@@ -973,6 +775,12 @@
   },
   "appraiser_fixes": {
    "url": "https://img.recraft.ai/hoYbyEPBd4Ey131CLZGclIvF1pkZUTqRAwMU5Ku_CqY/raw:1/plain/abs://prod/images/648fd951-77a9-4e44-b116-c4e1dd6fca69"
+  },
+  "walkway_stone": {
+   "url": "https://img.recraft.ai/UY7G071nhiC6245MuEQIxG7E2ArwHA-yPY6vUbWMku8/raw:1/plain/abs://prod/images/f012f4a5-a28a-4588-8284-46fd2d37f9ca"
+  },
+  "walkway_stone_more": {
+   "url": "https://img.recraft.ai/-XBf40L_gnBD3-KZCoCmfwryHFLqTOHiTbsr54ypPeM/raw:1/plain/abs://prod/images/025e8d96-c781-4f8b-80be-24f4f7019019"
   }
  },
  "assets": [
@@ -1678,8 +1486,8 @@
     1024
    ],
    "size": [
-    40,
-    48
+    48,
+    60
    ],
    "scale": 1,
    "colours": 12,
@@ -1731,8 +1539,8 @@
     1024
    ],
    "size": [
-    40,
-    64
+    50,
+    84
    ],
    "scale": 1,
    "colours": 12,
@@ -1775,8 +1583,8 @@
     1024
    ],
    "size": [
-    64,
-    64
+    80,
+    80
    ],
    "scale": 1,
    "colours": 12,
@@ -1842,8 +1650,8 @@
     820
    ],
    "size": [
-    32,
-    52
+    40,
+    66
    ],
    "scale": 1,
    "colours": 12,
@@ -1863,8 +1671,8 @@
     570
    ],
    "size": [
-    32,
-    34
+    44,
+    47
    ],
    "scale": 1,
    "colours": 12,
@@ -1919,70 +1727,42 @@
   },
   {
    "path": "walkway/deck.png",
-   "source": "walkway",
+   "source": "walkway_stone",
    "crop": [
-    155,
-    245,
-    466,
-    109
+    520,
+    42,
+    299,
+    196
    ],
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
    "colours": 12,
    "seamless": "x",
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
    },
-   "depicts": "Walkway deck: riveted iron plates with a lit top edge, the feet line along its top; tiles horizontally"
-  },
-  {
-   "path": "walkway/deck_seam.png",
-   "source": "walkway",
-   "crop": [
-    505,
-    245,
-    350,
-    109
-   ],
-   "size": [
-    32,
-    10
-   ],
-   "scale": 1,
-   "colours": 12,
    "edge": "lit",
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
-   },
-   "match": {
-    "path": "walkway/deck.png",
-    "sides": "lr",
-    "width": 3
-   },
-   "depicts": "Walkway deck variant: a plate seam"
+   "depicts": "Walkway slab: a thick slab of slate stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
   },
   {
    "path": "walkway/deck_rivets.png",
-   "source": "walkway",
+   "source": "walkway_stone",
    "crop": [
-    855,
-    245,
-    350,
-    109
+    900,
+    42,
+    224,
+    196
    ],
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
    "colours": 12,
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -1992,24 +1772,24 @@
     "sides": "lr",
     "width": 3
    },
-   "depicts": "Walkway deck variant: a riveted joint"
+   "edge": "lit",
+   "depicts": "Walkway slab variant: a riveted joint plate"
   },
   {
    "path": "walkway/deck_worn.png",
-   "source": "walkway",
+   "source": "walkway_stone",
    "crop": [
-    1180,
-    245,
-    350,
-    109
+    1080,
+    42,
+    224,
+    196
    ],
    "size": [
     32,
-    10
+    28
    ],
    "scale": 1,
    "colours": 12,
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48
@@ -2019,40 +1799,66 @@
     "sides": "lr",
     "width": 3
    },
-   "depicts": "Walkway deck variant: worn, rusted plates"
+   "edge": "lit",
+   "depicts": "Walkway slab variant: cracked stone blocks"
   },
   {
-   "path": "walkway/truss.png",
-   "source": "walkway",
+   "path": "walkway/deck_corroded.png",
+   "source": "walkway_stone_more",
    "crop": [
-    155,
-    354,
-    466,
-    175
+    800,
+    415,
+    224,
+    196
    ],
    "size": [
     32,
-    16
+    28
    ],
    "scale": 1,
    "colours": 12,
-   "seamless": "x",
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
-    "tolerance": 48,
-    "enclosed": true
+    "tolerance": 48
    },
-   "depicts": "Truss under the deck: an X-braced iron girder; tiles horizontally"
+   "match": {
+    "path": "walkway/deck.png",
+    "sides": "lr",
+    "width": 3
+   },
+   "edge": "lit",
+   "depicts": "Walkway slab eaten by the acid: pitted stone, green stains, holes in the beam"
+  },
+  {
+   "path": "walkway/flesh_drip.png",
+   "source": "decor_flesh",
+   "crop": [
+    0,
+    0,
+    630,
+    500
+   ],
+   "size": [
+    40,
+    32
+   ],
+   "scale": 1,
+   "colours": 12,
+   "largest_only": true,
+   "key": {
+    "alpha": true
+   },
+   "edge": "lit",
+   "depicts": "Flesh grown over a walkway's front edge, dripping; hangs from just under its top"
   },
   {
    "path": "walkway/end_left.png",
-   "source": "walkway_ends",
+   "source": "walkway_stone_more",
    "crop": [
-    736,
-    117,
-    350,
-    350
+    745,
+    42,
+    224,
+    224
    ],
    "size": [
     32,
@@ -2060,7 +1866,6 @@
    ],
    "scale": 1,
    "colours": 12,
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
@@ -2073,16 +1878,17 @@
     "width": 3,
     "top": true
    },
-   "depicts": "Snapped left end of a walkway: torn plates, bent girder and dangling debris on its left"
+   "edge": "lit",
+   "depicts": "Snapped left end of a walkway slab: jagged stone and bent rebar on its left"
   },
   {
    "path": "walkway/end_right.png",
-   "source": "walkway_ends",
+   "source": "walkway_stone_more",
    "crop": [
-    313,
-    119,
-    350,
-    350
+    420,
+    42,
+    224,
+    224
    ],
    "size": [
     32,
@@ -2090,7 +1896,6 @@
    ],
    "scale": 1,
    "colours": 12,
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
@@ -2103,16 +1908,17 @@
     "width": 3,
     "top": true
    },
-   "depicts": "Snapped right end of a walkway: torn plates and bent rebar on its right"
+   "edge": "lit",
+   "depicts": "Snapped right end of a walkway slab: jagged stone and bent rebar on its right"
   },
   {
-   "path": "walkway/scaffold.png",
-   "source": "supports",
+   "path": "walkway/pillar.png",
+   "source": "walkway_stone",
    "crop": [
-    30,
-    200,
-    300,
-    533
+    137,
+    320,
+    196,
+    347
    ],
    "size": [
     24,
@@ -2121,33 +1927,12 @@
    "scale": 1,
    "colours": 12,
    "seamless": "y",
-   "edge": "lit",
    "key": {
-    "alpha": true
+    "colour": "#ffffff",
+    "tolerance": 48
    },
-   "depicts": "Support: an X-braced iron scaffold tower; tiles vertically"
-  },
-  {
-   "path": "walkway/pillar.png",
-   "source": "supports",
-   "crop": [
-    400,
-    300,
-    230,
-    533
-   ],
-   "size": [
-    20,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "seamless": "y",
    "edge": "lit",
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Support: a cracked concrete pillar; tiles vertically"
+   "depicts": "Support: a square pillar of slate stone blocks; tiles vertically"
   },
   {
    "path": "walkway/column.png",
@@ -2172,37 +1957,13 @@
    "depicts": "Support: a bolted iron I-beam column; tiles vertically"
   },
   {
-   "path": "walkway/ramp.png",
-   "source": "slopes",
-   "crop": [
-    40,
-    0,
-    700,
-    700
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "edge": "lit",
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48,
-    "enclosed": true
-   },
-   "largest_only": true,
-   "depicts": "Ramp: an iron plate slab rising left to right on a bracket; mirror it for the other way"
-  },
-  {
    "path": "walkway/stairs.png",
-   "source": "slopes",
+   "source": "walkway_stone",
    "crop": [
-    770,
-    0,
-    766,
-    766
+    613,
+    341,
+    627,
+    386
    ],
    "size": [
     32,
@@ -2210,14 +1971,14 @@
    ],
    "scale": 1,
    "colours": 12,
-   "edge": "lit",
    "key": {
     "colour": "#ffffff",
     "tolerance": 48,
     "enclosed": true
    },
    "largest_only": true,
-   "depicts": "Stairs: iron steps rising left to right on a stringer; mirror them for the other way"
+   "edge": "lit",
+   "depicts": "Stairs: slate stone steps with orange lit treads rising left to right; mirror them for the other way"
   },
   {
    "path": "icons/ingredient_tomato.png",

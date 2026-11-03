@@ -124,9 +124,13 @@ constexpr float ACID_GLOW = 0.16F;
 /// haze's colour the farther back it is and the walkways read first.
 godot::Color far_haze() { return color(40, 22, 48, 0.55F); }
 godot::Color middle_haze() { return color(40, 22, 48, 0.45F); }
-/// The supports under the walkways stand between the backdrop and the play
-/// layer.
+/// The supports under the walkways, and the footing under a shop, stand
+/// between the backdrop and the play layer.
 godot::Color support_tint() { return color(150, 140, 190, 1.0F); }
+/// A support the acid has risen around is stained toward its green.
+godot::Color corroded_support_tint() { return color(90, 125, 85, 1.0F); }
+/// The contact shadow a prop casts on the floor it stands on.
+godot::Color floor_shadow() { return color(8, 4, 12, 0.6F); }
 /// The acid below its glowing surface, so a high sea does not flood the
 /// screen behind the map with bright green.
 godot::Color deep_acid_tint() { return color(32, 52, 48, 1.0F); }
@@ -162,6 +166,17 @@ void stand(godot::Node2D &canvas, const Art &art, Image image,
   art.image(canvas, image,
             Vector2(box.position.x + (box.size.x - size.x) / 2.0F,
                     box.position.y + box.size.y - size.y));
+}
+
+/// Draws `image` like `stand`, over a contact shadow along the box's floor, so
+/// it sits on the floor rather than floating in front of it.
+void stand_on_floor(godot::Node2D &canvas, const Art &art, Image image,
+                    const godot::Rect2 &box) {
+  const float width = art.size(image).x + 6.0F;
+  canvas.draw_rect(rect(box.get_center().x - width / 2.0F,
+                        box.position.y + box.size.y - 2.0F, width, 4.0F),
+                   floor_shadow());
+  stand(canvas, art, image, box);
 }
 
 /// Words on an opaque plate, whose contrast no acid level can change.
@@ -325,11 +340,11 @@ bool has_ground(std::span<const survival::GroundCell> cells,
       cells, [&](const auto &ground) { return ground.cell == cell; });
 }
 
-/// The deck picture of a whole cell of plain road, varied along the row so no
-/// plate repeats across the screen.
+/// The slab picture of a whole cell of plain road, varied along the row so no
+/// block repeats across the screen.
 Image plain_deck(survival::GridPosition cell) {
   static constexpr std::array PLAIN{Image::Deck, Image::DeckRivets, Image::Deck,
-                                    Image::DeckSeam};
+                                    Image::DeckWorn};
   return PLAIN.at(static_cast<std::size_t>(cell.x * 3 + cell.y) % PLAIN.size());
 }
 
@@ -342,9 +357,9 @@ void paint_surface(godot::Node2D &canvas, const Art &art, Image image,
                  rect(at.x, at.y, CELL, GROUND_EDGE), ground_edge_tint());
 }
 
-/// Draws a ramp or stairs, mirrored where it rises to the left: brighter than
-/// the scenery behind it, and brightest along its top edge and above the
-/// diagonal it spans, where a player walks on it.
+/// Draws stairs, mirrored where they rise to the left: brighter than the
+/// scenery behind them, and brightest along their top edge and above the
+/// diagonal they span, where a player walks on them.
 void paint_step(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
                 bool mirrored) {
   art.image(canvas, image, at, 1.0F, mirrored, ground_tint());
@@ -363,14 +378,12 @@ void paint_step(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
   }
 }
 
-/// A deck picture with its top at `at`, on its truss unless it is a snapped
-/// end.
-void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at) {
-  if (deck != Image::EndLeft && deck != Image::EndRight) {
-    art.image(canvas, Image::Truss, at + Vector2(0.0F, art.size(deck).y), 1.0F,
-              false, ground_tint());
-  }
-  paint_surface(canvas, art, deck, at);
+/// A walkway slab with its top at `at`, eaten by the acid when `corroded`; a
+/// snapped end keeps its torn shape.
+void paint_deck(godot::Node2D &canvas, const Art &art, Image deck, Vector2 at,
+                bool corroded) {
+  const bool end = deck == Image::EndLeft || deck == Image::EndRight;
+  paint_surface(canvas, art, corroded && !end ? Image::DeckCorroded : deck, at);
 }
 
 /// Which way a step or a slab rises, or that it lies level.
@@ -392,14 +405,13 @@ Rise rise(std::span<const survival::GroundCell> cells, std::int32_t first,
   return Rise::Level;
 }
 
-/// A fallen slab: the worn deck on its truss, `width` pixels long from `at`,
-/// its high end on that floor line and its low end a row down. Each column of
-/// pixels is lowered along the tilt on its own, so the slab is one straight
-/// piece on whole pixels.
-void paint_slab(godot::Node2D &canvas, const Art &art, Vector2 at, int width,
-                Rise rises) {
-  const Vector2 deck = art.size(Image::DeckWorn);
-  const float truss = art.size(Image::Truss).y;
+/// A tilted walkway slab, `width` pixels long from `at`, its high end on that
+/// floor line and its low end a row down. Each column of pixels is lowered
+/// along the tilt on its own, so the slab is one straight piece on whole
+/// pixels.
+void paint_slab(godot::Node2D &canvas, const Art &art, Image slab, Vector2 at,
+                int width, Rise rises) {
+  const Vector2 deck = art.size(slab);
   for (int column = 0; column < width; ++column) {
     const int along = rises == Rise::Right ? width - 1 - column : column;
     const float drop = rises == Rise::Level
@@ -409,24 +421,22 @@ void paint_slab(godot::Node2D &canvas, const Art &art, Vector2 at, int width,
     const float x = at.x + static_cast<float>(column);
     const float y = at.y + drop;
     const float source = std::fmod(static_cast<float>(column), deck.x);
-    art.image_part(canvas, Image::Truss, rect(source, 0.0F, 1.0F, truss),
-                   rect(x, y + deck.y, 1.0F, truss), ground_tint());
-    art.image_part(canvas, Image::DeckWorn, rect(source, 0.0F, 1.0F, deck.y),
+    art.image_part(canvas, slab, rect(source, 0.0F, 1.0F, deck.y),
                    rect(x, y, 1.0F, deck.y), ground_tint());
-    art.image_part(canvas, Image::DeckWorn,
-                   rect(source, 0.0F, 1.0F, GROUND_EDGE),
+    art.image_part(canvas, slab, rect(source, 0.0F, 1.0F, GROUND_EDGE),
                    rect(x, y, 1.0F, GROUND_EDGE), ground_edge_tint());
   }
 }
 
 /// Tilted ground. A run of it along one row is a fallen slab, drawn whole from
-/// its first cell. A single cell is a step between floors: a ramp where it
-/// rises to the right, stairs where it rises to the left, each spanning from
-/// the floor line of its own cell down to the row below, and a level slab
-/// with no step or floor on a diagonal.
+/// its first cell. A single cell is a step between floors: a ramp, one cell
+/// of slab tilted, where it rises to the right, stairs where it rises to the
+/// left, each spanning from the floor line of its own cell down to the row
+/// below, and a level slab with no step or floor on a diagonal. A slab the
+/// acid has reached is `corroded`.
 void paint_tilted(godot::Node2D &canvas, const Art &art,
                   std::span<const survival::GroundCell> cells,
-                  const survival::GroundCell &ground) {
+                  const survival::GroundCell &ground, bool corroded) {
   const auto [x, y] = ground.cell;
   const auto tilted = [&](std::int32_t column) {
     return std::ranges::any_of(cells, [&](const auto &other) {
@@ -443,25 +453,31 @@ void paint_tilted(godot::Node2D &canvas, const Art &art,
   }
   const Vector2 at(cell_x(x), floor_y(y));
   const Rise rises = rise(cells, x, last, y);
-  if (last == x && rises == Rise::Right) {
-    paint_step(canvas, art, Image::Ramp, at, false);
-  } else if (last == x && rises == Rise::Left) {
+  if (last == x && rises == Rise::Left) {
     paint_step(canvas, art, Image::Stairs, at, true);
   } else {
-    paint_slab(canvas, art, at, static_cast<int>(cell_x(last + 1) - at.x),
-               rises);
+    paint_slab(canvas, art, corroded ? Image::DeckCorroded : Image::DeckWorn,
+               at, static_cast<int>(cell_x(last + 1) - at.x), rises);
   }
 }
 
+/// Whether the acid surface at `surface` has risen over the bottom of the
+/// walkway slab whose top is at `top`.
+bool corroded(const Art &art, float top, float surface) {
+  return surface < top + art.size(Image::Deck).y;
+}
+
 /// Draws one ground cell of standing terrain under the floor line of its
-/// cell. A landmark's terrain shows its own picture: the pier's iron deck in
-/// place of the walkway, the rotten bridge's frame under its planks, and the
-/// ferry's hull, drawn whole, in place of every cell it covers.
+/// cell, eaten by the acid once its surface at `surface` reaches the slab. A
+/// landmark's terrain shows its own picture: the pier's iron deck in place of
+/// the walkway, the rotten bridge's frame under its planks, and the ferry's
+/// hull, drawn whole, in place of every cell it covers.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
                        std::span<const survival::GroundCell> cells,
                        const survival::GroundCell &ground,
-                       std::optional<LandmarkKind> picture) {
+                       std::optional<LandmarkKind> picture, float surface) {
   const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
+  const bool eaten = corroded(art, at.y, surface);
   if (picture) {
     switch (*picture) {
     case LandmarkKind::Ferry:
@@ -483,33 +499,31 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
   };
   switch (ground.kind) {
   case GroundKind::TiltedSlab:
-    paint_tilted(canvas, art, cells, ground);
+    paint_tilted(canvas, art, cells, ground, eaten);
     return;
   case GroundKind::PlankBridge:
     art.image(canvas, Image::PlankBridge, at, 1.0F, false, ground_tint());
     return;
   case GroundKind::Rubble:
-    paint_deck(canvas, art, plain_deck(ground.cell), at);
+    paint_deck(canvas, art, plain_deck(ground.cell), at, eaten);
     standing_on(Image::Rubble, 0.0F);
     return;
   case GroundKind::BuriedCar:
-    paint_deck(canvas, art, plain_deck(ground.cell), at);
+    paint_deck(canvas, art, plain_deck(ground.cell), at, eaten);
     standing_on(Image::BuriedCar, 0.0F);
     return;
   case GroundKind::Road:
-    paint_deck(canvas, art, plain_deck(ground.cell), at);
+    paint_deck(canvas, art, plain_deck(ground.cell), at, eaten);
     return;
   case GroundKind::CrackedRoad:
-    paint_deck(canvas, art, Image::DeckWorn, at);
-    return;
   case GroundKind::Pothole:
-    paint_deck(canvas, art, Image::DeckSeam, at);
+    paint_deck(canvas, art, Image::DeckWorn, at, eaten);
     return;
   case GroundKind::RoadEndLeft:
-    paint_deck(canvas, art, Image::EndLeft, at);
+    paint_deck(canvas, art, Image::EndLeft, at, eaten);
     return;
   case GroundKind::RoadEndRight:
-    paint_deck(canvas, art, Image::EndRight, at);
+    paint_deck(canvas, art, Image::EndRight, at, eaten);
     return;
   }
   std::abort();
@@ -541,17 +555,62 @@ std::vector<Standing> standing_ground(const survival::Content &content,
   return found;
 }
 
-/// The supports under a walkway: a column under each end of every run of
-/// walkway and under every SUPPORT_SPACING-th cell between, from under the
-/// truss down to the next walkway below or out of the map, into the acid.
-/// Each run takes the next support picture in turn.
+/// The lowest a support under column `x` reaches from `top`: the floor line
+/// of the first walkway below it, or `map_bottom`, in the acid.
+float support_bottom(const std::vector<Standing> &ground, std::int32_t x,
+                     float top, float map_bottom) {
+  float bottom = map_bottom;
+  for (const auto &below : ground) {
+    const float floor = floor_y(below.ground.cell.y);
+    if (below.ground.cell.x == x && floor > top) {
+      bottom = std::min(bottom, floor);
+    }
+  }
+  return bottom;
+}
+
+/// One support picture repeated down from `top` to `bottom`, centred on
+/// column `x`; each repeat the acid at `surface` has risen over is stained.
+void paint_support(godot::Node2D &canvas, const Art &art, Image image,
+                   std::int32_t x, float top, float bottom, float surface) {
+  const Vector2 size = art.size(image);
+  const float left = cell_x(x) + (CELL - size.x) / 2.0F;
+  const auto pieces = static_cast<int>(std::ceil((bottom - top) / size.y));
+  for (int piece = 0; piece < pieces; ++piece) {
+    const float at = top + static_cast<float>(piece) * size.y;
+    const float height = std::min(size.y, bottom - at);
+    art.image_part(canvas, image, rect(0.0F, 0.0F, size.x, height),
+                   rect(left, at, size.x, height),
+                   at >= surface ? corroded_support_tint() : support_tint());
+  }
+}
+
+/// The supports under a walkway: a support under each end of every run of
+/// walkway that is not snapped off, and under every SUPPORT_SPACING-th cell
+/// between, from under the slab, or the pier's deck, down to the next
+/// walkway below or out of the map, into the acid. Each run takes the next
+/// support picture in turn.
 void paint_supports(godot::Node2D &canvas, const Art &art,
-                    const std::vector<Standing> &ground, float map_bottom) {
-  static constexpr std::array SUPPORTS{Image::Scaffold, Image::Column,
-                                       Image::Pillar};
+                    const std::vector<Standing> &ground, float map_bottom,
+                    float surface) {
+  static constexpr std::array SUPPORTS{Image::Pillar, Image::Column};
   const auto walkway = [&](const Standing &cell) {
-    return !cell.picture && cell.ground.kind != GroundKind::PlankBridge &&
+    return (!cell.picture || cell.picture == LandmarkKind::Platform) &&
+           cell.ground.kind != GroundKind::PlankBridge &&
            cell.ground.kind != GroundKind::TiltedSlab;
+  };
+  const auto solid = [&](const Standing &cell) {
+    return walkway(cell) && cell.ground.kind != GroundKind::RoadEndLeft &&
+           cell.ground.kind != GroundKind::RoadEndRight;
+  };
+  const auto beside = [&](std::size_t index, std::int32_t step,
+                          const auto &kind) {
+    const auto &cell = ground.at(index).ground.cell;
+    return std::ranges::any_of(ground, [&](const Standing &other) {
+      return other.ground.cell ==
+                 survival::GridPosition{.x = cell.x + step, .y = cell.y} &&
+             kind(other);
+    });
   };
   std::size_t run = 0;
   for (std::size_t index = 0; index < ground.size(); ++index) {
@@ -559,49 +618,36 @@ void paint_supports(godot::Node2D &canvas, const Art &art,
     if (!walkway(cell)) {
       continue;
     }
-    const auto [x, y] = cell.ground.cell;
-    const bool starts = index == 0 || !walkway(ground.at(index - 1)) ||
-                        ground.at(index - 1).ground.cell !=
-                            survival::GridPosition{.x = x - 1, .y = y};
-    const bool ends = index + 1 == ground.size() ||
-                      !walkway(ground.at(index + 1)) ||
-                      ground.at(index + 1).ground.cell !=
-                          survival::GridPosition{.x = x + 1, .y = y};
-    if (starts) {
+    if (!beside(index, -1, walkway)) {
       ++run;
     }
-    const bool broken = cell.ground.kind == GroundKind::RoadEndLeft ||
-                        cell.ground.kind == GroundKind::RoadEndRight;
-    const bool spaced = x % SUPPORT_SPACING == 0;
-    if (broken || (!starts && !ends && !spaced)) {
+    const auto [x, y] = cell.ground.cell;
+    const bool ends = !beside(index, -1, solid) || !beside(index, 1, solid);
+    if (!solid(cell) || (!ends && x % SUPPORT_SPACING != 0)) {
       continue;
     }
-    const Image image = SUPPORTS.at(run % SUPPORTS.size());
-    const Vector2 size = art.size(image);
-    const float top =
-        floor_y(y) + art.size(Image::Deck).y + art.size(Image::Truss).y;
-    float bottom = map_bottom;
-    for (const auto &below : ground) {
-      if (below.ground.cell.x == x && below.ground.cell.y > y) {
-        bottom = std::min(bottom, floor_y(below.ground.cell.y));
-      }
-    }
-    const float left = cell_x(x) + (CELL - size.x) / 2.0F;
-    const auto pieces = static_cast<int>(std::ceil((bottom - top) / size.y));
-    for (int piece = 0; piece < pieces; ++piece) {
-      const float at = top + static_cast<float>(piece) * size.y;
-      const float height = std::min(size.y, bottom - at);
-      art.image_part(canvas, image, rect(0.0F, 0.0F, size.x, height),
-                     rect(left, at, size.x, height), support_tint());
-    }
+    const Image deck = cell.picture ? Image::Platform : Image::Deck;
+    const float top = floor_y(y) + art.size(deck).y;
+    paint_support(canvas, art, SUPPORTS.at(run % SUPPORTS.size()), x, top,
+                  support_bottom(ground, x, top, map_bottom), surface);
   }
 }
 
-/// The ferry's hull, then each walkway of standing terrain on its floor line.
+/// Whether flesh has grown over the front edge of a cell of walkway slab.
+bool overgrown(const survival::GroundCell &ground) {
+  const bool slab = ground.kind == GroundKind::Road ||
+                    ground.kind == GroundKind::CrackedRoad ||
+                    ground.kind == GroundKind::Pothole;
+  return slab && (ground.cell.x * 5 + ground.cell.y * 3) % 7 == 3;
+}
+
+/// The ferry's hull, then each walkway of standing terrain on its floor line,
+/// eaten where the acid at `surface` has reached it, with flesh dripping over
+/// the front edge of a few of them.
 void paint_ground(godot::Node2D &canvas, const Art &art,
                   const survival::Content &content,
                   std::span<const ObjectSnapshot> objects,
-                  const std::vector<Standing> &ground) {
+                  const std::vector<Standing> &ground, float surface) {
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
         object.state == ObjectState::Intact &&
@@ -613,7 +659,16 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
     }
   }
   for (const auto &cell : ground) {
-    paint_ground_cell(canvas, art, content.ground, cell.ground, cell.picture);
+    paint_ground_cell(canvas, art, content.ground, cell.ground, cell.picture,
+                      surface);
+  }
+  const float drip = art.size(Image::FleshDrip).x;
+  for (const auto &cell : ground) {
+    if (!cell.picture && overgrown(cell.ground)) {
+      art.image(canvas, Image::FleshDrip,
+                Vector2(cell_x(cell.ground.cell.x) + (CELL - drip) / 2.0F,
+                        floor_y(cell.ground.cell.y) + GROUND_EDGE));
+    }
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -752,13 +807,39 @@ bool stands_in_front(LandmarkKind kind) {
   std::abort();
 }
 
-/// A building is a wall of windows over its area, its landmark picture
-/// standing in it, or rubble once destroyed. A building whose every cell is
-/// rubble ground is that rubble heap already. Only what stands in front of
-/// the ground is drawn when `front`, and only the rest otherwise.
+/// A shop front hung from the walkway above a building with a shop inside:
+/// its roof under the slab, which is drawn over it, and its floor on a
+/// footing of slab across the building's width, held up by a support under
+/// each end down to the walkway below or into the acid at `surface`.
+void paint_storefront(godot::Node2D &canvas, const Art &art,
+                      const survival::WorldArea &area,
+                      const std::vector<Standing> &ground, float map_bottom,
+                      float surface) {
+  const auto box = area_rect(area);
+  const Vector2 shop = art.size(Image::Shop);
+  const float floor = box.position.y + shop.y;
+  art.image(canvas, Image::Shop,
+            Vector2(box.get_center().x - shop.x / 2.0F, box.position.y));
+  const float footing = art.size(Image::Deck).y;
+  for (std::int32_t x = area.x; x < area.x + area.width; ++x) {
+    art.image(canvas, Image::Deck, Vector2(cell_x(x), floor), 1.0F, false,
+              support_tint());
+  }
+  for (const std::int32_t x : {area.x, area.x + area.width - 1}) {
+    paint_support(canvas, art, Image::Pillar, x, floor + footing,
+                  support_bottom(ground, x, floor, map_bottom), surface);
+  }
+}
+
+/// A building is a wall of windows over its area, a shop front where a shop
+/// is inside it, its landmark picture standing in it, or rubble once
+/// destroyed. A building whose every cell is rubble ground is that rubble
+/// heap already. Only what stands in front of the ground is drawn when
+/// `front`, and only the rest otherwise.
 void paint_building(godot::Node2D &canvas, const Art &art,
                     const survival::Content &content,
-                    const ObjectSnapshot &object, bool front) {
+                    const ObjectSnapshot &object, bool front, bool shop,
+                    const std::vector<Standing> &ground, float surface) {
   const auto box = area_rect(object.area);
   const auto &area = object.area;
   const auto picture = landmark(content, object.id);
@@ -779,7 +860,7 @@ void paint_building(godot::Node2D &canvas, const Art &art,
   if (picture) {
     switch (*picture) {
     case LandmarkKind::Kiosk:
-      stand(canvas, art, Image::Kiosk, box);
+      stand_on_floor(canvas, art, Image::Kiosk, box);
       return;
     case LandmarkKind::ColdStore:
       stand(canvas, art, Image::ColdStore, box);
@@ -797,6 +878,11 @@ void paint_building(godot::Node2D &canvas, const Art &art,
       });
   if (heap ==
       static_cast<std::int64_t>(object.area.width) * object.area.height) {
+    return;
+  }
+  if (shop) {
+    paint_storefront(canvas, art, area, ground, cell_y(content.map.height),
+                     surface);
     return;
   }
   for (std::int32_t y = area.y; y < area.y + area.height; y += TILE_CELLS) {
@@ -842,7 +928,7 @@ void paint_npc(godot::Node2D &canvas, const Art &art,
     cross(canvas, box.grow(-5.0F), color(235, 64, 74, 1.0F));
     return;
   }
-  stand(canvas, art, Image::NoodleVendor, box);
+  stand_on_floor(canvas, art, Image::NoodleVendor, box);
 }
 
 const char *source_kind_name(SourceKind kind) {
@@ -894,22 +980,23 @@ struct Marker {
   bool promised = false;
 };
 
+/// Whether a shop's source stands inside `building`.
+bool shop_inside(const ObjectSnapshot &building, const Marker &marker) {
+  return marker.stock.kind == SourceKind::Shop &&
+         covers(building.area,
+                {.x = marker.object.area.x, .y = marker.object.area.y});
+}
+
 /// A shop front is as tall as three cells, so it stands behind the ground. A
-/// shop inside a standing building with a picture of its own has that
-/// building for its front.
+/// shop inside a building has that building for its front, or its rubble.
 void paint_shop_front(godot::Node2D &canvas, const Art &art,
-                      const survival::Content &content,
                       std::span<const ObjectSnapshot> objects,
                       const Marker &marker) {
-  const survival::GridPosition cell{.x = marker.object.area.x,
-                                    .y = marker.object.area.y};
-  const bool pictured = std::ranges::any_of(objects, [&](const auto &object) {
-    return object.kind == ObjectKind::Building &&
-           object.state == ObjectState::Intact &&
-           landmark(content, object.id) && covers(object.area, cell);
+  const bool housed = std::ranges::any_of(objects, [&](const auto &object) {
+    return object.kind == ObjectKind::Building && shop_inside(object, marker);
   });
-  if (marker.stock.kind == SourceKind::Shop && !pictured) {
-    stand(canvas, art, Image::Shop, area_rect(marker.object.area));
+  if (marker.stock.kind == SourceKind::Shop && !housed) {
+    stand_on_floor(canvas, art, Image::Shop, area_rect(marker.object.area));
   }
 }
 
@@ -918,7 +1005,8 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
   const auto box = cell.grow(-2.0F);
   const auto tones = palette();
   if (marker.stock.kind != SourceKind::Shop) {
-    stand(canvas, art, source_image(marker.stock.kind, marker.object), cell);
+    stand_on_floor(canvas, art, source_image(marker.stock.kind, marker.object),
+                   cell);
   }
   if (marker.promised) {
     canvas.draw_rect(cell, tones.gold, false, 2.0F);
@@ -1450,18 +1538,25 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   const auto markers = markers_of(view, out_of_reach);
   const auto party = party_of(view);
   const auto ground = standing_ground(content, objects);
+  const float surface =
+      acid_surface(static_cast<float>(view.progression.acid.value) /
+                   static_cast<float>(content.run.full_acid.value));
   paint_decorations(canvas, art, content, true);
-  paint_supports(canvas, art, ground, cell_y(content.map.height));
+  paint_supports(canvas, art, ground, cell_y(content.map.height), surface);
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
-      paint_building(canvas, art, content, object, front);
+      const bool shop = std::ranges::any_of(markers, [&](const auto &marker) {
+        return shop_inside(object, marker);
+      });
+      paint_building(canvas, art, content, object, front, shop, ground,
+                     surface);
     });
   };
   paint_buildings(false);
   for (const auto &marker : markers) {
-    paint_shop_front(canvas, art, content, objects, marker);
+    paint_shop_front(canvas, art, objects, marker);
   }
-  paint_ground(canvas, art, content, objects, ground);
+  paint_ground(canvas, art, content, objects, ground, surface);
   paint_buildings(true);
   paint_hazards(canvas, art, content);
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {
