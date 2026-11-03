@@ -1618,6 +1618,14 @@ func _action(index: int) -> String:
 	return str(_actions()[index])
 
 ## The keys of the caps drawn over the humans' heads in the last frame.
+## The screen pixels the HUD's panels, chips and caps covered in the last
+## frame, from the areas the HUD laid them out at.
+func _hud_area() -> float:
+	var area: float = 0.0
+	for panel: Rect2 in scene.get_meta("hud_panels", []):
+		area += panel.get_area()
+	return area
+
 func _head_caps() -> Array:
 	return scene.get_meta("head_caps", [])
 

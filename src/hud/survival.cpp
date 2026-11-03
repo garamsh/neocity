@@ -486,6 +486,19 @@ void keyed_text(godot::Node2D &canvas, const rendering::Art &drawing, float x,
                baseline, label.substr(close + 2), size, tint, CHANGING);
 }
 
+/// Adds `area` to what the HUD covers in this frame, the `hud_panels` meta.
+void cover(godot::Node2D &canvas, godot::Rect2 area) {
+  godot::Array panels = canvas.get_meta("hud_panels", godot::Array());
+  panels.push_back(area);
+  canvas.set_meta("hud_panels", panels);
+}
+
+/// Draws a panel of the HUD and counts it as covered.
+void hud_panel(godot::Node2D &canvas, godot::Rect2 area) {
+  rendering::panel(canvas, area);
+  cover(canvas, area);
+}
+
 /// A flat button with its words centred on its height, dark on the accent.
 void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
                   godot::Rect2 area, const String &text, int size,
@@ -907,7 +920,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::panel(canvas, rect(MARGIN, BAND_Y, DAY_WIDTH, BAND_HEIGHT));
+  hud_panel(canvas, rect(MARGIN, BAND_Y, DAY_WIDTH, BAND_HEIGHT));
   drawing.image(canvas, rendering::Image::IconDay,
                 Vector2(MARGIN + 10.0F, BAND_Y + 8.0F));
   const String day = "DAY ";
@@ -917,7 +930,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
                MARGIN + 52.0F + drawing.text_width(day, BIG_SIZE, Weight::Bold),
                BAND_BASELINE, two_digits(progression.day), BIG_SIZE, tones.gold,
                Weight::Bold);
-  rendering::panel(canvas, rect(ACID_X, BAND_Y, ACID_WIDTH, BAND_HEIGHT));
+  hud_panel(canvas, rect(ACID_X, BAND_Y, ACID_WIDTH, BAND_HEIGHT));
   const String acid = "ACID ";
   drawing.text(canvas, ACID_X + 16.0F, BAND_BASELINE - 2.0F, acid, ACID_SIZE,
                tones.success, Weight::Bold);
@@ -933,7 +946,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
         rect(ACID_X + ACID_GAUGE_X, BAND_Y + 15.0F,
              ACID_WIDTH - ACID_GAUGE_X - 16.0F, 18.0F),
         acid_ratio(frame), tones.success);
-  rendering::panel(canvas, rect(TIME_X, BAND_Y, TIME_WIDTH, BAND_HEIGHT));
+  hud_panel(canvas, rect(TIME_X, BAND_Y, TIME_WIDTH, BAND_HEIGHT));
   drawing.image(canvas, rendering::Image::IconClock,
                 Vector2(TIME_X + 10.0F, BAND_Y + 8.0F));
   drawing.text(canvas, TIME_X + 52.0F, BAND_BASELINE,
@@ -944,6 +957,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto chip_area = pause_chip(drawing);
   const float x = chip_area.position.x;
   canvas.draw_rect(chip_area, tones.outline);
+  cover(canvas, chip_area);
   canvas.draw_rect(rect(x + 3.0F, HINT_Y - 12.0F, cap, 15.0F), tones.raised);
   drawing.text(canvas, x + 8.0F, HINT_Y, esc, SMALL_SIZE, tones.white,
                Weight::Bold);
@@ -965,7 +979,7 @@ void paint_goal(godot::Node2D &canvas, const rendering::Art &drawing,
   const float width = std::min(GOAL_WIDTH, words + 2.0F * GOAL_PAD);
   const bool both = !line.is_empty() && !notice.is_empty();
   const float x = std::round((SCREEN_WIDTH - width) / 2.0F);
-  rendering::panel(canvas, rect(x, GOAL_Y, width, both ? 52.0F : 36.0F));
+  hud_panel(canvas, rect(x, GOAL_Y, width, both ? 52.0F : 36.0F));
   if (!line.is_empty()) {
     keyed_text(canvas, drawing, x + GOAL_PAD, GOAL_Y + 24.0F, line, GOAL_SIZE,
                tones.white, tones.gold);
@@ -1044,7 +1058,7 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto &view = frame.view;
   const bool human = survival::key_set(frame.control, actor).has_value();
-  rendering::panel(canvas, rect(x, FOOT_Y, ACTOR_WIDTH, FOOT_HEIGHT));
+  hud_panel(canvas, rect(x, FOOT_Y, ACTOR_WIDTH, FOOT_HEIGHT));
   const float top = FOOT_Y + (FOOT_HEIGHT - PORTRAIT) / 2.0F;
   const auto face = rect(x + MARGIN + 2.0F, top, PORTRAIT, PORTRAIT);
   rendering::inset(canvas, face.grow(2.0F));
@@ -1127,7 +1141,7 @@ std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
 void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
                const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  rendering::panel(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
+  hud_panel(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
   const auto items = bag_of(frame);
   const std::size_t slots = std::max(BAG_SLOTS, items.size());
   // More kinds than slots share the bag's width, each slot showing its
@@ -1282,10 +1296,10 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto rows = action_rows(frame);
   const bool alone = rows.size() == 1;
   if (alone) {
-    rendering::panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
+    hud_panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
   } else {
-    rendering::panel(canvas, rect(ACTION_X, SCREEN_HEIGHT - MARGIN - DUO_HEIGHT,
-                                  ACTION_WIDTH, DUO_HEIGHT));
+    hud_panel(canvas, rect(ACTION_X, SCREEN_HEIGHT - MARGIN - DUO_HEIGHT,
+                           ACTION_WIDTH, DUO_HEIGHT));
   }
   for (const auto &row : rows) {
     const auto &keys = KEY_LABELS.at(row.set);
@@ -1334,6 +1348,7 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
                 feet.y - HEAD_TAG_RISE * shot.camera.zoom - 8.0F - CAP)
             .round();
     canvas.draw_rect(rect(at.x, at.y, width, CAP), tones.outline);
+    cover(canvas, rect(at.x, at.y, width, CAP));
     canvas.draw_rect(rect(at.x + 2.0F, at.y + 2.0F, width - 4.0F, CAP - 4.0F),
                      color(204, 136, 28, 1.0F));
     canvas.draw_rect(rect(at.x + 2.0F, at.y + 2.0F, width - 4.0F, CAP - 7.0F),
@@ -1421,7 +1436,7 @@ void paint_task(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto card = task_card(drawing);
   const float y = card.position.y;
-  rendering::panel(canvas, card);
+  hud_panel(canvas, card);
   const float left = TASK_X + INSET;
   keyed_text(canvas, drawing, left, y + 38.0F, next_step(frame), TASK_SIZE,
              tones.white, tones.gold);
@@ -1462,7 +1477,7 @@ void paint_appraisal(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto area = appraisal_area(unknown.size());
   const float x = area.position.x;
   const float y = area.position.y;
-  rendering::panel(canvas, area);
+  hud_panel(canvas, area);
   godot::PackedVector2Array pointer;
   pointer.push_back(Vector2(APPRAISER_HEAD_X - 7.0F, y + 62.0F));
   pointer.push_back(Vector2(APPRAISER_HEAD_X + 7.0F, y + 62.0F));
@@ -1489,7 +1504,7 @@ void paint_dishes(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
-  rendering::panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
+  hud_panel(canvas, rect(ACTION_X, FOOT_Y, ACTION_WIDTH, FOOT_HEIGHT));
   const float left = ACTION_X + 12.0F;
   drawing.text(canvas, left, FOOT_Y + 22.0F, "DISHES", SMALL_SIZE, tones.white,
                Weight::Bold);
@@ -1540,7 +1555,7 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
   const float height =
       RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 18.0F;
   const float top = RESULT_BOTTOM - height;
-  rendering::panel(canvas, rect(RESULT_X, top, RESULT_WIDTH, height));
+  hud_panel(canvas, rect(RESULT_X, top, RESULT_WIDTH, height));
   float y = top + 10.0F + static_cast<float>(RESULT_SIZE);
   bool headline = true;
   for (const auto &line : lines) {
@@ -2125,6 +2140,7 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts) {
+  canvas.set_meta("hud_panels", godot::Array());
   if (frame.view.progression.phase == Phase::Exploration) {
     // A burn shakes the map's words with the map, not the interface.
     drawing.shift(canvas, rendering::shake(bursts));

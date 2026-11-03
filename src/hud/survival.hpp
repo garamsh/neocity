@@ -157,7 +157,9 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
 /// phase opens, with the HUD and the flourishes under way. Leaves on the
 /// canvas the keys of the caps over the humans' heads as the `head_caps`
-/// meta, an array of strings.
+/// meta, an array of strings, and the area of every panel, chip and cap of
+/// the HUD it drew, the fading notes left out, as the `hud_panels` meta, an
+/// array of `Rect2`.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts);
