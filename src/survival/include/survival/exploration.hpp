@@ -233,8 +233,8 @@ public:
   [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// Each 100ms movement unit runs its physics ticks under one input.
-  /// The world follows the run's clock here and on collection only, at the
-  /// acid the caller passes.
+  /// The world follows the run's clock here only, at the acid the caller
+  /// passes.
   /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs,
