@@ -1,5 +1,6 @@
 #pragma once
 
+#include <survival/companion.hpp>
 #include <survival/exploration.hpp>
 #include <survival/simulation.hpp>
 
@@ -26,11 +27,19 @@ godot::Rect2 rect(float x, float y, float w, float h);
 /// Fills `area` on `canvas` with `fill`, its corners rounded by `radius`.
 void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
              godot::Color fill);
-/// Draws an opaque flat panel filling `area`: rounded, with a soft shadow and
-/// a one-pixel edge.
+/// Draws an opaque pixel panel filling `area`: a dark fill inside a thick
+/// light rim, lit from above, between dark lines, its corners cut back.
 void panel(godot::Node2D &canvas, godot::Rect2 area);
-/// Draws a flat button filling `area`, in the accent when `marked`.
+/// Draws a pixel button filling `area` in a panel's frame, filled in the
+/// accent with a darker lip along its bottom when `marked`.
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
+/// Draws a dark slot sunk into a panel, filling `area`.
+void inset(godot::Node2D &canvas, godot::Rect2 area);
+/// The one name the screen gives a city object, so the map, the goal line,
+/// the action button and the log agree: a source by what it holds and what it
+/// is, "Fish cart", anything else by `survival::object_name`.
+[[nodiscard]] godot::String place_name(const survival::GameView &view,
+                                       survival::ObjectId object);
 
 /// The colour tokens of the world's labels and the interface.
 struct Palette {
@@ -50,10 +59,10 @@ struct Palette {
   godot::Color surface;
   /// A row, slot, chip or idle button on a panel.
   godot::Color raised;
-  /// The one-pixel edge of a panel or an idle button.
+  /// The dark lines around a frame and a slot.
   godot::Color outline;
-  /// The soft shadow under a panel.
-  godot::Color shadow;
+  /// The light rim of a panel or an idle button.
+  godot::Color rim;
   /// The least important text.
   godot::Color faint;
   godot::Color danger;
@@ -63,8 +72,13 @@ struct Palette {
 /// How far a panel's words stay inside its edge.
 inline constexpr float PANEL_INSET = 16.0F;
 
-/// The interface font's weights, lightest first.
-enum class Weight : std::uint8_t { Medium, SemiBold, Bold };
+/// How words are drawn in the interface's one face: `Bold` draws them again
+/// one pixel to the right.
+enum class Weight : std::uint8_t { Regular, Bold };
+
+/// The interface face's pixels per em when one of its design pixels is one
+/// screen pixel; words are drawn at whole multiples of it.
+inline constexpr int FONT_GRID = 8;
 
 Palette palette();
 
@@ -193,14 +207,22 @@ struct Motion {
 /// remembers how each actor moved between frames.
 class Art {
 public:
-  /// Loads every picture of the art set and the interface font's weights.
+  /// Loads every picture of the art set and the interface font.
   static Art load();
 
+  /// Draws `text` with the left end of its baseline on the whole pixel
+  /// nearest (`x`, `y`), at the whole multiple of `FONT_GRID` nearest `size`.
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
-            int size, godot::Color tint, Weight weight = Weight::Medium) const;
+            int size, godot::Color tint, Weight weight = Weight::Regular) const;
   /// How wide `text` draws at `size` in `weight`.
   [[nodiscard]] float text_width(const godot::String &text, int size,
-                                 Weight weight = Weight::Medium) const;
+                                 Weight weight = Weight::Regular) const;
+  /// The lines drawn since the last call, in drawing order; words drawn on a
+  /// line's baseline where it ends continue that line.
+  [[nodiscard]] std::vector<godot::String> take_written() const;
+  /// The sizes `text` actually drew at, one per call since the last call, in
+  /// drawing order: each is the grid size, not the one asked for.
+  [[nodiscard]] std::vector<int> take_sizes() const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
   /// Each colour is multiplied by `tint`.
@@ -226,6 +248,9 @@ public:
   /// How far, from 0 to 1 and eased, `name` has come in since it appeared;
   /// one missing from the last drawn frame appears afresh.
   [[nodiscard]] float entrance(const godot::String &name) const;
+  /// How many seconds of the real clock `name` has been on the screen; one
+  /// missing from the last drawn frame appears afresh.
+  [[nodiscard]] float shown_for(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Records `actor`'s `body` at `world_time` and returns how it has moved.
   /// An earlier world time than the last one starts the memory afresh.
@@ -253,18 +278,26 @@ private:
     std::uint64_t frame = 0;
   };
 
+  /// One line `text` has drawn, and where its baseline ends.
+  struct Written {
+    godot::String text;
+    godot::Vector2 end;
+  };
+
   Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-      std::array<godot::Ref<godot::Font>, 3> weights);
+      godot::Ref<godot::Font> face);
 
   /// The tween of `name`, restarted when it was not drawn for a moment.
   Tween &tween(const godot::String &name, float target) const;
 
   std::vector<godot::Ref<godot::Texture2D>> images;
-  std::array<godot::Ref<godot::Font>, 3> fonts;
-  /// Painting is const; the trails and tweens are what the screen saw, not
-  /// art.
+  godot::Ref<godot::Font> font;
+  /// Painting is const; the trails, tweens and written lines are what the
+  /// screen saw, not art.
   mutable std::array<Trail, 2> trails{};
   mutable std::map<godot::String, Tween> tweens;
+  mutable std::vector<Written> written;
+  mutable std::vector<int> sizes;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;

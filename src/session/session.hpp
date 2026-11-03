@@ -81,7 +81,9 @@ public:
   /// layer that draws it; nothing paints the open run until it is called.
   void aim(const rendering::Art &drawing);
   /// Draws the menus or the open game, over what `paint_world` and
-  /// `paint_glow` draw.
+  /// `paint_glow` draw, and leaves on `canvas` the lines it wrote as the
+  /// `screen_text` meta, an array of strings, and the sizes it drew them at as
+  /// the `screen_text_sizes` meta, an array of integers.
   void paint(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Draws the open run's scene, behind everything `paint` draws.
   void paint_world(godot::Node2D &canvas, const rendering::Art &drawing) const;
@@ -98,6 +100,8 @@ public:
 
 private:
   void advance_screen(double delta, const Command &command);
+  /// Draws the current screen for `paint`.
+  void paint_screen(godot::Node2D &canvas, const rendering::Art &drawing) const;
   /// Whether the survival screen is open under no cinematic.
   [[nodiscard]] bool playing() const;
   void enter(Screen destination);
@@ -125,6 +129,8 @@ private:
 
   StartSurvival start;
   std::optional<SurvivalRun> run;
+  /// The number the next run's first logged event takes.
+  std::uint64_t next_event = 0;
   /// The open run's frame as the last advance left it, which every layer
   /// draws, so it is read once a frame.
   std::optional<hud::SurvivalFrame> framed;

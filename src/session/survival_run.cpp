@@ -231,11 +231,13 @@ godot::Dictionary actor_status(const GameView &view,
 
 } // namespace
 
-SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players)
+SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
+                         std::uint64_t first_event)
     : features(rules), controllers(players),
       started_together(
           survival::key_set(players, Actor::Chef).has_value() &&
-          survival::key_set(players, Actor::Appraiser).has_value()) {}
+          survival::key_set(players, Actor::Appraiser).has_value()),
+      first_logged(first_event) {}
 
 std::vector<hud::Event>
 SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
@@ -501,6 +503,7 @@ void SurvivalRun::record(const hud::Event &event) {
   events.push_back(event);
   while (events.size() > EVENT_LIMIT) {
     events.pop_front();
+    ++first_logged;
   }
 }
 
@@ -511,7 +514,8 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .offers = {},
                             .started_together = started_together,
                             .last_day_map_changes = last_day_map_changes,
-                            .events = {events.begin(), events.end()}};
+                            .events = {events.begin(), events.end()},
+                            .first_event = first_logged};
   const auto chef = features.companion.get().command(Actor::Chef, controllers,
                                                      {}, result.view);
   result.ai_chef_working =
@@ -532,6 +536,10 @@ hud::SurvivalFrame SurvivalRun::frame() const {
     }
   }
   return result;
+}
+
+std::uint64_t SurvivalRun::next_event() const {
+  return first_logged + events.size();
 }
 
 godot::Dictionary SurvivalRun::status() const {
@@ -582,6 +590,12 @@ godot::Dictionary SurvivalRun::status() const {
                 state_name(object.state));
   }
   status.set("objects", objects);
+  godot::Dictionary places;
+  for (const auto &object : view.world.objects) {
+    places.set(from(survival::object_name(object.id)),
+               rendering::place_name(view, object.id));
+  }
+  status.set("places", places);
   godot::Dictionary stock;
   for (const auto &source : view.exploration.sources) {
     stock.set(from(survival::object_name(source.id)), source.remaining);
@@ -622,9 +636,14 @@ godot::Dictionary SurvivalRun::status() const {
     fitted.push_back(entry);
   }
   status.set("changing_text", fitted);
+  godot::Array actions;
+  for (const auto &label : hud::action_labels(current)) {
+    actions.push_back(label);
+  }
+  status.set("actions", actions);
   godot::Array log;
   for (const auto &event : current.events) {
-    log.push_back(hud::describe(event));
+    log.push_back(hud::describe(view, event));
   }
   status.set("events", log);
   return status;

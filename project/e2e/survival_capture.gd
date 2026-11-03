@@ -203,6 +203,25 @@ func _run() -> void:
 	await _tap(KEY_X)
 	await _frames(12)
 	await _save("22-hand-off-notice")
+	# A human appraiser leaves the AI chef's finds unidentified, so the second
+	# day's base shows the day's result beside several of them.
+	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
+	await _tap(KEY_1)
+	await _tap(KEY_2)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	await _frames(12)
+	await _until_phase("workshop")
+	await _tap(KEY_G)
+	# Past the new day's flourish, which darkens the kitchen as it opens.
+	await _frames(120)
+	var bag: Array = scene.get_meta("bag", [])
+	var unknown: int = bag.filter(func(item: Dictionary) -> bool: return not item["known"]).size()
+	if _int("day") != 2 or unknown < 2:
+		_fail("the second day's base holds %d unidentified kinds on day %d" % [unknown, _int("day")])
+		return
+	await _save("32-workshop-appraisal-and-result")
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
 	await _tap(KEY_1)
