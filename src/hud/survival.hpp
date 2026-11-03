@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../audio/sound.hpp"
 #include "../rendering/drawing.hpp"
 #include "../rendering/feedback.hpp"
 #include "../rendering/survival.hpp"
@@ -113,9 +114,10 @@ struct KeyRow {
   godot::String second;
 };
 
-/// One volume on the pause screen: its name, its level out of `steps`, and
-/// whether the left and right keys change it now.
+/// One volume on the pause screen: the bus it sets, its name, its level out
+/// of `steps`, and whether the left and right keys change it now.
 struct VolumeRow {
+  audio::Bus bus = audio::Bus::Effects;
   godot::String name;
   std::uint8_t level = 0;
   std::uint8_t steps = 0;
@@ -160,7 +162,8 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts);
 /// Draws what holds the run over the frozen survival screen; the pause screen
-/// shows `volumes`.
+/// shows `volumes`. Leaves the button it drew on `canvas` as the
+/// `interruption_button` meta, a `Rect2`, empty with none.
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame,
                         const std::array<VolumeRow, 2> &volumes);

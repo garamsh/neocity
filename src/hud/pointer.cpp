@@ -44,6 +44,16 @@ const char *key_word(PlayerKey key) {
   std::abort();
 }
 
+const char *bus_word(audio::Bus bus) {
+  switch (bus) {
+  case audio::Bus::Effects:
+    return "effects";
+  case audio::Bus::Music:
+    return "music";
+  }
+  std::abort();
+}
+
 const char *menu_word(MenuKey key) {
   switch (key) {
   case MenuKey::Confirm:
@@ -85,9 +95,8 @@ String press_name(const Press &press) {
           return pressed.direction == survival::Direction::Up ? "dish_up"
                                                               : "dish_down";
         } else {
-          return "volume_" +
-                 String::num_int64(static_cast<std::int64_t>(pressed.row)) +
-                 "_" + String::num_int64(pressed.level);
+          return String("volume_") + bus_word(pressed.bus) + "_" +
+                 String::num_int64(pressed.level);
         }
       },
       press);

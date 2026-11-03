@@ -90,11 +90,11 @@ void move_cursor(std::size_t &cursor, std::size_t count,
   }
 }
 
-/// Marks volume `row`, effects then music as `volume_rows` lists them, and
-/// sets it to `level`.
-void set_volume(Volume &volume, std::size_t row, std::uint8_t level) {
-  volume.marked = row == 0 ? audio::Bus::Effects : audio::Bus::Music;
-  (row == 0 ? volume.effects : volume.music) = std::min(level, VOLUME_STEPS);
+/// Marks the volume of `bus` and sets it to `level`.
+void set_volume(Volume &volume, audio::Bus bus, std::uint8_t level) {
+  volume.marked = bus;
+  (bus == audio::Bus::Effects ? volume.effects : volume.music) =
+      std::min(level, VOLUME_STEPS);
 }
 
 void press_menu_key(Command &command, hud::MenuKey key) {
@@ -355,7 +355,7 @@ void Session::click_at(Command &command, godot::Vector2 point) {
         } else if constexpr (std::is_same_v<Pressed, hud::DishPress>) {
           command.dish_step = press.direction;
         } else {
-          set_volume(volume, press.row, press.level);
+          set_volume(volume, press.bus, press.level);
           send_volume();
           cue(audio::Cue::MenuMove);
         }

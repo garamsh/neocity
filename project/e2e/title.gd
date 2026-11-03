@@ -5,6 +5,10 @@ extends SceneTree
 ## controls page against the pause screen's keys, a new game, the same entries
 ## with real mouse events, and quitting.
 
+## How long, in milliseconds of the real clock, a panel takes to rise into
+## place, with a margin over the 220 of src/rendering/drawing.cpp.
+const ENTRANCE_MS: int = 300
+
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var checks: int = 0
@@ -120,12 +124,33 @@ func _controls_list_the_pause_keys() -> bool:
 		return false
 	return _check(controls[-2] == "Pause or continue: Esc / Esc" and controls[-1] == "Leave the run; Esc cancels: M, then Enter / M, then Enter" and scene.screen_name() == "main", "the controls page ends with the pause and leave keys")
 
+## A new game as the chef, left first by a click on the question's leave as it
+## is drawn while it still rises into place, then by M and Enter.
 func _new_game_starts_a_run() -> bool:
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "New game then 1 starts the survival game as the chef"):
 		return false
+	# The first question of the process rises into place on the real clock, and
+	# headless frames take far less than its 220 ms.
+	_key(KEY_M, true)
+	await _frames(1)
+	_key(KEY_M, false)
+	await _frames(1)
+	var rising: Rect2 = scene.get_meta("interruption_button", Rect2())
+	await _click_at(Vector2(rising.position.x + 12.0, rising.end.y - 2.0))
+	var left_by_click: bool = scene.screen_name() == "main"
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
 	await _tap(KEY_M)
+	OS.delay_msec(ENTRANCE_MS)
+	await _frames(2)
+	var risen: Rect2 = scene.get_meta("interruption_button", Rect2())
+	if not _check(risen.has_area() and rising.size == risen.size and rising.position.y >= risen.position.y + 3.0, "setup: the question's button was drawn still rising into place: %s, resting at %s" % [rising, risen]):
+		return false
+	if not _check(left_by_click, "a click on the bottom of leave, as drawn while the question rises, leaves the run"):
+		return false
 	await _tap(KEY_ENTER)
 	return _check(scene.screen_name() == "main" and scene.survival_status().is_empty(), "leaving the run returns to the title screen")
 
@@ -201,16 +226,25 @@ func _click(press: String) -> bool:
 		return false
 	_point_at(target)
 	await _frames(2)
+	var area: Rect2 = target["rect"]
+	await _click_at(area.get_center())
+	return true
+
+## Clicks the left button at `point` on the screen the scene draws, moving the
+## mouse there in the same frame.
+func _click_at(point: Vector2) -> void:
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * point
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
 	for pressed: bool in [true, false]:
 		var event: InputEventMouseButton = InputEventMouseButton.new()
 		event.button_index = MOUSE_BUTTON_LEFT
 		event.pressed = pressed
-		var area: Rect2 = target["rect"]
-		event.position = root.get_final_transform() * area.get_center()
+		event.position = motion.position
 		event.global_position = event.position
 		Input.parse_input_event(event)
 		await _frames(2 if pressed else 8)
-	return true
 
 func _tap(code: Key) -> void:
 	_key(code, true)

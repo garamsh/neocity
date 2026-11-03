@@ -135,13 +135,17 @@ constexpr int TASK_SIZE = BIG_SIZE;
 constexpr int DETAIL_SIZE = SMALL_SIZE;
 constexpr int TASK_NOTE_SIZE = SMALL_SIZE;
 constexpr float TASK_INNER = TASK_WIDTH - 2.0F * INSET;
+/// The baseline of the card's last line, the dishes and the end of the day,
+/// under its top.
+constexpr float TASK_NOTES = 89.0F;
 /// The unidentified ingredients float over the appraiser's head in the
 /// kitchen, copied from where `paint_workshop` in src/rendering/survival.cpp
 /// draws the appraiser's idle frame: x 150, standing on the kitchen floor.
 constexpr float APPRAISER_HEAD_X = 216.0F;
 constexpr float APPRAISER_HEAD_Y = 206.0F;
-/// Where the workshop scene stands the chef: its left edge, the floor under
-/// its feet, and the scale it is drawn at.
+/// Where the workshop scene stands the chef, copied from where
+/// `paint_workshop` in src/rendering/survival.cpp draws the chef's idle frame:
+/// its left edge, `KITCHEN_FLOOR` under its feet, and `WORKSHOP_SCALE`.
 constexpr float CHEF_FIGURE_X = 560.0F;
 constexpr float KITCHEN_FLOOR = 310.0F;
 constexpr float FIGURE_SCALE = 2.0F;
@@ -501,6 +505,12 @@ void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
 float button_width(const rendering::Art &drawing, const String &text,
                    int size) {
   return drawing.text_width(text, size, CHANGING) + 2.0F * BUTTON_PAD;
+}
+
+/// How far below its place the panel `name` still is as it comes in; its
+/// painting and its targets both stand there.
+float entrance_lift(const rendering::Art &drawing, const char *name) {
+  return (1.0F - drawing.entrance(name)) * ENTRANCE_LIFT;
 }
 
 String offered_step(const GameView &view, const survival::Action &action,
@@ -1340,8 +1350,6 @@ void paint_head_caps(godot::Node2D &canvas, const rendering::Art &drawing,
   canvas.set_meta("head_caps", caps);
 }
 
-/// The feed key of the first human whose feed key would feed a stored dish,
-/// and that dish: "[F] Feed Fish Stew".
 /// The first human whose feed key would feed a stored dish.
 std::optional<Actor> feeder(const SurvivalFrame &frame) {
   for (const auto actor : ACTORS) {
@@ -1354,6 +1362,8 @@ std::optional<Actor> feeder(const SurvivalFrame &frame) {
   return std::nullopt;
 }
 
+/// The feed key of the first human whose feed key would feed a stored dish,
+/// and that dish: "[F] Feed Fish Stew".
 std::optional<String> feed_job(const SurvivalFrame &frame) {
   for (const auto actor : ACTORS) {
     const auto keys = survival::key_set(frame.control, actor);
@@ -1398,25 +1408,32 @@ String cookable_note(const SurvivalFrame &frame) {
          (choose ? "   " + key(CHOOSE_DISH_KEYS) + "choose" : String());
 }
 
+/// The base's task card, risen into place as the workshop opens.
+godot::Rect2 task_card(const rendering::Art &drawing) {
+  return rect(TASK_X, TASK_Y + entrance_lift(drawing, "workshop"), TASK_WIDTH,
+              TASK_HEIGHT);
+}
+
 /// The base's task card: the one thing to do now, large, what it would
 /// score, how many dishes can be cooked, and the end-day key.
 void paint_task(godot::Node2D &canvas, const rendering::Art &drawing,
-                const SurvivalFrame &frame, float lift) {
+                const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  const float y = TASK_Y + lift;
-  rendering::panel(canvas, rect(TASK_X, y, TASK_WIDTH, TASK_HEIGHT));
+  const auto card = task_card(drawing);
+  const float y = card.position.y;
+  rendering::panel(canvas, card);
   const float left = TASK_X + INSET;
   keyed_text(canvas, drawing, left, y + 38.0F, next_step(frame), TASK_SIZE,
              tones.white, tones.gold);
   drawing.text(canvas, left, y + 64.0F, task_detail(frame), DETAIL_SIZE,
                tones.white, CHANGING);
-  drawing.text(canvas, left, y + 89.0F, cookable_note(frame), TASK_NOTE_SIZE,
-               tones.muted, CHANGING);
+  drawing.text(canvas, left, y + TASK_NOTES, cookable_note(frame),
+               TASK_NOTE_SIZE, tones.muted, CHANGING);
   const String end = end_day_job(frame);
   keyed_text(canvas, drawing,
              TASK_X + TASK_WIDTH - INSET -
                  drawing.text_width(end, TASK_NOTE_SIZE, CHANGING),
-             y + 89.0F, end, TASK_NOTE_SIZE, tones.muted, tones.gold);
+             y + TASK_NOTES, end, TASK_NOTE_SIZE, tones.muted, tones.gold);
 }
 
 /// The panel over the appraiser's head that holds `count` ingredients.
@@ -1428,7 +1445,6 @@ godot::Rect2 appraisal_area(std::size_t count) {
 
 /// The ingredients not yet identified, over the appraiser's head, the one
 /// its key would appraise ringed.
-
 void paint_appraisal(godot::Node2D &canvas, const rendering::Art &drawing,
                      const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
@@ -1550,8 +1566,7 @@ void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                             !frame.view.workshop.foods.empty());
   paint_day_result(canvas, drawing, frame);
   paint_appraisal(canvas, drawing, frame);
-  paint_task(canvas, drawing, frame,
-             (1.0F - drawing.entrance("workshop")) * ENTRANCE_LIFT);
+  paint_task(canvas, drawing, frame);
   paint_foot(canvas, drawing, frame);
   paint_dishes(canvas, drawing, frame);
 }
@@ -1858,6 +1873,12 @@ std::array<String, 2> setup_label(SetupEntry entry) {
   std::abort();
 }
 
+/// The choice of players' entry `index`, counted from the top.
+godot::Rect2 setup_area(std::size_t index) {
+  return rect(SETUP_X, SETUP_Y + static_cast<float>(index) * SETUP_PITCH,
+              SETUP_WIDTH, SETUP_HEIGHT);
+}
+
 } // namespace
 
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -1873,9 +1894,7 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
   const float cursor =
       SETUP_Y + drawing.glide("setup_cursor", chosen_at) * SETUP_PITCH;
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
-    rendering::panel(
-        canvas, rect(SETUP_X, SETUP_Y + static_cast<float>(index) * SETUP_PITCH,
-                     SETUP_WIDTH, SETUP_HEIGHT));
+    rendering::panel(canvas, setup_area(index));
   }
   // The highlight slides to the cursor's entry.
   rendering::button(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT),
@@ -1928,6 +1947,16 @@ String volume_label(const VolumeRow &row) {
          String("%");
 }
 
+/// Block `step` of the pause screen's volume row `row`, `lift` below its
+/// place.
+godot::Rect2 volume_block(std::size_t row, std::uint8_t step, float lift) {
+  const float baseline = PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA +
+                         static_cast<float>(row + 1) * VOLUME_ROW_HEIGHT;
+  return rect(PAUSE_TEXT_X + VOLUME_BLOCKS_X +
+                  static_cast<float>(step) * VOLUME_BLOCK_STEP,
+              baseline - 16.0F, VOLUME_BLOCK_STEP - 4.0F, 18.0F);
+}
+
 /// The pause screen's volume rows under the keys: each a name, a row of
 /// level blocks and a percentage, the row the left and right keys change
 /// marked in the accent.
@@ -1937,7 +1966,8 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
   const float top = PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA;
   caption(canvas, drawing, PAUSE_TEXT_X, top, VOLUME_KEYS, tones.gold);
   float y = top + VOLUME_ROW_HEIGHT;
-  for (const auto &row : volumes) {
+  for (std::size_t index = 0; index < volumes.size(); ++index) {
+    const auto &row = volumes.at(index);
     const godot::Color lit = row.marked ? tones.gold : tones.cyan;
     if (row.marked) {
       canvas.draw_rect(rect(PAUSE_TEXT_X - 10.0F, y - VOLUME_ROW_HEIGHT + 10.0F,
@@ -1948,9 +1978,7 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
                  row.marked ? tones.gold : tones.white);
     const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
     for (std::uint8_t step = 0; step < row.steps; ++step) {
-      const auto block =
-          rect(blocks + static_cast<float>(step) * VOLUME_BLOCK_STEP, y - 16.0F,
-               VOLUME_BLOCK_STEP - 4.0F, 18.0F);
+      const auto block = volume_block(index, step, lift);
       rendering::inset(canvas, block);
       if (step < row.level) {
         canvas.draw_rect(block.grow(-2.0F), lit);
@@ -2023,22 +2051,28 @@ void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-/// The pause screen's subtitle, with when the escape checks begin.
-/// The pause screen's button at its top right, risen by `lift`.
+/// How far below its place the open interruption's panel still is as it
+/// comes in.
+float interruption_lift(const rendering::Art &drawing) {
+  return entrance_lift(drawing, "interruption");
+}
+
+/// The pause screen's button at its top right, `lift` below its place.
 godot::Rect2 continue_area(const rendering::Art &drawing, const String &text,
-                           float lift = 0.0F) {
+                           float lift) {
   const float width = button_width(drawing, text, INTERRUPTION_LINE_SIZE);
   return rect(PAUSE_BOX_X + PAUSE_BOX_WIDTH - PAUSE_INSET - width,
               PAUSE_BOX_Y + lift + 36.0F, width, 48.0F);
 }
 
-/// A notice's button under its line, risen by `lift`.
+/// A notice's button under its line, `lift` below its place.
 godot::Rect2 notice_button_area(const rendering::Art &drawing,
-                                const String &text, float lift = 0.0F) {
+                                const String &text, float lift) {
   return rect(NOTICE_TEXT_X - BUTTON_PAD, NOTICE_BOX_Y + lift + 150.0F,
               button_width(drawing, text, INTERRUPTION_LINE_SIZE), 48.0F);
 }
 
+/// The pause screen's subtitle, with when the escape checks begin.
 String pause_line(const std::array<String, 3> &text) {
   return text.at(1) + String(" ") + escape_goal() + String(".");
 }
@@ -2120,7 +2154,7 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
   const float shown = drawing.entrance("interruption");
-  const float lift = (1.0F - shown) * ENTRANCE_LIFT;
+  const float lift = interruption_lift(drawing);
   canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
                    color(9, 10, 20, 0.72F * shown));
   if (interruption == Interruption::Paused) {
@@ -2135,8 +2169,10 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_key_rows(canvas, drawing, key_rows(frame), PAUSE_TEXT_X,
                    PAUSE_ROWS_Y + lift, PAUSE_ROW_HEIGHT);
     paint_recipe_book(canvas, drawing, frame, PAUSE_ROWS_Y + lift);
-    paint_button(canvas, drawing, continue_area(drawing, text.at(2), lift),
-                 text.at(2), INTERRUPTION_LINE_SIZE, false);
+    const auto button = continue_area(drawing, text.at(2), lift);
+    paint_button(canvas, drawing, button, text.at(2), INTERRUPTION_LINE_SIZE,
+                 false);
+    canvas.set_meta("interruption_button", button);
     paint_volumes(canvas, drawing, volumes, lift);
     return;
   }
@@ -2146,9 +2182,12 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                INTERRUPTION_TITLE_SIZE, tones.white, Weight::Bold);
   drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + lift + 116.0F, text.at(1),
                INTERRUPTION_LINE_SIZE, tones.muted, CHANGING);
+  const auto button = notice_button_area(drawing, text.at(2), lift);
+  canvas.set_meta("interruption_button",
+                  text.at(2).is_empty() ? godot::Rect2() : button);
   if (!text.at(2).is_empty()) {
-    paint_button(canvas, drawing, notice_button_area(drawing, text.at(2), lift),
-                 text.at(2), INTERRUPTION_LINE_SIZE, false);
+    paint_button(canvas, drawing, button, text.at(2), INTERRUPTION_LINE_SIZE,
+                 false);
   }
 }
 
@@ -2624,14 +2663,16 @@ void workshop_targets(std::vector<Target> &targets,
                       const rendering::Art &drawing,
                       const SurvivalFrame &frame) {
   const auto job = workshop_step(frame, KEY_LABELS.at(0));
+  const auto card = task_card(drawing);
+  const float top = card.position.y;
   targets.push_back(
-      {.area = rect(TASK_X, TASK_Y, TASK_WIDTH, 48.0F),
+      {.area = rect(TASK_X, top, TASK_WIDTH, 48.0F),
        .press = job.press.value_or(PlayerPress{}),
        .refusal = job.press ? String() : String("The AI is working.")});
   if (const auto actor = feeder(frame);
       actor && job.press && job.press->key != PlayerKey::Feed) {
     targets.push_back(
-        {.area = rect(TASK_X, TASK_Y + 48.0F, TASK_WIDTH, 22.0F),
+        {.area = rect(TASK_X, top + 48.0F, TASK_WIDTH, 22.0F),
          .press = PlayerPress{.actor = actor, .key = PlayerKey::Feed}});
   }
   if (survival::key_set(frame.control, Actor::Chef)) {
@@ -2641,7 +2682,7 @@ void workshop_targets(std::vector<Target> &targets,
           return recipe_ready(frame.view, recipe);
         });
     targets.push_back(
-        {.area = line_area(drawing, TASK_X + INSET, TASK_Y + 89.0F,
+        {.area = line_area(drawing, TASK_X + INSET, top + TASK_NOTES,
                            cookable_note(frame), TASK_NOTE_SIZE),
          .press = DishPress{survival::Direction::Down},
          .refusal = ready > 1 ? String() : String("No other dish to choose.")});
@@ -2650,7 +2691,7 @@ void workshop_targets(std::vector<Target> &targets,
   const float end_width = drawing.text_width(end, TASK_NOTE_SIZE, CHANGING);
   targets.push_back(
       {.area = line_area(drawing, TASK_X + TASK_WIDTH - INSET - end_width,
-                         TASK_Y + 89.0F, end, TASK_NOTE_SIZE),
+                         top + TASK_NOTES, end, TASK_NOTE_SIZE),
        .press = PlayerPress{.actor = first_player(frame),
                             .key = PlayerKey::EndDay}});
   if (survival::key_set(frame.control, Actor::Chef)) {
@@ -2693,10 +2734,7 @@ std::vector<Target> setup_targets() {
   targets.reserve(SETUP_ENTRIES.size());
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
     targets.push_back(
-        {.area =
-             rect(SETUP_X, SETUP_Y + static_cast<float>(index) * SETUP_PITCH,
-                  SETUP_WIDTH, SETUP_HEIGHT),
-         .press = OptionPress{index + 1}});
+        {.area = setup_area(index), .press = OptionPress{index + 1}});
   }
   return targets;
 }
@@ -2717,35 +2755,32 @@ std::vector<Target>
 interruption_targets(const rendering::Art &drawing, Interruption interruption,
                      const std::array<VolumeRow, 2> &volumes) {
   const auto text = interruption_text(interruption);
+  const float lift = interruption_lift(drawing);
   std::vector<Target> targets;
   switch (interruption) {
   case Interruption::Paused: {
     const auto [resume, leave] =
-        split_button(drawing, continue_area(drawing, text.at(2)), text.at(2),
-                     "M:", INTERRUPTION_LINE_SIZE);
+        split_button(drawing, continue_area(drawing, text.at(2), lift),
+                     text.at(2), "M:", INTERRUPTION_LINE_SIZE);
     targets.push_back({.area = resume, .press = MenuKey::Pause});
     targets.push_back({.area = leave, .press = MenuKey::Menu});
-    float y = PAUSE_BOX_Y + PAUSE_BOX_HEIGHT - VOLUME_AREA + VOLUME_ROW_HEIGHT;
+    // A row's name is no target, so a click there cannot mute it.
     for (std::size_t row = 0; row < volumes.size(); ++row) {
-      const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
-      targets.push_back({.area = rect(PAUSE_TEXT_X - 10.0F, y - 22.0F,
-                                      VOLUME_BLOCKS_X - 10.0F, 28.0F),
-                         .press = VolumePress{.row = row, .level = 0}});
       for (std::uint8_t step = 0; step < volumes.at(row).steps; ++step) {
-        targets.push_back(
-            {.area = rect(blocks + static_cast<float>(step) * VOLUME_BLOCK_STEP,
-                          y - 22.0F, VOLUME_BLOCK_STEP, 28.0F),
-             .press = VolumePress{
-                 .row = row, .level = static_cast<std::uint8_t>(step + 1)}});
+        // Each block's area reaches over the gap to the next.
+        targets.push_back({.area = volume_block(row, step, lift)
+                                       .grow_individual(0.0F, 6.0F, 4.0F, 4.0F),
+                           .press = VolumePress{
+                               .bus = volumes.at(row).bus,
+                               .level = static_cast<std::uint8_t>(step + 1)}});
       }
-      y += VOLUME_ROW_HEIGHT;
     }
     return targets;
   }
   case Interruption::ConfirmLeave:
   case Interruption::ConfirmLeaveFromPause: {
     const auto [leave, cancel] =
-        split_button(drawing, notice_button_area(drawing, text.at(2)),
+        split_button(drawing, notice_button_area(drawing, text.at(2), lift),
                      text.at(2), "Esc:", INTERRUPTION_LINE_SIZE);
     targets.push_back({.area = leave, .press = MenuKey::Confirm});
     targets.push_back({.area = cancel, .press = MenuKey::Pause});

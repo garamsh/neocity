@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../audio/sound.hpp"
 #include "../rendering/drawing.hpp"
 
 #include <survival/companion.hpp>
@@ -46,9 +47,9 @@ struct DishPress {
   survival::Direction direction = survival::Direction::Down;
 };
 
-/// The pause screen's volume row `row` set to `level`.
+/// The volume of `bus` set to `level`.
 struct VolumePress {
-  std::size_t row = 0;
+  audio::Bus bus = audio::Bus::Effects;
   std::uint8_t level = 0;
 };
 
@@ -69,8 +70,8 @@ struct Target {
 [[nodiscard]] const Target *target_at(const std::vector<Target> &targets,
                                       godot::Vector2 point);
 
-/// Names `press` for the Godot checks, such as `option_2` or
-/// `appraiser_interact`.
+/// Names `press` for the Godot checks, such as `option_2`,
+/// `appraiser_interact` or `volume_effects_3`.
 [[nodiscard]] godot::String press_name(const Press &press);
 
 /// Lights the target under `pointer` and writes its refusal over it, and

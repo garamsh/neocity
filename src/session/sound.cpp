@@ -193,11 +193,13 @@ float loudness(std::uint8_t level) {
 }
 
 std::array<hud::VolumeRow, 2> volume_rows(const Volume &volume) {
-  return {hud::VolumeRow{.name = "Effects",
+  return {hud::VolumeRow{.bus = audio::Bus::Effects,
+                         .name = "Effects",
                          .level = volume.effects,
                          .steps = VOLUME_STEPS,
                          .marked = volume.marked == audio::Bus::Effects},
-          hud::VolumeRow{.name = "Music",
+          hud::VolumeRow{.bus = audio::Bus::Music,
+                         .name = "Music",
                          .level = volume.music,
                          .steps = VOLUME_STEPS,
                          .marked = volume.marked == audio::Bus::Music}};
