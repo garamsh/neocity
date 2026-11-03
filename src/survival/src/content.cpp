@@ -83,7 +83,7 @@ constexpr ObjectId UPPER_RAMP{64};
 constexpr ObjectId MARKET_LADDER{65};
 
 /// One exploration day, which every world time threshold counts in.
-constexpr auto DAY = 20s;
+constexpr auto DAY = 18s;
 constexpr std::uint32_t BAG_STOCK = 2;
 
 /// Landings on the low west, the market and the shallows, which acid drowns
@@ -634,7 +634,7 @@ Content temporary_content(std::uint32_t seed) {
                                     .maximum_stamina = 20,
                                     .collection_distance = 1,
                                     .sources = stock(),
-                                    .collection_time = 2s},
+                                    .collection_time = 1500ms},
                     .workshop = {.recipes = recipes(),
                                  .magnifier = MAGNIFIER,
                                  .spatula = SPATULA,
