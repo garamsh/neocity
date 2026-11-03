@@ -7,18 +7,63 @@ on:
 
 permissions: read-all
 
+# The jobs run in parallel and together run every target `make ci` runs: lint,
+# format, and the test targets that `test` lists in Makefile, split by duration.
 jobs:
-  ci:
+  lint:
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: Makefile
+      - run: make lint
+
+  format:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: Makefile
+      - run: make format
+
+  test:
+    name: test (${{ matrix.targets }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        targets:
+          - test-unit test-startup test-title test-timing test-loss test-audio
+          - test-survival
+          - test-escape
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          cache-dependency-path: Makefile
       - name: Set up verified Godot
         run: sh .github/scripts/setup-godot.sh
-      - run: python .github/scripts/run-with-limit.py 1800 make ci
+      # The runner image fixes the compiler, so its version is part of the key.
+      - id: image
+        run: echo "version=$ImageVersion" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: build
+          key: build-${{ runner.os }}-${{ steps.image.outputs.version }}-${{ hashFiles('Makefile', 'CMakeLists.txt', 'src/survival/CMakeLists.txt', 'build_profile.json') }}
+      - env:
+          TARGETS: ${{ matrix.targets }}
+        run: python .github/scripts/run-with-limit.py 900 make $TARGETS
       - name: Report Godot crash
         if: failure()
         run: sh .github/scripts/report-godot-crash.sh
