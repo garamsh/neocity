@@ -414,10 +414,16 @@ constexpr std::int32_t MOCKUP_COLUMNS = 20;
 /// How deep a band of the deck picture is, and the rows whose floor line each
 /// band shows, top to bottom; any other row shows the last.
 constexpr float DECK_DEPTH = 28.0F;
-constexpr std::array DECK_ROWS{4, 5, 6, 8, 9};
+constexpr std::array DECK_ROWS{4, 5, 6, 8, 9, 12};
 /// The rows whose building fronts each band of the wall picture shows, a
 /// cell deep, top to bottom; any other row shows the last.
 constexpr std::array WALL_ROWS{5, 6, 7};
+/// The deck of this row is the kitchen loft's, two rows over the walkway under
+/// it where the mockup's is a cell nearer: the wall picture's last band, the
+/// mockup's loft face and the dark under it, fills the rows between.
+constexpr std::int32_t LOFT_ROW = 6;
+constexpr float UNDERSIDE_TOP = 3.0F * CELL;
+constexpr float UNDERSIDE_DEPTH = 2.0F * CELL - DECK_DEPTH;
 /// The floor rows whose shop fronts each band of the shop picture shows, two
 /// cells deep, top to bottom, and how many cells across a shop front shows.
 constexpr std::array SHOP_ROWS{6, 8};
@@ -533,7 +539,8 @@ bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 
 /// Draws one ground cell of standing terrain under the floor line of its
 /// cell, the band of the mockup's walkway at its row and column, stained once
-/// the acid at `surface` reaches the deck, and a rubble heap standing on it
+/// the acid at `surface` reaches the deck, under the kitchen loft's deck its
+/// underside down to the walkway below, and a rubble heap standing on it
 /// where the ground is rubble. The ferry's hull is drawn whole in place of
 /// every cell it covers.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
@@ -550,6 +557,12 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
     return;
   }
   paint_deck(canvas, art, ground.cell, eaten);
+  if (ground.cell.y == LOFT_ROW) {
+    art.image_part(
+        canvas, Image::BuildingWall,
+        rect(mockup_x(ground.cell.x), UNDERSIDE_TOP, CELL, UNDERSIDE_DEPTH),
+        rect(at.x, at.y + DECK_DEPTH, CELL, UNDERSIDE_DEPTH));
+  }
   if (ground.kind == GroundKind::Rubble) {
     art.image(canvas, Image::Rubble,
               Vector2(at.x, at.y - art.size(Image::Rubble).y));

@@ -4928,11 +4928,17 @@
      261,
      1280,
      64
+    ],
+    [
+     0,
+     253,
+     1280,
+     72
     ]
    ],
    "size": [
     1280,
-    192
+    264
    ],
    "scale": 1,
    "cut": {
@@ -4942,32 +4948,40 @@
     ],
     "patches": [
      [
-      300,
-      205,
-      105,
-      45,
-      -200,
+      305,
+      213,
+      35,
+      37,
+      -40,
       0
      ],
      [
-      300,
-      250,
-      105,
-      83,
-      -160,
+      340,
+      213,
+      44,
+      37,
+      0,
+      -88
+     ],
+     [
+      305,
+      253,
+      190,
+      69,
+      -300,
       0
      ],
      [
-      430,
-      255,
-      85,
-      82,
-      150,
+      495,
+      253,
+      17,
+      69,
+      -260,
       0
      ]
     ]
    },
-   "depicts": "Building fronts of the first screen, cut from the search mockup: one band a cell deep per row a building stands in, the kitchen's lit shelves over its loft floor, then the tower shop's two rows; a cell of building shows the band of its row at its column"
+   "depicts": "Building fronts of the first screen, cut from the search mockup: one band a cell deep per row a building stands in, the kitchen's lit shelves over its loft floor, then the tower shop's two rows, then the kitchen loft's face and the dark under it, carried on past the loft's end, for the rows the map leaves between the loft and the walkway; a cell of building shows the band of its row at its column"
   },
   {
    "path": "world/vending_machine.png",
@@ -5020,28 +5034,28 @@
     ],
     "patches": [
      [
-      300,
-      205,
-      105,
-      45,
-      -200,
+      305,
+      213,
+      35,
+      37,
+      -40,
       0
      ],
      [
-      300,
-      250,
-      105,
-      83,
-      -160,
-      0
-     ],
+      340,
+      213,
+      65,
+      37,
+      0,
+      -88
+     ]
+    ],
+    "clear": [
      [
-      430,
-      255,
-      85,
-      82,
-      150,
-      0
+      405,
+      122,
+      43,
+      128
      ]
     ]
    },
@@ -5213,19 +5227,19 @@
     ],
     [
      0,
-     142,
+     140,
      1280,
      56
     ],
     [
      0,
-     250,
+     252,
      1280,
      56
     ],
     [
      0,
-     327,
+     326,
      1280,
      56
     ],
@@ -5234,11 +5248,17 @@
      381,
      1280,
      56
+    ],
+    [
+     0,
+     650,
+     1280,
+     56
     ]
    ],
    "size": [
     1280,
-    280
+    336
    ],
    "scale": 1,
    "cut": {
@@ -5248,32 +5268,72 @@
     ],
     "patches": [
      [
+      448,
+      62,
+      64,
+      56,
+      -128,
+      0
+     ],
+     [
       300,
-      205,
-      105,
-      45,
+      252,
+      195,
+      56,
+      -300,
+      0
+     ],
+     [
+      495,
+      252,
+      17,
+      56,
+      -260,
+      0
+     ],
+     [
+      305,
+      318,
+      100,
+      12,
       -200,
       0
      ],
      [
-      300,
-      250,
-      105,
-      83,
-      -160,
+      435,
+      318,
+      82,
+      12,
+      70,
       0
      ],
      [
-      430,
-      255,
-      85,
-      82,
-      150,
-      0
+      0,
+      650,
+      450,
+      56,
+      455,
+      -269
+     ],
+     [
+      450,
+      650,
+      450,
+      56,
+      5,
+      -269
+     ],
+     [
+      900,
+      650,
+      380,
+      56,
+      -445,
+      -269
      ]
     ]
    },
-   "depicts": "Walkway decks of the first screen, cut from the search mockup at the screen's size: one band a cell deep per floor line, top to bottom the kitchen roof, the shop roof, the kitchen loft, the upper walkway with the gauge ledge, and the lower walkway with the rope bridge; a cell of ground shows the band of its row at its column"
+   "depicts": "Walkway decks of the first screen, cut from the search mockup at the screen's size: one band a cell deep per floor line, top to bottom the kitchen roof, the shop roof, the kitchen loft, the upper walkway with the gauge ledge, the lower walkway with the rope bridge, and its plain deck again across the screen for the pier and the sunken train; a cell of ground shows the band of its row at its column"
   },
   {
    "path": "icons/ingredient_tomato.png",
@@ -5982,44 +6042,18 @@
      1280,
      720
     ],
-    "patches": [
-     [
-      300,
-      205,
-      105,
-      45,
-      -200,
-      0
-     ],
-     [
-      300,
-      250,
-      105,
-      83,
-      -160,
-      0
-     ],
-     [
-      430,
-      255,
-      85,
-      82,
-      150,
-      0
-     ]
-    ],
     "keep": [
      [
       64,
       383,
       64,
-      177
+      117
      ],
      [
       180,
       383,
       40,
-      120
+      117
      ],
      [
       192,
@@ -6031,7 +6065,7 @@
       420,
       383,
       130,
-      177
+      117
      ],
      [
       496,
@@ -6043,25 +6077,25 @@
       700,
       383,
       56,
-      177
+      117
      ],
      [
       836,
       383,
       60,
-      177
+      117
      ],
      [
       928,
       383,
       44,
-      120
+      117
      ],
      [
       1048,
       383,
       116,
-      177
+      117
      ]
     ],
     "clear_colours": [
@@ -6080,10 +6114,26 @@
       ],
       "saturation": 0.35,
       "lightness": 0.15
+     },
+     {
+      "hues": [
+       70,
+       170
+      ],
+      "saturation": 0.25,
+      "lightness": 0.1
      }
+    ],
+    "clear": [
+     [
+      490,
+      258,
+      22,
+      64
+     ]
     ]
    },
-   "depicts": "Under and over the walkways of the first screen, cut from the search mockup: the posts, the chain and the gauge pillar down to the acid, the cable sagging under the upper walkway and the street lamp on it; clear between them and where the backdrop's flesh and towers show"
+   "depicts": "Under and over the walkways of the first screen, cut from the search mockup: the posts, the chain and the gauge pillar down to the acid, the cable sagging under the upper walkway and the street lamp on it; down to the lake's surface, clear between them and where the backdrop's flesh and towers and the lake's glow show"
   }
  ]
 }
