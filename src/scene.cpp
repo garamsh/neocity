@@ -145,6 +145,7 @@ void MainScene::_process(double delta) {
   session.advance(delta,
                   input::sample_session_input(session.survival_control()));
   if (drawing) {
+    drawing->next_frame();
     session.aim(*drawing);
   }
   queue_redraw();

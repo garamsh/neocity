@@ -67,9 +67,9 @@ public:
   [[nodiscard]] static godot::PackedStringArray controls_keys();
   /// Pins the seed of every later survival run, for repeatable host checks.
   void pin_survival_seed(std::int64_t seed);
-  /// Pins the clock of the scene's ambient motion and its finishing pass at
-  /// `seconds` from then on, so host checks read the scene at a moment they
-  /// choose; the interface's fades keep the real clock.
+  /// Pins the clock of the scene's ambient motion, its finishing pass and the
+  /// screen's eased values at `seconds` from then on, so host checks read the
+  /// screen at a moment they choose.
   void pin_scene_clock(double seconds);
   /// Reports what the speakers played and play now, for host checks; empty
   /// before the scene is ready.

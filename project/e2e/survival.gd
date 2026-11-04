@@ -23,6 +23,10 @@ const REPLACEMENT_DAYS: int = 12
 const MENU_PRESSES: int = 12
 const COOK_ATTEMPTS: int = 12
 const STEP_FRAMES: int = 6
+## Half the height a panel rises from as it comes in, in pixels, and a wait on
+## the real clock longer than its rise.
+const ENTRANCE_RISE: float = 9.0
+const SETTLE_MSEC: int = 400
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
 ## Left, right, up, down and jump of the first key set, then of the second.
 const WALK_KEYS: Array[Key] = [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE, KEY_J, KEY_L, KEY_I, KEY_K, KEY_SEMICOLON]
@@ -365,8 +369,10 @@ func _pause_and_leave() -> void:
 	if not _check(_drawn("Pause, keys"), "the top band offers the pause, where the keys are"):
 		return
 	var unpaused_rules: bool = FEED_RULES.any(func(rule: String) -> bool: return _drawn(rule))
-	await _tap(KEY_ESCAPE)
+	var rise: float = await _pause_rise()
 	if not _check(_str("interruption") == "paused", "Esc pauses the run"):
+		return
+	if not _check(rise >= ENTRANCE_RISE, "the pause screen rises into place as it opens: %.1f pixels" % rise):
 		return
 	if not _check(not unpaused_rules and FEED_RULES.all(func(rule: String) -> bool: return _drawn(rule)), "the recipe book on the pause screen, and only there, says what feeding does"):
 		return
@@ -380,6 +386,12 @@ func _pause_and_leave() -> void:
 	var day: int = _int("day")
 	await _tap(KEY_ESCAPE)
 	if not _check(_str("interruption") == "", "Esc continues the run"):
+		return
+	rise = await _pause_rise()
+	if not _check(rise >= ENTRANCE_RISE, "the pause screen, gone for a frame, rises afresh as it opens again: %.1f pixels" % rise):
+		return
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "", "Esc continues the run again"):
 		return
 	await _tap(KEY_M)
 	if not _check(_str("interruption") == "confirm_leave" and scene.screen_name() == "survival", "M asks before ending a run"):
@@ -2094,6 +2106,29 @@ func _until(name: String, condition: Callable, limit: int) -> bool:
 			return true
 		await process_frame
 	return _check(false, name)
+
+## Opens the pause screen with Esc and returns how far below its resting
+## place the first frame drew its button, once the button has come to rest.
+func _pause_rise() -> float:
+	scene.set_meta("interruption_button", Rect2())
+	_key(KEY_ESCAPE, true)
+	var first: Rect2 = Rect2()
+	for frame: int in range(30):
+		await process_frame
+		first = scene.get_meta("interruption_button", Rect2())
+		if first.has_area():
+			break
+	if not _check(first.has_area(), "the pause screen draws its button"):
+		return 0.0
+	_key(KEY_ESCAPE, false)
+	OS.delay_msec(SETTLE_MSEC)
+	await _frames(2)
+	var rest: Rect2 = scene.get_meta("interruption_button", Rect2())
+	await _frames(1)
+	var after: Rect2 = scene.get_meta("interruption_button", Rect2())
+	if not _check(rest.is_equal_approx(after), "the pause screen's button comes to rest: %s" % rest):
+		return 0.0
+	return first.position.y - rest.position.y
 
 ## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
 ## the title screen takes its marked entry, so it is pressed only to answer the

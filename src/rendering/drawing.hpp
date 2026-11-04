@@ -265,22 +265,24 @@ public:
   /// offset, and its zoom, so drawing can return to it with `look`.
   [[nodiscard]] Look looking() const;
   /// Eases from the value `name` last showed toward `target` whenever the
-  /// target changes; a value missing from the last drawn frame starts at its
-  /// target.
+  /// target changes, on the clock `seconds` reads; a value missing from the
+  /// frame before starts at its target.
   [[nodiscard]] float glide(const godot::String &name, float target) const;
   /// How far, from 0 to 1 and eased, `name` has come in since it appeared;
-  /// one missing from the last drawn frame appears afresh.
+  /// one missing from the frame before appears afresh.
   [[nodiscard]] float entrance(const godot::String &name) const;
-  /// How many seconds of the real clock `name` has been on the screen; one
-  /// missing from the last drawn frame appears afresh.
+  /// How many seconds of the clock `seconds` reads `name` has been on the
+  /// screen; one missing from the frame before appears afresh.
   [[nodiscard]] float shown_for(const godot::String &name) const;
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Seconds of a steady real clock since the art loaded, or where `pin`
-  /// holds it; the scene's ambient motion and its finishing pass run on it and
-  /// move nothing in the rules.
+  /// holds it; the scene's ambient motion, its finishing pass and every eased
+  /// value run on it and move nothing in the rules.
   [[nodiscard]] float seconds() const;
   /// Holds `seconds()` at `held` from then on, for repeatable host checks.
   void pin(float held);
+  /// Starts the next frame, before anything in it is eased or drawn.
+  void next_frame();
   /// Notes the acid band's surface at row `band` with its art's grid from
   /// column `band_left`, both drawn through the last shift, and the sea's at
   /// scene row `sea`, drawn through the last look.
@@ -304,7 +306,7 @@ private:
   };
 
   /// What `glide` and `entrance` keep for one value: times in microseconds of
-  /// the real clock, and the drawn frame that last showed it.
+  /// `clock`, and the frame that last showed it.
   struct Tween {
     float from = 0.0F;
     float to = 0.0F;
@@ -324,6 +326,8 @@ private:
 
   /// The tween of `name`, restarted when it was not drawn for a moment.
   Tween &tween(const godot::String &name, float target) const;
+  /// `seconds()` in microseconds.
+  [[nodiscard]] std::uint64_t clock() const;
 
   std::vector<godot::Ref<godot::Texture2D>> images;
   godot::Ref<godot::Font> font;
@@ -337,6 +341,8 @@ private:
   /// The steady clock's reading when the art loaded.
   std::uint64_t loaded;
   std::optional<float> pinned;
+  /// How many frames `next_frame` has started.
+  std::uint64_t frame = 0;
   /// The offset of the last `shift`, and the canvas transform of the last
   /// `shift` or `look`.
   mutable godot::Vector2 shaken;
