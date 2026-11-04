@@ -4,42 +4,32 @@
   {
    "path": "backgrounds/throat.png",
    "size": [
-    1280,
-    720
+    880,
+    600
    ],
    "scale": 1,
-   "colours": 32,
-   "depicts": "Back layer: the monster's fleshy upper palate, without fangs, over the pink throat and its uvula; opaque"
+   "colours": 218946,
+   "depicts": "Back layer, cut from the search mockup: the monster's fleshy palate with its cream fangs hanging from the top edge, over the pink throat and its uvula; opaque"
   },
   {
    "path": "backgrounds/city.png",
    "size": [
-    1008,
-    496
+    700,
+    520
    ],
    "scale": 1,
-   "colours": 32,
-   "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
-  },
-  {
-   "path": "backgrounds/jaw.png",
-   "size": [
-    448,
-    200
-   ],
-   "scale": 1,
-   "colours": 24,
-   "depicts": "Teeth layer: a row of cream fangs hanging from the pink upper gum; clear below"
+   "colours": 173857,
+   "depicts": "Middle layer, cut from the search mockup: a swallowed city of tilted indigo towers with orange windows and an elevated railway with lit trains, sunk in pink flesh; clear above the skyline"
   },
   {
    "path": "backgrounds/acid.png",
    "size": [
-    1280,
-    492
+    1480,
+    381
    ],
    "scale": 1,
-   "colours": 32,
-   "depicts": "Front layer: green acid sea with sunken train cars; surface near the top, transparent above it"
+   "colours": 292405,
+   "depicts": "Front layer, cut from the search mockup: the glowing green acid lake with sunken train cars and broken pillars; clear above its surface"
   },
   {
    "path": "characters/chef_idle.png",
