@@ -772,16 +772,6 @@
    "depicts": "Clock icon: grey case, yellow face"
   },
   {
-   "path": "ui/icon_acid.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 2,
-   "colours": 7,
-   "depicts": "Acid icon: green drop"
-  },
-  {
    "path": "workshop/kitchen.png",
    "size": [
     1280,

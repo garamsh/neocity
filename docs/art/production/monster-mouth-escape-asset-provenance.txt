@@ -1,4 +1,6 @@
-Monster-mouth escape asset provenance, 2026-11-04, issues #90, #98, #110, #128, #141, #151, #153 and #168
+Monster-mouth escape asset provenance, 2026-11-04, issues #90, #98, #110, #128, #141, #151, #153, #168 and #179
+
+Version 9, issue #179: removes ui/icon_acid.png, which nothing has drawn since issue #119, with its source entry in tools/art/assets.json. No new generation.
 
 Version 8, issue #168: takes the fangs out of the throat, backgrounds/throat.png, so the upper teeth of backgrounds/jaw.png hang in one row; the throat's source becomes bg_throat_palate, an edit of bg_throat; see Version 8 changes at the end.
 
@@ -144,7 +146,7 @@ Runtime: icons/dish_sea_salad.png, dish_fish_pie.png, dish_meat_stew.png, dish_t
 ui: generate_image, 1:1, n=2, second rejected (purple tint); then remove_background; then the grey-steel and red recolour rules. Replaces the version 1 kit, whose frames were violet rather than the concept's grey steel.
 Prompt as sent:
 Pixel art game UI kit sheet on a plain flat solid white background, separate pieces with wide spacing, all made of neutral grey riveted steel plates: dark charcoal grey plate faces, light grey beveled steel borders, silver rivets in the corners, thick black outlines, no purple, no pink, no text, no letters, no numbers anywhere. Top row: one large empty square panel frame with a dark grey inside; beside it one long empty horizontal bar frame with a dark inside. Middle row: one empty square inventory item slot; one bright red pixel heart, full; one empty heart outline in dark grey. Bottom row: one plain grey steel button with a blank face; one bright yellow highlighted button with a blank face and a dark outline; a small yellow sun icon with rays; a small grey clock icon with a yellow face; a small bright green acid droplet icon.
-Runtime: ui/heart_full.png, heart_empty.png, icon_day.png, icon_clock.png, icon_acid.png. Version 4 removes ui/panel_frame.png, bar_frame.png, item_slot.png, button.png and button_highlight.png, which nothing drew since issue #107.
+Runtime: ui/heart_full.png, heart_empty.png, icon_day.png, icon_clock.png. Version 9 removes ui/icon_acid.png, which nothing has drawn since issue #119. Version 4 removes ui/panel_frame.png, bar_frame.png, item_slot.png, button.png and button_highlight.png, which nothing drew since issue #107.
 
 workshop: generate_image, 16:9, n=3, first and third rejected because they drew characters. An earlier prompt without "empty" (16:9, n=2) also drew characters and was rejected.
 Prompt as sent:
@@ -163,7 +165,7 @@ Runtime: title/logo.png
 
 Tiles: world/platform.png, world/bridge.png (horizontal) and world/building_wall.png (both directions) use the seamless cross-fade of step 1; their generations are unchanged from version 1.
 
-Review sheet: docs/art/production/monster-mouth-escape-review-v4.png, written by pixelize.py sheet from the committed runtime PNGs, the raw generations and the three concept images; it replaces version 3. Below the concepts, a 1280x720 frame composes a street of walkways from the walkway pieces, decorations and some other assets by the placements in assets.json; that layout illustrates the set only and is not the game's map. Then chef_idle and the tomato at 8x as the plain version 1 pipeline renders the same source beside the committed result.
+Review sheet: docs/art/production/monster-mouth-escape-review-v4.png, a record of version 4 that no later version redrew, so it shows the set as version 4 left it and not the current one. It was written by pixelize.py sheet from the runtime PNGs committed then, the raw generations and the three concept images; it replaces version 3. Below the concepts, a 1280x720 frame composes a street of walkways from the walkway pieces, decorations and some other assets by the placements in assets.json; that layout illustrates the set only and is not the game's map. Then chef_idle and the tomato at 8x as the plain version 1 pipeline renders the same source beside the committed result.
 
 Version 3 changes, issue #98
 Recraft use for issue #98: 91 credits, personal account (865 before, 774 after by get_user). generate_image with n=2 cost 4 credits a call, remove_background 1, image_edit with n=2 22. Every generate_image used the custom style above.
@@ -317,7 +319,7 @@ Runtime: none since version 6; until then world/waterline.png (seamless horizont
 
 Version 7 changes, issue #153
 Recraft use for issue #153: 17 credits, personal account (526 before by get_user): four generate_image calls with n=2, 4 credits a call, and one remove_background, 1 credit. Every call used the custom style above and ran on its model.
-Post-processing as above. The jaw is cut from its whole generation without the seamless cross-fade, which doubled a fang where it blended; the screen draws it beside mirrored copies, which meet without a seam.
+Post-processing as above. The jaw is cut from its whole generation without the seamless cross-fade, which doubled a fang where it blended; the screen cuts its fangs apart at the gaps between them and draws them one by one in a varied order under a band of its gum, and mirrors none of it.
 
 shop_lit: generate_image, 1:1, n=2, first rejected (narrower, fewer lit shelves)
 Prompt as sent:

@@ -170,7 +170,6 @@ enum class Image : std::uint8_t {
   HeartFull,
   HeartEmpty,
   IconDay,
-  IconAcid,
   IconClock,
   IngredientTomato,
   IngredientFish,
