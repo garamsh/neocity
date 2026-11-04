@@ -7,17 +7,17 @@
     1280,
     720
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "depicts": "Back layer: the monster's fleshy upper palate, without fangs, over the pink throat and its uvula; opaque"
   },
   {
    "path": "backgrounds/city.png",
    "size": [
-    1280,
-    480
+    1008,
+    496
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "depicts": "Middle layer: a swallowed city of tilted indigo towers sunk in pink flesh, warm orange windows, an elevated railway with a train skewered into the flesh; clear above the skyline"
   },
@@ -27,7 +27,7 @@
     448,
     200
    ],
-   "scale": 2,
+   "scale": 1,
    "colours": 24,
    "depicts": "Teeth layer: a row of cream fangs hanging from the pink upper gum; clear below"
   },
@@ -37,7 +37,7 @@
     1280,
     492
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "depicts": "Front layer: green acid sea with sunken train cars; surface near the top, transparent above it"
   },

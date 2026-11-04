@@ -632,11 +632,23 @@
    "edited_from": "bg_throat",
    "generated": "https://img.recraft.ai/YXqArQh0RVBRZVFr93SlbEPwerWtLFAmt7njyHUQATE/raw:1/plain/abs://prod/images/5f4b9f45-14a2-4586-9347-7d45490d4e92"
   },
+  "bg_throat_dense": {
+   "url": "https://img.recraft.ai/roi3sX1inXlnU2YwZc0IOH4wyejYP4ErmZQ0rBOsXNg/raw:1/plain/abs://prod/images/416f7beb-a6d5-4161-8d8e-b8f46a70b024",
+   "edited_from": "bg_throat_palate"
+  },
   "bg_city": {
    "url": "https://img.recraft.ai/dNQOV3i3NlGdc8FVrL50CnTuBbVDpeqGfX5KJO9S-TQ/raw:1/plain/abs://prod/images/30ad4515-2aae-4230-be2a-2157b44b1e02"
   },
+  "bg_city_dense": {
+   "url": "https://img.recraft.ai/T_nFKsPH2xrQ58hM-LDX-zRFsNTu1CeXt11r3o3yQ2I/raw:1/plain/abs://prod/images/57a7653a-4f34-4c30-af07-c2a69961a17d",
+   "edited_from": "bg_city"
+  },
   "bg_acid": {
    "url": "https://img.recraft.ai/Nnclea0oiY3cIXz44Aa_GtTOcErlSVZu2ttn4Wa7VxU/raw:1/plain/abs://prod/images/c82cf99f-756e-4aa5-8133-9424eabe93b1"
+  },
+  "bg_acid_dense": {
+   "url": "https://img.recraft.ai/wXTMNBKKjimSyK-6nW2-3hN32nFPUF8y_tPGvcQ5HMo/raw:1/plain/abs://prod/images/83a2fdc3-bfa7-419a-87f7-aec2f90c4a8c",
+   "edited_from": "bg_acid"
   },
   "platform": {
    "url": "https://img.recraft.ai/BbpKWlB9bMtcKIV4awdih_KeuOrhAtDYVt4qyhkealQ/raw:1/plain/abs://prod/images/4e3046de-c158-432d-aa8c-1eef97bbc0f3"
@@ -670,6 +682,10 @@
   },
   "jaw": {
    "url": "https://img.recraft.ai/wPzauxqAY-czgPHc7lCXNONVeFXcshG27YoyNIkPdFw/raw:1/plain/abs://prod/images/a675d774-d618-410b-a06c-5c3197b3b3a1"
+  },
+  "jaw_dense": {
+   "url": "https://img.recraft.ai/1bo0gAY9LRkCG-d-Yk3TgLeSLFkzmRU8skjXBonZ9UQ/raw:1/plain/abs://prod/images/c31653b0-be9f-41f5-8a04-be49c678c5f3",
+   "edited_from": "jaw"
   },
   "kiosk": {
    "url": "https://img.recraft.ai/-TrFKpqalKmDatOF5hCNATVRpLtWPobzxgRTCmwkn9s/raw:1/plain/abs://prod/images/bc82c045-bd34-416d-9e9c-f584ec7c30f0",
@@ -790,35 +806,35 @@
  "assets": [
   {
    "path": "backgrounds/throat.png",
-   "source": "bg_throat_palate",
+   "source": "bg_throat_dense",
    "crop": [
     0,
     0,
     1344,
-    756
+    768
    ],
    "size": [
     1280,
     720
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "depicts": "Back layer: the monster's fleshy upper palate, without fangs, over the pink throat and its uvula; opaque"
   },
   {
    "path": "backgrounds/city.png",
-   "source": "bg_city",
+   "source": "bg_city_dense",
    "crop": [
     0,
-    260,
+    107,
     1344,
-    504
+    661
    ],
    "size": [
-    1280,
-    480
+    1008,
+    496
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "key": {
     "colour": "#ffffff",
@@ -828,7 +844,7 @@
   },
   {
    "path": "backgrounds/jaw.png",
-   "source": "jaw",
+   "source": "jaw_dense",
    "crop": [
     0,
     0,
@@ -839,7 +855,7 @@
     448,
     200
    ],
-   "scale": 2,
+   "scale": 1,
    "colours": 24,
    "key": {
     "colour": "#ffffff",
@@ -849,7 +865,7 @@
   },
   {
    "path": "backgrounds/acid.png",
-   "source": "bg_acid",
+   "source": "bg_acid_dense",
    "crop": [
     0,
     250,
@@ -860,7 +876,7 @@
     1280,
     492
    ],
-   "scale": 4,
+   "scale": 1,
    "colours": 32,
    "key": {
     "colour": "#ffffff",
