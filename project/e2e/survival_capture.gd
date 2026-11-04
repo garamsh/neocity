@@ -13,8 +13,10 @@ extends SceneTree
 ## one of its word plates covers another, a source other than the source's
 ## own count, or lies under a HUD panel or note, its words name a source's kind or a place other than the goals
 ## NEXT names, or leave out the goal NEXT names to walk to, the monster's teeth do not show along the top of the play area,
-## a support reaches down from a walkway too high for it, or the shops, stall
-## and vending machines do not read warm and lit. The camera shows a part of
+## a support reaches down from a walkway too high for it, the shops, stall
+## and vending machines do not read warm and lit, or a window of another size,
+## or full screen, does not show the 1280x720 screen at the largest whole
+## multiple of it that fits. The camera shows a part of
 ## the city, so each look is measured on every city frame that shows what it
 ## looks at, and fails when none does.
 ## The scene's clock, which runs its ambient motion, its finishing pass and
@@ -174,6 +176,14 @@ const LIT_AREAS: Array[Rect2] = [Rect2(468, 290, 120, 114), Rect2(52, 52, 120, 1
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
 const LIT_SHARE: float = 0.15
+
+## The size of the screen every check above measures, and the window sizes it
+## is shown at afterwards: twice and three times it, and a 1280x720 window at
+## a display scale of 1.7, which holds it once with a border.
+const SCREEN: Vector2i = Vector2i(1280, 720)
+const WINDOW_SIZES: Array[Vector2i] = [Vector2i(2560, 1440), Vector2i(3840, 2160), Vector2i(2176, 1224)]
+## How many frames a window may take to reach the size or mode asked of it.
+const RESIZE_FRAMES: int = 120
 
 ## The words of a source's kind the map once wrote beside its supply.
 const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
@@ -393,6 +403,8 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
+	if not await _scales_whole():
+		return
 	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
 		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
@@ -401,6 +413,68 @@ func _run() -> void:
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
 	quit(0)
+
+## Whether the window, taken out of the full screen it starts in and set to
+## each of WINDOW_SIZES, and then back to full screen,
+## shows the screen, still SCREEN in size, at the largest whole multiple of it
+## that fits, centred on whole pixels. Godot 4.7.2's compatibility renderer
+## copies the screen to the window with nearest filtering, so each of its
+## pixels is then a square of whole window pixels. A window that does not take
+## the size or mode asked of it fails, and so does a game that did not start
+## in full screen.
+func _scales_whole() -> bool:
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN:
+		_fail("the game did not start in full screen: mode %d" % DisplayServer.window_get_mode())
+		return false
+	if not _shown_whole("the full screen the game starts in"):
+		return false
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	for frame: int in range(RESIZE_FRAMES):
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+			break
+		await process_frame
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		_fail("the window did not leave full screen: mode %d" % DisplayServer.window_get_mode())
+		return false
+	for size: Vector2i in WINDOW_SIZES:
+		DisplayServer.window_set_size(size)
+		for frame: int in range(RESIZE_FRAMES):
+			if DisplayServer.window_get_size() == size:
+				break
+			await process_frame
+		await _frames(2)
+		if DisplayServer.window_get_size() != size:
+			_fail("the window did not take the size %s: %s" % [size, DisplayServer.window_get_size()])
+			return false
+		if not _shown_whole("a %dx%d window" % [size.x, size.y]):
+			return false
+	var screen_size: Vector2i = DisplayServer.screen_get_size()
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	for frame: int in range(RESIZE_FRAMES):
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN and DisplayServer.window_get_size() == screen_size:
+			break
+		await process_frame
+	await _frames(2)
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN or DisplayServer.window_get_size() != screen_size:
+		_fail("the window did not fill the %s screen: mode %d, %s" % [screen_size, DisplayServer.window_get_mode(), DisplayServer.window_get_size()])
+		return false
+	return _shown_whole("full screen at %dx%d" % [screen_size.x, screen_size.y])
+
+## Whether the screen is still SCREEN in size and the window, at its current
+## size, shows it at the largest whole multiple of it that fits, centred on
+## whole pixels.
+func _shown_whole(window: String) -> bool:
+	var size: Vector2i = DisplayServer.window_get_size()
+	var scale: int = maxi(mini(size.x / SCREEN.x, size.y / SCREEN.y), 1)
+	var origin: Vector2 = Vector2((size - SCREEN * scale) / 2)
+	var expected: Transform2D = Transform2D(Vector2(scale, 0), Vector2(0, scale), origin)
+	var shown: Transform2D = root.get_final_transform()
+	var drawn: Vector2i = root.get_texture().get_image().get_size()
+	print("Capture: %s shows the %s screen at %s, origin %s (expected %d times at %s)." % [window, drawn, shown.get_scale(), shown.origin, scale, origin])
+	if drawn != SCREEN or shown != expected:
+		_fail("%s does not show the %s screen at a whole multiple: %s screen, transform %s" % [window, SCREEN, drawn, shown])
+		return false
+	return true
 
 ## Whether NEXT names what the interact key does: collect, repair, appraise
 ## or cook, as the controls page lists for it.
