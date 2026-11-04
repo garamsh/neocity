@@ -118,5 +118,19 @@ class ResampleTest(unittest.TestCase):
         self.assertEqual(len(pixelize.resample(rows, 13, 10)[0]), 13)
 
 
+class CutTest(unittest.TestCase):
+    def test_a_clear_colour_rule_with_within_rects_clears_only_inside_them(self):
+        pink = (230, 60, 200, 255)
+        asset = {
+            "path": "walkway/test.png",
+            "source": "test",
+            "crop": [0, 0, 4, 1],
+            "size": [4, 1],
+            "cut": {"clear_colours": [{"hues": [260, 350], "saturation": 0.3, "lightness": 0.25, "within": [[2, 0, 2, 1]]}]},
+        }
+        rows, _ = pixelize.cut(asset, None, {"test": [[pink, DARK, pink, DARK]]}, {})
+        self.assertEqual(rows, [[pink, DARK, CLEAR, DARK]])
+
+
 if __name__ == "__main__":
     unittest.main()

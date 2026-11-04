@@ -723,7 +723,8 @@ def cut(asset, raw_dir, cache, sources):
     later box is in the screen's pixels: each patch [x, y, w, h, dx, dy] takes the pixels dx, dy
     away, each clear rect is made clear, and outside the keep rects, when there are any, every
     pixel is made clear. Each clear colour rule then clears the pixels whose hue in degrees lies
-    in its hues and whose saturation and lightness reach its own. The crop is cut out last; a list of crops is cut and stacked top to bottom.
+    in its hues and whose saturation and lightness reach its own, inside its within rects when it
+    has any. The crop is cut out last; a list of crops is cut and stacked top to bottom.
     """
     spec = asset["cut"]
     plain = not spec.get("fills") and not spec.get("clear_above")
@@ -751,8 +752,11 @@ def cut(asset, raw_dir, cache, sources):
         rows = kept
     for rule in spec.get("clear_colours", []):
         low, high = rule["hues"]
-        for row in rows:
+        within = rule.get("within", [[0, 0, len(rows[0]), len(rows)]])
+        for y, row in enumerate(rows):
             for x, (r, g, b, a) in enumerate(row):
+                if not any(wx <= x < wx + ww and wy <= y < wy + wh for wx, wy, ww, wh in within):
+                    continue
                 h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
                 if a and low <= h * 360 <= high and sat >= rule["saturation"] and l >= rule["lightness"]:
                     row[x] = (0, 0, 0, 0)
