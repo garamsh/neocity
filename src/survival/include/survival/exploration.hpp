@@ -121,11 +121,19 @@ struct ExplorationInput {
   bool jump = false;
 };
 
+/// Where one physics tick leaves a body.
+struct PhysicsStep {
+  Body body;
+  /// Whether it moved sideways at running speed, which only a standing body
+  /// does.
+  bool ran = false;
+};
+
 /// One physics tick of `body` under `input`, the rule behind both movement and
 /// route planning. `input.running` is taken as allowed: stamina is the
-/// caller's.
-[[nodiscard]] Body physics_tick(const CellMap &map, Body body,
-                                ExplorationInput input);
+/// caller's, spent by what `ran` reports.
+[[nodiscard]] PhysicsStep physics_tick(const CellMap &map, Body body,
+                                       ExplorationInput input);
 
 /// One way out of a cell an actor holds, and the move that takes it.
 enum class Move : std::uint8_t {

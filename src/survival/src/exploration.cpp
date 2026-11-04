@@ -203,7 +203,7 @@ Direction direction_of(Move move) {
 std::optional<GridPosition> follow(const CellMap &map, Body body, Move move) {
   const auto start = cell_of(body.position);
   for (int tick = 0; tick < LINK_TICKS; ++tick) {
-    const auto next = physics_tick(map, body, steer(move, body));
+    const auto next = physics_tick(map, body, steer(move, body)).body;
     if (next == body) {
       return std::nullopt;
     }
@@ -362,7 +362,8 @@ Cell CellMap::at(GridPosition cell) const {
   return cells.at(static_cast<std::size_t>(y * width + x));
 }
 
-Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
+PhysicsStep physics_tick(const CellMap &map, Body body,
+                         ExplorationInput input) {
   const auto direction = input.direction;
   if (body.stance == Stance::Climbing &&
       !ladder_at(map.at(cell_of(body.position)))) {
@@ -375,11 +376,11 @@ Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
   } else if ((direction == Direction::Up || direction == Direction::Down) &&
              (body.stance == Stance::Climbing || grabs(map, body, direction))) {
     climb(map, body, direction);
-    return body;
+    return {.body = body};
   }
   if (body.stance == Stance::Climbing) {
     if (!sideways(direction)) {
-      return body;
+      return {.body = body};
     }
     // Stepping off a ladder puts the feet on the floor of its cell, if any.
     const auto cell = cell_of(body.position);
@@ -390,9 +391,10 @@ Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
       body.stance = Stance::Airborne;
     }
   }
+  const bool ran =
+      sideways(direction) && input.running && body.stance == Stance::Standing;
   if (sideways(direction)) {
-    const bool running = input.running && body.stance == Stance::Standing;
-    move_sideways(map, body, direction, running ? PHYSICS.run : PHYSICS.walk);
+    move_sideways(map, body, direction, ran ? PHYSICS.run : PHYSICS.walk);
   }
   if (body.stance == Stance::Standing &&
       !stands_on(map, cell_of(body.position))) {
@@ -402,7 +404,7 @@ Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
   if (body.stance == Stance::Airborne) {
     move_in_air(map, body);
   }
-  return body;
+  return {.body = body, .ran = ran};
 }
 
 ExplorationInput steer(Move move, const Body &body) {
@@ -707,21 +709,23 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   if (state.collecting) {
     input = {};
   }
-  input.running =
-      input.running && sideways(input.direction) && state.stamina > 0;
-  if (input.running) {
-    --state.stamina;
-  } else if (state.stamina < config.maximum_stamina) {
-    ++state.stamina;
-  }
+  input.running = input.running && state.stamina > 0;
   const CellMap map(world.get().snapshot());
+  auto ran = false;
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
-    state.body = physics_tick(map, state.body, input);
+    const auto step = physics_tick(map, state.body, input);
+    state.body = step.body;
+    ran = ran || step.ran;
     if (map.below(cell_of(state.body.position))) {
       require_applied(simulation.get().return_to_base(actor));
       synchronize();
       return;
     }
+  }
+  if (ran) {
+    --state.stamina;
+  } else if (state.stamina < config.maximum_stamina) {
+    ++state.stamina;
   }
 }
 
