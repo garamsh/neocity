@@ -2,11 +2,11 @@
 
 The runtime art set for the monster-mouth escape game and how to draw it.
 
-[`manifest.json`](manifest.json) lists every PNG in this folder with its pixel size, scale, colour count, and what it depicts. [`tools/art/pixelize.py`](../../../../tools/art/pixelize.py) writes the PNGs and the manifest from [`tools/art/assets.json`](../../../../tools/art/assets.json); edit the spec and rerun it rather than editing a PNG. [Provenance](../../../../docs/art/production/monster-mouth-escape-asset-provenance.txt) records where each source came from. The [review sheet](../../../../docs/art/production/monster-mouth-escape-review-v4.png) shows the set beside the concept images, with a street composed from the walkway pieces and decorations. `pixelize.py check` measures every PNG listed in the manifest against the clean-art rules below and exits 1 when one breaks them.
+[`manifest.json`](manifest.json) lists every PNG in this folder with its pixel size, scale, colour count, and what it depicts. [`tools/art/pixelize.py`](../../../../tools/art/pixelize.py) writes the PNGs and the manifest from [`tools/art/assets.json`](../../../../tools/art/assets.json); edit the spec and rerun it rather than editing a PNG. [Provenance](../../../../docs/art/production/monster-mouth-escape-asset-provenance.txt) records where each source came from. The [review sheet](../../../../docs/art/production/monster-mouth-escape-review-v4.png) is a record of version 4 of the set, which later versions did not redraw: it shows that version beside the concept images, with a street composed from the walkway pieces and decorations. `pixelize.py check` measures every PNG listed in the manifest against the clean-art rules below and exits 1 when one breaks them.
 
 ## Use
 
-- Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and `src/hud/` draws the hearts and status icons from `ui/`, the item icons (`icons/`) and the title art (`title/`) from it, and draws its panels and buttons in code.
+- Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and on the map the item icons (`icons/`) and the full heart from `ui/`. `src/hud/` draws the hearts and the day and clock icons from `ui/`, the item icons and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `walkway/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
 - The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. Tiles are one cell wide but `building_wall.png`, which is 64 px wide; `walkway/deck.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
@@ -18,7 +18,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 Every PNG keeps these, and `pixelize.py check` measures them on the art's own pixel grid:
 
 - Clusters, not noise: at most 1% of an image's opaque pixels are lone, sharing their colour with none of their eight neighbours. `pixelize.py process` merges lone pixels into the colour around them and keeps only the few that contrast most, such as an eye.
-- Colours: at most 16 for a character, 12 for every other sprite, icon and HUD picture, 16 for the logo, and 32 for a full-screen layer, the kitchen and the key art.
+- Colours, by folder: at most 16 in `characters/`; 12 in `world/`, `walkway/`, `ground/`, `decor/`, `icons/` and `ui/`; 32 in `backgrounds/`, `workshop/` and `title/`, but 16 for the logo.
 - One outline rule for the world and character sprites (`characters/`, `world/`, `walkway/`, `ground/`, `decor/`): a selective outline lit from above. An edge facing up shows its surface colour without a dark line; every other edge facing clear space takes a darker colour of the sprite's own, so at least 95% of them are no lighter than the pixel inside them. The icons keep their one-pixel dark outline.
 - One light, from above, for the same sprites: what faces up is on average no darker than what faces down. Light from above survives the runtime mirroring of a character.
 
@@ -28,7 +28,7 @@ Every PNG keeps these, and `pixelize.py check` measures them on the art's own pi
 - `backgrounds/city.png` (1280×480) is the middle layer: a swallowed city of tilted towers sunk in flesh, with an elevated railway and a train skewered into the flesh, clear above the skyline. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
 - `backgrounds/jaw.png` (448×200, scale 2) is the teeth layer: the monster's upper teeth hanging from a gum along its top edge, clear below. Draw it along the top of the screen at scale 2 on the scene's pixel grid, in front of the backdrop and behind the walkways: its fangs, cut at the gaps between them, one by one in a varied order under its gum.
 - `backgrounds/acid.png` (1280×492) is the acid, both the band nearest behind the map and the sea in the scene. Its surface is near the top edge: move the layer so that edge follows the acid level, and fill any screen area below it with its bottom row.
-- The backdrop layers are not tiles; drawn beside a mirrored copy, each meets it without a seam.
+- The throat, the city and the acid are not tiles; drawn beside a mirrored copy, each meets it without a seam. The teeth layer is never mirrored: the screen cuts it into its fangs and a band of its gum.
 - `glow.tres` is the blend-add material of the layer that adds light over the scene.
 
 ## Characters
