@@ -28,8 +28,8 @@
     292
    ],
    "scale": 1,
-   "colours": 193546,
-   "depicts": "Front layer, cut from the search mockup at the screen's size: the glowing green acid lake with sunken train cars and broken pillars; clear above its surface"
+   "colours": 231922,
+   "depicts": "Front layer, cut from the search mockup at the screen's size: the glowing green acid lake with sunken train cars and broken pillars, under a strip of the far shore's ruins over the throat's glow, with the walkway and the post the mockup stands there filled from beside them"
   },
   {
    "path": "characters/chef_idle.png",
@@ -298,7 +298,7 @@
     264
    ],
    "scale": 1,
-   "colours": 129227,
+   "colours": 65221,
    "depicts": "Building fronts of the first screen, cut from the search mockup: one band a cell deep per row a building stands in, the kitchen's lit shelves over its loft floor, then the tower shop's two rows, then the kitchen loft's face and the dark under it, carried on past the loft's end, for the rows the map leaves between the loft and the walkway; a cell of building shows the band of its row at its column"
   },
   {
@@ -318,7 +318,7 @@
     256
    ],
    "scale": 1,
-   "colours": 192642,
+   "colours": 100489,
    "depicts": "Lit shop fronts of the first screen, cut from the search mockup: two cells deep above the kitchen loft floor and above the gauge ledge; a shop shows the band of its floor around its column"
   },
   {
@@ -398,7 +398,7 @@
     336
    ],
    "scale": 1,
-   "colours": 217633,
+   "colours": 122722,
    "depicts": "Walkway decks of the first screen, cut from the search mockup at the screen's size: one band a cell deep per floor line, top to bottom the kitchen roof, the shop roof, the kitchen loft, the upper walkway with the gauge ledge, the lower walkway with the rope bridge, and its plain deck again across the screen for the pier and the sunken train; a cell of ground shows the band of its row at its column"
   },
   {
