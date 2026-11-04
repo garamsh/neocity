@@ -4,8 +4,7 @@ extends SceneTree
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
 ## band behind the map does not show green at no acid, the stairs' walked-on part does not
-## lead the part under it or reads darker than the deck's top edge, the fallen slab's
-## lit top edge does not run along its tilt, the acid's light does not rise
+## lead the part under it or reads darker than the deck's top edge, the acid's light does not rise
 ## above its surface, the acid stands still between two
 ## frames a moment apart on the scene's clock, the camera draws the scene at a
 ## zoom other than once or twice its size, the teeth, the backdrop or the acid
@@ -48,9 +47,9 @@ const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
 const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 const CELL: int = 32
 ## Ground cells of the first city frame with nothing but scenery in them: the
-## arcade, the rooftop and the market. Each walkway's deck runs under its
-## cell's floor line, where an actor's feet are.
-const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(21, 2), Vector2i(22, 2), Vector2i(8, 11), Vector2i(10, 11)]
+## kitchen loft, the upper walkway and the shop roof. Each walkway's deck runs
+## under its cell's floor line, where an actor's feet are.
+const LEAD_CELLS: Array[Vector2i] = [Vector2i(2, 6), Vector2i(4, 8), Vector2i(8, 8), Vector2i(18, 5), Vector2i(19, 5)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
 ## edge under those cells reads than the scenery in the cells, above the deck.
 const GROUND_LEAD: float = 0.12
@@ -81,9 +80,10 @@ const ACID_GAP: float = 0.05
 ## 0.175 of them at the least on the city frames.
 const ACID_GREEN: float = 0.1
 const ACID_SHARE: float = 0.1
-## The south stairs, each rising to the left across its cell from its floor
-## line down to the row below, so its walked-on part lies above that diagonal.
-const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
+## The stairs down from the upper walkway, rising to the left across its cell
+## from its floor line down to the row below, so its walked-on part lies above
+## that diagonal.
+const STAIR_CELLS: Array[Vector2i] = [Vector2i(9, 9)]
 ## The scene row of the acid's surface at no acid, under the map's lowest
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
@@ -94,18 +94,14 @@ const SEA_REACH: int = 64
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
-## Plain market deck beside the south stairs, whose lit top edge the stairs'
+## Plain lower walkway deck beside the stairs, whose lit top edge the stairs'
 ## walked-on part is held to; the camera that shows the stairs shows it too.
-const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(11, 11)]
+const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(10, 9)]
 ## The least share of that deck's top edge, in mean luminance, that the
 ## stairs' walked-on part reads at, so stairs read as walkway like the deck.
 const STAIR_PARITY: float = 0.9
-## From the entrance down the market ladder into the market.
-const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
-## The fallen slab's first cell and its width in cells; it falls a row from
-## the floor line of its first cell to that of the row below at its right end.
-const SLAB_CELL: Vector2i = Vector2i(20, 6)
-const SLAB_CELLS: int = 2
+## From the entrance down the stairs onto the lower walkway.
+const MARKET_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
 ## Where the scene's clock is pinned, in seconds; how far apart on
 ## that clock the two frames of the acid's motion are taken; how much a pixel's
 ## colour must change in a channel, from 0 to 1, to count as moved; and the
@@ -131,6 +127,10 @@ const ZOOMS: Array[float] = [1.0, 2.0]
 ## The most frames player two walks away from player one, and the frames the
 ## camera then has to settle.
 const PART_FRAMES: int = 300
+## The ladders player two climbs on its way west from the entrance, by column,
+## with the row each takes it up to: the kitchen ladder to the loft, then the
+## roof ladder to the kitchen roof.
+const PART_LADDERS: Dictionary[int, int] = {3: 6, 1: 4}
 const PARTED_SETTLE: int = 60
 ## The least share, by layer, of its edge pixels, those that differ from a
 ## neighbour along a row or a column, that differ from both neighbours along
@@ -159,7 +159,7 @@ const SETTLE_SECONDS: float = 0.4
 ## there from the throat; the least share of the pixels the throat's fangs
 ## cover there that must show them, within TEETH_TOLERANCE in each channel,
 ## low because a high walkway hides them where it crosses the top of the
-## screen, as on 27-city-jumping-the-rubble, which shows 0.036 of them; and
+## screen, the lowest city frame, 17-city-high-acid, showing 0.109 of them; and
 ## the least share of the pixels read the fangs must cover.
 const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.03
@@ -175,10 +175,11 @@ const FANG_GREEN: float = 0.68
 const SUPPORT_DARK: float = 0.15
 const SUPPORT_RUN: int = 120
 const SUPPORT_SHARE: float = 0.07
-## The scene rectangles of the lit structures: the corner shops, the vending
-## machine and the stall; how bright a pixel's red must be and how far it must
-## lead blue to read warm and lit; and the least share of their pixels that do.
-const LIT_AREAS: Array[Rect2] = [Rect2(468, 290, 120, 114), Rect2(52, 52, 120, 114), Rect2(308, 392, 56, 62), Rect2(305, 274, 62, 84)]
+## The scene rectangles of the lit structures: the kitchen shop's shelf, the
+## supply crate's shop, the tomato machine and the noodle stall; how bright a
+## pixel's red must be and how far it must lead blue to read warm and lit; and
+## the least share of their pixels that do.
+const LIT_AREAS: Array[Rect2] = [Rect2(180, 180, 120, 114), Rect2(628, 244, 120, 114), Rect2(404, 328, 56, 62), Rect2(849, 210, 62, 84)]
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
 const LIT_SHARE: float = 0.15
@@ -204,7 +205,6 @@ var city_frames: int = 0
 var ground_frames: int = 0
 var stairs_frames: int = 0
 var parity_frames: int = 0
-var slab_frames: int = 0
 var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
@@ -242,11 +242,11 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
-	await _walk(KEY_D, 7)
+	await _walk(KEY_D, 11)
 	await _save_city("4-city-collect-prompt")
 	if not await _acid_moves("4-city-collect-prompt") or not await _draws_fast("4-city-collect-prompt"):
 		return
-	# A jump in place on the flat street comes down where it rose.
+	# A jump in place on the flat lower walkway comes down where it rose.
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
 	_key(KEY_SPACE, false)
@@ -262,14 +262,17 @@ func _run() -> void:
 	_key(KEY_A, false)
 	_key(KEY_SHIFT, false)
 	await _frames(3)
-	await _walk(KEY_D, 8)
+	await _walk(KEY_D, 11)
 	_key(KEY_D, true)
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
 	_key(KEY_SPACE, false)
 	await _frames(4)
 	await _save_city("27-city-jumping-the-rubble")
-	await _walk(KEY_D, 12)
+	await _walk(KEY_D, 13)
+	# Back over the rubble and up the stairs to the drip at the upper
+	# walkway's west end.
+	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
 	await _until_phase("workshop")
@@ -288,11 +291,11 @@ func _run() -> void:
 	await _save("9-next-day")
 	await _tap(KEY_Q)
 	# Feeding started day two, so the ladder frames are day two's.
-	await _walk(KEY_D, 16)
-	await _walk_left(15)
+	await _walk(KEY_D, 8)
+	await _walk_left(7)
 	await _save_city("23-city-facing-left")
-	await _walk(KEY_D, 18)
-	await _climb(4)
+	await _walk_to(3, 8)
+	await _climb(7)
 	await _save_city("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _frames(60)
@@ -300,14 +303,12 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_F)
 	await _frames(12)
-	# Before the acid rises: down the market ladder, along the market and down
-	# the south stairs, so the camera, low on the map, shows the stairs behind
-	# the chef.
+	# Before the acid rises: down the stairs onto the lower walkway, so the
+	# camera shows the stairs behind the chef.
 	await _tap(KEY_Q)
 	await _frames(40)
 	for waypoint: Vector2i in MARKET_ROUTE:
 		await _walk_to(waypoint.x, waypoint.y)
-	await _walk(KEY_D, 17)
 	await _frames(30)
 	await _save_city("31-city-market")
 	await _tap(KEY_Q)
@@ -406,10 +407,10 @@ func _run() -> void:
 	await _save("13-ending-card")
 	if not await _scales_whole():
 		return
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -701,7 +702,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -870,23 +871,6 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 		return false
 	return true
 
-## Whether the fallen slab's lit top edge, the EDGE_ROWS under the line it
-## tilts along, leads the EDGE_ROWS of scenery just above that line by
-## GROUND_LEAD, when the frame shows the slab.
-func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
-	var corner: Vector2 = Vector2(MAP_ORIGIN + (SLAB_CELL + Vector2i.DOWN) * CELL)
-	if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(SLAB_CELLS * CELL, CELL + 2 * EDGE_ROWS)):
-		return true
-	var columns: Vector2i = Vector2i(0, SLAB_CELLS * CELL)
-	var edge: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(0, EDGE_ROWS))
-	var above: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(-EDGE_ROWS, 0))
-	slab_frames += 1
-	print("Capture: %s: the fallen slab's top edge leads the scenery above its tilt by %.3f (edge %.3f, scenery %.3f, at least %.3f)." % [screen, edge - above, edge, above, GROUND_LEAD])
-	if above <= 0.0 or edge - above < GROUND_LEAD:
-		_fail("%s: the fallen slab's top edge does not run along its tilt" % screen)
-		return false
-	return true
-
 ## Whether, while the camera rests, MOTION_SHARE of the acid's pixels change
 ## between two frames MOTION_SECONDS apart on the scene's clock: of
 ## the pixels whose green leads by ACID_GREEN in the first, in the BAND_ROWS
@@ -943,7 +927,7 @@ func _draws_fast(screen: String) -> bool:
 		return false
 	return true
 
-## Whether, as player two walks left and climbs the ladder there away from
+## Whether, as player two walks left and climbs the ladders there away from
 ## player one until the camera heads for the scene's own size, and the
 ## camera then settles, every frame draws the scene at one of the camera's
 ## ZOOMS, and the camera drew the scene's own size on the way. The control is
@@ -951,12 +935,13 @@ func _draws_fast(screen: String) -> bool:
 func _zoom_steps() -> bool:
 	var zooms: Array[float] = []
 	var parted: bool = false
-	_key(KEY_J, true)
-	_key(KEY_I, true)
 	for frame: int in range(PART_FRAMES + PARTED_SETTLE):
-		if parted or frame == PART_FRAMES:
-			_key(KEY_J, false)
-			_key(KEY_I, false)
+		var walker: Dictionary = scene.survival_status()["appraiser"]
+		var appraiser_at: Vector2i = _cell(walker)
+		var climbs: bool = appraiser_at.y > PART_LADDERS.get(appraiser_at.x, appraiser_at.y)
+		var walks: bool = not parted and frame < PART_FRAMES
+		_key(KEY_J, walks and not climbs)
+		_key(KEY_I, walks and climbs)
 		await process_frame
 		var view: Transform2D = scene.get_meta("map_view", Transform2D())
 		var heading: Transform2D = scene.get_meta("map_heading", Transform2D())

@@ -32,31 +32,34 @@ const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up"
 const WALK_KEYS: Array[Key] = [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE, KEY_J, KEY_L, KEY_I, KEY_K, KEY_SEMICOLON]
 ## Eight unfed days raise acid to 96: acid has taken every washed-up bag and
 ## every landed ingredient source west of the ferry, the kiosk has fallen open
-## to the arcade bag, and the run is not lost.
+## to the terrace bag, and the run is not lost.
 const UNFED_DAYS: int = 8
-## From the entrance up the north ladder to the supply crate at the arcade's
-## west end.
-const CRATE_ROUTE: Array[Vector2i] = [Vector2i(2, 8), Vector2i(2, 2)]
-## On along the arcade, through the fallen kiosk, to the arcade bag.
-const ARCADE_ROUTE: Array[Vector2i] = [Vector2i(10, 2), Vector2i(13, 3)]
-## From the entrance down the market ladder into the market, by the tool bag.
-const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
-## From the entrance down the market ladder to the tomato machine.
-const TOMATO_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(6, 11)]
-## The drip stands on the ramp's first step: up and back down through it burns
-## twice, and the third burn is one step back down.
-const DRIP_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(10, 7), Vector2i(11, 6)]
+## From the entrance down the step, over the rubble and the rope bridge to the
+## supply crate in the tower shop on the gauge ledge.
+const CRATE_ROUTE: Array[Vector2i] = [Vector2i(19, 8)]
+## From the crate east to the east loft and up to the east roof, through the
+## fallen kiosk and down to the terrace bag on the shop roof.
+const TERRACE_ROUTE: Array[Vector2i] = [Vector2i(23, 8), Vector2i(23, 6), Vector2i(21, 6), Vector2i(21, 4), Vector2i(17, 5)]
+## From the entrance down the step and over the rubble to the tool bag.
+const MARKET_ROUTE: Array[Vector2i] = [Vector2i(13, 9)]
+## From the entrance down the step to the tomato machine.
+const TOMATO_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
+## From the entrance up the kitchen ladder to the shop shelf on the loft.
+const SHELF_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(4, 6)]
+## The drip stands on the upper walkway west of the kitchen ladder: in and back
+## out through it burns twice, and the third burn is one step back in.
+const DRIP_ROUTE: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
 ## Time a walk from the entrance to the roof ladder's foot takes, with room.
 const LADDER_WALK_MS: int = 6000
-## From the entrance up the ramp to the foot of the roof ladder on the overpass.
-const LADDER_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5)]
-## From the entrance up the ramp, over the overpass and up the roof ladder to
-## the roof bag.
-const ROOF_ROUTE: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5), Vector2i(18, 2), Vector2i(23, 2)]
+## From the entrance up the kitchen ladder to the foot of the roof ladder on
+## the loft.
+const LADDER_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
+## From the entrance up the kitchen ladder and the roof ladder to the roof bag.
+const ROOF_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6), Vector2i(1, 4), Vector2i(6, 4)]
 ## The map's top-left corner and size in the scene, as the city draws it; a
 ## sub-cell is one scene pixel, and the scene is 720 pixels tall.
 const MAP_ORIGIN: Vector2 = Vector2(64, 70)
-const MAP_SIZE: Vector2 = Vector2(36 * 32, 16 * 32)
+const MAP_SIZE: Vector2 = Vector2(40 * 32, 16 * 32)
 const SCENE_HEIGHT: float = 720.0
 ## The play area between the top bar and the cards, on screen.
 const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
@@ -82,7 +85,9 @@ const APART: float = 480.0
 const APPRAISER_HEAD: Vector2 = Vector2(216, 166)
 ## The screen pixels the HUD's panels and chips covered while it named every
 ## key, measured by `_hud_area` at commit d72f34c55a70c3d212f0eb9b0e51dbb4b2f6712f on the
-## same seeded states: day one at base, and the chef at the Vendor Cart.
+## same seeded states: day one at base, and the chef at the Vendor Cart, the
+## first source the AI partner took on that map; the chef now stands at the
+## Shop Shelf, the first source it takes on this one.
 const BASE_HUD_AREA_WITH_KEYS: float = 226079.0
 const CITY_HUD_AREA_WITH_KEYS: float = 152779.0
 ## How far left of a volume row's first block its name is drawn.
@@ -648,7 +653,7 @@ func _first_day() -> void:
 		return
 	if not await _until("AI follows into the city", func() -> bool: return _where("appraiser") == "city", 30):
 		return
-	if not _check(_out_of_reach().has("Arcade Bag") and not _out_of_reach().has("Tomato Machine"), "only stock behind the kiosk is marked out of reach"):
+	if not _check(_out_of_reach().has("Terrace Bag") and not _out_of_reach().has("Tomato Machine"), "only stock behind the kiosk is marked out of reach"):
 		return
 	if not _text_fits("the first city screen"):
 		return
@@ -671,18 +676,18 @@ func _first_day() -> void:
 	await _run_east()
 	if failed:
 		return
-	if not await _walk_to(7, 8):
+	if not await _walk_route(SHELF_ROUTE):
 		return
-	if not await _until("the AI appraiser takes the cart's fish", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
+	if not await _until("the AI appraiser takes the shelf's kelp", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	var cart: String = "COLLECT " + _place("Vendor Cart")
-	if not _check(_actions() == [cart] and _drawn(cart), "at a source the action button offers to collect from it by its name: %s" % [_actions()]):
+	var shelf: String = "COLLECT " + _place("Shop Shelf")
+	if not _check(_actions() == [shelf] and _drawn(shelf), "at a source the action button offers to collect from it by its name: %s" % [_actions()]):
 		return
 	if not _check(_hud_area() < CITY_HUD_AREA_WITH_KEYS, "the city's HUD at a source covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), CITY_HUD_AREA_WITH_KEYS]):
 		return
 	if not _check(not _next().begins_with("Collect from ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
 		return
-	if not await _walk_route(TOMATO_ROUTE):
+	if not await _walk_route([Vector2i(3, 6), Vector2i(3, 8)] + TOMATO_ROUTE):
 		return
 	var stock: int = _stock("Tomato Machine")
 	await _tap(KEY_E)
@@ -697,12 +702,12 @@ func _first_day() -> void:
 		return
 	_check(_events().has("Time is up: everyone is back at base."), "the screen reports the timed return")
 
-## Runs east along the main street towards the market ladder.
+## Runs east along the upper walkway towards its step down.
 func _run_east() -> void:
 	var stamina: int = _actor("chef", "stamina")
 	_key(KEY_SHIFT, true)
 	_key(KEY_D, true)
-	await _until("running reaches the market ladder", func() -> bool: return _actor("chef", "x") >= 6, 240)
+	await _until("running reaches the step down", func() -> bool: return _actor("chef", "x") >= 8, 240)
 	_key(KEY_D, false)
 	_key(KEY_SHIFT, false)
 	if failed:
@@ -719,37 +724,37 @@ func _third_day_falls() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef sets out to the drip", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not await _walk_route([Vector2i(10, 7), Vector2i(11, 6)]):
+	if not await _walk_route([Vector2i(1, 8)]):
 		return
 	if not _check(_actor("chef", "health") == 2 and _next_event_has("burned"), "the acid drip costs one health slot"):
 		return
-	if not await _camera_settles("the ramp's top"):
+	if not await _camera_settles("the drip"):
 		return
-	var ramp: Dictionary = _backdrop()
-	if not await _walk_to(18, 5):
+	var drip: Dictionary = _backdrop()
+	if not await _walk_to(24, 8):
 		return
-	if not await _camera_ignores_partner("the overpass on day three"):
+	if not await _camera_ignores_partner("the east walkway on day three"):
 		return
-	if not _backdrop_slides(ramp, _backdrop(), "from the ramp's top to the overpass"):
+	if not _backdrop_slides(drip, _backdrop(), "from the drip to the east walkway"):
 		return
-	if not _plates_clear_of_sources("the overpass on day three"):
+	if not _plates_clear_of_sources("the east walkway on day three"):
 		return
-	if not _points_to_goal("the overpass on day three"):
+	if not _points_to_goal("the east walkway on day three"):
 		return
-	if not _looks_ahead("chef", 1.0, "walking east onto the overpass"):
+	if not _looks_ahead("chef", 1.0, "walking east onto the east walkway"):
 		return
 	await _tap(KEY_A)
-	if not await _camera_settles("the overpass facing west"):
+	if not await _camera_settles("the east walkway facing west"):
 		return
-	if not _looks_ahead("chef", -1.0, "turning west on the overpass"):
+	if not _looks_ahead("chef", -1.0, "turning west on the east walkway"):
 		return
 	var remaining: int = _int("remaining_ms")
 	var pack: int = _actor("chef", "ingredients")
-	# Let go once off the edge: held, the key would carry the fall onto the
-	# fallen slab beyond the gap.
-	_key(KEY_D, true)
-	var off: bool = await _until("chef walks off the overpass's east end", func() -> bool: return _stance("chef") == "airborne", 120)
-	_key(KEY_D, false)
+	if not await _walk_to(18, 12):
+		return
+	_key(KEY_A, true)
+	var off: bool = await _until("chef walks off the shallows' west end", func() -> bool: return _stance("chef") == "airborne", 120)
+	_key(KEY_A, false)
 	if not off:
 		return
 	if not await _until("chef falls into the acid", func() -> bool: return _where("chef") == "base", 120):
@@ -1422,13 +1427,13 @@ func _human_repairs_the_ladder() -> void:
 	await _frames(24)
 	_key(KEY_W, false)
 	await _frames(12)
-	if not _check(_actor("appraiser", "y") == 5 and _stance("appraiser") == "standing", "a broken ladder blocks the way up"):
+	if not _check(_actor("appraiser", "y") == 6 and _stance("appraiser") == "standing", "a broken ladder blocks the way up"):
 		return
 	await _tap(KEY_E)
 	if not _check(_object("Roof Ladder") == "intact" and _actor("appraiser", "tools") == 1, "E repairs with the carried wrench and keeps it"):
 		return
 	_key(KEY_W, true)
-	await _until("the repaired ladder carries the human up", func() -> bool: return _actor("appraiser", "y") <= 3, 60)
+	await _until("the repaired ladder carries the human up", func() -> bool: return _actor("appraiser", "y") <= 4, 60)
 	_key(KEY_W, false)
 
 ## The second key set's own keys, which the timing checks inject past.
@@ -1472,11 +1477,11 @@ func _two_players() -> void:
 		return
 	if not await _camera_holds("two players in the city"):
 		return
-	# Player two climbs to the arcade, rows above player one, so the camera
-	# has to draw both smaller to frame them.
+	# Player two climbs to the kitchen roof, rows above player one, so the
+	# camera has to draw both smaller to frame them.
 	var leading: String = walker
 	walker = "appraiser"
-	if not await _walk_route(CRATE_ROUTE):
+	if not await _walk_route(ROOF_ROUTE):
 		return
 	walker = leading
 	if not _check(absf(_feet("chef").y - _feet("appraiser").y) >= APART / 4.0, "the two players stand apart: %s and %s" % [_feet("chef"), _feet("appraiser")]):
@@ -1507,18 +1512,18 @@ func _two_players() -> void:
 func _a_hated_dish_is_not_fed_again() -> void:
 	await _start_two_players()
 	walker = "chef"
-	if not await _collect_along([Vector2i(7, 8), Vector2i(7, 11), Vector2i(0, 12)], 2):
+	if not await _collect_along([Vector2i(18, 8), Vector2i(18, 12), Vector2i(21, 13)], 2):
 		return
-	if not await _collect_along([Vector2i(2, 12)], 1):
+	if not await _collect_along([Vector2i(23, 13)], 1):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes home", func() -> bool: return _str("phase") == "workshop", 120)
 	await _tap(KEY_G)
 	if not await _until("the first gathering day ends", func() -> bool: return _int("day") == 2, 30):
 		return
-	if not await _collect_along([Vector2i(7, 8), Vector2i(7, 11), Vector2i(2, 12)], 2):
+	if not await _collect_along([Vector2i(18, 8), Vector2i(18, 12), Vector2i(23, 13)], 2):
 		return
-	if not await _collect_along([Vector2i(6, 11)], 1):
+	if not await _collect_along([Vector2i(18, 12), Vector2i(18, 8), Vector2i(11, 9)], 1):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes home again", func() -> bool: return _str("phase") == "workshop", 120)
@@ -1619,18 +1624,18 @@ func _player_two_errand_alone_sets_out() -> void:
 	await _tap(KEY_O)
 	if not await _until("player two's second crate collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
-	if not await _walk_route(ARCADE_ROUTE):
+	if not await _walk_route(TERRACE_ROUTE):
 		return
 	await _tap(KEY_O)
-	if not await _until("player two's first arcade bag collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+	if not await _until("player two's first terrace bag collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _tap(KEY_O)
-	if not await _until("player two's second arcade bag collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+	if not await _until("player two's second terrace bag collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _tap(KEY_U)
 	if not await _until("player two comes home", func() -> bool: return _str("phase") == "workshop", 30):
 		return
-	if not _check(_stock("Supply Crate") == 0 and _stock("Arcade Bag") == 0 and _actor("appraiser", "tools") == 5 and _actor("chef", "tools") == 0, "player two empties the last sources in reach and only player two holds the wrench"):
+	if not _check(_stock("Supply Crate") == 0 and _stock("Terrace Bag") == 0 and _actor("appraiser", "tools") == 5 and _actor("chef", "tools") == 0, "player two empties the last sources in reach and only player two holds the wrench"):
 		return
 	if not _check(_object("Roof Ladder") == "destroyed" and _stock("Roof Bag") > 0 and _int("remaining_ms") > 0, "stock is left behind the broken ladder and the day has time"):
 		return
@@ -1848,8 +1853,8 @@ func _humans_out() -> Array[String]:
 ## Once the camera has settled: every human in the city stands on the play
 ## area; the view shows nothing past the map's sides or the scene's top and
 ## bottom, and centres on the map when wider than it; one human is drawn at
-## twice the scene's size, and two between once and twice, smaller than twice
-## when they stand APART or more.
+## twice the scene's size, and two at twice or once, never twice when they
+## stand APART or more.
 func _camera_holds(where: String) -> bool:
 	if not await _camera_settles(where):
 		return false

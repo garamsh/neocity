@@ -8,16 +8,18 @@ extends SceneTree
 ## and a music volume of 0 plays no music. Runs with no audio device.
 
 const SEED: int = 11
-## Two stocked sources on the docks, as `KeyCoverageCheck` walks them.
-const FIRST_SOURCE: Vector2i = Vector2i(7, 8)
-const SECOND_SOURCE: Array[Vector2i] = [Vector2i(7, 11), Vector2i(6, 11)]
-## The acid drip stands on the ramp's first step at 10, 7.
-const DRIP: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(10, 7)]
-## Down the market ladder to the tool bag and its wrench.
-const TOOL_BAG_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
-## Back up the market ladder, up the ramp and along the overpass to the foot of
-## the roof ladder.
-const ROOF_LADDER_ROUTE: Array[Vector2i] = [Vector2i(7, 11), Vector2i(7, 8), Vector2i(10, 7), Vector2i(11, 6), Vector2i(18, 5)]
+## Two stocked sources whose finds make a dish, as `KeyCoverageCheck` walks
+## them: the tomato machine and the shop shelf.
+const FIRST_SOURCE: Vector2i = Vector2i(10, 9)
+const SECOND_SOURCE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(5, 6)]
+## The acid drip stands on the upper walkway at 1, 8, west of the kitchen
+## ladder.
+const DRIP: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8)]
+## Down the step and over the rubble to the tool bag and its wrench.
+const TOOL_BAG_ROUTE: Array[Vector2i] = [Vector2i(13, 9)]
+## Back over the rubble, up the step and the kitchen ladder to the foot of the
+## roof ladder on the kitchen loft.
+const ROOF_LADDER_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
 const APPRAISE_ATTEMPTS: int = 12
 ## Frames of a collection's hold on the collecting actor, with a step to spare.
 const COLLECT_FRAMES: int = 102
@@ -210,7 +212,7 @@ func _acid_raises_the_tension_and_burns() -> bool:
 	return _check(_actor("health") < health and _heard("hurt") and _shown("hit"), "the drip burns with the hurt cue, a flash and a shake")
 
 ## The unfed day broke the roof ladder: player two fetches the wrench, repairs
-## the ladder, and walks off the overpass's east end into the acid.
+## the ladder, and walks off the kitchen loft's west end into the acid.
 func _repair_and_fall() -> bool:
 	if not _check(_object("Roof Ladder") == "destroyed", "the unfed day broke the roof ladder"):
 		return false
@@ -226,9 +228,9 @@ func _repair_and_fall() -> bool:
 	await _tap(KEY_O)
 	if not _check(_object("Roof Ladder") == "intact" and _heard("repair") and _shown("spark"), "a repair plays its cue and sparks"):
 		return false
-	_key(PLAYER_TWO["right"], true)
-	var off: bool = await _until("player two walks off the overpass's east end", func() -> bool: return _stance() == "airborne", 120)
-	_key(PLAYER_TWO["right"], false)
+	_key(PLAYER_TWO["left"], true)
+	var off: bool = await _until("player two walks off the kitchen loft's west end", func() -> bool: return _stance() == "airborne", 120)
+	_key(PLAYER_TWO["left"], false)
 	if not off:
 		return false
 	if not await _until("player two falls into the acid", func() -> bool: return _where("appraiser") == "base", 120):
