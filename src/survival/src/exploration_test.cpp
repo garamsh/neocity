@@ -101,6 +101,36 @@ constexpr ExplorationInput DOWN{.direction = Direction::Down};
 constexpr ExplorationInput JUMP_RIGHT{.direction = Direction::Right,
                                       .jump = true};
 
+constexpr ExplorationInput RUN_RIGHT{.direction = Direction::Right,
+                                     .running = true};
+
+TEST(Exploration, RunningSpendsStaminaOnlyWhereItRunsOnAFloor) {
+  Course floor({floor_at(FLOOR, 0, 0, 20)}, ENTRY);
+  floor.press(100ms, RUN_RIGHT);
+  ASSERT_EQ(floor.chef().body.stance, Stance::Standing);
+  EXPECT_EQ(floor.chef().stamina, 1U);
+  floor.press(100ms, RUN_RIGHT);
+  EXPECT_EQ(floor.chef().stamina, 0U);
+
+  Course air({floor_at(FLOOR, 0, 0, 20)}, ENTRY);
+  air.press(100ms, {.jump = true});
+  ASSERT_EQ(air.chef().body.stance, Stance::Airborne);
+  air.press(100ms, RUN_RIGHT);
+  ASSERT_EQ(air.chef().body.stance, Stance::Airborne);
+  EXPECT_EQ(air.chef().stamina, 2U);
+
+  Course ladder({floor_at(FLOOR, 0, 4, 6),
+                 {.id = OWNER,
+                  .kind = ObjectKind::Ladder,
+                  .area = {.x = 2, .y = 1, .height = 4}}},
+                {.x = 2, .y = 4});
+  ladder.press(300ms, UP);
+  ASSERT_EQ(ladder.chef().body.stance, Stance::Climbing);
+  ladder.press(100ms, RUN_RIGHT);
+  ASSERT_EQ(ladder.chef().body.stance, Stance::Airborne);
+  EXPECT_EQ(ladder.chef().stamina, 2U);
+}
+
 TEST(Exploration, BothRolesMoveIdenticallyAndShareOneClock) {
   Simulation simulation({.exploration_budget = 5s, .seed = 9});
   World world(city());
