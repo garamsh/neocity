@@ -8,27 +8,31 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 
 - Godot imports every file here, and each PNG's `.import` file is committed beside it. `src/rendering/` draws the world, the characters and the kitchen from this folder, and on the map the item icons (`icons/`) and the full heart from `ui/`. `src/hud/` draws the hearts and the day and clock icons from `ui/`, the item icons and the title art (`title/`) from it, and draws its panels and buttons in code.
 - Folders: `backgrounds/`, `characters/`, `world/`, `walkway/`, `ground/`, `decor/`, `icons/`, `workshop/`, `ui/`, `title/`.
-- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size or between once and twice for two players; the backdrop layers and the interface are drawn at their own size on the screen. Tiles are one cell wide but `building_wall.png`, which is 64 px wide; `walkway/deck.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
+- The map grid is 36×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size, or at its own size for two players who do not fit at twice; the backdrop layers, the sea in the scene and the interface are drawn at their own size on the screen at every zoom. Tiles are one cell wide but `building_wall.png`, which is 64 px wide; `walkway/deck.png`, `platform.png` and `bridge.png` repeat horizontally, the supports vertically, and `building_wall.png` in both directions without a seam.
 - Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
+- [ADR 0017](../../../../docs/architecture/adr/0017-draw-every-picture-one-pixel-to-a-screen-pixel-at-the-close-camera.md) sets one density, one picture pixel to a screen pixel at the default camera. `backgrounds/` is drawn so, at scale 1. The other folders keep their scale until their stage redraws them at twice the scene's resolution: 64 px a cell, 128×128 character frames.
 - Every pixel is fully opaque or fully clear.
 - No image contains text except `title/logo.png`. The engine draws every word and number.
 
 ## Clean-art rules
 
-Every PNG keeps these, and `pixelize.py check` measures them on the art's own pixel grid:
+Every PNG keeps these, and `pixelize.py check` measures them on the art's own pixel grid, and the one about screen pixels on the PNG's own pixels:
 
 - Clusters, not noise: at most 1% of an image's opaque pixels are lone, sharing their colour with none of their eight neighbours. `pixelize.py process` merges lone pixels into the colour around them and keeps only the few that contrast most, such as an eye.
-- Colours, by folder: at most 16 in `characters/`; 12 in `world/`, `walkway/`, `ground/`, `decor/`, `icons/` and `ui/`; 32 in `backgrounds/`, `workshop/` and `title/`, but 16 for the logo.
+- Colours, by folder: at most 16 in `characters/`; 12 in `world/`, `walkway/`, `ground/`, `decor/`, `icons/` and `ui/`; 32 in `workshop/` and `title/`, but 16 for the logo.
+- `backgrounds/` is cut from the search mockup with its own pixels, as [ADR 0018](../../../../docs/architecture/adr/0018-cut-the-backdrop-from-the-search-mockup.md) decides, and keeps its colours: the lone-pixel rule and the colour limit above do not apply to it.
+- One picture pixel to a screen pixel in `backgrounds/`: at least 10% of the pixels that differ from a neighbour along a row, and along a column, differ from both, so stand one pixel wide or tall. Art drawn in blocks of two or more pixels has none.
 - One outline rule for the world and character sprites (`characters/`, `world/`, `walkway/`, `ground/`, `decor/`): a selective outline lit from above. An edge facing up shows its surface colour without a dark line; every other edge facing clear space takes a darker colour of the sprite's own, so at least 95% of them are no lighter than the pixel inside them. The icons keep their one-pixel dark outline.
 - One light, from above, for the same sprites: what faces up is on average no darker than what faces down. Light from above survives the runtime mirroring of a character.
 
 ## Layers
 
-- `backgrounds/throat.png` (1280×720, opaque) is the back layer: the fleshy palate, without fangs, over the pink throat and its uvula.
-- `backgrounds/city.png` (1280×480) is the middle layer: a swallowed city of tilted towers sunk in flesh, with an elevated railway and a train skewered into the flesh, clear above the skyline. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
-- `backgrounds/jaw.png` (448×200, scale 2) is the teeth layer: the monster's upper teeth hanging from a gum along its top edge, clear below. Draw it along the top of the screen at scale 2 on the scene's pixel grid, in front of the backdrop and behind the walkways: its fangs, cut at the gaps between them, one by one in a varied order under its gum.
-- `backgrounds/acid.png` (1280×492) is the acid, both the band nearest behind the map and the sea in the scene. Its surface is near the top edge: move the layer so that edge follows the acid level, and fill any screen area below it with its bottom row.
-- The throat, the city and the acid are not tiles; drawn beside a mirrored copy, each meets it without a seam. The teeth layer is never mirrored: the screen cuts it into its fangs and a band of its gum.
+The three layers are cut from the search mockup, `docs/art/concept-art/monster-mouth-escape/search-mockup-v1.png` at commit `241124d5ba2dcef937c904623f1e5e3cb03fbcf5`, with its own pixels: what the mockup shows of the map, its characters and the interface over a layer is filled by a Recraft erase of that region, and `tools/art/assets.json` lists each layer's crop, fills and clear regions in the mockup's pixels.
+
+- `backgrounds/throat.png` (880×600, opaque, the mockup's columns 560 to 1439 and rows 0 to 599) is the back layer: the fleshy palate with the mockup's cream fangs hanging from its top edge, over the pink throat and its uvula. Draw it with its top edge at the screen's top.
+- `backgrounds/city.png` (700×520, the mockup's columns 640 to 1339 and rows 60 to 579) is the middle layer: a swallowed city of tilted towers with orange windows and an elevated railway with lit trains, sunk in flesh, clear above the skyline. Draw it behind the walkways with its bottom edge below the acid surface, so the acid covers its base.
+- `backgrounds/acid.png` (1480×381, the mockup's columns 0 to 1479 and rows 560 to 940) is the acid, both the band nearest behind the map and the sea in the scene, each drawn at its own size on the screen: the glowing acid lake with sunken trains and broken pillars, clear above its surface, which lies about 79 rows below the picture's top edge. Move the layer so that surface follows the acid level, and fill any screen area below it with its bottom row.
+- The throat, the city and the acid are not tiles; drawn beside a mirrored copy, each meets it without a seam.
 - `glow.tres` is the blend-add material of the layer that adds light over the scene.
 
 ## Characters

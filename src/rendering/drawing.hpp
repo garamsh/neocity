@@ -94,7 +94,6 @@ enum class Image : std::uint8_t {
   Throat,
   City,
   Acid,
-  Jaw,
   Kitchen,
   ChefIdle,
   ChefWalk1,

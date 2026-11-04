@@ -52,8 +52,6 @@ const char *path(Image image) {
     return "backgrounds/city.png";
   case Image::Acid:
     return "backgrounds/acid.png";
-  case Image::Jaw:
-    return "backgrounds/jaw.png";
   case Image::Kitchen:
     return "workshop/kitchen.png";
   case Image::ChefIdle:

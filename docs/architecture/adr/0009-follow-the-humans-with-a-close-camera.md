@@ -1,6 +1,6 @@
 # ADR 0009: Follow the humans with a close camera
 
-> Status: accepted; the haze superseded by ADR-0011
+> Status: accepted; the haze superseded by ADR-0011; the zoom between once and twice superseded by ADR-0017
 > Date: 2026-11-03
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

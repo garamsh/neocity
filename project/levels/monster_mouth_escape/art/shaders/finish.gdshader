@@ -5,20 +5,21 @@
 // acid takes its light in bands that fade away from the surface, bright parts
 // spill light around them, shadows lean to magenta and the edges darken
 // toward violet. Each effect is worked out once per pixel of the art it lies
-// on, the band's own pixels behind the map and the scene's pixels elsewhere,
-// and soft light steps through a few levels, so it reads as pixel art and not
-// as a smooth blur.
+// on: the acid's, which is drawn one picture pixel to a screen pixel, on both
+// surfaces, and the scene's elsewhere. Soft light steps through a few levels,
+// so it reads as pixel art and not as a smooth blur.
 shader_type canvas_item;
 render_mode unshaded;
 
 uniform sampler2D screen : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 // Seconds of the art's steady clock.
 uniform float time = 0.0;
-// The screen row of the acid band's surface and the screen column its art's
-// pixel grid starts from.
+// The screen row of the acid band's surface and the screen column its
+// picture starts from, which the band's effects move with.
 uniform float band = 470.0;
 uniform float band_left = 0.0;
-// The screen row of the surface of the sea in the scene.
+// The screen row of the surface of the sea in the scene, whose effects move
+// with the scene's origin.
 uniform float sea = 1000.0;
 // The screen position of the scene's origin and the screen pixels one scene
 // pixel spans.
@@ -27,26 +28,29 @@ uniform float grid = 1.0;
 
 // The canvas size the scene is laid out in.
 const vec2 CANVAS = vec2(1280.0, 720.0);
-// The screen pixels of one of the band art's pixels.
-const float BAND_PIXEL = 4.0;
-// Rows near a surface that heave, and that light runs along.
-const float HEAVE_DEPTH = 4.0;
-const float RUN_DEPTH = 2.0;
-// The web's cells, in pixels, and how deep under the surface it shows and
-// how bright its strands are there.
-const float WEB_CELL = 10.0;
-const float WEB_DEPTH = 24.0;
+// Rows near a surface that heave, how far it heaves, and the rows that light
+// runs along, in screen pixels.
+const float HEAVE_DEPTH = 12.0;
+const float HEAVE = 3.0;
+const float RUN_DEPTH = 6.0;
+// The web's cells, in screen pixels, how wide its strands are as a share of
+// a cell, how deep under the surface it shows and how bright its strands are
+// there.
+const float WEB_CELL = 30.0;
+const float WEB_STRAND = 0.06;
+const float WEB_DEPTH = 96.0;
 const vec3 WEB_LIGHT = vec3(0.45, 0.6, 0.25);
-// The acid sinks toward this shade over this many pixels under its surface.
+// The acid sinks toward this shade over this many screen pixels under its
+// surface.
 const vec3 DEEP_SHADE = vec3(0.8, 0.86, 0.8);
-const float DEEP_DEPTH = 48.0;
-// The foam along the surface's top row, and the light running along it.
+const float DEEP_DEPTH = 160.0;
+// The foam along the surface's top rows, and the light running along it.
 const vec3 FOAM = vec3(0.82, 1.0, 0.58);
 const vec3 GLINT = vec3(0.95, 1.0, 0.8);
-// Bubble lanes across the acid, in pixels, how deep a bubble starts, and the
-// share of its rise after which it bursts at the surface.
-const float LANE = 9.0;
-const float BUBBLE_DEPTH = 14.0;
+// Bubble lanes across the acid, in screen pixels, how deep a bubble starts,
+// and the share of its rise after which it bursts at the surface.
+const float LANE = 27.0;
+const float BUBBLE_DEPTH = 42.0;
 const float BURST = 0.82;
 // The light the acid throws on what stands over and in it: bands this many
 // screen pixels tall, this many of them, each fainter than the one nearer the
@@ -125,7 +129,7 @@ bool strand(vec2 p) {
 			}
 		}
 	}
-	return second - first < 0.11;
+	return second - first < WEB_STRAND;
 }
 
 void fragment() {
@@ -133,24 +137,24 @@ void fragment() {
 	vec2 uv_per_unit = vec2(dFdx(SCREEN_UV.x) / dFdx(canvas_at.x), dFdy(SCREEN_UV.y) / dFdy(canvas_at.y));
 	vec3 own = texture(screen, SCREEN_UV).rgb;
 
-	// The pixel this point lies on: the scene's in the sea in the scene and
-	// above the band, the band art's in the band.
+	// The scene's pixel this point lies on, and the acid's: a screen pixel,
+	// counted from where the band's picture starts in the band and from the
+	// scene's origin in the sea in the scene, so the effects move with each.
 	vec2 scene_cell = floor((canvas_at - grid_origin) / grid);
 	vec2 scene_centre = grid_origin + (scene_cell + 0.5) * grid;
-	float sea_depth = floor((scene_centre.y - sea) / grid);
-	vec2 band_cell = floor((canvas_at - vec2(band_left, band)) / BAND_PIXEL);
-	bool in_band = sea_depth < -HEAVE_DEPTH && band_cell.y >= -HEAVE_DEPTH;
-	float pixel = in_band ? BAND_PIXEL : grid;
-	vec2 cell = in_band ? band_cell : scene_cell;
-	vec2 centre = in_band ? vec2(band_left, band) + (band_cell + 0.5) * BAND_PIXEL : scene_centre;
-	float depth = in_band ? band_cell.y : sea_depth;
+	vec2 sea_cell = floor(canvas_at - vec2(grid_origin.x, sea));
+	vec2 band_cell = floor(canvas_at - vec2(band_left, band));
+	bool in_band = sea_cell.y < -HEAVE_DEPTH && band_cell.y >= -HEAVE_DEPTH;
+	vec2 cell = in_band ? band_cell : sea_cell;
+	vec2 centre = floor(canvas_at) + 0.5;
+	float depth = cell.y;
 
 	vec3 colour = own;
 	if (abs(depth) <= HEAVE_DEPTH) {
 		// The surface heaves: a pixel near it takes the acid it rises or sinks
 		// to, and anything else keeps its own.
-		float heave = round(0.9 * sin(cell.x * 0.21 + time * 1.7) + 0.8 * sin(cell.x * 0.067 - time * 1.1));
-		vec3 moved = texture(screen, SCREEN_UV + (centre + vec2(0.0, heave * pixel) - canvas_at) * uv_per_unit).rgb;
+		float heave = round(HEAVE * (0.9 * sin(cell.x * 0.07 + time * 1.7) + 0.8 * sin(cell.x * 0.022 - time * 1.1)));
+		vec3 moved = texture(screen, SCREEN_UV + (centre + vec2(0.0, heave) - canvas_at) * uv_per_unit).rgb;
 		if (acid(moved) && (acid(own) || depth < 0.0)) {
 			colour = moved;
 		}
@@ -159,10 +163,10 @@ void fragment() {
 	if (acid(colour) && depth >= 0.0) {
 		// Foam along the top row, light running along the rows under it, each
 		// its own way.
-		colour = mix(colour, FOAM, 0.75 * step(depth * pixel, 3.0));
-		float way = mod(depth, 2.0) < 1.0 ? 1.0 : -1.0;
-		float run = floor((cell.x + way * time * (6.0 + depth * 4.0)) / 5.0);
-		float glint = step(0.72, hash(vec2(run, depth))) * step(depth, RUN_DEPTH);
+		colour = mix(colour, FOAM, 0.75 * step(depth, 3.0));
+		float way = mod(floor(depth / 3.0), 2.0) < 1.0 ? 1.0 : -1.0;
+		float run = floor((cell.x + way * time * (18.0 + depth * 4.0)) / 15.0);
+		float glint = step(0.72, hash(vec2(run, floor(depth / 3.0)))) * step(depth, RUN_DEPTH);
 		colour = mix(colour, GLINT, glint * 0.9);
 		// A web of light crawling over the acid near its surface, which sinks
 		// to a deeper shade below.
@@ -172,22 +176,22 @@ void fragment() {
 		}
 		colour *= mix(vec3(1.0), DEEP_SHADE, min(depth / DEEP_DEPTH, 1.0));
 	}
-	if (depth >= -3.0 && depth <= BUBBLE_DEPTH && (acid(colour) || depth < 0.0)) {
+	if (depth >= -9.0 && depth <= BUBBLE_DEPTH && (acid(colour) || depth < 0.0)) {
 		// A bubble rising in its lane, bursting into a ring of foam at the
 		// surface.
 		float lane = floor(cell.x / LANE);
 		float period = 1.6 + hash(vec2(lane, 3.0)) * 2.4;
 		float rise = fract(time / period + hash(vec2(lane, 7.0)));
 		if (hash(vec2(lane, 11.0)) < 0.6) {
-			float x = lane * LANE + 2.0 + floor(hash(vec2(lane, 5.0)) * (LANE - 4.0));
+			float x = lane * LANE + 6.0 + floor(hash(vec2(lane, 5.0)) * (LANE - 12.0));
 			vec2 from = vec2(cell.x - x, depth);
 			if (rise < BURST) {
-				vec2 bubble = vec2(round(sin(rise * 12.0 + lane) * 0.8), round(BUBBLE_DEPTH * (1.0 - rise / BURST)));
-				if (acid(colour) && max(abs(from.x - bubble.x), abs(from.y - bubble.y)) <= 1.0 - step(rise, 0.4)) {
+				vec2 bubble = vec2(round(sin(rise * 12.0 + lane) * 2.4), round(BUBBLE_DEPTH * (1.0 - rise / BURST)));
+				if (acid(colour) && length(from - bubble) <= 1.5 + step(0.4, rise)) {
 					colour = GLINT;
 				}
 			} else {
-				float size = 1.0 + floor((rise - BURST) / (1.0 - BURST) * 3.0);
+				float size = 3.0 + floor((rise - BURST) / (1.0 - BURST) * 6.0);
 				float ring = step(abs(length(from) - size), 0.6);
 				colour = mix(colour, FOAM, ring);
 			}

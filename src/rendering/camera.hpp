@@ -34,17 +34,18 @@ struct View {
 
 /// Where the camera over the city heads: the humans in the city, never an AI
 /// partner. One human is shown at twice the scene's size, a little ahead of
-/// the way it faces; two are framed together between once and twice the
-/// size, smaller as they part. With no human in the city it rests on the base
-/// entrance. It never shows past the map's left and right edges or the
-/// scene's top and bottom, and centres on the map when the view is wider
-/// than it.
+/// the way it faces; two are framed together at twice the size while they fit
+/// and at the scene's own size once they do not. With no human in the city it
+/// rests on the base entrance. It never shows past the map's left and right
+/// edges or the scene's top and bottom, and centres on the map when the view is
+/// wider than it.
 [[nodiscard]] View aim(const survival::Content &content,
                        const survival::GameView &view,
                        survival::ControlMap control);
 
 /// The camera easing from where it last was toward `heading` on the real
-/// clock, inside the same bounds as `aim`.
+/// clock, inside the same bounds as `aim`; its zoom steps between the two
+/// once the eased zoom passes halfway, and is never between them.
 [[nodiscard]] View follow(const Art &art, const survival::Content &content,
                           const View &heading);
 
