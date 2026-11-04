@@ -33,16 +33,16 @@ struct Shot {
 [[nodiscard]] godot::Vector2 map_point(survival::Position position);
 /// Draws the backdrop behind every survival screen as `camera` shows the
 /// scene, in layers that move less with the camera the farther back they
-/// are: the monster's throat, breathing on `art`'s clock with saliva dripping
-/// from its fangs, the swallowed city, and an acid band of sunken trains and
+/// are: the monster's throat, its fleshy palate over it, breathing on `art`'s
+/// clock, the swallowed city, and an acid band of sunken trains and
 /// broken pillars glowing along the bottom of the play area, which rises with
 /// `acid_ratio`. Then the acid sea in the scene, whose surface rises with
 /// `acid_ratio`, from below the map's lowest ground row at 0 to the top of the
 /// map at 1, and fades below it to a deep green. Leaves on the canvas where
 /// each layer slid to as the `backdrop_layers` meta, an array of Vector2
-/// offsets from where it rests, back to front, notes on `art` where both acid
-/// surfaces lie on the screen, and leaves the canvas drawing the scene as
-/// `camera` shows it.
+/// offsets from where it rests, back to front, and the throat's top-left as
+/// `throat_at`, notes on `art` where both acid surfaces lie on the screen,
+/// and leaves the canvas drawing the scene as `camera` shows it.
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
                  const View &camera);
 /// Draws the light and the steam over both acid surfaces `paint_mouth` draws,

@@ -72,6 +72,31 @@ constexpr float JAW_DEPTH = 1.25F;
 /// The teeth picture's pixels, drawn on the scene's pixel grid at twice its
 /// size, so the finishing pass reads them whole.
 constexpr float JAW_PIXEL = 2.0F;
+/// One fang of the teeth picture: its columns, from one gap to the next, and
+/// its tip, in the picture's pixels.
+struct Fang {
+  float left = 0.0F;
+  float width = 0.0F;
+  Vector2 tip;
+};
+/// The teeth picture's whole fangs, which hang in a row along the top of the
+/// screen in an order and at drops that change from one run of them to the
+/// next, so no stretch of the row repeats another.
+constexpr std::array JAW_FANGS{
+    Fang{.left = 28.0F, .width = 50.0F, .tip = Vector2(16.0F, 162.0F)},
+    Fang{.left = 78.0F, .width = 50.0F, .tip = Vector2(24.0F, 126.0F)},
+    Fang{.left = 128.0F, .width = 44.0F, .tip = Vector2(20.0F, 126.0F)},
+    Fang{.left = 172.0F, .width = 52.0F, .tip = Vector2(28.0F, 158.0F)},
+    Fang{.left = 224.0F, .width = 48.0F, .tip = Vector2(20.0F, 126.0F)},
+    Fang{.left = 272.0F, .width = 46.0F, .tip = Vector2(22.0F, 114.0F)},
+    Fang{.left = 318.0F, .width = 50.0F, .tip = Vector2(20.0F, 124.0F)},
+    Fang{.left = 368.0F, .width = 52.0F, .tip = Vector2(24.0F, 156.0F)}};
+/// The width of one run of every fang, and of the gum drawn unbroken over
+/// their roots along the top, from the first fang's left edge.
+constexpr float JAW_RUN = 392.0F;
+constexpr float JAW_GUM = 24.0F;
+/// How far below the gum each fang may hang.
+constexpr std::array JAW_DROPS{0.0F, 4.0F, 8.0F, 12.0F, 16.0F};
 /// The part of the kitchen picture the workshop shows between the top bar and
 /// the panels, with the kitchen floor along its bottom.
 constexpr float KITCHEN_SOURCE_Y = 364.0F;
@@ -157,12 +182,7 @@ constexpr float BAND_PIXEL = 4.0F;
 constexpr float BREATH_SECONDS = 5.0F;
 constexpr float BREATH_LIFT = 4.0F;
 constexpr float BREATH_GLOW = 0.08F;
-/// Where saliva gathers at the end of the strands under the fangs, in the
-/// throat picture's pixels, and the size of that picture's pixels.
-constexpr std::array SALIVA_TIPS{
-    Vector2(4.0F, 428.0F),    Vector2(228.0F, 424.0F), Vector2(252.0F, 384.0F),
-    Vector2(528.0F, 416.0F),  Vector2(752.0F, 408.0F), Vector2(1028.0F, 372.0F),
-    Vector2(1052.0F, 436.0F), Vector2(1240.0F, 384.0F)};
+/// The size of the throat picture's pixels.
 constexpr float THROAT_PIXEL = 4.0F;
 /// A drop swells at its tip for the first part of its cycle, then falls
 /// with this pull, in pixels per second squared, until it has fallen its
@@ -187,6 +207,8 @@ constexpr float STEAM_RISE = 40.0F;
 constexpr float STEAM_SECONDS = 3.4F;
 /// Seeds of the ambient motion's scatter, one per kind of thing moving.
 constexpr std::uint32_t SALIVA_SEED = 0x5A11U;
+constexpr std::uint32_t JAW_SEED = 0x7EE7U;
+constexpr std::uint32_t JAW_DROP_SEED = 0xD70FU;
 constexpr std::uint32_t FLESH_SEED = 0xF1E5U;
 constexpr std::uint32_t FAR_SPORE_SEED = 0x5B0EU;
 constexpr std::uint32_t NEAR_SPORE_SEED = 0x5B1EU;
@@ -1736,54 +1758,90 @@ void paint_layer(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
   }
 }
 
-/// Saliva swelling at the strands under the throat's fangs and falling, on
-/// the throat drawn at `at` beside its mirrored copies as `paint_layer` draws
-/// it.
-void paint_saliva(godot::Node2D &canvas, const Art &art, Vector2 at) {
-  const float width = art.size(Image::Throat).x;
-  const float seconds = art.seconds();
-  for (std::size_t tip = 0; tip < SALIVA_TIPS.size(); ++tip) {
-    const auto index = static_cast<std::int64_t>(tip);
-    const Dripping drop{.period = 2.4F + 2.0F * unit(SALIVA_SEED, index),
-                        .pixel = THROAT_PIXEL,
-                        .length = 2.0F * THROAT_PIXEL,
-                        .reach = SCREEN_HEIGHT,
-                        .tint = color(250, 214, 226, 0.9F)};
-    const float run =
-        cycle(seconds, drop.period, unit(SALIVA_SEED + 1U, index));
-    const Vector2 local = SALIVA_TIPS.at(tip);
-    for (int copy = -1; copy <= 1; ++copy) {
-      // A mirrored copy flips each pixel column in place.
-      const float x = copy == 0 ? local.x : width - local.x - THROAT_PIXEL;
-      paint_drop(canvas,
-                 at + Vector2(x + static_cast<float>(copy) * width, local.y),
-                 run, drop);
+/// The order of the fangs in the run at `run` along the row: each fang once,
+/// shuffled by the run, and never the fang that ends the run before it first.
+std::array<std::size_t, JAW_FANGS.size()> fang_order(std::int64_t run) {
+  const auto shuffled = [](std::int64_t which) {
+    std::array<std::size_t, JAW_FANGS.size()> order{};
+    for (std::size_t fang = 0; fang < order.size(); ++fang) {
+      order.at(fang) = fang;
     }
+    const auto count = static_cast<std::int64_t>(order.size());
+    for (std::size_t fang = order.size() - 1; fang > 0; --fang) {
+      const auto pick = static_cast<std::size_t>(
+          unit(JAW_SEED, which * count + static_cast<std::int64_t>(fang)) *
+          static_cast<float>(fang + 1));
+      std::swap(order.at(fang), order.at(pick));
+    }
+    return order;
+  };
+  auto order = shuffled(run);
+  if (order.front() == shuffled(run - 1).back()) {
+    std::swap(order.at(0), order.at(1));
   }
+  return order;
 }
 
 /// The monster's upper teeth along the top of the screen whatever the camera
-/// shows, breathing with the throat and sliding sideways with the map, beside
-/// mirrored copies of themselves that meet without a seam, the copies at odd
-/// steps of its width from the one it leaves on the canvas as the `teeth_at`
-/// meta mirrored. The canvas goes back to the scene afterwards.
+/// shows, breathing with the throat and sliding sideways with the map: the
+/// teeth picture's fangs one by one, each in the run's order at its own drop,
+/// under its gum drawn unbroken over their roots, with saliva swelling at each
+/// tip and falling. Leaves on the canvas where it drew the gum, as the
+/// `jaw_gum` meta, and each fang, as `jaw_fangs`: its picture's `left` and
+/// `width`, and `at`, its top-left on the screen. The canvas goes back to the
+/// scene afterwards.
 void paint_jaw(godot::Node2D &canvas, const Art &art) {
   const Look scene = art.looking();
-  const float width = art.size(Image::Jaw).x;
   const auto on_grid = [](float value, float grid) {
     return grid + snapped(value - grid, JAW_PIXEL);
   };
-  const float slide = on_grid(wrapped(scene.origin.x * JAW_DEPTH, 2.0F * width),
-                              scene.origin.x);
+  // Run 0 starts here; the runs before and after it continue the row.
+  const float slide = on_grid(scene.origin.x * JAW_DEPTH, scene.origin.x);
   const float top =
       on_grid(JAW_TOP - breath(art) * BREATH_LIFT, scene.origin.y);
-  canvas.set_meta("teeth_at", Vector2(slide, top));
+  const auto first = static_cast<std::int64_t>(std::floor(-slide / JAW_RUN));
+  const auto last =
+      static_cast<std::int64_t>(std::floor((SCREEN_WIDTH - slide) / JAW_RUN));
+  const float seconds = art.seconds();
   art.look(canvas, Vector2(), 1.0F);
-  for (int copy = -2; copy <= 2; ++copy) {
-    art.image(canvas, Image::Jaw,
-              Vector2(slide + static_cast<float>(copy) * width, top), 1.0F,
-              copy % 2 != 0);
+  godot::Array fangs;
+  for (std::int64_t run = first; run <= last; ++run) {
+    float x = slide + static_cast<float>(run) * JAW_RUN;
+    const auto order = fang_order(run);
+    for (std::size_t place = 0; place < order.size(); ++place) {
+      const Fang &fang = JAW_FANGS.at(order.at(place));
+      const auto index = run * static_cast<std::int64_t>(order.size()) +
+                         static_cast<std::int64_t>(place);
+      const float drop = JAW_DROPS.at(static_cast<std::size_t>(
+          unit(JAW_DROP_SEED, index) * static_cast<float>(JAW_DROPS.size())));
+      const Vector2 at(x, top + drop);
+      art.image_part(canvas, Image::Jaw,
+                     rect(fang.left, 0.0F, fang.width, art.size(Image::Jaw).y),
+                     rect(at.x, at.y, fang.width, art.size(Image::Jaw).y));
+      const Dripping saliva{.period = 2.4F + 2.0F * unit(SALIVA_SEED, index),
+                            .pixel = 2.0F * JAW_PIXEL,
+                            .length = 4.0F * JAW_PIXEL,
+                            .reach = SCREEN_HEIGHT,
+                            .tint = color(250, 214, 226, 0.9F)};
+      paint_drop(canvas, at + fang.tip,
+                 cycle(seconds, saliva.period, unit(SALIVA_SEED + 1U, index)),
+                 saliva);
+      godot::Dictionary drawn;
+      drawn.set("left", fang.left);
+      drawn.set("width", fang.width);
+      drawn.set("at", at);
+      fangs.push_back(drawn);
+      x += fang.width;
+    }
   }
+  for (std::int64_t run = first; run <= last; ++run) {
+    const float x = slide + static_cast<float>(run) * JAW_RUN;
+    art.image_part(canvas, Image::Jaw,
+                   rect(JAW_FANGS.front().left, 0.0F, JAW_RUN, JAW_GUM),
+                   rect(x, top, JAW_RUN, JAW_GUM));
+  }
+  canvas.set_meta("jaw_gum", Vector2(slide, top));
+  canvas.set_meta("jaw_fangs", fangs);
   art.look(canvas, scene.origin, scene.zoom);
 }
 
@@ -1842,7 +1900,6 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   art.look(canvas, Vector2(), 1.0F);
   paint_layer(canvas, art, Image::Throat, breathing, throat,
               throat_tint() * godot::Color(flush, flush, flush));
-  paint_saliva(canvas, art, breathing + throat);
   paint_layer(canvas, art, Image::City,
               Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), city,
               untinted());
@@ -1852,6 +1909,7 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   layers.push_back(city);
   layers.push_back(band);
   canvas.set_meta("backdrop_layers", layers);
+  canvas.set_meta("throat_at", breathing + throat);
   art.look(canvas, origin(camera), camera.zoom);
   paint_sea(canvas, art, 0.0F,
             std::floor(acid_surface(acid_ratio) - ACID_SURFACE_DEPTH),

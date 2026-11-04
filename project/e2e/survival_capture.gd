@@ -145,6 +145,22 @@ const TEETH_ROWS: int = 48
 const TEETH_SHARE: float = 0.04
 const TEETH_TOLERANCE: float = 0.06
 const TEETH_COVER: float = 0.3
+## The teeth picture's gum, as the World layer draws it unbroken along the top
+## over the fangs: its left edge in the picture, the width of one run of the
+## fangs it repeats at, and its rows.
+const GUM_LEFT: int = 28
+const JAW_RUN: int = 392
+const GUM_ROWS: int = 24
+## How many fangs one run of them holds: no run of that many on the screen may
+## recur elsewhere on it, the same pictures at the same drops.
+const RUN_FANGS: int = 8
+## The most of the throat's pixels, drawn behind the teeth from under their
+## gum down to their lowest tip, that may be in the colours the teeth picture
+## draws its fangs in and not its gum, so no second row of fangs hangs there;
+## and the least of the teeth's own pixels over the same rows that must be, so
+## those colours are the fangs'.
+const SECOND_ROW: float = 0.05
+const TEETH_FANGED: float = 0.5
 ## How dark, in luminance, a pixel of a support reads; how many scene pixels
 ## tall a dark run must be to read as a long support, longer than a brace;
 ## and the most of the play area's columns such runs may cross.
@@ -181,8 +197,16 @@ var light_frames: int = 0
 var teeth_frames: int = 0
 var support_frames: int = 0
 var lit_frames: int = 0
-## The teeth picture, as the World layer draws it at `teeth_at`.
+## The teeth picture, whose gum and fangs the World layer draws where its
+## `jaw_gum` and `jaw_fangs` metas say.
 var teeth: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art/backgrounds/jaw.png"))
+## The lowest row the teeth picture covers in each of its columns.
+var teeth_bottom: Array[int] = _bottoms(teeth)
+## The colours the teeth picture draws its fangs in and not its gum.
+var fang_colours: Dictionary = _fang_colours(teeth)
+## The throat picture, which the World layer draws where its `throat_at` meta
+## says, beside mirrored copies.
+var throat: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art/backgrounds/throat.png"))
 ## Where the scene's clock stands.
 var clock: float = SCENE_CLOCK
 ## Set once the run has printed its result line.
@@ -602,7 +626,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _fangs_vary(screen) or not _one_row_of_teeth(screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -918,28 +942,18 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 	return true
 
 ## Whether, over the TEETH_ROWS at the top of the play area, every other
-## column, TEETH_SHARE of the pixels the teeth picture covers where the World
-## layer's `teeth_at` meta puts it, its copies at odd steps of its width
-## mirrored, read within TEETH_TOLERANCE of the picture's colour in each
-## channel. The control is that the picture covers at least TEETH_COVER of
-## the pixels read, so the rows are the teeth's.
+## column, TEETH_SHARE of the pixels the teeth cover where the World layer's
+## `jaw_gum` and `jaw_fangs` metas put them read within TEETH_TOLERANCE of the
+## picture's colour in each channel. The control is that the teeth cover at
+## least TEETH_COVER of the pixels read, so the rows are the teeth's.
 func _teeth_show(frame: Image, screen: String) -> bool:
-	var at: Vector2 = scene.get_node("World").get_meta("teeth_at", Vector2(-INF, -INF))
-	var width: int = teeth.get_width()
 	var covered: int = 0
 	var matched: int = 0
 	var count: int = 0
 	for y: int in range(int(PLAY.position.y), int(PLAY.position.y) + TEETH_ROWS):
-		var row: int = y - int(at.y)
 		for x: int in range(0, int(PLAY.size.x), 2):
 			count += 1
-			var step: int = floori((x - at.x) / width)
-			var column: int = x - int(at.x) - step * width
-			if step % 2 != 0:
-				column = width - 1 - column
-			if row < 0 or row >= teeth.get_height() or column < 0 or column >= width:
-				continue
-			var tooth: Color = teeth.get_pixel(column, row)
+			var tooth: Color = _tooth(x, y)
 			if tooth.a < 0.5:
 				continue
 			covered += 1
@@ -954,6 +968,136 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 		_fail("%s: the teeth do not show along the top of the play area" % screen)
 		return false
 	return true
+
+## The teeth picture's pixel the World layer drew at screen pixel (x, y), from
+## its `jaw_gum` and `jaw_fangs` metas; clear where it drew none.
+func _tooth(x: int, y: int) -> Color:
+	var world: Node = scene.get_node("World")
+	var gum: Vector2 = world.get_meta("jaw_gum", Vector2(-INF, -INF))
+	var row: int = y - int(gum.y)
+	if row >= 0 and row < GUM_ROWS:
+		return teeth.get_pixel(GUM_LEFT + posmod(x - int(gum.x), JAW_RUN), row)
+	for fang: Dictionary in world.get_meta("jaw_fangs", []):
+		var at: Vector2 = fang["at"]
+		var width: float = fang["width"]
+		var left: float = fang["left"]
+		if x < int(at.x) or x >= int(at.x + width):
+			continue
+		row = y - int(at.y)
+		if row < 0 or row >= teeth.get_height():
+			return Color(0, 0, 0, 0)
+		return teeth.get_pixel(int(left) + x - int(at.x), row)
+	return Color(0, 0, 0, 0)
+
+## Whether the fangs the World layer drew across the screen, by its
+## `jaw_fangs` meta, differ from each neighbour in picture, and no RUN_FANGS of
+## them in a row recur elsewhere on the screen, the same pictures at the same
+## drops, so the row repeats nowhere within the screen's width. The control is
+## that the screen holds more than twice RUN_FANGS fangs, so a repeat within it
+## could be seen.
+func _fangs_vary(screen: String) -> bool:
+	var row: Array[String] = []
+	var pictures: Array[int] = []
+	var gum: Vector2 = scene.get_node("World").get_meta("jaw_gum", Vector2(-INF, -INF))
+	for fang: Dictionary in scene.get_node("World").get_meta("jaw_fangs", []):
+		var at: Vector2 = fang["at"]
+		var width: float = fang["width"]
+		var left: float = fang["left"]
+		if at.x + width <= 0.0 or at.x >= PLAY.size.x:
+			continue
+		pictures.append(int(left))
+		row.append("%d@%d" % [int(left), int(at.y - gum.y)])
+	if row.size() <= 2 * RUN_FANGS:
+		_fail("%s: the fangs' variety cannot be read: %d fangs on the screen" % [screen, row.size()])
+		return false
+	for i: int in range(1, pictures.size()):
+		if pictures[i] == pictures[i - 1]:
+			_fail("%s: two neighbouring fangs are the same picture: %s" % [screen, row])
+			return false
+	var runs: Dictionary = {}
+	for i: int in range(row.size() - RUN_FANGS + 1):
+		var run: String = ",".join(row.slice(i, i + RUN_FANGS))
+		if runs.has(run):
+			_fail("%s: the fangs repeat within the screen: %s at %d and %d" % [screen, run, runs[run], i])
+			return false
+		runs[run] = i
+	print("Capture: %s: %d fangs across the screen, no neighbours alike and no %d in a row recurring." % [screen, row.size(), RUN_FANGS])
+	return true
+
+## Whether, over the rows from under the teeth's gum down to their lowest
+## tip, every other row and column, at most SECOND_ROW of the throat's pixels
+## the World layer drew there, by its `throat_at` meta, are in the colours the
+## teeth picture draws its fangs in and not its gum, so the teeth hang in one
+## row. The control is that at least TEETH_FANGED of the teeth's own pixels
+## over the same rows, by the `jaw_fangs` meta, are in those colours.
+func _one_row_of_teeth(screen: String) -> bool:
+	var world: Node = scene.get_node("World")
+	var at: Vector2 = world.get_meta("throat_at", Vector2(-INF, -INF))
+	var gum: Vector2 = world.get_meta("jaw_gum", Vector2(-INF, -INF))
+	var lowest: int = int(gum.y)
+	for fang: Dictionary in world.get_meta("jaw_fangs", []):
+		var place: Vector2 = fang["at"]
+		var width: float = fang["width"]
+		var left: float = fang["left"]
+		for column: int in range(int(left), int(left + width)):
+			lowest = maxi(lowest, int(place.y) + teeth_bottom[column])
+	var width: int = throat.get_width()
+	var read: int = 0
+	var fanged: int = 0
+	var teeth_read: int = 0
+	var teeth_fanged: int = 0
+	for y: int in range(maxi(int(gum.y) + GUM_ROWS, 0), lowest + 1, 2):
+		var row: int = y - floori(at.y)
+		if row < 0 or row >= throat.get_height():
+			continue
+		for x: int in range(0, int(PLAY.size.x), 2):
+			var offset: int = x - floori(at.x)
+			var copy: int = floori(float(offset) / width)
+			var column: int = offset - copy * width
+			if copy != 0:
+				column = width - 1 - column
+			read += 1
+			if fang_colours.has(throat.get_pixel(column, row).to_html(false)):
+				fanged += 1
+			var tooth: Color = _tooth(x, y)
+			if tooth.a >= 0.5:
+				teeth_read += 1
+				if fang_colours.has(tooth.to_html(false)):
+					teeth_fanged += 1
+	var share: float = float(fanged) / maxi(read, 1)
+	var control: float = float(teeth_fanged) / maxi(teeth_read, 1)
+	print("Capture: %s: %.3f of the throat behind the teeth, rows %d to %d, is in the fangs' colours, against %.3f of the teeth (at most %.3f, at least %.3f)." % [screen, share, int(gum.y) + GUM_ROWS, lowest, control, SECOND_ROW, TEETH_FANGED])
+	if read == 0 or control < TEETH_FANGED:
+		_fail("%s: the fangs' colours cannot be read: %d throat pixels, %.3f of the teeth" % [screen, read, control])
+		return false
+	if share > SECOND_ROW:
+		_fail("%s: a second row of teeth hangs behind the first" % screen)
+		return false
+	return true
+
+func _fang_colours(picture: Image) -> Dictionary:
+	var gum: Dictionary = {}
+	for y: int in range(GUM_ROWS):
+		for x: int in range(picture.get_width()):
+			gum[picture.get_pixel(x, y).to_html(false)] = true
+	var colours: Dictionary = {}
+	for y: int in range(GUM_ROWS, picture.get_height()):
+		for x: int in range(picture.get_width()):
+			var pixel: Color = picture.get_pixel(x, y)
+			if pixel.a >= 0.5 and not gum.has(pixel.to_html(false)):
+				colours[pixel.to_html(false)] = true
+	return colours
+
+func _bottoms(picture: Image) -> Array[int]:
+	var bottoms: Array[int] = []
+	for x: int in range(picture.get_width()):
+		var lowest: int = -1
+		for y: int in range(picture.get_height()):
+			if picture.get_pixel(x, y).a >= 0.5:
+				lowest = y
+		bottoms.append(lowest)
+	return bottoms
+
 
 ## Whether at most SUPPORT_SHARE of the play area's columns, every other one,
 ## hold a run of SUPPORT_DARK pixels SUPPORT_RUN scene pixels tall or more, so
