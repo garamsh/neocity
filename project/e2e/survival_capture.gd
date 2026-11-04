@@ -47,9 +47,9 @@ const MAP_ORIGIN: Vector2i = Vector2i(64, 70)
 const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 const CELL: int = 32
 ## Ground cells of the first city frame with nothing but scenery in them: the
-## arcade, the rooftop and the market. Each walkway's deck runs under its
-## cell's floor line, where an actor's feet are.
-const LEAD_CELLS: Array[Vector2i] = [Vector2i(4, 2), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 2), Vector2i(19, 2), Vector2i(20, 2), Vector2i(21, 2), Vector2i(22, 2), Vector2i(8, 11), Vector2i(10, 11)]
+## kitchen loft, the upper walkway and the shop roof. Each walkway's deck runs
+## under its cell's floor line, where an actor's feet are.
+const LEAD_CELLS: Array[Vector2i] = [Vector2i(2, 6), Vector2i(4, 8), Vector2i(8, 8), Vector2i(18, 5), Vector2i(19, 5)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
 ## edge under those cells reads than the scenery in the cells, above the deck.
 const GROUND_LEAD: float = 0.12
@@ -80,9 +80,10 @@ const ACID_GAP: float = 0.05
 ## 0.175 of them at the least on the city frames.
 const ACID_GREEN: float = 0.1
 const ACID_SHARE: float = 0.1
-## The south stairs, each rising to the left across its cell from its floor
-## line down to the row below, so its walked-on part lies above that diagonal.
-const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
+## The stairs down from the upper walkway, rising to the left across its cell
+## from its floor line down to the row below, so its walked-on part lies above
+## that diagonal.
+const STAIR_CELLS: Array[Vector2i] = [Vector2i(9, 9)]
 ## The scene row of the acid's surface at no acid, under the map's lowest
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
@@ -93,14 +94,14 @@ const SEA_REACH: int = 64
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
-## Plain market deck beside the south stairs, whose lit top edge the stairs'
+## Plain lower walkway deck beside the stairs, whose lit top edge the stairs'
 ## walked-on part is held to; the camera that shows the stairs shows it too.
-const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(11, 11)]
+const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(10, 9)]
 ## The least share of that deck's top edge, in mean luminance, that the
 ## stairs' walked-on part reads at, so stairs read as walkway like the deck.
 const STAIR_PARITY: float = 0.9
-## From the entrance down the market ladder into the market.
-const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
+## From the entrance down the stairs onto the lower walkway.
+const MARKET_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
 ## Where the scene's clock is pinned, in seconds; how far apart on
 ## that clock the two frames of the acid's motion are taken; how much a pixel's
 ## colour must change in a channel, from 0 to 1, to count as moved; and the
@@ -126,6 +127,10 @@ const ZOOMS: Array[float] = [1.0, 2.0]
 ## The most frames player two walks away from player one, and the frames the
 ## camera then has to settle.
 const PART_FRAMES: int = 300
+## The ladders player two climbs on its way west from the entrance, by column,
+## with the row each takes it up to: the kitchen ladder to the loft, then the
+## roof ladder to the kitchen roof.
+const PART_LADDERS: Dictionary[int, int] = {3: 6, 1: 4}
 const PARTED_SETTLE: int = 60
 ## The least share, by layer, of its edge pixels, those that differ from a
 ## neighbour along a row or a column, that differ from both neighbours along
@@ -170,10 +175,11 @@ const FANG_GREEN: float = 0.68
 const SUPPORT_DARK: float = 0.15
 const SUPPORT_RUN: int = 120
 const SUPPORT_SHARE: float = 0.07
-## The scene rectangles of the lit structures: the corner shops, the vending
-## machine and the stall; how bright a pixel's red must be and how far it must
-## lead blue to read warm and lit; and the least share of their pixels that do.
-const LIT_AREAS: Array[Rect2] = [Rect2(468, 290, 120, 114), Rect2(52, 52, 120, 114), Rect2(308, 392, 56, 62), Rect2(305, 274, 62, 84)]
+## The scene rectangles of the lit structures: the kitchen shop's shelf, the
+## supply crate's shop, the tomato machine and the noodle stall; how bright a
+## pixel's red must be and how far it must lead blue to read warm and lit; and
+## the least share of their pixels that do.
+const LIT_AREAS: Array[Rect2] = [Rect2(180, 180, 120, 114), Rect2(628, 244, 120, 114), Rect2(404, 328, 56, 62), Rect2(849, 210, 62, 84)]
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
 const LIT_SHARE: float = 0.15
@@ -236,11 +242,11 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _save("3-base-day-1")
 	await _tap(KEY_Q)
-	await _walk(KEY_D, 7)
+	await _walk(KEY_D, 11)
 	await _save_city("4-city-collect-prompt")
 	if not await _acid_moves("4-city-collect-prompt") or not await _draws_fast("4-city-collect-prompt"):
 		return
-	# A jump in place on the flat street comes down where it rose.
+	# A jump in place on the flat lower walkway comes down where it rose.
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
 	_key(KEY_SPACE, false)
@@ -256,14 +262,17 @@ func _run() -> void:
 	_key(KEY_A, false)
 	_key(KEY_SHIFT, false)
 	await _frames(3)
-	await _walk(KEY_D, 8)
+	await _walk(KEY_D, 11)
 	_key(KEY_D, true)
 	_key(KEY_SPACE, true)
 	await _until_stance("airborne")
 	_key(KEY_SPACE, false)
 	await _frames(4)
 	await _save_city("27-city-jumping-the-rubble")
-	await _walk(KEY_D, 12)
+	await _walk(KEY_D, 13)
+	# Back over the rubble and up the stairs to the drip at the upper
+	# walkway's west end.
+	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
 	await _until_phase("workshop")
@@ -282,11 +291,11 @@ func _run() -> void:
 	await _save("9-next-day")
 	await _tap(KEY_Q)
 	# Feeding started day two, so the ladder frames are day two's.
-	await _walk(KEY_D, 16)
-	await _walk_left(15)
+	await _walk(KEY_D, 8)
+	await _walk_left(7)
 	await _save_city("23-city-facing-left")
-	await _walk(KEY_D, 18)
-	await _climb(4)
+	await _walk_to(3, 8)
+	await _climb(7)
 	await _save_city("24-city-on-ladder")
 	await _until_phase("workshop")
 	await _frames(60)
@@ -294,14 +303,12 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_F)
 	await _frames(12)
-	# Before the acid rises: down the market ladder, along the market and down
-	# the south stairs, so the camera, low on the map, shows the stairs behind
-	# the chef.
+	# Before the acid rises: down the stairs onto the lower walkway, so the
+	# camera shows the stairs behind the chef.
 	await _tap(KEY_Q)
 	await _frames(40)
 	for waypoint: Vector2i in MARKET_ROUTE:
 		await _walk_to(waypoint.x, waypoint.y)
-	await _walk(KEY_D, 17)
 	await _frames(30)
 	await _save_city("31-city-market")
 	await _tap(KEY_Q)
@@ -920,7 +927,7 @@ func _draws_fast(screen: String) -> bool:
 		return false
 	return true
 
-## Whether, as player two walks left and climbs the ladder there away from
+## Whether, as player two walks left and climbs the ladders there away from
 ## player one until the camera heads for the scene's own size, and the
 ## camera then settles, every frame draws the scene at one of the camera's
 ## ZOOMS, and the camera drew the scene's own size on the way. The control is
@@ -928,12 +935,13 @@ func _draws_fast(screen: String) -> bool:
 func _zoom_steps() -> bool:
 	var zooms: Array[float] = []
 	var parted: bool = false
-	_key(KEY_J, true)
-	_key(KEY_I, true)
 	for frame: int in range(PART_FRAMES + PARTED_SETTLE):
-		if parted or frame == PART_FRAMES:
-			_key(KEY_J, false)
-			_key(KEY_I, false)
+		var walker: Dictionary = scene.survival_status()["appraiser"]
+		var appraiser_at: Vector2i = _cell(walker)
+		var climbs: bool = appraiser_at.y > PART_LADDERS.get(appraiser_at.x, appraiser_at.y)
+		var walks: bool = not parted and frame < PART_FRAMES
+		_key(KEY_J, walks and not climbs)
+		_key(KEY_I, walks and climbs)
 		await process_frame
 		var view: Transform2D = scene.get_meta("map_view", Transform2D())
 		var heading: Transform2D = scene.get_meta("map_heading", Transform2D())
