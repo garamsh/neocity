@@ -159,7 +159,7 @@ const SETTLE_SECONDS: float = 0.4
 ## there from the throat; the least share of the pixels the throat's fangs
 ## cover there that must show them, within TEETH_TOLERANCE in each channel,
 ## low because a high walkway hides them where it crosses the top of the
-## screen, as on 27-city-jumping-the-rubble, which shows 0.036 of them; and
+## screen, the lowest city frame, 17-city-high-acid, showing 0.109 of them; and
 ## the least share of the pixels read the fangs must cover.
 const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.03
