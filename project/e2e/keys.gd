@@ -13,14 +13,18 @@ const COLLECT_FRAMES: int = 102
 const KIOSK_DAYS: int = 10
 const APPRAISE_ATTEMPTS: int = 12
 const COOK_ATTEMPTS: int = 6
-## The acid drip stands on the ramp's first step at 10, 7, past the rubble; up
-## and back down through it burns the walker twice, and the third burn is one
-## step back down.
-const BURN_WAYPOINTS: Array[Vector2i] = [Vector2i(10, 7), Vector2i(11, 6), Vector2i(10, 7), Vector2i(11, 6)]
-## Up the north ladder, through the fallen kiosk and down to the neon ledge.
-const ARCADE_ROUTE: Array[Vector2i] = [Vector2i(2, 8), Vector2i(2, 2), Vector2i(10, 2), Vector2i(13, 3)]
-## The foot of the north ladder on the dock, beside the entrance.
-const LADDER_FOOT: Vector2i = Vector2i(2, 8)
+## The acid drip stands on the upper walkway at 1, 8, west of the kitchen
+## ladder; in and back out through it burns the walker twice, and the third
+## burn is one step back in.
+const BURN_WAYPOINTS: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
+## East to the east loft and up to the east roof, through the fallen kiosk and
+## down to the terrace bag on the shop roof.
+const TERRACE_ROUTE: Array[Vector2i] = [Vector2i(23, 8), Vector2i(23, 6), Vector2i(21, 6), Vector2i(21, 4), Vector2i(17, 5)]
+## The foot of the kitchen ladder on the upper walkway, beside the entrance.
+const LADDER_FOOT: Vector2i = Vector2i(3, 8)
+## The tomato machine and the shop shelf: two sources whose finds make a dish.
+const FIRST_SOURCE: Vector2i = Vector2i(10, 9)
+const SECOND_SOURCE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(5, 6)]
 
 ## Action name to the key the README names for it.
 const KEYS: Dictionary[String, Key] = {
@@ -109,6 +113,9 @@ func _two_players() -> bool:
 		return false
 	if not await _held_result("survival_2_down", func() -> bool: return _actor("appraiser", "y") == LADDER_FOOT.y, 90, "%s climbs player two down" % _name("survival_2_down")):
 		return false
+	# Off the ladder, so the jump comes down where it rose.
+	if not await _walk_to("appraiser", keys, 4, 8):
+		return false
 	if not await _held_result("survival_2_jump", func() -> bool: return _stance("appraiser") == "airborne", 30, "%s jumps player two" % _name("survival_2_jump")):
 		return false
 	if not await _until("player two lands", func() -> bool: return _stance("appraiser") == "standing", 60):
@@ -122,7 +129,7 @@ func _two_players() -> bool:
 	_release()
 	if not ran:
 		return false
-	if not await _walk_to("appraiser", keys, 7, 8):
+	if not await _walk_to("appraiser", keys, FIRST_SOURCE.x, FIRST_SOURCE.y):
 		return false
 	var remaining: int = _int("remaining_ms")
 	await _tap(KEYS["survival_2_interact"])
@@ -130,7 +137,7 @@ func _two_players() -> bool:
 		return false
 	if not await _until("player two's collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return false
-	if not await _walk_route("appraiser", keys, [Vector2i(7, 11), Vector2i(6, 11)]):
+	if not await _walk_route("appraiser", keys, SECOND_SOURCE):
 		return false
 	await _tap(KEYS["survival_2_interact"])
 	if not _check(_actor("appraiser", "ingredients") == 2, "%s collects a second ingredient" % _name("survival_2_interact")):
@@ -157,8 +164,8 @@ func _two_players() -> bool:
 		return false
 	return await _replace_the_magnifier(keys)
 
-## Player two burns out on the acid drip, finds a magnifier in the arcade, and
-## swaps it in. The arcade bag stands behind the kiosk wreck, which falls only
+## Player two burns out on the acid drip, finds a magnifier on the shop roof,
+## and swaps it in. The terrace bag stands behind the kiosk wreck, which falls only
 ## after the run has explored for KIOSK_SECONDS.
 func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 	if not await _wait_for_the_kiosk_to_fall():
@@ -180,10 +187,10 @@ func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 	await _tap(KEY_U)
 	if not await _until("player two sets out again", func() -> bool: return _where("appraiser") == "city", 30):
 		return false
-	if not await _walk_route("appraiser", keys, ARCADE_ROUTE):
+	if not await _walk_route("appraiser", keys, TERRACE_ROUTE):
 		return false
 	await _tap(KEYS["survival_2_interact"])
-	if not _check(_actor("appraiser", "tools") == 1, "%s collects the magnifier from the arcade" % _name("survival_2_interact")):
+	if not _check(_actor("appraiser", "tools") == 1, "%s collects the magnifier from the shop roof" % _name("survival_2_interact")):
 		return false
 	if not await _until("player two's magnifier collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return false
@@ -194,7 +201,7 @@ func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
 	return _check(_str("magnifier") == "intact" and _actor("appraiser", "tools") == 0, "%s spends the found tool on the damaged magnifier" % _name("survival_2_replace_tool"))
 
 ## Lets whole days run out unfed, with player two out for each, until the kiosk
-## that blocks the arcade has fallen.
+## that blocks the shop roof has fallen.
 func _wait_for_the_kiosk_to_fall() -> bool:
 	var days: int = 0
 	while _object("Old Kiosk") != "destroyed" and days < KIOSK_DAYS:

@@ -788,14 +788,14 @@ TEST(TemporaryContent, TimeBringsAWashedUpBagAndAcidCarriesItAway) {
   const auto content = temporary_content(1);
   const auto landing = content.run.exploration_budget;
   World world(content.objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{34}}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update({.acid = AcidLevel{44}}), WorldUpdateResult::Applied);
   EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{34}}),
+  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{44}}),
             WorldUpdateResult::Applied);
   EXPECT_TRUE(
       object_named(world.snapshot(), "Washed-up Bag 1").material_available);
-  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{35}}),
+  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{45}}),
             WorldUpdateResult::Applied);
   EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Destroyed);
@@ -819,11 +819,11 @@ TEST(TemporaryContent, TheTideTakesAnUncollectedBagBackAfterFiveDays) {
 TEST(TemporaryContent, AcidPastABagsLimitSinksItBeforeItLands) {
   const auto content = temporary_content(1);
   World world(content.objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{35}}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update({.acid = AcidLevel{45}}), WorldUpdateResult::Applied);
   ASSERT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
   ASSERT_EQ(world.update({.elapsed = content.run.exploration_budget,
-                          .acid = AcidLevel{35}}),
+                          .acid = AcidLevel{45}}),
             WorldUpdateResult::Applied);
   EXPECT_FALSE(
       object_named(world.snapshot(), "Washed-up Bag 1").material_available);
@@ -948,20 +948,21 @@ TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
 
 TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
   Game game(temporary_content(1));
-  const auto plaza = object_named(game.world().snapshot(), "East Plaza").area;
-  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), plaza));
+  const auto floor =
+      object_named(game.world().snapshot(), "Cold Store Floor").area;
+  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), floor));
 
   ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{40}}),
             WorldUpdateResult::Applied);
   const auto after = game.world().snapshot();
   ASSERT_EQ(object_named(after, "Rotten Bridge").state, ObjectState::Destroyed);
-  EXPECT_TRUE(reachable(game.content(), after, plaza));
+  EXPECT_TRUE(reachable(game.content(), after, floor));
 
   auto without_ferry = after;
   std::erase_if(without_ferry.objects, [](const ObjectSnapshot &object) {
     return object_name(object.id) == "Drifted Ferry";
   });
-  EXPECT_FALSE(reachable(game.content(), without_ferry, plaza));
+  EXPECT_FALSE(reachable(game.content(), without_ferry, floor));
 }
 
 TEST(TemporaryContent, TheBrokenDoorBlocksTheColdLockerUntilRepaired) {
