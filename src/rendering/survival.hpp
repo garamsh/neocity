@@ -32,13 +32,17 @@ struct Shot {
 /// Where a point of the city, in sub-cells, falls on the canvas.
 [[nodiscard]] godot::Vector2 map_point(survival::Position position);
 /// Draws the backdrop behind every survival screen as `camera` shows the
-/// scene, in layers that move less with the camera the farther back they
-/// are: the monster's throat, its fleshy palate over it, breathing on `art`'s
-/// clock, the swallowed city, and an acid band of sunken trains and
+/// scene, in layers cut from the search mockup that move less with the
+/// camera the farther back they are: the monster's throat with its fleshy
+/// palate and its fangs hanging from the top of the screen, breathing on
+/// `art`'s clock, the swallowed city, and an acid lake of sunken trains and
 /// broken pillars glowing along the bottom of the play area, which rises with
-/// `acid_ratio`. Then the acid sea in the scene, whose surface rises with
+/// `acid_ratio`. While the camera rests the layers stand as they stand in the
+/// mockup. Then the acid sea in the scene, whose surface rises with
 /// `acid_ratio`, from below the map's lowest ground row at 0 to the top of the
-/// map at 1, and fades below it to a deep green. Leaves on the canvas where
+/// map at 1, and fades below it to a deep green. Every layer is drawn at its
+/// own size whatever `camera`'s zoom, one picture pixel to a screen pixel.
+/// Leaves on the canvas where
 /// each layer slid to as the `backdrop_layers` meta, an array of Vector2
 /// offsets from where it rests, back to front, and the throat's top-left as
 /// `throat_at`, notes on `art` where both acid surfaces lie on the screen,
@@ -60,9 +64,7 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// not drawn, and a repaired one looks intact. A source in `out_of_reach`
 /// has stock no player can walk to: it loses the gold frame. Each actor faces
 /// the way it last walked, alternates its walking frames while it moves, and
-/// climbs on a ladder. The monster's upper teeth hang from the top of the
-/// screen whatever the camera shows, in front of the backdrop scenery and the
-/// supports and behind the buildings, the walkways and all on them.
+/// climbs on a ladder.
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,

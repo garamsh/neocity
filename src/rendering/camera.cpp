@@ -18,6 +18,8 @@ constexpr float SCREEN_HEIGHT = 720.0F;
 constexpr Vector2 FOCUS(640.0F, 301.0F);
 /// The play area's height on screen.
 constexpr float PLAY_HEIGHT = 478.0F;
+/// The camera's two zooms. Nothing between them is ever drawn, so each
+/// picture pixel stays a whole square of screen pixels.
 constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
 /// How far ahead of a lone human the camera looks, in scene pixels.
@@ -119,9 +121,9 @@ View aim(const survival::Content &content, const survival::GameView &view,
     const Vector2 first = subjects.at(0).feet;
     const Vector2 second = subjects.at(1).feet;
     const Vector2 apart = (first - second).abs();
-    zoom = std::clamp(std::min(SCREEN_WIDTH / (apart.x + ROOM_ACROSS),
-                               PLAY_HEIGHT / (apart.y + ROOM_UP)),
-                      FAR, CLOSE);
+    const bool fit = (apart.x + ROOM_ACROSS) * CLOSE <= SCREEN_WIDTH &&
+                     (apart.y + ROOM_UP) * CLOSE <= PLAY_HEIGHT;
+    zoom = fit ? CLOSE : FAR;
     target = (first + second) / 2.0F - Vector2(0.0F, WAIST);
   }
   return placed(target, zoom, bounds_of(content));
@@ -129,9 +131,12 @@ View aim(const survival::Content &content, const survival::GameView &view,
 
 View follow(const Art &art, const survival::Content &content,
             const View &heading) {
+  // The zoom steps once the eased value passes halfway, so a step wanted for
+  // only a moment is never drawn.
+  const float easing = art.glide("camera_zoom", heading.zoom);
   return placed(Vector2(art.glide("camera_x", heading.centre.x),
                         art.glide("camera_y", heading.centre.y)),
-                art.glide("camera_zoom", heading.zoom), bounds_of(content));
+                easing * 2.0F > CLOSE + FAR ? CLOSE : FAR, bounds_of(content));
 }
 
 Vector2 drift(const View &camera, float depth) {
