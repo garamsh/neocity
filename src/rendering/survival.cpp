@@ -161,6 +161,8 @@ godot::Color acid_tint() { return {1.1F, 1.2F, 1.1F}; }
 godot::Color band_deep_tint() { return color(200, 240, 200, 1.0F); }
 godot::Color sea_deep_tint() { return color(90, 150, 100, 1.0F); }
 godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
+/// The stairs' stringer, under their treads, faces away from the light.
+godot::Color stringer_tint() { return {0.7F, 0.7F, 0.75F}; }
 /// The walked-on top edge of the ground is lit warm and bright.
 godot::Color ground_edge_tint() { return {2.4F, 2.0F, 1.6F}; }
 
@@ -486,7 +488,7 @@ Rise rise(std::span<const survival::GroundCell> cells, std::int32_t first,
 /// the floor line at `at` to the row below in steps of STAIR_STEP. Each step
 /// is a tread of the deck's warm lit rows, stretched down to the diagonal the
 /// stairs span, where a player walks on them, over the deck's face below that
-/// in its own colours, a stringer facing away from the light.
+/// in its own colours shaded, a stringer facing away from the light.
 void paint_stairs(godot::Node2D &canvas, const Art &art,
                   survival::GridPosition cell, godot::Color tint) {
   const godot::Rect2 deck = deck_source(cell);
@@ -504,7 +506,8 @@ void paint_stairs(godot::Node2D &canvas, const Art &art,
     art.image_part(canvas, Image::Deck,
                    rect(source, deck.position.y + STAIR_FACE, 1.0F,
                         DECK_DEPTH - STAIR_FACE),
-                   rect(x, y + lit, 1.0F, DECK_DEPTH - STAIR_FACE), tint);
+                   rect(x, y + lit, 1.0F, DECK_DEPTH - STAIR_FACE),
+                   tint * stringer_tint());
   }
 }
 
