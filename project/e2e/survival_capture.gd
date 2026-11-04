@@ -154,7 +154,7 @@ const GUM_LEFT: int = 28
 const JAW_RUN: int = 392
 const GUM_ROWS: int = 24
 ## How many fangs one run of them holds: no run of that many on the screen may
-## recur elsewhere on it, the same pictures at the same drops.
+## recur elsewhere on it in the same order of pictures, whatever their drops.
 const RUN_FANGS: int = 8
 ## The most of the throat's pixels, drawn behind the teeth from under their
 ## gum down to their lowest tip, that may be in the colours the teeth picture
@@ -1065,10 +1065,10 @@ func _tooth(x: int, y: int) -> Color:
 
 ## Whether the fangs the World layer drew across the screen, by its
 ## `jaw_fangs` meta, differ from each neighbour in picture, and no RUN_FANGS of
-## them in a row recur elsewhere on the screen, the same pictures at the same
-## drops, so the row repeats nowhere within the screen's width. The control is
-## that the screen holds more than twice RUN_FANGS fangs, so a repeat within it
-## could be seen.
+## them in a row recur elsewhere on the screen in the same order of pictures,
+## whatever their drops, so the row repeats nowhere within the screen's width.
+## The control is that the screen holds more than twice RUN_FANGS fangs, so a
+## repeat within it could be seen.
 func _fangs_vary(screen: String) -> bool:
 	var row: Array[String] = []
 	var pictures: Array[int] = []
@@ -1090,9 +1090,9 @@ func _fangs_vary(screen: String) -> bool:
 			return false
 	var runs: Dictionary = {}
 	for i: int in range(row.size() - RUN_FANGS + 1):
-		var run: String = ",".join(row.slice(i, i + RUN_FANGS))
+		var run: String = str(pictures.slice(i, i + RUN_FANGS))
 		if runs.has(run):
-			_fail("%s: the fangs repeat within the screen: %s at %d and %d" % [screen, run, runs[run], i])
+			_fail("%s: the fangs repeat within the screen: pictures %s at %d and %d in %s" % [screen, run, runs[run], i, row])
 			return false
 		runs[run] = i
 	print("Capture: %s: %d fangs across the screen, no neighbours alike and no %d in a row recurring." % [screen, row.size(), RUN_FANGS])
