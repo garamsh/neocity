@@ -627,6 +627,11 @@
   "bg_throat": {
    "url": "https://img.recraft.ai/itV-ds6ITpj7bV6RQjwXUpDPfd2BBnZqd2bLljFU4Pc/raw:1/plain/abs://prod/images/f97f1a75-c0c3-4756-a4b7-e4004842c228"
   },
+  "bg_throat_palate": {
+   "url": "https://img.recraft.ai/R65J_M5bSTjqoLAhHbRYd1xJNIS0bdNltIZ_rAqFLcg/raw:1/plain/abs://prod/images/44f451fa-e010-45d2-8a80-5586b034fd26",
+   "edited_from": "bg_throat",
+   "generated": "https://img.recraft.ai/YXqArQh0RVBRZVFr93SlbEPwerWtLFAmt7njyHUQATE/raw:1/plain/abs://prod/images/5f4b9f45-14a2-4586-9347-7d45490d4e92"
+  },
   "bg_city": {
    "url": "https://img.recraft.ai/dNQOV3i3NlGdc8FVrL50CnTuBbVDpeqGfX5KJO9S-TQ/raw:1/plain/abs://prod/images/30ad4515-2aae-4230-be2a-2157b44b1e02"
   },
@@ -785,7 +790,7 @@
  "assets": [
   {
    "path": "backgrounds/throat.png",
-   "source": "bg_throat",
+   "source": "bg_throat_palate",
    "crop": [
     0,
     0,
@@ -798,7 +803,7 @@
    ],
    "scale": 4,
    "colours": 32,
-   "depicts": "Back layer: monster upper jaw with fangs and the pink throat; opaque"
+   "depicts": "Back layer: the monster's fleshy upper palate, without fangs, over the pink throat and its uvula; opaque"
   },
   {
    "path": "backgrounds/city.png",

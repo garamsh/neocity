@@ -1,4 +1,6 @@
-Monster-mouth escape asset provenance, 2026-11-04, issues #90, #98, #110, #128, #141, #151 and #153
+Monster-mouth escape asset provenance, 2026-11-04, issues #90, #98, #110, #128, #141, #151, #153 and #168
+
+Version 8, issue #168: takes the fangs out of the throat, backgrounds/throat.png, so the upper teeth of backgrounds/jaw.png hang in one row; the throat's source becomes bg_throat_palate, an edit of bg_throat; see Version 8 changes at the end.
 
 Version 7, issue #153: redraws the shop, the street stall and the vending machine as lit structures and adds the monster's upper teeth drawn in front of the city, backgrounds/jaw.png, from new generations; the earlier shop and vending machine sources leave tools/art/assets.json; see Version 7 changes at the end.
 
@@ -336,3 +338,11 @@ jaw: generate_image, 2:1, n=2, first rejected (green drips at the fang tips, whi
 Prompt as sent:
 Isolated pixel art game asset strip: a row of huge cream and ivory monster fangs hanging straight down from a thick pink and magenta fleshy upper gum that runs along the very top edge, uneven sizes, saliva dripping from the tips, spanning the full width edge to edge. Everything below the fang tips is plain flat solid white with nothing in it. No throat, no uvula, no city, no buildings, no acid, no characters, no text.
 Runtime: backgrounds/jaw.png
+
+Version 8 changes, issue #168
+Recraft use for issue #168: 15 credits, personal account (509 before, 494 after by get_user): one image_edit with n=1, 11 credits; two erase_region calls, 1 credit each; one inpaint_image with n=2, 2 credits. Only the image_edit result feeds the set.
+Rejected: erase_region over a mask of the fangs, and again over a band from under the gum down to the fang tips; both filled the fangs' place with smeared cream wedges. inpaint_image, recraftv3_raster, no style (the custom style above is a v4 style, which inpaint_image does not take), n=2, over the fang mask; both results drew new fangs. The masks were uploaded with request_upload_url.
+bg_throat_palate: image_edit of bg_throat, default model (nano_banana_2), no style, n=1; its result, 1372x784, the generated URL in tools/art/assets.json, was resized to bg_throat's 1344x768 and laid into bg_throat only over the fang band, measured on the runtime throat's 1280x720 pixels and scaled by 1.05 to the source: the fang pixels, widened by 12 px, filled from 36 px down to the lowest fang pixel within 40 px either side plus 24 px, but over the uvula, columns 584 to 680, to at most 304 px. bg_throat's pixels outside the band are kept, so the gullet, the uvula and the flesh are unchanged. The band's flesh was then lightened to 186% brightness and 105% saturation (ImageMagick -modulate 186,105), on the source's pixels: feathered over 40 px at the band's top and bottom edges, the bottom edge averaged over 81 columns, and in the gullet's columns, 430 to 910, kept above row 320. 186% is the lowest brightness at which the capture's walkway-face check reads the backdrop at least 0.110 brighter than the walkways' faces in every frame: frame 23-city-facing-left measured 0.10995 at 185% and 0.11029 at 186%. The result was uploaded with request_upload_url; its URL is the source in tools/art/assets.json.
+Prompt as sent:
+Keep exactly this pixel art style, pixel size, palette, composition and framing. Make one edit only: remove every cream and ivory fang along the top of the picture, together with the saliva strands and drips hanging from their tips. Where the fangs were, continue the lumpy pink, magenta and dark crimson flesh of the upper palate with the same folds, ridges, small wet highlights and pixel clusters as the flesh around it, so it reads as one continuous fleshy ceiling. Keep the glowing pink throat with its concentric ridges, the red uvula in the middle, its brightness and every other part of the picture unchanged. No teeth, no fangs, no white or cream shapes, no text.
+Runtime: backgrounds/throat.png
