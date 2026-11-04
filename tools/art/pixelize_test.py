@@ -24,7 +24,7 @@ def sprite():
     return rows
 
 
-def problems(rows, path="decor/test.png"):
+def problems(rows, path="characters/test.png"):
     found, _ = pixelize.problems(path, rows, 1)
     return found
 
@@ -98,7 +98,24 @@ class CheckTest(unittest.TestCase):
         self.assertIn("colours, over the workshop limit", found[1])
 
     def test_the_screen_pixel_rule_skips_the_sprites(self):
-        self.assertEqual(problems(pixelize.upscale(sprite(), 2), "decor/test.png"), [])
+        self.assertEqual(problems(pixelize.upscale(sprite(), 2), "characters/test.png"), [])
+
+
+class ResampleTest(unittest.TestCase):
+    def test_each_pixel_is_the_average_of_the_area_it_covers(self):
+        # Five columns into two: each output column covers two and a half source columns.
+        rows = [[(0, 0, 0, 255), (0, 0, 0, 255), (100, 0, 0, 255), (200, 0, 0, 255), (200, 0, 0, 255)]]
+        self.assertEqual(pixelize.resample(rows, 2, 1), [[(20, 0, 0, 255), (180, 0, 0, 255)]])
+
+    def test_a_clear_pixel_lends_no_colour_to_an_opaque_one(self):
+        rows = [[(250, 10, 10, 255), (0, 0, 0, 0)]]
+        self.assertEqual(pixelize.resample(rows, 1, 1), [[(250, 10, 10, 128)]])
+
+    def test_the_same_source_always_gives_the_same_pixels(self):
+        rows = [[((x * 37 + y * 11) % 256, (x * y) % 256, (x + y) % 256, 255) for x in range(17)] for y in range(13)]
+        self.assertEqual(pixelize.resample(rows, 13, 10), pixelize.resample(rows, 13, 10))
+        self.assertEqual(len(pixelize.resample(rows, 13, 10)), 10)
+        self.assertEqual(len(pixelize.resample(rows, 13, 10)[0]), 13)
 
 
 if __name__ == "__main__":

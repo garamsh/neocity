@@ -8,15 +8,15 @@ Subcommands, all driven by assets.json beside this file:
                          is one block of the source: the generation's own grid where one is
                          detected, otherwise an even division of the crop. A seamless asset's
                          crop is a third wider or taller than the tile it makes. A "cut" asset
-                         keeps its source's own pixels, filled and cleared where it says
+                         keeps its source's own pixels, filled and cleared where it says, at the
+                         source's size or resized to the screen's
   sheet RAW_DIR ART CONCEPT_DIR OUT
                          write the review sheet: the concept images, a mock frame, 8x close-ups
                          (sheet poses beside sprites, plain renders beside processed), every asset
   check ART              measure every runtime PNG in ART's manifest and exit 1 when one breaks a
-                         clean-art rule: lone pixels and its folder's colour limit, but for the
-                         backdrop layers cut from the concept, for world and character sprites
-                         the lit outline and the light from above, and for the backdrop layers
-                         one picture pixel to a screen pixel
+                         clean-art rule: lone pixels, its folder's colour limit, and for character
+                         sprites the lit outline and the light from above, but for the folders cut
+                         from the concept; and for those folders one picture pixel to a screen pixel
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -63,11 +63,11 @@ EDGE_SHARE = 0.95
 # Folders drawn one picture pixel to a screen pixel at the default camera, and the least share of
 # their edge pixels, those that differ from a neighbour along a row or a column, that differ from
 # both, so stand one pixel wide or tall. Art drawn in blocks of two or more pixels holds none.
-SCREEN_PIXEL_FOLDERS = ("backgrounds",)
+SCREEN_PIXEL_FOLDERS = ("backgrounds", "walkway", "world", "ground", "decor")
 THIN_SHARE = 0.1
-# Folders cut from the concept with its own pixels, which keep its colours: neither the colour
-# limit nor the lone-pixel limit applies to them.
-CONCEPT_CUT_FOLDERS = ("backgrounds",)
+# Folders cut from the concept with its own pixels, which keep its colours and its own light:
+# neither the colour limit, the lone-pixel limit nor the sprite rules apply to them.
+CONCEPT_CUT_FOLDERS = ("backgrounds", "walkway", "world", "ground", "decor")
 
 
 def read_png(path):
@@ -668,14 +668,104 @@ def load(source, raw_dir, cache, sources):
     return cache[source]
 
 
+def spans(source, target):
+    """For each of target cells along an axis of source cells, the (index, weight) pairs of the
+    source cells it covers, weighted by how much of each it covers."""
+    out = []
+    for t in range(target):
+        low, high = t * source / target, (t + 1) * source / target
+        cells = []
+        for s in range(int(low), min(source, math.ceil(high))):
+            weight = min(high, s + 1) - max(low, s)
+            if weight > 0:
+                cells.append((s, weight))
+        out.append(cells)
+    return out
+
+
+def resample(rows, width, height):
+    """Resizes rows to width x height, each pixel the average of the source area it covers.
+
+    Colours are weighted by their alpha, so a clear pixel lends no colour to an opaque one beside it.
+    """
+
+    def along(lines, size):
+        weights = spans(len(lines[0]), size)
+        out = []
+        for line in lines:
+            premultiplied = [(r * a, g * a, b * a, a) for r, g, b, a in line]
+            resized = []
+            for cells in weights:
+                total = [0.0, 0.0, 0.0, 0.0]
+                for index, weight in cells:
+                    pixel = premultiplied[index]
+                    for c in range(4):
+                        total[c] += pixel[c] * weight
+                area = sum(weight for _, weight in cells)
+                alpha = total[3] / area
+                if alpha <= 0:
+                    resized.append((0, 0, 0, 0))
+                    continue
+                resized.append(tuple(round(total[c] / total[3]) for c in range(3)) + (round(alpha),))
+            out.append(resized)
+        return out
+
+    return transpose(along(transpose(along(rows, width)), height))
+
+
 def cut(asset, raw_dir, cache, sources):
     """Returns (rgba rows, report) for an asset cut from its source with the source's own pixels.
 
-    Every box is in the source's pixels. Each fill, in order, replaces the pixels of its rects,
-    [x, y, w, h], and of its columns, [x, w, y], from row y down, with the same pixels of its fill
-    source, whose top-left lies at at. Then the pixels above each clear column [x, w, y] are made
-    clear, and the crop is cut out.
+    Each fill, in order, replaces the pixels of its rects, [x, y, w, h], and of its columns,
+    [x, w, y], from row y down, with the same pixels of its fill source, whose top-left lies at
+    at; the pixels above each clear column [x, w, y] are then made clear. Those boxes are in the
+    source's pixels. With screen, [w, h], the source is then resized to the screen, and every
+    later box is in the screen's pixels: each patch [x, y, w, h, dx, dy] takes the pixels dx, dy
+    away, each clear rect is made clear, and outside the keep rects, when there are any, every
+    pixel is made clear. Each clear colour rule then clears the pixels whose hue in degrees lies
+    in its hues and whose saturation and lightness reach its own. The crop is cut out last; a list of crops is cut and stacked top to bottom.
     """
+    spec = asset["cut"]
+    plain = not spec.get("fills") and not spec.get("clear_above")
+    resized = f"{asset['source']}@{spec.get('screen')}"
+    if plain and "screen" in spec and resized in cache:
+        rows = [list(row) for row in cache[resized]]
+    else:
+        rows = cut_source(asset, raw_dir, cache, sources)
+        if "screen" in spec:
+            rows = resample(rows, *spec["screen"])
+            if plain:
+                cache[resized] = [list(row) for row in rows]
+    taken = [list(row) for row in rows]
+    for x, y, w, h, dx, dy in spec.get("patches", []):
+        for yy in range(y, y + h):
+            rows[yy][x : x + w] = taken[yy + dy][x + dx : x + dx + w]
+    for x, y, w, h in spec.get("clear", []):
+        for yy in range(max(0, y), min(len(rows), y + h)):
+            rows[yy][max(0, x) : x + w] = [(0, 0, 0, 0)] * len(rows[yy][max(0, x) : x + w])
+    if spec.get("keep"):
+        kept = [[(0, 0, 0, 0)] * len(rows[0]) for _ in rows]
+        for x, y, w, h in spec["keep"]:
+            for yy in range(max(0, y), min(len(rows), y + h)):
+                kept[yy][max(0, x) : x + w] = rows[yy][max(0, x) : x + w]
+        rows = kept
+    for rule in spec.get("clear_colours", []):
+        low, high = rule["hues"]
+        for row in rows:
+            for x, (r, g, b, a) in enumerate(row):
+                h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
+                if a and low <= h * 360 <= high and sat >= rule["saturation"] and l >= rule["lightness"]:
+                    row[x] = (0, 0, 0, 0)
+    boxes = asset["crop"] if isinstance(asset["crop"][0], list) else [asset["crop"]]
+    rows = [row for box in boxes for row in crop(rows, box)]
+    if [len(rows[0]), len(rows)] != asset["size"]:
+        raise ValueError(f"{asset['path']}: crop {asset['crop']} does not give size {asset['size']}")
+    used = {pixel[:3] for row in rows for pixel in row if pixel[3]}
+    return rows, {"colours": len(used), "pitch": [1, 1], "grid": "cut"}
+
+
+def cut_source(asset, raw_dir, cache, sources):
+    """The source of a cut asset with its fills and its clear columns, in the source's pixels."""
     rows = [list(row) for row in cache[asset["source"]]]
     spec = asset["cut"]
     for fill in spec.get("fills", []):
@@ -689,11 +779,7 @@ def cut(asset, raw_dir, cache, sources):
     for x, w, y in spec.get("clear_above", []):
         for yy in range(y):
             rows[yy][x : x + w] = [(0, 0, 0, 0)] * w
-    rows = crop(rows, asset["crop"])
-    if [len(rows[0]), len(rows)] != asset["size"]:
-        raise ValueError(f"{asset['path']}: crop {asset['crop']} does not give size {asset['size']}")
-    used = {pixel[:3] for row in rows for pixel in row if pixel[3]}
-    return rows, {"colours": len(used), "pitch": [1, 1], "grid": "cut"}
+    return rows
 
 
 def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
@@ -903,7 +989,7 @@ def problems(path, rows, scale):
         if thin is None or thin < THIN_SHARE:
             share = "no" if thin is None else f"{thin:.0%} of"
             found.append(f"drawn in blocks: {share} edge pixels one pixel wide, under {THIN_SHARE:.0%}")
-    if folder in SPRITE_FOLDERS:
+    if folder in SPRITE_FOLDERS and not cut:
         if m["edge"] is not None and m["edge"] < EDGE_SHARE:
             found.append(f"{m['edge']:.0%} of side and bottom edges darker than inside, under {EDGE_SHARE:.0%}")
         if m["lit"] < m["shaded"]:
