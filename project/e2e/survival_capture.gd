@@ -51,8 +51,10 @@ const CELL: int = 32
 ## under its cell's floor line, where an actor's feet are.
 const LEAD_CELLS: Array[Vector2i] = [Vector2i(2, 6), Vector2i(4, 8), Vector2i(8, 8), Vector2i(18, 5), Vector2i(19, 5)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
-## edge under those cells reads than the scenery in the cells, above the deck.
-const GROUND_LEAD: float = 0.12
+## edge under those cells reads than the scenery in the cells, above the deck:
+## the mockup's decks, cut with their own top edge, lead by as little as 0.057,
+## on 27-city-jumping-the-rubble.
+const GROUND_LEAD: float = 0.04
 ## The rows of a walkway's lit top edge, as the city draws it: the ground a
 ## player walks on, read over the scenery above it.
 const EDGE_ROWS: int = 4
@@ -164,7 +166,7 @@ const SETTLE_SECONDS: float = 0.4
 const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.03
 const TEETH_TOLERANCE: float = 0.06
-const TEETH_COVER: float = 0.05
+const TEETH_COVER: float = 0.02
 ## How a fang's cream reads in the throat picture: its red and green at least
 ## these, and its green no less than its blue, which the pink flesh's is.
 const FANG_RED: float = 0.75

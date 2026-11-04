@@ -100,28 +100,10 @@ const char *path(Image image) {
     return "characters/appraiser_climb.png";
   case Image::Deck:
     return "walkway/deck.png";
-  case Image::DeckRivets:
-    return "walkway/deck_rivets.png";
-  case Image::DeckWorn:
-    return "walkway/deck_worn.png";
-  case Image::DeckCorroded:
-    return "walkway/deck_corroded.png";
-  case Image::FleshDrip:
-    return "walkway/flesh_drip.png";
-  case Image::EndLeft:
-    return "walkway/end_left.png";
-  case Image::EndRight:
-    return "walkway/end_right.png";
-  case Image::Pillar:
-    return "walkway/pillar.png";
-  case Image::Column:
-    return "walkway/column.png";
+  case Image::Structure:
+    return "walkway/structure.png";
   case Image::Rubble:
     return "ground/rubble.png";
-  case Image::PlankBridge:
-    return "ground/bridge_plank.png";
-  case Image::BuriedCar:
-    return "ground/car_buried.png";
   case Image::BuildingWall:
     return "world/building_wall.png";
   case Image::Shop:
@@ -132,8 +114,6 @@ const char *path(Image image) {
     return "world/vendor_cart.png";
   case Image::NoodleVendor:
     return "world/noodle_vendor.png";
-  case Image::BagRoof:
-    return "world/bag_roof.png";
   case Image::BagWashedUp:
     return "world/bag_washed_up.png";
   case Image::Ladder:
@@ -152,50 +132,6 @@ const char *path(Image image) {
     return "world/cold_store.png";
   case Image::Ferry:
     return "world/ferry.png";
-  case Image::Platform:
-    return "world/platform.png";
-  case Image::Bridge:
-    return "world/bridge.png";
-  case Image::TrainCarLit:
-    return "decor/train_car_lit.png";
-  case Image::TrainCarWrecked:
-    return "decor/train_car_wrecked.png";
-  case Image::FacadeTall:
-    return "decor/facade_tall.png";
-  case Image::FacadeLow:
-    return "decor/facade_low.png";
-  case Image::CablesSagging:
-    return "decor/cables_sagging.png";
-  case Image::CablesHanging:
-    return "decor/cables_hanging.png";
-  case Image::PipeBent:
-    return "decor/pipe_bent.png";
-  case Image::PipesValve:
-    return "decor/pipes_valve.png";
-  case Image::NeonBox:
-    return "decor/neon_box.png";
-  case Image::NeonBlade:
-    return "decor/neon_blade.png";
-  case Image::FleshVines:
-    return "decor/flesh_vines.png";
-  case Image::FleshTendril:
-    return "decor/flesh_tendril.png";
-  case Image::FleshTumor:
-    return "decor/flesh_tumor.png";
-  case Image::FleshPolyps:
-    return "decor/flesh_polyps.png";
-  case Image::RubbleLow:
-    return "decor/rubble_low.png";
-  case Image::RubbleHigh:
-    return "decor/rubble_high.png";
-  case Image::PillarSnapped:
-    return "decor/pillar_snapped.png";
-  case Image::PillarDeck:
-    return "decor/pillar_deck.png";
-  case Image::LampStanding:
-    return "decor/lamp_standing.png";
-  case Image::LampBent:
-    return "decor/lamp_bent.png";
   case Image::HeartFull:
     return "ui/heart_full.png";
   case Image::HeartEmpty:
@@ -262,6 +198,16 @@ godot::Ref<godot::Texture2D> load_texture(const godot::String &path) {
 }
 
 std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
+
+/// Picture pixels to a scene pixel each way: two for the pictures cut from the
+/// mockup for the map's cells, drawn one to a screen pixel at the close
+/// camera, and one for every other.
+float density(Image image) {
+  const godot::String folder = godot::String(path(image)).get_slice("/", 0);
+  const bool cut =
+      folder == "walkway" || folder == "world" || folder == "ground";
+  return cut && image != Image::NoodleVendor ? 2.0F : 1.0F;
+}
 
 /// The outline of `area` with its corners rounded by `radius`, clockwise from
 /// the top-left corner.
@@ -517,8 +463,10 @@ Look Art::looking() const {
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
-  canvas.draw_texture_rect_region(images.at(slot(image)), destination, source,
-                                  tint);
+  const float scale = density(image);
+  canvas.draw_texture_rect_region(
+      images.at(slot(image)), destination,
+      godot::Rect2(source.position * scale, source.size * scale), tint);
 }
 
 void Art::next_frame() { ++frame; }
@@ -562,7 +510,7 @@ float Art::shown_for(const godot::String &name) const {
 }
 
 Vector2 Art::size(Image image) const {
-  return images.at(slot(image))->get_size();
+  return images.at(slot(image))->get_size() / density(image);
 }
 
 float Art::seconds() const {
