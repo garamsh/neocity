@@ -709,7 +709,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -738,26 +738,27 @@ func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
 
 ## Whether the walkway's lit top edge leads the scenery right above it by
-## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more;
-## the control is that the scenery is not black.
-func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
-	var ground: float = 0.0
-	var behind: float = 0.0
+## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more,
+## of the pixels clear of the plates covered; the control is that the scenery
+## is not black.
+func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+	var ground: Vector2 = Vector2.ZERO
+	var behind: Vector2 = Vector2.ZERO
 	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
 			continue
-		ground += _luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS)
-		behind += _luminance(frame, view, corner, CELL)
+		ground += _clear_luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS, covered)
+		behind += _clear_luminance(frame, view, corner, CELL, covered)
 		shown += 1
-	if shown < 2:
+	if shown < 2 or ground.y == 0.0 or behind.y == 0.0:
 		return true
-	ground /= shown
-	behind /= shown
+	ground.x /= ground.y
+	behind.x /= behind.y
 	ground_frames += 1
-	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground - behind, shown, ground, behind, GROUND_LEAD])
-	if behind <= 0.0 or ground - behind < GROUND_LEAD:
+	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
+	if behind.x <= 0.0 or ground.x - behind.x < GROUND_LEAD:
 		_fail("%s: the ground does not read over the scenery behind it" % screen)
 		return false
 	return true
@@ -1249,6 +1250,19 @@ func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> 
 		for x: int in range(CELL):
 			total += _pixel(frame, view, corner + Vector2(x, y))
 	return total / (CELL * rows)
+
+## The summed luminance, as x, and the count, as y, of the screen pixels of a
+## cell-wide band of scene rows whose top-left is corner that lie clear of the
+## rectangles covered.
+func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array) -> Vector2:
+	var found: Vector2 = Vector2.ZERO
+	for y: int in range(rows):
+		for x: int in range(CELL):
+			var at: Vector2 = view * (corner + Vector2(x + 0.5, y + 0.5))
+			if covered.any(func(area: Rect2) -> bool: return area.has_point(at)):
+				continue
+			found += Vector2(_pixel(frame, view, corner + Vector2(x, y)), 1.0)
+	return found
 
 ## The luminance of the screen pixel at the middle of the scene pixel at point.
 func _pixel(frame: Image, view: Transform2D, point: Vector2) -> float:
