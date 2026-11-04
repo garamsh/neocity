@@ -1,19 +1,22 @@
 """Turn Recraft generations and the concept sheets into the monster-mouth escape runtime PNGs.
 
 Subcommands, all driven by assets.json beside this file:
-  fetch RAW_DIR          download every URL source and decode it to PNG with ImageMagick;
-                         a "file" source is read from the repository instead
+  fetch RAW_DIR          download every URL source and decode it to PNG with ImageMagick, and
+                         read every "commit" source from the repository's history; a "file"
+                         source is read from the repository instead
   process RAW_DIR ART    write every runtime PNG and manifest.json under ART. Each output pixel
                          is one block of the source: the generation's own grid where one is
                          detected, otherwise an even division of the crop. A seamless asset's
-                         crop is a third wider or taller than the tile it makes
+                         crop is a third wider or taller than the tile it makes. A "cut" asset
+                         keeps its source's own pixels, filled and cleared where it says
   sheet RAW_DIR ART CONCEPT_DIR OUT
                          write the review sheet: the concept images, a mock frame, 8x close-ups
                          (sheet poses beside sprites, plain renders beside processed), every asset
   check ART              measure every runtime PNG in ART's manifest and exit 1 when one breaks a
-                         clean-art rule: lone pixels, its folder's colour limit, for world and
-                         character sprites the lit outline and the light from above, and for the
-                         backdrop layers one picture pixel to a screen pixel
+                         clean-art rule: lone pixels and its folder's colour limit, but for the
+                         backdrop layers cut from the concept, for world and character sprites
+                         the lit outline and the light from above, and for the backdrop layers
+                         one picture pixel to a screen pixel
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -40,7 +43,7 @@ NOISE_DISTANCE = 80**2 * 3
 LONE_LIMIT = 0.01
 LONE_KEEP = 0.004
 # The most colours an asset may use, by its folder: characters 16, every other sprite 12, the
-# full-screen layers 32 and the logo 16.
+# kitchen and the key art 32 and the logo 16.
 COLOUR_LIMITS = {
     "characters": 16,
     "world": 12,
@@ -49,7 +52,6 @@ COLOUR_LIMITS = {
     "decor": 12,
     "icons": 12,
     "ui": 12,
-    "backgrounds": 32,
     "workshop": 32,
     "title": 32,
 }
@@ -63,6 +65,9 @@ EDGE_SHARE = 0.95
 # both, so stand one pixel wide or tall. Art drawn in blocks of two or more pixels holds none.
 SCREEN_PIXEL_FOLDERS = ("backgrounds",)
 THIN_SHARE = 0.1
+# Folders cut from the concept with its own pixels, which keep its colours: neither the colour
+# limit nor the lone-pixel limit applies to them.
+CONCEPT_CUT_FOLDERS = ("backgrounds",)
 
 
 def read_png(path):
@@ -652,6 +657,45 @@ def upscale(rows, factor):
     return out
 
 
+def load(source, raw_dir, cache, sources):
+    """Reads a source into cache once: a "file" source from the repository, any other from raw_dir."""
+    if source not in cache:
+        if "file" in sources[source]:
+            path = REPOSITORY / sources[source]["file"]
+        else:
+            path = pathlib.Path(raw_dir) / f"{source}.png"
+        cache[source] = read_png(path)[2]
+    return cache[source]
+
+
+def cut(asset, raw_dir, cache, sources):
+    """Returns (rgba rows, report) for an asset cut from its source with the source's own pixels.
+
+    Every box is in the source's pixels. Each fill, in order, replaces the pixels of its rects,
+    [x, y, w, h], and of its columns, [x, w, y], from row y down, with the same pixels of its fill
+    source, whose top-left lies at at. Then the pixels above each clear column [x, w, y] are made
+    clear, and the crop is cut out.
+    """
+    rows = [list(row) for row in cache[asset["source"]]]
+    spec = asset["cut"]
+    for fill in spec.get("fills", []):
+        filled = load(fill["source"], raw_dir, cache, sources)
+        left, top = fill["at"]
+        boxes = list(fill.get("rects", []))
+        boxes += [[x, y, w, top + len(filled) - y] for x, w, y in fill.get("columns", [])]
+        for x, y, w, h in boxes:
+            for yy in range(y, y + h):
+                rows[yy][x : x + w] = filled[yy - top][x - left : x - left + w]
+    for x, w, y in spec.get("clear_above", []):
+        for yy in range(y):
+            rows[yy][x : x + w] = [(0, 0, 0, 0)] * w
+    rows = crop(rows, asset["crop"])
+    if [len(rows[0]), len(rows)] != asset["size"]:
+        raise ValueError(f"{asset['path']}: crop {asset['crop']} does not give size {asset['size']}")
+    used = {pixel[:3] for row in rows for pixel in row if pixel[3]}
+    return rows, {"colours": len(used), "pitch": [1, 1], "grid": "cut"}
+
+
 def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
     """Returns (rgba rows, report). plain renders the earlier nearest-neighbour pipeline for review.
 
@@ -659,12 +703,9 @@ def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
     matches another reads that one's cells from it.
     """
     source = asset["source"]
-    if source not in cache:
-        if "file" in sources[source]:
-            path = REPOSITORY / sources[source]["file"]
-        else:
-            path = pathlib.Path(raw_dir) / f"{source}.png"
-        cache[source] = read_png(path)[2]
+    load(source, raw_dir, cache, sources)
+    if "cut" in asset:
+        return cut(asset, raw_dir, cache, sources)
     width, height = asset["size"]
     scale = asset.get("scale", 1)
     logical = (width // scale, height // scale)
@@ -738,6 +779,15 @@ def fetch(raw_dir):
     raw_dir.mkdir(parents=True, exist_ok=True)
     for name, source in spec["sources"].items():
         if "file" in source:
+            continue
+        if "commit" in source:
+            shown = subprocess.run(
+                ["git", "-C", str(REPOSITORY), "show", f"{source['commit']}:{source['path']}"],
+                check=True,
+                capture_output=True,
+            ).stdout
+            subprocess.run(["magick", "png:-", "-strip", f"PNG24:{raw_dir / name}.png"], input=shown, check=True)
+            print(f"fetched {name}")
             continue
         url = source["url"]
         if not url.startswith("https://img.recraft.ai/"):
@@ -843,9 +893,10 @@ def problems(path, rows, scale):
     limit = LOGO_COLOURS if path == "title/logo.png" else COLOUR_LIMITS.get(folder)
     found = []
     m = measure(rows, scale)
-    if m["lone"] > LONE_LIMIT:
+    cut = folder in CONCEPT_CUT_FOLDERS
+    if not cut and m["lone"] > LONE_LIMIT:
         found.append(f"{m['lone']:.2%} lone pixels, over {LONE_LIMIT:.0%}")
-    if limit is None or m["colours"] > limit:
+    if not cut and (limit is None or m["colours"] > limit):
         found.append(f"{m['colours']} colours, over the {folder} limit of {limit}")
     if folder in SCREEN_PIXEL_FOLDERS:
         thin = thin_share(rows)

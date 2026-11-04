@@ -89,6 +89,14 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(len(found), 1)
         self.assertIn("drawn in blocks", found[0])
 
+    def test_a_layer_cut_from_the_concept_keeps_its_colours(self):
+        painted = [[(x * 10, y * 10, (x + y) * 5, 255) for x in range(24)] for y in range(24)]
+        self.assertEqual(problems(painted, "backgrounds/test.png"), [])
+        found = problems(painted, "workshop/test.png")
+        self.assertEqual(len(found), 2)
+        self.assertIn("lone pixels", found[0])
+        self.assertIn("colours, over the workshop limit", found[1])
+
     def test_the_screen_pixel_rule_skips_the_sprites(self):
         self.assertEqual(problems(pixelize.upscale(sprite(), 2), "decor/test.png"), [])
 
