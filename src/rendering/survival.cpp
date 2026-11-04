@@ -59,7 +59,7 @@ constexpr float STAIR_FACE = 10.0F;
 /// The deck's warm lit rows under its outline, which each stair's tread is
 /// stretched from.
 constexpr float STAIR_TREAD = 2.0F;
-/// The throat's top edge on the screen, raised so its teeth and uvula hang
+/// The throat's top edge on the screen, raised so its palate and uvula hang
 /// over the distant city; and the city's bottom edge, under the acid band at
 /// acid 0, so its towers stand clear below the teeth.
 constexpr float THROAT_TOP = -200.0F;
@@ -233,8 +233,8 @@ godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// walked-on top edge lit warm and bright.
 godot::Color ground_tint() { return {0.8F, 0.8F, 1.0F}; }
 godot::Color ground_edge_tint() { return {2.4F, 2.0F, 1.6F}; }
-/// The throat keeps its saturated magenta while its near-white teeth and
-/// uvula are pulled toward it, so no part of the backdrop outshines the
+/// The throat keeps its saturated magenta while its near-white parts are
+/// pulled toward it, so no part of the backdrop outshines the
 /// walkways' lit edge.
 godot::Color throat_tint() { return {1.0F, 0.8F, 0.95F}; }
 
