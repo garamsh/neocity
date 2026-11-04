@@ -21,11 +21,11 @@ Alternatives considered:
 
 ## Decision
 
-The map is 40 by 16 cells: the mockup's screen laid out at columns 0 to 19, where the camera rests when a human first sets out, and the same structure again at columns 20 to 39, its kitchen shop, walkways, bridge and ledge in the same rows, carrying the rest of the run's places. The rows below the walkways hold only the shallows and the piers at the foot of the gauge ladders, and the sunken train and the drifting ferry between them, where the mockup shows the acid lake.
+The map is 40 by 16 cells: the mockup's screen laid out at columns 0 to 19, where the camera rests when a human first sets out, and the same structure again at columns 20 to 39, its kitchen shop, walkways, bridge and ledge in the same rows, carrying the rest of the run's places. The rows below the walkways hold only the shallows and the piers at the foot of the two ladders down from the ledges, and the sunken train and the drifting ferry between them, where the mockup shows the acid lake.
 
 ## Consequences
 
-- Every place keeps a name the mockup's layout gives it: the upper and lower walkways, the kitchen loft and roof, the rope bridge, the gauge ledge, the shop roof and the tower shop, and their east twins. Names of places the mockup does not have leave the map.
+- The places of the first screen are named for what the mockup shows there: the upper and lower walkways, the kitchen loft, roof and shop, the rope bridge, the gauge ledge and ladder, the tower shop and its roof. The east half names its twins after them, and the objects the run needs that the mockup does not show, the kiosk wreck, the noodle vendor, the cold store, the sunken train, the ferry and the pier, stand in that half. Names of places the new layout does not have, the dock, the main street, the market, the arcade and the plaza among them, leave the map.
 - A walk east crosses the same structure twice, so a day's errands climb and descend the same kinds of ladder in both halves.
 - The shop, vending machine, bag and walkway pictures, and the camera that keeps a human's feet a little lower on the screen than the mockup draws them, are presentation's, and are matched to the mockup in their own changes.
 - Every place in the run, the breaking passages and the ferry included, stands in a half of the mockup's structure, so a further place needs a third half or a change to this decision.
