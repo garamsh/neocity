@@ -128,12 +128,16 @@ const ZOOMS: Array[float] = [1.0, 2.0]
 ## camera then has to settle.
 const PART_FRAMES: int = 300
 const PARTED_SETTLE: int = 60
-## The least share of a layer's edge pixels, those that differ from a
+## The least share, by layer, of its edge pixels, those that differ from a
 ## neighbour along a row or a column, that differ from both neighbours along
 ## it, so stand one screen pixel wide or tall; and how far apart, from 0 to 1
 ## in a channel, two pixels must be to differ. Art drawn in blocks of two or
-## more screen pixels holds none but where something else crosses it.
-const DENSE_SHARE: float = 0.05
+## more screen pixels holds none but where something else crosses it, such as
+## the cut between two fangs or the finishing pass's ripples, which run per
+## screen pixel over the acid whatever its picture. Measured on 4-city-collect-prompt
+## with the pictures of 17b4d09, drawn in blocks: teeth 0.05, backdrop 0.01,
+## acid 0.15; with these: 0.19, 0.12 and 0.30.
+const DENSE_SHARE: Dictionary[String, float] = {"teeth": 0.12, "backdrop": 0.06, "acid": 0.215}
 const DENSE_TOLERANCE: float = 0.01
 ## The least edge pixels, along the rows and along the columns, a layer must
 ## show for its density to be read.
@@ -957,8 +961,8 @@ func _draws_fast(screen: String) -> bool:
 ## Whether, as player two walks left and climbs the ladder there away from
 ## player one until the camera heads for the scene's own size, and the
 ## camera then settles, every frame draws the scene at one of the camera's
-## ZOOMS. The control is that the camera headed for the scene's own size and
-## drew it, so it zoomed out on the way.
+## ZOOMS, and the camera drew the scene's own size on the way. The control is
+## that the camera headed for the scene's own size.
 func _zoom_steps() -> bool:
 	var zooms: Array[float] = []
 	var parted: bool = false
@@ -987,11 +991,14 @@ func _zoom_steps() -> bool:
 	var appraiser: Dictionary = status["appraiser"]
 	var chef: Dictionary = status["chef"]
 	print("Capture: player two walked away from player one and ended on %s, player one on %s; the camera drew zooms %s, ending at %.3f." % [_cell(appraiser), _cell(chef), drawn, last])
-	if not parted or not drawn.any(func(zoom: float) -> bool: return is_equal_approx(zoom, 1.0)):
-		_fail("the camera's zoom cannot be read: it headed for the scene's own size: %s, and drew %s" % [parted, drawn])
+	if not parted:
+		_fail("the camera's zoom cannot be read: it never headed for the scene's own size")
 		return false
 	if not between.is_empty():
 		_fail("the camera draws the scene at zooms between its steps: %s" % [between.slice(0, 5)])
+		return false
+	if not drawn.any(func(zoom: float) -> bool: return is_equal_approx(zoom, 1.0)):
+		_fail("the camera never drew the scene at its own size: %s" % [drawn])
 		return false
 	return true
 
@@ -1003,15 +1010,15 @@ func _cell(actor: Dictionary) -> Vector2i:
 
 ## Whether the camera draws the scene at one of its ZOOMS and, at twice the
 ## scene's size, the teeth, the backdrop under them and the acid each stand in
-## pixels one screen pixel wide and tall: DENSE_SHARE of each one's edge
-## pixels clear of the word plates and the HUD, along the rows and along the
-## columns, differ from both their neighbours. The teeth are read where the
-## frame shows them over the top TEETH_ROWS of the play area, the
-## backdrop from under those rows down to the acid's surface, and the acid
-## over the BAND_ROWS under the band's surface where the sea does not cover
-## them, else the SEA_ROWS under the sea's surface. A layer is read when the
-## frame shows DENSE_EDGES of its edge pixels along each, and the frame counts
-## as measured when all three are.
+## pixels one screen pixel wide and tall: of each one's edge pixels clear of
+## the word plates and the HUD, its DENSE_SHARE along the rows and along the
+## columns differ from both their neighbours. The teeth are read where the
+## frame shows them over the top TEETH_ROWS of the play area, the backdrop
+## from under those rows down to the acid's surface, and the acid's green
+## pixels over the BAND_ROWS under the band's surface where the sea does not
+## cover them, else the SEA_ROWS under the sea's surface. A layer is read when
+## the frame shows DENSE_EDGES of its edge pixels along each, and the frame
+## counts as measured when all three are.
 func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
 	var zoom: float = view.x.x
 	if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
@@ -1027,18 +1034,18 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 	var top: int = int(PLAY.position.y)
 	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
 	var layers: Dictionary = {
-		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, true),
-		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, false),
-		"acid": _thin(frame, acid_rows, covered, false),
+		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, "teeth"),
+		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, ""),
+		"acid": _thin(frame, acid_rows, covered, "acid"),
 	}
-	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %.3f each, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
+	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %s, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
 	var read: int = 0
 	for layer: String in layers:
 		var found: Vector2 = layers[layer]
 		if found.y < DENSE_EDGES:
 			continue
 		read += 1
-		if found.x < DENSE_SHARE:
+		if found.x < DENSE_SHARE[layer]:
 			_fail("%s: the %s is drawn in pixels larger than a screen pixel" % [screen, layer])
 			return false
 	if read == layers.size():
@@ -1046,12 +1053,13 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 	return true
 
 ## Over the screen rows from rows.x to rows.y, every other row and column,
-## each pixel clear of the rectangles covered and, with teeth, only where the frame shows the teeth
-## the World layer drew, within TEETH_TOLERANCE in each channel: of the
-## pixels that differ from a neighbour along the row, the share that differ
-## from both, and the same along the column; the smaller of the two shares, as
-## x, and the fewer of the two counts of such pixels, as y.
-func _thin(frame: Image, rows: Vector2i, covered: Array, teeth: bool) -> Vector2:
+## each pixel clear of the rectangles covered and, for the teeth, only where
+## the frame shows the teeth the World layer drew, within TEETH_TOLERANCE in
+## each channel, and for the acid, only where its green leads by ACID_GREEN:
+## of the pixels that differ from a neighbour along the row, the share that
+## differ from both, and the same along the column; the smaller of the two
+## shares, as x, and the fewer of the two counts of such pixels, as y.
+func _thin(frame: Image, rows: Vector2i, covered: Array, only: String) -> Vector2:
 	var edges: Vector2i = Vector2i.ZERO
 	var thin: Vector2i = Vector2i.ZERO
 	var width: int = int(PLAY.size.x)
@@ -1060,7 +1068,9 @@ func _thin(frame: Image, rows: Vector2i, covered: Array, teeth: bool) -> Vector2
 			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y))):
 				continue
 			var pixel: Color = frame.get_pixel(x, y)
-			if teeth:
+			if only == "acid" and _green(pixel) < ACID_GREEN:
+				continue
+			if only == "teeth":
 				var tooth: Color = _tooth(x, y)
 				if tooth.a < 0.5 or maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) > TEETH_TOLERANCE:
 					continue
