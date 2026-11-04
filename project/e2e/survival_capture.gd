@@ -74,6 +74,9 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## reads 0.21 to 0.24 over its walkways' 0.10 to 0.13; the walkways, not yet
 ## redrawn from it, read 0.14 to 0.16, at least 0.048 under the backdrop.
 const FACE_GAP: float = 0.03
+## The fewest pixels clear of the plates and the HUD that a cell's face, or
+## the scenery above it, is read over.
+const CLEAR_PIXELS: int = 32
 ## How far over the acid band's surface its light reaches what stands there:
 ## the finish shader's six glow bands of 8 screen pixels.
 const ACID_LIGHT_REACH: int = 48
@@ -709,7 +712,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f, the scene's origin at %s, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, view.origin, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen, plates + hud) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -769,9 +772,11 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Arr
 ## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
 ## those pixels brighter than the backdrop by ACID_GAP. A face the band's
 ## light reaches, within ACID_LIGHT_REACH over its surface, is lit green as the
-## mockup lights its posts over the lake, and is not read. The control is that
-## the faces are not black.
-func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
+## mockup lights its posts over the lake, and is not read. Only the pixels
+## clear of the rectangles covered are read, and a cell with fewer than
+## CLEAR_PIXELS of them in its face or above it is not read. The control is
+## that the faces are not black.
+func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
 	var face: float = 0.0
 	var behind: float = 0.0
 	var shown: int = 0
@@ -779,8 +784,12 @@ func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)) or (view * (corner + Vector2(0, CELL + FACE_ROWS.y))).y > _band_top() - ACID_LIGHT_REACH:
 			continue
-		face += _luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x)
-		behind += _luminance(frame, view, corner, CELL)
+		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered)
+		var cell_behind: Vector2 = _clear_luminance(frame, view, corner, CELL, covered)
+		if cell_face.y < CLEAR_PIXELS or cell_behind.y < CLEAR_PIXELS:
+			continue
+		face += cell_face.x / cell_face.y
+		behind += cell_behind.x / cell_behind.y
 		shown += 1
 	if shown < 2:
 		return true
