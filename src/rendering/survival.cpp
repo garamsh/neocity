@@ -119,8 +119,8 @@ constexpr float THROAT_DEPTH = 0.15F;
 constexpr float CITY_DEPTH = 0.35F;
 constexpr float BAND_DEPTH = 0.6F;
 /// The acid band's height above the bottom of the play area at acid 0 and at
-/// full acid.
-constexpr float BAND_LOW = 70.0F;
+/// full acid; at acid 0 its surface is the mockup's, at screen row 489.
+constexpr float BAND_LOW = 51.0F;
 constexpr float BAND_HIGH = 300.0F;
 /// A halo's rings, each adding the same light.
 constexpr int HALO_RINGS = 6;

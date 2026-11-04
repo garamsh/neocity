@@ -63,7 +63,7 @@ const EDGE_ROWS: int = 4
 const FACE_ROWS: Vector2i = Vector2i(8, 24)
 ## The screen row of the acid band's surface at no acid and at the acid that
 ## ends the run, as the city draws it; it rises evenly between them.
-const BAND_LOW: int = 470
+const BAND_LOW: int = 489
 const BAND_HIGH: int = 240
 ## The screen rows under the band's surface that the value layers read as the
 ## acid.
@@ -90,9 +90,11 @@ const STAIR_CELLS: Array[Vector2i] = [Vector2i(9, 9)]
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
 const ACID_LOW: int = 518
-## How far above that surface, in screen pixels, the sea in the scene, with
-## the light over it, covers the acid band behind the map.
-const SEA_REACH: int = 64
+## How far above that surface, in screen pixels, the sea in the scene covers
+## the acid band behind the map: the acid picture's 21 rows over its surface,
+## its heave of 3 and a margin of 8. Its light over it never reaches the band's
+## rows, which take the band's own light.
+const SEA_REACH: int = 32
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
@@ -1065,12 +1067,14 @@ func _differ(one: Color, other: Color) -> bool:
 	return maxf(absf(one.r - other.r), maxf(absf(one.g - other.g), absf(one.b - other.b))) > DENSE_TOLERANCE
 
 ## Whether, over the columns where the acid shows under its surface, the band's
-## where the sea does not cover it and the sea's otherwise, the LIT_ROWS above
-## that surface lead the UNLIT_ROWS of backdrop higher up in green by
-## LIGHT_GAP, when the play area shows both. The control is that the acid shows
-## under the surface in LIGHT_COLUMNS of the columns read.
+## where the sea does not cover it or stands below it and the sea's otherwise,
+## the LIT_ROWS above that surface lead the UNLIT_ROWS of backdrop higher up in
+## green by LIGHT_GAP, when the play area shows both. Under the band's surface
+## the rows above the sea are the band's acid, not backdrop. The control is that
+## the acid shows under the surface in LIGHT_COLUMNS of the columns read.
 func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
-	var surface: int = _band_top() if _band_clear(view) else floori((view * Vector2(0, _acid_surface())).y)
+	var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+	var surface: int = _band_top() if _band_clear(view) or _band_top() < sea else sea
 	if surface + UNLIT_ROWS.x < PLAY.position.y or surface + ACID_UNDER.back() >= PLAY.end.y:
 		return true
 	var lit: float = 0.0
