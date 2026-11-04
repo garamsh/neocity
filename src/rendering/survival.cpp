@@ -41,7 +41,7 @@ constexpr float SCREEN_HEIGHT = 720.0F;
 /// The acid surface at acid 0: the top of row 14, below every ground row.
 constexpr float ACID_LOW = MAP_Y + 14.0F * CELL;
 /// How far below the acid picture's top edge its surface lies.
-constexpr float ACID_SURFACE_DEPTH = 48.0F;
+constexpr float ACID_SURFACE_DEPTH = 79.0F;
 /// Below its surface the acid fades to its deep colour over this many steps
 /// of this many pixels.
 constexpr int ACID_FADE_STEPS = 6;
@@ -59,43 +59,17 @@ constexpr float STAIR_FACE = 10.0F;
 /// The deck's warm lit rows under its outline, which each stair's tread is
 /// stretched from.
 constexpr float STAIR_TREAD = 2.0F;
-/// The throat's top edge on the screen, raised so its palate and uvula hang
-/// over the distant city; and the city's bottom edge, under the acid band at
-/// acid 0, so its towers stand clear below the teeth.
-constexpr float THROAT_TOP = -200.0F;
-constexpr float CITY_BOTTOM = 700.0F;
-/// The monster's upper teeth hang from the screen's top edge, behind the top
-/// bar, and slide sideways this many times as far as the map when the camera
-/// moves.
-constexpr float JAW_TOP = 0.0F;
-constexpr float JAW_DEPTH = 1.25F;
-/// One fang of the teeth picture: its columns, from one gap to the next, and
-/// its tip, in the picture's pixels.
-struct Fang {
-  float left = 0.0F;
-  float width = 0.0F;
-  Vector2 tip;
-};
-/// The teeth picture's whole fangs, which hang in a row along the top of the
-/// screen in an order and at drops that change from one run of them to the
-/// next, so no stretch of the row repeats another.
-constexpr std::array JAW_FANGS{
-    Fang{.left = 31.0F, .width = 39.0F, .tip = Vector2(15.0F, 137.0F)},
-    Fang{.left = 70.0F, .width = 38.0F, .tip = Vector2(12.0F, 126.0F)},
-    Fang{.left = 108.0F, .width = 40.0F, .tip = Vector2(16.0F, 114.0F)},
-    Fang{.left = 148.0F, .width = 38.0F, .tip = Vector2(16.0F, 108.0F)},
-    Fang{.left = 186.0F, .width = 40.0F, .tip = Vector2(17.0F, 123.0F)},
-    Fang{.left = 226.0F, .width = 38.0F, .tip = Vector2(12.0F, 119.0F)},
-    Fang{.left = 264.0F, .width = 35.0F, .tip = Vector2(13.0F, 104.0F)},
-    Fang{.left = 299.0F, .width = 39.0F, .tip = Vector2(14.0F, 109.0F)},
-    Fang{.left = 338.0F, .width = 40.0F, .tip = Vector2(16.0F, 126.0F)},
-    Fang{.left = 378.0F, .width = 38.0F, .tip = Vector2(17.0F, 123.0F)}};
-/// The width of one run of every fang, and of the gum drawn unbroken over
-/// their roots along the top, from the first fang's left edge.
-constexpr float JAW_RUN = 385.0F;
-constexpr float JAW_GUM = 40.0F;
-/// How far below the gum each fang may hang.
-constexpr std::array JAW_DROPS{0.0F, 4.0F, 8.0F, 12.0F, 16.0F};
+/// Where each backdrop layer's top-left stands on the screen while the
+/// camera rests. Each is cut from the search mockup, and they stand so that
+/// the first city screen of the capture, 4-city-collect-prompt, which slides
+/// them 70, 164 and 281 pixels right of here, shows each where the mockup
+/// does with the mockup's column 196 at the screen's left edge: the throat,
+/// cut from the mockup's column 560 and top row, its fangs hanging from the
+/// screen's top edge; the city, cut from its column 640 and row 60; and the
+/// acid band, cut from its column 0.
+constexpr Vector2 THROAT_AT(294.0F, 0.0F);
+constexpr Vector2 CITY_AT(280.0F, 60.0F);
+constexpr float BAND_LEFT = -477.0F;
 /// The part of the kitchen picture the workshop shows between the top bar and
 /// the panels, with the kitchen floor along its bottom.
 constexpr float KITCHEN_SOURCE_Y = 364.0F;
@@ -160,9 +134,6 @@ constexpr float BAND_DEPTH = 0.6F;
 /// full acid.
 constexpr float BAND_LOW = 70.0F;
 constexpr float BAND_HIGH = 300.0F;
-/// Where the band's broken pillars stand along it, and how far they sink.
-constexpr std::array BAND_PILLARS{150.0F, 470.0F, 800.0F, 1120.0F};
-constexpr float BAND_SINK = 28.0F;
 /// A halo's rings, each adding the same light.
 constexpr int HALO_RINGS = 6;
 /// A lamp's light: how far below the picture's top its bulb is, its reach,
@@ -200,9 +171,6 @@ constexpr float STEAM_SPACING = 36.0F;
 constexpr float STEAM_RISE = 80.0F;
 constexpr float STEAM_SECONDS = 3.4F;
 /// Seeds of the ambient motion's scatter, one per kind of thing moving.
-constexpr std::uint32_t SALIVA_SEED = 0x5A11U;
-constexpr std::uint32_t JAW_SEED = 0x7EE7U;
-constexpr std::uint32_t JAW_DROP_SEED = 0xD70FU;
 constexpr std::uint32_t FLESH_SEED = 0xF1E5U;
 constexpr std::uint32_t FAR_SPORE_SEED = 0x5B0EU;
 constexpr std::uint32_t NEAR_SPORE_SEED = 0x5B1EU;
@@ -227,10 +195,6 @@ godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// walked-on top edge lit warm and bright.
 godot::Color ground_tint() { return {0.8F, 0.8F, 1.0F}; }
 godot::Color ground_edge_tint() { return {2.4F, 2.0F, 1.6F}; }
-/// The throat keeps its saturated magenta while its near-white parts are
-/// pulled toward it, so no part of the backdrop outshines the
-/// walkways' lit edge.
-godot::Color throat_tint() { return {1.0F, 0.8F, 0.95F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -1757,89 +1721,6 @@ void paint_layer(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
   }
 }
 
-/// The order of the fangs in the run at `run` along the row: each fang once,
-/// shuffled by the run, and never the fang that ends the run before it first.
-std::array<std::size_t, JAW_FANGS.size()> fang_order(std::int64_t run) {
-  const auto shuffled = [](std::int64_t which) {
-    std::array<std::size_t, JAW_FANGS.size()> order{};
-    for (std::size_t fang = 0; fang < order.size(); ++fang) {
-      order.at(fang) = fang;
-    }
-    const auto count = static_cast<std::int64_t>(order.size());
-    for (std::size_t fang = order.size() - 1; fang > 0; --fang) {
-      const auto pick = static_cast<std::size_t>(
-          unit(JAW_SEED, which * count + static_cast<std::int64_t>(fang)) *
-          static_cast<float>(fang + 1));
-      std::swap(order.at(fang), order.at(pick));
-    }
-    return order;
-  };
-  auto order = shuffled(run);
-  if (order.front() == shuffled(run - 1).back()) {
-    std::swap(order.at(0), order.at(1));
-  }
-  return order;
-}
-
-/// The monster's upper teeth along the top of the screen whatever the camera
-/// shows, breathing with the throat and sliding sideways with the map: the
-/// teeth picture's fangs one by one, each in the run's order at its own drop,
-/// under its gum drawn unbroken over their roots, with saliva swelling at each
-/// tip and falling. Leaves on the canvas where it drew the gum, as the
-/// `jaw_gum` meta, and each fang, as `jaw_fangs`: its picture's `left` and
-/// `width`, and `at`, its top-left on the screen. The canvas goes back to the
-/// scene afterwards.
-void paint_jaw(godot::Node2D &canvas, const Art &art) {
-  const Look scene = art.looking();
-  // Run 0 starts here; the runs before and after it continue the row.
-  const float slide = std::floor(scene.origin.x * JAW_DEPTH);
-  const float top = std::floor(JAW_TOP - breath(art) * BREATH_LIFT);
-  const auto first = static_cast<std::int64_t>(std::floor(-slide / JAW_RUN));
-  const auto last =
-      static_cast<std::int64_t>(std::floor((SCREEN_WIDTH - slide) / JAW_RUN));
-  const float seconds = art.seconds();
-  art.look(canvas, Vector2(), 1.0F);
-  godot::Array fangs;
-  for (std::int64_t run = first; run <= last; ++run) {
-    float x = slide + static_cast<float>(run) * JAW_RUN;
-    const auto order = fang_order(run);
-    for (std::size_t place = 0; place < order.size(); ++place) {
-      const Fang &fang = JAW_FANGS.at(order.at(place));
-      const auto index = run * static_cast<std::int64_t>(order.size()) +
-                         static_cast<std::int64_t>(place);
-      const float drop = JAW_DROPS.at(static_cast<std::size_t>(
-          unit(JAW_DROP_SEED, index) * static_cast<float>(JAW_DROPS.size())));
-      const Vector2 at(x, top + drop);
-      art.image_part(canvas, Image::Jaw,
-                     rect(fang.left, 0.0F, fang.width, art.size(Image::Jaw).y),
-                     rect(at.x, at.y, fang.width, art.size(Image::Jaw).y));
-      const Dripping saliva{.period = 2.4F + 2.0F * unit(SALIVA_SEED, index),
-                            .pixel = 1.0F,
-                            .length = 6.0F,
-                            .reach = SCREEN_HEIGHT,
-                            .tint = color(250, 214, 226, 0.9F)};
-      paint_drop(canvas, at + fang.tip,
-                 cycle(seconds, saliva.period, unit(SALIVA_SEED + 1U, index)),
-                 saliva);
-      godot::Dictionary drawn;
-      drawn.set("left", fang.left);
-      drawn.set("width", fang.width);
-      drawn.set("at", at);
-      fangs.push_back(drawn);
-      x += fang.width;
-    }
-  }
-  for (std::int64_t run = first; run <= last; ++run) {
-    const float x = slide + static_cast<float>(run) * JAW_RUN;
-    art.image_part(canvas, Image::Jaw,
-                   rect(JAW_FANGS.front().left, 0.0F, JAW_RUN, JAW_GUM),
-                   rect(x, top, JAW_RUN, JAW_GUM));
-  }
-  canvas.set_meta("jaw_gum", Vector2(slide, top));
-  canvas.set_meta("jaw_fangs", fangs);
-  art.look(canvas, scene.origin, scene.zoom);
-}
-
 /// The acid picture at its own size with its surface at screen row
 /// `surface`, slid sideways by `slide` beside mirrored copies of itself so it
 /// covers the screen's width, fading below to the `deep` tint.
@@ -1859,24 +1740,14 @@ void paint_acid(godot::Node2D &canvas, const Art &art, float surface,
   }
 }
 
-/// The acid band nearest behind the map: the silhouettes of sunken trains
-/// and broken pillars in a sea glowing at its surface, pinned to the bottom of
-/// the play area and rising with the acid, slid sideways by `slide`.
+/// The acid band nearest behind the map: the mockup's acid lake of sunken
+/// trains and broken pillars glowing at its surface, pinned to the bottom of
+/// the play area and rising with the acid, its picture's left edge at
+/// `left`.
 void paint_band(godot::Node2D &canvas, const Art &art, float acid_ratio,
-                Vector2 slide) {
-  const float surface = std::floor(band_surface(acid_ratio));
-  const Vector2 acid = art.size(Image::Acid);
-  for (int copy = -1; copy <= 1; ++copy) {
-    const float left = slide.x + static_cast<float>(copy) * acid.x;
-    for (std::size_t pillar = 0; pillar < BAND_PILLARS.size(); ++pillar) {
-      const Image image =
-          pillar % 2 == 0 ? Image::PillarSnapped : Image::PillarDeck;
-      art.image(canvas, image,
-                Vector2(left + BAND_PILLARS.at(pillar),
-                        surface + BAND_SINK - art.size(image).y));
-    }
-  }
-  paint_acid(canvas, art, surface, slide.x, band_deep_tint());
+                float left) {
+  paint_acid(canvas, art, std::floor(band_surface(acid_ratio)), left,
+             band_deep_tint());
 }
 
 } // namespace
@@ -1898,16 +1769,14 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   const Vector2 band(drift(camera, BAND_DEPTH).x, 0.0F);
   const float drawn_in = breath(art);
   // The throat breathes: it lifts and brightens as it draws in.
-  const Vector2 breathing(0.0F,
-                          THROAT_TOP - std::round(drawn_in * BREATH_LIFT));
+  const Vector2 breathing(0.0F, -std::round(drawn_in * BREATH_LIFT));
   const float flush = 1.0F + BREATH_GLOW * (drawn_in - 0.5F);
   art.look(canvas, Vector2(), 1.0F);
-  paint_layer(canvas, art, Image::Throat, breathing, throat,
-              throat_tint() * godot::Color(flush, flush, flush));
-  paint_layer(canvas, art, Image::City,
-              Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), city,
-              untinted());
-  paint_band(canvas, art, acid_ratio, band);
+  paint_layer(canvas, art, Image::Throat, THROAT_AT + breathing, throat,
+              godot::Color(flush, flush, flush));
+  paint_layer(canvas, art, Image::City, CITY_AT, city, untinted());
+  const float band_left = BAND_LEFT + band.x;
+  paint_band(canvas, art, acid_ratio, band_left);
   // The sea in the scene is drawn at its own size too, moving with the map.
   const float sea = sea_row(camera, acid_ratio);
   paint_acid(canvas, art, sea, drift(camera, 1.0F).x, sea_deep_tint());
@@ -1916,9 +1785,9 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   layers.push_back(city);
   layers.push_back(band);
   canvas.set_meta("backdrop_layers", layers);
-  canvas.set_meta("throat_at", breathing + throat);
+  canvas.set_meta("throat_at", THROAT_AT + breathing + throat);
   art.look(canvas, origin(camera), camera.zoom);
-  art.note_waterline(std::floor(band_surface(acid_ratio)), band.x,
+  art.note_waterline(std::floor(band_surface(acid_ratio)), band_left,
                      (sea - origin(camera).y) / camera.zoom);
 }
 
@@ -1973,7 +1842,6 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                    static_cast<float>(content.run.full_acid.value));
   paint_decorations(canvas, art, content, true);
   paint_supports(canvas, art, ground, cell_y(content.map.height), surface);
-  paint_jaw(canvas, art);
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
       const bool shop = std::ranges::any_of(markers, [&](const auto &marker) {
