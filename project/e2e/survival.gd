@@ -1853,8 +1853,8 @@ func _humans_out() -> Array[String]:
 ## Once the camera has settled: every human in the city stands on the play
 ## area; the view shows nothing past the map's sides or the scene's top and
 ## bottom, and centres on the map when wider than it; one human is drawn at
-## twice the scene's size, and two between once and twice, smaller than twice
-## when they stand APART or more.
+## twice the scene's size, and two at twice or once, never twice when they
+## stand APART or more.
 func _camera_holds(where: String) -> bool:
 	if not await _camera_settles(where):
 		return false
