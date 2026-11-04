@@ -7,8 +7,9 @@ extends SceneTree
 ## lead the part under it or reads darker than the deck's top edge, the fallen slab's
 ## lit top edge does not run along its tilt, the acid's light does not rise
 ## above its surface, the acid stands still between two
-## frames a moment apart on the scene's clock, the finishing pass
-## breaks the scene's pixels below the sea's surface into smaller ones, the
+## frames a moment apart on the scene's clock, the camera draws the scene at a
+## zoom other than once or twice its size, the teeth, the backdrop or the acid
+## are drawn in pixels larger than a screen pixel at twice the scene's size, the
 ## city draws fewer than 60 frames a second,
 ## one of its word plates covers another, a source other than the source's
 ## own count, or lies under a HUD panel or note, its words name a source's kind or a place other than the goals
@@ -83,9 +84,9 @@ const STAIR_CELLS: Array[Vector2i] = [Vector2i(13, 12), Vector2i(14, 13)]
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
 const ACID_LOW: int = 518
-## How far above that surface the sea in the scene, with the light over it,
-## covers the acid band behind the map.
-const SEA_REACH: int = 32
+## How far above that surface, in screen pixels, the sea in the scene, with
+## the light over it, covers the acid band behind the map.
+const SEA_REACH: int = 64
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
@@ -121,15 +122,22 @@ const ACID_UNDER: Array[int] = [6, 12, 24]
 const LIGHT_COLUMNS: float = 0.1
 ## The screen rows under the sea's surface that the motion is read over.
 const SEA_ROWS: Vector2i = Vector2i(2, 40)
-## The least share of the scene's pixels below the sea's surface that the
-## finished frame draws as one colour, and how far apart, from 0 to 1 in a
-## channel, two screen pixels of one may be. A scene pixel is a square of
-## screen pixels as wide as the camera's zoom.
-const GRID_SHARE: float = 0.97
-const GRID_TOLERANCE: float = 0.01
-## The least share of those scene pixels whose green leads by ACID_GREEN, so
-## the pixels read hold the acid.
-const GRID_GREEN: float = 0.05
+## The camera's two zooms, the only ones it draws the scene at.
+const ZOOMS: Array[float] = [1.0, 2.0]
+## The most frames player two walks away from player one, and the frames the
+## camera then has to settle.
+const PART_FRAMES: int = 300
+const PARTED_SETTLE: int = 60
+## The least share of a layer's edge pixels, those that differ from a
+## neighbour along a row or a column, that differ from both neighbours along
+## it, so stand one screen pixel wide or tall; and how far apart, from 0 to 1
+## in a channel, two pixels must be to differ. Art drawn in blocks of two or
+## more screen pixels holds none but where something else crosses it.
+const DENSE_SHARE: float = 0.05
+const DENSE_TOLERANCE: float = 0.01
+## The least edge pixels, along the rows and along the columns, a layer must
+## show for its density to be read.
+const DENSE_EDGES: int = 400
 ## The least frames a second the city draws, and over how many frames.
 const FRAME_RATE: float = 60.0
 const RATE_FRAMES: int = 600
@@ -150,19 +158,21 @@ const TEETH_COVER: float = 0.3
 ## The teeth picture's gum, as the World layer draws it unbroken along the top
 ## over the fangs: its left edge in the picture, the width of one run of the
 ## fangs it repeats at, and its rows.
-const GUM_LEFT: int = 28
-const JAW_RUN: int = 392
-const GUM_ROWS: int = 24
+const GUM_LEFT: int = 31
+const JAW_RUN: int = 385
+const GUM_ROWS: int = 40
+## The teeth picture's top rows, above every fang, which hold only its gum.
+const GUM_ONLY_ROWS: int = 32
 ## How many fangs one run of them holds: no run of that many on the screen may
 ## recur elsewhere on it in the same order of pictures, whatever their drops.
-const RUN_FANGS: int = 8
+const RUN_FANGS: int = 10
 ## The most of the throat's pixels, drawn behind the teeth from under their
 ## gum down to their lowest tip, that may be in the colours the teeth picture
 ## draws its fangs in and not its gum, so no second row of fangs hangs there;
 ## and the least of the teeth's own pixels over the same rows that must be, so
 ## those colours are the fangs'.
 const SECOND_ROW: float = 0.05
-const TEETH_FANGED: float = 0.5
+const TEETH_FANGED: float = 0.35
 ## How dark, in luminance, a pixel of a support reads; how many scene pixels
 ## tall a dark run must be to read as a long support, longer than a brace;
 ## and the most of the play area's columns such runs may cross.
@@ -202,7 +212,7 @@ var slab_frames: int = 0
 var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
-var grid_frames: int = 0
+var dense_frames: int = 0
 var light_frames: int = 0
 var teeth_frames: int = 0
 var support_frames: int = 0
@@ -368,6 +378,8 @@ func _run() -> void:
 	await _tap(KEY_U)
 	await _frames(12)
 	await _save_city("16-two-players-city")
+	if not await _zoom_steps():
+		return
 	await _tap(KEY_ESCAPE)
 	await _save("21-pause-two-players")
 	await _tap(KEY_ESCAPE)
@@ -405,10 +417,10 @@ func _run() -> void:
 	await _save("13-ending-card")
 	if not await _scales_whole():
 		return
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or grid_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, pixel grid %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the pixel grid in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, grid_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -700,7 +712,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f." % [screen, view.x.x])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _on_grid(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _fangs_vary(screen) or not _one_row_of_teeth(screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _fangs_vary(screen) or not _one_row_of_teeth(screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -812,7 +824,7 @@ func _band_top() -> int:
 ## Whether the sea in the scene, drawn over the acid band, reaches none of the
 ## BAND_ROWS under the band's surface.
 func _band_clear(view: Transform2D) -> bool:
-	return (view * Vector2(0, _acid_surface() - SEA_REACH)).y >= _band_top() + BAND_ROWS.y
+	return (view * Vector2(0, _acid_surface())).y - SEA_REACH >= _band_top() + BAND_ROWS.y
 
 ## Over the BAND_ROWS under the acid band's surface across the screen, every
 ## other column: the share of pixels whose green leads their red and blue by
@@ -942,46 +954,133 @@ func _draws_fast(screen: String) -> bool:
 		return false
 	return true
 
-## Whether, at a zoom of two or more, GRID_SHARE of the scene pixels the frame
-## shows below the sea's surface, clear of the word plates, are each one colour,
-## so the finishing pass keeps to the scene's pixels. The control is that
-## GRID_GREEN of the pixels read hold the acid's green.
-func _on_grid(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
-	var zoom: int = roundi(view.x.x)
-	var sea: int = ceili((view * Vector2(0, _acid_surface())).y)
-	if zoom < 2 or sea >= PLAY.end.y - 8 * zoom:
-		return true
-	var origin: Vector2i = Vector2i(view.origin.round())
-	var first_x: int = posmod(origin.x, zoom)
-	var first_y: int = maxi(sea, int(PLAY.position.y))
-	first_y += posmod(origin.y - first_y, zoom)
-	var whole: int = 0
-	var count: int = 0
-	var green: int = 0
-	for y: int in range(first_y, int(PLAY.end.y) - zoom + 1, zoom):
-		for x: int in range(first_x, int(PLAY.size.x) - zoom + 1, zoom):
-			var block: Rect2 = Rect2(x, y, zoom, zoom)
-			if plates.any(func(plate: Rect2) -> bool: return plate.intersects(block)):
-				continue
-			var corner: Color = frame.get_pixel(x, y)
-			var one: bool = true
-			for dy: int in range(zoom):
-				for dx: int in range(zoom):
-					var other: Color = frame.get_pixel(x + dx, y + dy)
-					if maxf(absf(corner.r - other.r), maxf(absf(corner.g - other.g), absf(corner.b - other.b))) > GRID_TOLERANCE:
-						one = false
-			count += 1
-			whole += 1 if one else 0
-			green += 1 if corner.g - maxf(corner.r, corner.b) >= ACID_GREEN else 0
-	if count == 0:
-		return true
-	var share: float = float(whole) / count
-	grid_frames += 1
-	print("Capture: %s: %.3f of %d scene pixels below the sea's surface are one colour, %.3f of them green (at least %.3f one colour, %.3f green)." % [screen, share, count, float(green) / count, GRID_SHARE, GRID_GREEN])
-	if float(green) / count < GRID_GREEN or share < GRID_SHARE:
-		_fail("%s: the finished sea does not keep to the scene's pixels" % screen)
+## Whether, as player two walks left and climbs the ladder there away from
+## player one until the camera heads for the scene's own size, and the
+## camera then settles, every frame draws the scene at one of the camera's
+## ZOOMS. The control is that the camera headed for the scene's own size and
+## drew it, so it zoomed out on the way.
+func _zoom_steps() -> bool:
+	var zooms: Array[float] = []
+	var parted: bool = false
+	_key(KEY_J, true)
+	_key(KEY_I, true)
+	for frame: int in range(PART_FRAMES + PARTED_SETTLE):
+		if parted or frame == PART_FRAMES:
+			_key(KEY_J, false)
+			_key(KEY_I, false)
+		await process_frame
+		var view: Transform2D = scene.get_meta("map_view", Transform2D())
+		var heading: Transform2D = scene.get_meta("map_heading", Transform2D())
+		zooms.append(view.x.x)
+		parted = parted or is_equal_approx(heading.x.x, 1.0)
+	_key(KEY_J, false)
+	_key(KEY_I, false)
+	var between: Array[float] = []
+	var drawn: Array[float] = []
+	for zoom: float in zooms:
+		if not drawn.has(zoom):
+			drawn.append(zoom)
+		if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
+			between.append(zoom)
+	var last: float = zooms.back()
+	var status: Dictionary = scene.survival_status()
+	var appraiser: Dictionary = status["appraiser"]
+	var chef: Dictionary = status["chef"]
+	print("Capture: player two walked away from player one and ended on %s, player one on %s; the camera drew zooms %s, ending at %.3f." % [_cell(appraiser), _cell(chef), drawn, last])
+	if not parted or not drawn.any(func(zoom: float) -> bool: return is_equal_approx(zoom, 1.0)):
+		_fail("the camera's zoom cannot be read: it headed for the scene's own size: %s, and drew %s" % [parted, drawn])
+		return false
+	if not between.is_empty():
+		_fail("the camera draws the scene at zooms between its steps: %s" % [between.slice(0, 5)])
 		return false
 	return true
+
+## The cell an actor's status dictionary puts it on.
+func _cell(actor: Dictionary) -> Vector2i:
+	var x: int = actor["x"]
+	var y: int = actor["y"]
+	return Vector2i(x, y)
+
+## Whether the camera draws the scene at one of its ZOOMS and, at twice the
+## scene's size, the teeth, the backdrop under them and the acid each stand in
+## pixels one screen pixel wide and tall: DENSE_SHARE of each one's edge
+## pixels clear of the word plates and the HUD, along the rows and along the
+## columns, differ from both their neighbours. The teeth are read where the
+## frame shows them over the top TEETH_ROWS of the play area, the
+## backdrop from under those rows down to the acid's surface, and the acid
+## over the BAND_ROWS under the band's surface where the sea does not cover
+## them, else the SEA_ROWS under the sea's surface. A layer is read when the
+## frame shows DENSE_EDGES of its edge pixels along each, and the frame counts
+## as measured when all three are.
+func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
+	var zoom: float = view.x.x
+	if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
+		_fail("%s: the camera draws the scene at zoom %.3f, between its steps" % [screen, zoom])
+		return false
+	if not is_equal_approx(zoom, 2.0):
+		return true
+	var covered: Array = plates + scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", [])
+	var acid_rows: Vector2i = Vector2i(_band_top() + BAND_ROWS.x, _band_top() + BAND_ROWS.y)
+	if not _band_clear(view):
+		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		acid_rows = Vector2i(sea + SEA_ROWS.x, sea + SEA_ROWS.y)
+	var top: int = int(PLAY.position.y)
+	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
+	var layers: Dictionary = {
+		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, true),
+		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, false),
+		"acid": _thin(frame, acid_rows, covered, false),
+	}
+	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %.3f each, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
+	var read: int = 0
+	for layer: String in layers:
+		var found: Vector2 = layers[layer]
+		if found.y < DENSE_EDGES:
+			continue
+		read += 1
+		if found.x < DENSE_SHARE:
+			_fail("%s: the %s is drawn in pixels larger than a screen pixel" % [screen, layer])
+			return false
+	if read == layers.size():
+		dense_frames += 1
+	return true
+
+## Over the screen rows from rows.x to rows.y, every other row and column,
+## each pixel clear of the rectangles covered and, with teeth, only where the frame shows the teeth
+## the World layer drew, within TEETH_TOLERANCE in each channel: of the
+## pixels that differ from a neighbour along the row, the share that differ
+## from both, and the same along the column; the smaller of the two shares, as
+## x, and the fewer of the two counts of such pixels, as y.
+func _thin(frame: Image, rows: Vector2i, covered: Array, teeth: bool) -> Vector2:
+	var edges: Vector2i = Vector2i.ZERO
+	var thin: Vector2i = Vector2i.ZERO
+	var width: int = int(PLAY.size.x)
+	for y: int in range(maxi(rows.x, 1), mini(rows.y, frame.get_height() - 1), 2):
+		for x: int in range(1, width - 1, 2):
+			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y))):
+				continue
+			var pixel: Color = frame.get_pixel(x, y)
+			if teeth:
+				var tooth: Color = _tooth(x, y)
+				if tooth.a < 0.5 or maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) > TEETH_TOLERANCE:
+					continue
+			var left: bool = _differ(pixel, frame.get_pixel(x - 1, y))
+			var right: bool = _differ(pixel, frame.get_pixel(x + 1, y))
+			var up: bool = _differ(pixel, frame.get_pixel(x, y - 1))
+			var down: bool = _differ(pixel, frame.get_pixel(x, y + 1))
+			if left or right:
+				edges.x += 1
+				thin.x += 1 if left and right else 0
+			if up or down:
+				edges.y += 1
+				thin.y += 1 if up and down else 0
+	if edges.x == 0 or edges.y == 0:
+		return Vector2(0.0, 0.0)
+	return Vector2(minf(float(thin.x) / edges.x, float(thin.y) / edges.y), mini(edges.x, edges.y))
+
+## Whether two pixels differ by more than DENSE_TOLERANCE in a channel.
+func _differ(one: Color, other: Color) -> bool:
+	return maxf(absf(one.r - other.r), maxf(absf(one.g - other.g), absf(one.b - other.b))) > DENSE_TOLERANCE
 
 ## Whether, over the columns where the acid shows under its surface, the band's
 ## where the sea does not cover it and the sea's otherwise, the LIT_ROWS above
@@ -1151,7 +1250,7 @@ func _one_row_of_teeth(screen: String) -> bool:
 
 func _fang_colours(picture: Image) -> Dictionary:
 	var gum: Dictionary = {}
-	for y: int in range(GUM_ROWS):
+	for y: int in range(GUM_ONLY_ROWS):
 		for x: int in range(picture.get_width()):
 			gum[picture.get_pixel(x, y).to_html(false)] = true
 	var colours: Dictionary = {}
