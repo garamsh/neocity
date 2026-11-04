@@ -11,8 +11,9 @@ Subcommands, all driven by assets.json beside this file:
                          write the review sheet: the concept images, a mock frame, 8x close-ups
                          (sheet poses beside sprites, plain renders beside processed), every asset
   check ART              measure every runtime PNG in ART's manifest and exit 1 when one breaks a
-                         clean-art rule: lone pixels, its folder's colour limit, and for world and
-                         character sprites the lit outline and the light from above
+                         clean-art rule: lone pixels, its folder's colour limit, for world and
+                         character sprites the lit outline and the light from above, and for the
+                         backdrop layers one picture pixel to a screen pixel
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -57,6 +58,11 @@ LOGO_COLOURS = 16
 SPRITE_FOLDERS = ("characters", "world", "walkway", "ground", "decor")
 # The share of side and bottom edge pixels that must be no lighter than the pixel inside them.
 EDGE_SHARE = 0.95
+# Folders drawn one picture pixel to a screen pixel at the default camera, and the least share of
+# their edge pixels, those that differ from a neighbour along a row or a column, that differ from
+# both, so stand one pixel wide or tall. Art drawn in blocks of two or more pixels holds none.
+SCREEN_PIXEL_FOLDERS = ("backgrounds",)
+THIN_SHARE = 0.1
 
 
 def read_png(path):
@@ -811,6 +817,26 @@ def measure(rows, scale):
     }
 
 
+def thin_share(rows):
+    """Of the opaque pixels that differ from an opaque neighbour along a row, the share that differ
+    from both, and the same along a column; the smaller of the two, or None with no such pixel."""
+    shares = []
+    for lines in (rows, transpose(rows)):
+        edges = thin = 0
+        for line in lines:
+            for x in range(1, len(line) - 1):
+                left, pixel, right = line[x - 1], line[x], line[x + 1]
+                if not (left[3] and pixel[3] and right[3]):
+                    continue
+                differs = (left[:3] != pixel[:3], right[:3] != pixel[:3])
+                edges += any(differs)
+                thin += all(differs)
+        if not edges:
+            return None
+        shares.append(thin / edges)
+    return min(shares)
+
+
 def problems(path, rows, scale):
     """The clean-art rules one runtime PNG at path breaks, each as a sentence."""
     folder = path.split("/")[0]
@@ -821,6 +847,11 @@ def problems(path, rows, scale):
         found.append(f"{m['lone']:.2%} lone pixels, over {LONE_LIMIT:.0%}")
     if limit is None or m["colours"] > limit:
         found.append(f"{m['colours']} colours, over the {folder} limit of {limit}")
+    if folder in SCREEN_PIXEL_FOLDERS:
+        thin = thin_share(rows)
+        if thin is None or thin < THIN_SHARE:
+            share = "no" if thin is None else f"{thin:.0%} of"
+            found.append(f"drawn in blocks: {share} edge pixels one pixel wide, under {THIN_SHARE:.0%}")
     if folder in SPRITE_FOLDERS:
         if m["edge"] is not None and m["edge"] < EDGE_SHARE:
             found.append(f"{m['edge']:.0%} of side and bottom edges darker than inside, under {EDGE_SHARE:.0%}")

@@ -78,7 +78,19 @@ class CheckTest(unittest.TestCase):
         for x in range(1, 21):
             rows[1][x] = DARK
             rows[20][x] = (250, 250, 250, 255)
-        self.assertEqual(problems(rows, "backgrounds/test.png"), [])
+        found = problems(rows, "backgrounds/test.png")
+        self.assertEqual([problem for problem in found if "edges darker" in problem or "lit from below" in problem], [])
+
+    def test_a_backdrop_layer_drawn_in_blocks_breaks_the_screen_pixel_rule(self):
+        dense = [[LIGHT if (x + y) % 2 else MID for x in range(24)] for y in range(24)]
+        self.assertEqual(problems(dense, "backgrounds/test.png"), [])
+        blocks = pixelize.upscale([row[::2] for row in dense[::2]], 2)
+        found = problems(blocks, "backgrounds/test.png")
+        self.assertEqual(len(found), 1)
+        self.assertIn("drawn in blocks", found[0])
+
+    def test_the_screen_pixel_rule_skips_the_sprites(self):
+        self.assertEqual(problems(pixelize.upscale(sprite(), 2), "decor/test.png"), [])
 
 
 if __name__ == "__main__":
