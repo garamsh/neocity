@@ -73,11 +73,11 @@ constexpr float GOAL_Y = BAND_Y + BAND_HEIGHT + GAP;
 constexpr int GOAL_SIZE = SMALL_SIZE;
 constexpr float GOAL_PAD = 14.0F;
 /// The goal line may run the screen's width, between the corners above and
-/// the Esc hint and notes below.
+/// the pause chip and notes below.
 constexpr float GOAL_WIDTH = SCREEN_WIDTH - 2.0F * MARGIN;
 constexpr int HAND_OFF_SIZE = SMALL_SIZE;
 constexpr float HINT_Y = GOAL_Y + 60.0F;
-/// The log's notes, right-aligned under the Esc hint; each shows this long,
+/// The log's notes, right-aligned under the pause chip; each shows this long,
 /// then fades.
 constexpr float NOTE_Y = HINT_Y + 12.0F;
 constexpr float NOTE_WIDTH = 340.0F;
