@@ -414,13 +414,28 @@ func _run() -> void:
 	_finish("pass")
 	quit(0)
 
-## Whether the window, set to each of WINDOW_SIZES and then to full screen,
+## Whether the window, taken out of the full screen it starts in and set to
+## each of WINDOW_SIZES, and then back to full screen,
 ## shows the screen, still SCREEN in size, at the largest whole multiple of it
 ## that fits, centred on whole pixels. Godot 4.7.2's compatibility renderer
 ## copies the screen to the window with nearest filtering, so each of its
 ## pixels is then a square of whole window pixels. A window that does not take
-## the size or mode asked of it fails.
+## the size or mode asked of it fails, and so does a game that did not start
+## in full screen.
 func _scales_whole() -> bool:
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN:
+		_fail("the game did not start in full screen: mode %d" % DisplayServer.window_get_mode())
+		return false
+	if not _shown_whole("the full screen the game starts in"):
+		return false
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	for frame: int in range(RESIZE_FRAMES):
+		if DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_WINDOWED:
+			break
+		await process_frame
+	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_WINDOWED:
+		_fail("the window did not leave full screen: mode %d" % DisplayServer.window_get_mode())
+		return false
 	for size: Vector2i in WINDOW_SIZES:
 		DisplayServer.window_set_size(size)
 		for frame: int in range(RESIZE_FRAMES):
