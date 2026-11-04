@@ -174,9 +174,10 @@ constexpr float BOOK_ROW = 24.0F;
 constexpr int BOOK_SIZE = SMALL_SIZE;
 constexpr std::size_t EATEN_PER_LINE = 6;
 /// What feeding does, under the recipe book.
-constexpr std::array FEED_RULES{"New and delicious food holds the acid back.",
-                                "Anything else raises it.",
-                                "Full acid ends the run."};
+constexpr std::array FEED_RULES{
+    "A dish reaching the needed score holds the acid back.",
+    "A hated dish, a lower score or no meal raises it.",
+    "Full acid ends the run."};
 /// The volume rows' part at the bottom of the pause screen.
 constexpr float VOLUME_AREA = 104.0F;
 constexpr float VOLUME_ROW_HEIGHT = 34.0F;

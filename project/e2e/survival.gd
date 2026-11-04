@@ -109,7 +109,7 @@ const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## actors' tags.
 const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
 ## What feeding does, which the recipe book on the pause screen names.
-const FEED_RULES: Array[String] = ["New and delicious food holds the acid back.", "Anything else raises it.", "Full acid ends the run."]
+const FEED_RULES: Array[String] = ["A dish reaching the needed score holds the acid back.", "A hated dish, a lower score or no meal raises it.", "Full acid ends the run."]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
