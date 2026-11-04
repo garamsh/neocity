@@ -74,6 +74,9 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## reads 0.21 to 0.24 over its walkways' 0.10 to 0.13; the walkways, not yet
 ## redrawn from it, read 0.14 to 0.16, at least 0.048 under the backdrop.
 const FACE_GAP: float = 0.03
+## How far over the acid band's surface its light reaches what stands there:
+## the finish shader's six glow bands of 8 screen pixels.
+const ACID_LIGHT_REACH: int = 48
 const ACID_GAP: float = 0.05
 ## How much a pixel's green channel leads its red and blue, from 0 to 1, for
 ## it to read as glowing acid, and the least share of the band's pixels that
@@ -763,7 +766,9 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 ## shows, when it shows two or more: the walkways' faces darkest, the backdrop
 ## in the cells above them brighter by FACE_GAP, and, where the frame shows the
 ## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
-## those pixels brighter than the backdrop by ACID_GAP. The control is that
+## those pixels brighter than the backdrop by ACID_GAP. A face the band's
+## light reaches, within ACID_LIGHT_REACH over its surface, is lit green as the
+## mockup lights its posts over the lake, and is not read. The control is that
 ## the faces are not black.
 func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
 	var face: float = 0.0
@@ -771,7 +776,7 @@ func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
 	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
-		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)):
+		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)) or (view * (corner + Vector2(0, CELL + FACE_ROWS.y))).y > _band_top() - ACID_LIGHT_REACH:
 			continue
 		face += _luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x)
 		behind += _luminance(frame, view, corner, CELL)
