@@ -31,7 +31,7 @@ This supersedes ADR 0015's teeth hung along the top of the screen whatever the c
 - The colour limit and the lone-pixel rule of the art folder's clean-art rules do not apply to `backgrounds/`, whose layers keep the mockup's colours. The density rule does.
 - `tools/art/pixelize.py` reads the mockup from the repository's history and cuts each layer from it with the fills and the clear regions `tools/art/assets.json` lists, so the layers are regenerated, not edited.
 - The layers align with the mockup only on the first city screen. Wherever else the camera goes, each slides by its own share of the camera's movement, as before.
-- The mockup's backdrop is darker than the redrawn one: its walkways read 0.10 to 0.13 in luminance under a backdrop of 0.21 to 0.24. Until the walkways are drawn from it too, the game's walkways read as little as 0.046 under the new backdrop, and the capture's value check holds them to 0.03.
+- The mockup's backdrop is darker than the redrawn one: its walkways read 0.10 to 0.13 in luminance under a backdrop of 0.21 to 0.24. Until the walkways are drawn from it too, the game's walkways read as little as 0.048 under the new backdrop, and the capture's value check holds them to 0.03.
 - What Recraft's erase filled shows wherever the map leaves the backdrop open: under the city's railway and in the acid lake's lower rows, as painted flesh and acid with less detail than the mockup around them.
 
 ## Signs the decision was wrong

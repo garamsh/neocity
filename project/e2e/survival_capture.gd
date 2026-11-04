@@ -71,14 +71,14 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## than the backdrop above them, and how much brighter the acid band's glowing
 ## pixels read than that backdrop. The mockup's backdrop, cut into the layers,
 ## reads 0.21 to 0.24 over its walkways' 0.10 to 0.13; the walkways, not yet
-## redrawn from it, read 0.14 to 0.16, at least 0.046 under the backdrop.
+## redrawn from it, read 0.14 to 0.16, at least 0.048 under the backdrop.
 const FACE_GAP: float = 0.03
 const ACID_GAP: float = 0.05
 ## How much a pixel's green channel leads its red and blue, from 0 to 1, for
 ## it to read as glowing acid, and the least share of the band's pixels that
 ## read so, with its sunken trains, the pillars and the walkways in front:
 ## the mockup's acid lake, its trains standing in the rows read, glows over
-## 0.126 of them at the least on the city frames.
+## 0.175 of them at the least on the city frames.
 const ACID_GREEN: float = 0.1
 const ACID_SHARE: float = 0.1
 ## The south stairs, each rising to the left across its cell from its floor
@@ -140,8 +140,8 @@ const PARTED_SETTLE: int = 60
 ## the finishing pass's ripples, which run per screen pixel over the acid
 ## whatever its picture. Measured on 4-city-collect-prompt with the pictures
 ## of 17b4d09, drawn in blocks: teeth 0.05, backdrop 0.01, acid 0.15; with
-## the layers cut from the mockup, on every city frame: teeth 0.80 to 0.89,
-## backdrop 0.45 to 0.55, acid 0.81 to 0.88.
+## the layers cut from the mockup, on every city frame that reads them:
+## teeth 0.79 to 0.88, backdrop 0.45 to 0.61, acid 0.68 to 0.87.
 const DENSE_SHARE: Dictionary[String, float] = {"teeth": 0.4, "backdrop": 0.25, "acid": 0.5}
 const DENSE_TOLERANCE: float = 0.01
 ## The least edge pixels, along the rows and along the columns, a layer must
