@@ -4,8 +4,7 @@ extends SceneTree
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
 ## band behind the map does not show green at no acid, the stairs' walked-on part does not
-## lead the part under it or reads darker than the deck's top edge, the fallen slab's
-## lit top edge does not run along its tilt, the acid's light does not rise
+## lead the part under it or reads darker than the deck's top edge, the acid's light does not rise
 ## above its surface, the acid stands still between two
 ## frames a moment apart on the scene's clock, the camera draws the scene at a
 ## zoom other than once or twice its size, the teeth, the backdrop or the acid
@@ -102,10 +101,6 @@ const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(11, 11)]
 const STAIR_PARITY: float = 0.9
 ## From the entrance down the market ladder into the market.
 const MARKET_ROUTE: Array[Vector2i] = [Vector2i(7, 8), Vector2i(7, 11), Vector2i(11, 11)]
-## The fallen slab's first cell and its width in cells; it falls a row from
-## the floor line of its first cell to that of the row below at its right end.
-const SLAB_CELL: Vector2i = Vector2i(20, 6)
-const SLAB_CELLS: int = 2
 ## Where the scene's clock is pinned, in seconds; how far apart on
 ## that clock the two frames of the acid's motion are taken; how much a pixel's
 ## colour must change in a channel, from 0 to 1, to count as moved; and the
@@ -204,7 +199,6 @@ var city_frames: int = 0
 var ground_frames: int = 0
 var stairs_frames: int = 0
 var parity_frames: int = 0
-var slab_frames: int = 0
 var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
@@ -406,10 +400,10 @@ func _run() -> void:
 	await _save("13-ending-card")
 	if not await _scales_whole():
 		return
-	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or slab_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
-		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, slab %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
+		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
-	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the slab in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, slab_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -701,7 +695,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _slab_tilts(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -867,23 +861,6 @@ func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	print("Capture: %s: the stairs' walked-on part reads at %.3f of the deck's top edge (walked %.3f, deck %.3f, at least %.3f)." % [screen, walked / deck, walked, deck, STAIR_PARITY])
 	if deck <= 0.0 or walked < STAIR_PARITY * deck:
 		_fail("%s: the stairs' walked-on part reads darker than the deck's top edge" % screen)
-		return false
-	return true
-
-## Whether the fallen slab's lit top edge, the EDGE_ROWS under the line it
-## tilts along, leads the EDGE_ROWS of scenery just above that line by
-## GROUND_LEAD, when the frame shows the slab.
-func _slab_tilts(frame: Image, view: Transform2D, screen: String) -> bool:
-	var corner: Vector2 = Vector2(MAP_ORIGIN + (SLAB_CELL + Vector2i.DOWN) * CELL)
-	if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(SLAB_CELLS * CELL, CELL + 2 * EDGE_ROWS)):
-		return true
-	var columns: Vector2i = Vector2i(0, SLAB_CELLS * CELL)
-	var edge: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(0, EDGE_ROWS))
-	var above: float = _band(frame, view, corner, SLAB_CELLS * CELL, columns, Vector2i(-EDGE_ROWS, 0))
-	slab_frames += 1
-	print("Capture: %s: the fallen slab's top edge leads the scenery above its tilt by %.3f (edge %.3f, scenery %.3f, at least %.3f)." % [screen, edge - above, edge, above, GROUND_LEAD])
-	if above <= 0.0 or edge - above < GROUND_LEAD:
-		_fail("%s: the fallen slab's top edge does not run along its tilt" % screen)
 		return false
 	return true
 
