@@ -40,5 +40,4 @@ Every picture is drawn one picture pixel to one screen pixel at the default came
 
 - Players find the jump between the two zooms jarring, and it needs a transition, or the camera an eased zoom drawn some other way.
 - Two players spend most of a run apart, so the scene is mostly drawn at its own size, where the new pictures lose half their detail.
-- The pictures drawn from painted generations read as filtered rather than pixel art beside the concept, and the backgrounds need hand-drawn clusters instead.
 - The denser backdrop competes with the walkways, and the walkways' faces stop reading darker than it.

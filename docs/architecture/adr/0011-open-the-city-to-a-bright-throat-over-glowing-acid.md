@@ -1,6 +1,6 @@
 # ADR 0011: Open the city to a bright throat over glowing acid
 
-> Status: accepted; the supports under every walkway superseded by ADR-0015
+> Status: accepted; the supports under every walkway superseded by ADR-0015; the throat's near-white parts pulled toward its magenta superseded by ADR-0018
 > Date: 2026-11-03
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.
