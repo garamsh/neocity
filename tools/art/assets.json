@@ -2662,27 +2662,6 @@
    "depicts": "Clock icon: grey case, yellow face"
   },
   {
-   "path": "ui/icon_acid.png",
-   "source": "ui",
-   "crop": [
-    822,
-    768,
-    183,
-    183
-   ],
-   "size": [
-    32,
-    32
-   ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "key": {
-    "alpha": true
-   },
-   "depicts": "Acid icon: green drop"
-  },
-  {
    "path": "workshop/kitchen.png",
    "source": "workshop",
    "crop": [

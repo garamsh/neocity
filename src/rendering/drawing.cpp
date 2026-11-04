@@ -204,8 +204,6 @@ const char *path(Image image) {
     return "ui/heart_empty.png";
   case Image::IconDay:
     return "ui/icon_day.png";
-  case Image::IconAcid:
-    return "ui/icon_acid.png";
   case Image::IconClock:
     return "ui/icon_clock.png";
   case Image::IngredientTomato:
