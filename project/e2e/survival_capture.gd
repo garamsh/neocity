@@ -708,7 +708,7 @@ func _save_city(screen: String) -> Image:
 	if misnamed != "":
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
-	print("Capture: %s at zoom %.2f, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, scene.get_node("World").get_meta("backdrop_layers", [])])
+	print("Capture: %s at zoom %.2f, the scene's origin at %s, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, view.origin, scene.get_node("World").get_meta("backdrop_layers", [])])
 	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
