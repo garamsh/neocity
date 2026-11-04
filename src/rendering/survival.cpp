@@ -852,10 +852,12 @@ bool shop_inside(const ObjectSnapshot &building, const Marker &marker) {
                 {.x = marker.object.area.x, .y = marker.object.area.y});
 }
 
-/// A lit shop front is the mockup's, two cells deep over its floor and
-/// SHOP_CELLS across around its column, kept inside the mockup's screen, and
-/// stands behind the ground. A shop inside a building is drawn with that
-/// building, or its rubble.
+/// A lit shop front is the mockup's, two cells deep over its floor, kept
+/// inside the mockup's screen, and stands behind the ground. It spans the
+/// standing building right over its floor when one covers its column, as the
+/// mockup's kitchen fills its loft, and SHOP_CELLS around its column
+/// otherwise. A shop inside a building is drawn with that building, or its
+/// rubble.
 void paint_shop_front(godot::Node2D &canvas, const Art &art,
                       std::span<const ObjectSnapshot> objects,
                       const Marker &marker) {
@@ -867,9 +869,18 @@ void paint_shop_front(godot::Node2D &canvas, const Art &art,
   }
   const std::int32_t x = marker.object.area.x;
   const std::int32_t y = marker.object.area.y;
-  const float span = static_cast<float>(SHOP_CELLS) * CELL;
+  const auto over = std::ranges::find_if(objects, [&](const auto &object) {
+    return object.kind == ObjectKind::Building &&
+           object.state == ObjectState::Intact &&
+           object.area.y + object.area.height == y &&
+           covers(object.area, {.x = x, .y = object.area.y});
+  });
+  const bool spans = over != objects.end();
+  const std::int32_t first = spans ? over->area.x : x - 1;
+  const float span =
+      static_cast<float>(spans ? over->area.width : SHOP_CELLS) * CELL;
   const float left =
-      std::clamp(mockup_x(x) - CELL, 0.0F,
+      std::clamp(mockup_x(x) + static_cast<float>(first - x) * CELL, 0.0F,
                  static_cast<float>(MOCKUP_COLUMNS) * CELL - span);
   art.image_part(canvas, Image::Shop,
                  rect(left, band(SHOP_ROWS, y) * SHOP_DEPTH, span, SHOP_DEPTH),
