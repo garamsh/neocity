@@ -69,9 +69,6 @@ constexpr float CITY_BOTTOM = 700.0F;
 /// moves.
 constexpr float JAW_TOP = 0.0F;
 constexpr float JAW_DEPTH = 1.25F;
-/// The teeth picture's pixels, drawn on the scene's pixel grid at twice its
-/// size, so the finishing pass reads them whole.
-constexpr float JAW_PIXEL = 2.0F;
 /// One fang of the teeth picture: its columns, from one gap to the next, and
 /// its tip, in the picture's pixels.
 struct Fang {
@@ -83,18 +80,20 @@ struct Fang {
 /// screen in an order and at drops that change from one run of them to the
 /// next, so no stretch of the row repeats another.
 constexpr std::array JAW_FANGS{
-    Fang{.left = 28.0F, .width = 50.0F, .tip = Vector2(16.0F, 162.0F)},
-    Fang{.left = 78.0F, .width = 50.0F, .tip = Vector2(24.0F, 126.0F)},
-    Fang{.left = 128.0F, .width = 44.0F, .tip = Vector2(20.0F, 126.0F)},
-    Fang{.left = 172.0F, .width = 52.0F, .tip = Vector2(28.0F, 158.0F)},
-    Fang{.left = 224.0F, .width = 48.0F, .tip = Vector2(20.0F, 126.0F)},
-    Fang{.left = 272.0F, .width = 46.0F, .tip = Vector2(22.0F, 114.0F)},
-    Fang{.left = 318.0F, .width = 50.0F, .tip = Vector2(20.0F, 124.0F)},
-    Fang{.left = 368.0F, .width = 52.0F, .tip = Vector2(24.0F, 156.0F)}};
+    Fang{.left = 31.0F, .width = 39.0F, .tip = Vector2(15.0F, 137.0F)},
+    Fang{.left = 70.0F, .width = 38.0F, .tip = Vector2(12.0F, 126.0F)},
+    Fang{.left = 108.0F, .width = 40.0F, .tip = Vector2(16.0F, 114.0F)},
+    Fang{.left = 148.0F, .width = 38.0F, .tip = Vector2(16.0F, 108.0F)},
+    Fang{.left = 186.0F, .width = 40.0F, .tip = Vector2(17.0F, 123.0F)},
+    Fang{.left = 226.0F, .width = 38.0F, .tip = Vector2(12.0F, 119.0F)},
+    Fang{.left = 264.0F, .width = 35.0F, .tip = Vector2(13.0F, 104.0F)},
+    Fang{.left = 299.0F, .width = 39.0F, .tip = Vector2(14.0F, 109.0F)},
+    Fang{.left = 338.0F, .width = 40.0F, .tip = Vector2(16.0F, 126.0F)},
+    Fang{.left = 378.0F, .width = 38.0F, .tip = Vector2(17.0F, 123.0F)}};
 /// The width of one run of every fang, and of the gum drawn unbroken over
 /// their roots along the top, from the first fang's left edge.
-constexpr float JAW_RUN = 392.0F;
-constexpr float JAW_GUM = 24.0F;
+constexpr float JAW_RUN = 385.0F;
+constexpr float JAW_GUM = 40.0F;
 /// How far below the gum each fang may hang.
 constexpr std::array JAW_DROPS{0.0F, 4.0F, 8.0F, 12.0F, 16.0F};
 /// The part of the kitchen picture the workshop shows between the top bar and
@@ -173,17 +172,12 @@ constexpr float LAMP_GLOW = 46.0F;
 constexpr float LAMP_LIGHT = 0.07F;
 constexpr float DRIP_GLOW = 30.0F;
 constexpr float DRIP_LIGHT = 0.06F;
-/// The acid band's art is drawn at its own size, four screen pixels to each
-/// of its pixels.
-constexpr float BAND_PIXEL = 4.0F;
 
 /// The throat breathes over this many seconds, lifting this many pixels and
 /// brightening by this share as it draws in.
 constexpr float BREATH_SECONDS = 5.0F;
 constexpr float BREATH_LIFT = 4.0F;
 constexpr float BREATH_GLOW = 0.08F;
-/// The size of the throat picture's pixels.
-constexpr float THROAT_PIXEL = 4.0F;
 /// A drop swells at its tip for the first part of its cycle, then falls
 /// with this pull, in pixels per second squared, until it has fallen its
 /// reach.
@@ -200,10 +194,10 @@ constexpr int SPORES = 28;
 constexpr float SPORE_RISE = 7.0F;
 constexpr float FAR_SPORE_DEPTH = 0.25F;
 constexpr float NEAR_SPORE_DEPTH = 0.8F;
-/// Steam over an acid surface: a puff every this many pixels along it, each
-/// rising this many of its pixels over about this many seconds.
+/// Steam over an acid surface: a puff every this many screen pixels along
+/// it, each rising this many over about this many seconds.
 constexpr float STEAM_SPACING = 36.0F;
-constexpr float STEAM_RISE = 40.0F;
+constexpr float STEAM_RISE = 80.0F;
 constexpr float STEAM_SECONDS = 3.4F;
 /// Seeds of the ambient motion's scatter, one per kind of thing moving.
 constexpr std::uint32_t SALIVA_SEED = 0x5A11U;
@@ -900,8 +894,8 @@ float breath(const Art &art) {
 
 /// Spores rising through the air over the whole screen, moved by `camera`
 /// as a layer `depth` of the way to the map is: squares of `size` screen
-/// pixels on their own grid, in the first of `tints` and every other one in
-/// the second, each twinkling.
+/// pixels on whole screen pixels, in the first of `tints` and every other one
+/// in the second, each twinkling.
 void paint_spores(godot::Node2D &canvas, const Art &art, const View &camera,
                   float depth, float size, std::array<godot::Color, 2> tints,
                   std::uint32_t seed) {
@@ -919,33 +913,31 @@ void paint_spores(godot::Node2D &canvas, const Art &art, const View &camera,
     godot::Color tint = tints.at(static_cast<std::size_t>(spore % 2));
     const float twinkle = 1.0F + 2.0F * unit(seed + 3U, spore);
     tint.a *= 0.55F + 0.45F * std::sin(seconds * twinkle + at);
-    canvas.draw_rect(rect(snapped(x, size), snapped(y, size), size, size),
-                     tint);
+    canvas.draw_rect(rect(std::floor(x), std::floor(y), size, size), tint);
   }
 }
 
-/// Steam rising off an acid surface at row `surface`, across the screen's
-/// width from 0, in puffs on the grid of `pixel` that swell and fade as they
-/// rise.
+/// Steam rising off an acid surface at screen row `surface`, across the
+/// screen's width from 0, in puffs on whole screen pixels that swell and fade
+/// as they rise.
 void paint_steam(godot::Node2D &canvas, const Art &art, float surface,
-                 float pixel, godot::Color tint) {
+                 godot::Color tint) {
   const float seconds = art.seconds();
   const auto puffs = static_cast<int>(SCREEN_WIDTH / STEAM_SPACING);
   for (int puff = 0; puff <= puffs; ++puff) {
     const float run =
         cycle(seconds, STEAM_SECONDS * (0.8F + 0.5F * unit(STEAM_SEED, puff)),
               unit(STEAM_SEED + 1U, puff));
-    const float size = std::floor(2.0F + 4.0F * run) * pixel;
-    const float x =
-        (static_cast<float>(puff) + unit(STEAM_SEED + 2U, puff)) *
-            STEAM_SPACING +
-        3.0F * pixel * std::sin(run * 4.0F + static_cast<float>(puff));
-    const float y = surface - run * STEAM_RISE * pixel;
+    const float size = std::floor(4.0F + 8.0F * run);
+    const float x = (static_cast<float>(puff) + unit(STEAM_SEED + 2U, puff)) *
+                        STEAM_SPACING +
+                    6.0F * std::sin(run * 4.0F + static_cast<float>(puff));
+    const float y = surface - run * STEAM_RISE;
     godot::Color fading = tint;
     fading.a *= std::sin(run * std::numbers::pi_v<float>);
-    canvas.draw_rect(rect(snapped(x - size / 2.0F, pixel),
-                          snapped(y - size, pixel), size, size),
-                     fading);
+    canvas.draw_rect(
+        rect(std::floor(x - size / 2.0F), std::floor(y - size), size, size),
+        fading);
   }
 }
 
@@ -1715,6 +1707,13 @@ float band_surface(float acid_ratio) {
                                         (BAND_HIGH - BAND_LOW));
 }
 
+/// The screen row of the surface of the sea in the scene at `acid_ratio`, as
+/// `camera` shows it, on a whole pixel.
+float sea_row(const View &camera, float acid_ratio) {
+  return std::floor(
+      to_screen(camera, Vector2(0.0F, acid_surface(acid_ratio))).y);
+}
+
 /// Draws the acid picture with its top edge at `top`, from `left` across
 /// `width`, mirrored where `width` is negative: its surface glows, and below
 /// it the sea fades over a few steps to the `deep` tint.
@@ -1792,13 +1791,9 @@ std::array<std::size_t, JAW_FANGS.size()> fang_order(std::int64_t run) {
 /// scene afterwards.
 void paint_jaw(godot::Node2D &canvas, const Art &art) {
   const Look scene = art.looking();
-  const auto on_grid = [](float value, float grid) {
-    return grid + snapped(value - grid, JAW_PIXEL);
-  };
   // Run 0 starts here; the runs before and after it continue the row.
-  const float slide = on_grid(scene.origin.x * JAW_DEPTH, scene.origin.x);
-  const float top =
-      on_grid(JAW_TOP - breath(art) * BREATH_LIFT, scene.origin.y);
+  const float slide = std::floor(scene.origin.x * JAW_DEPTH);
+  const float top = std::floor(JAW_TOP - breath(art) * BREATH_LIFT);
   const auto first = static_cast<std::int64_t>(std::floor(-slide / JAW_RUN));
   const auto last =
       static_cast<std::int64_t>(std::floor((SCREEN_WIDTH - slide) / JAW_RUN));
@@ -1819,8 +1814,8 @@ void paint_jaw(godot::Node2D &canvas, const Art &art) {
                      rect(fang.left, 0.0F, fang.width, art.size(Image::Jaw).y),
                      rect(at.x, at.y, fang.width, art.size(Image::Jaw).y));
       const Dripping saliva{.period = 2.4F + 2.0F * unit(SALIVA_SEED, index),
-                            .pixel = 2.0F * JAW_PIXEL,
-                            .length = 4.0F * JAW_PIXEL,
+                            .pixel = 1.0F,
+                            .length = 6.0F,
                             .reach = SCREEN_HEIGHT,
                             .tint = color(250, 214, 226, 0.9F)};
       paint_drop(canvas, at + fang.tip,
@@ -1845,6 +1840,25 @@ void paint_jaw(godot::Node2D &canvas, const Art &art) {
   art.look(canvas, scene.origin, scene.zoom);
 }
 
+/// The acid picture at its own size with its surface at screen row
+/// `surface`, slid sideways by `slide` beside mirrored copies of itself so it
+/// covers the screen's width, fading below to the `deep` tint.
+void paint_acid(godot::Node2D &canvas, const Art &art, float surface,
+                float slide, godot::Color deep_tint) {
+  const float width = art.size(Image::Acid).x;
+  for (int copy = -1; copy <= 1; ++copy) {
+    const float left = slide + static_cast<float>(copy) * width;
+    // Odd copies are mirrored, so neighbours meet without a seam.
+    if (copy % 2 != 0) {
+      paint_sea(canvas, art, left + width, surface - ACID_SURFACE_DEPTH, -width,
+                deep_tint);
+    } else {
+      paint_sea(canvas, art, left, surface - ACID_SURFACE_DEPTH, width,
+                deep_tint);
+    }
+  }
+}
+
 /// The acid band nearest behind the map: the silhouettes of sunken trains
 /// and broken pillars in a sea glowing at its surface, pinned to the bottom of
 /// the play area and rising with the acid, slid sideways by `slide`.
@@ -1862,17 +1876,7 @@ void paint_band(godot::Node2D &canvas, const Art &art, float acid_ratio,
                         surface + BAND_SINK - art.size(image).y));
     }
   }
-  for (int copy = -1; copy <= 1; ++copy) {
-    const float left = slide.x + static_cast<float>(copy) * acid.x;
-    // Odd copies are mirrored, so neighbours meet without a seam.
-    if (copy % 2 != 0) {
-      paint_sea(canvas, art, left + acid.x, surface - ACID_SURFACE_DEPTH,
-                -acid.x, band_deep_tint());
-    } else {
-      paint_sea(canvas, art, left, surface - ACID_SURFACE_DEPTH, acid.x,
-                band_deep_tint());
-    }
-  }
+  paint_acid(canvas, art, surface, slide.x, band_deep_tint());
 }
 
 } // namespace
@@ -1904,6 +1908,9 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
               Vector2(0.0F, CITY_BOTTOM - art.size(Image::City).y), city,
               untinted());
   paint_band(canvas, art, acid_ratio, band);
+  // The sea in the scene is drawn at its own size too, moving with the map.
+  const float sea = sea_row(camera, acid_ratio);
+  paint_acid(canvas, art, sea, drift(camera, 1.0F).x, sea_deep_tint());
   godot::Array layers;
   layers.push_back(throat);
   layers.push_back(city);
@@ -1911,28 +1918,22 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   canvas.set_meta("backdrop_layers", layers);
   canvas.set_meta("throat_at", breathing + throat);
   art.look(canvas, origin(camera), camera.zoom);
-  paint_sea(canvas, art, 0.0F,
-            std::floor(acid_surface(acid_ratio) - ACID_SURFACE_DEPTH),
-            art.size(Image::Acid).x, sea_deep_tint());
-  art.note_waterline(std::floor(band_surface(acid_ratio)),
-                     wrapped(std::floor(band.x), BAND_PIXEL),
-                     acid_surface(acid_ratio));
+  art.note_waterline(std::floor(band_surface(acid_ratio)), band.x,
+                     (sea - origin(camera).y) / camera.zoom);
 }
 
 void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
                 const View &camera) {
   const godot::Color steam = color(150, 255, 140, 0.16F);
   art.look(canvas, Vector2(), 1.0F);
-  paint_steam(canvas, art, std::floor(band_surface(acid_ratio)),
-              THROAT_PIXEL / 2.0F, steam);
+  paint_steam(canvas, art, std::floor(band_surface(acid_ratio)), steam);
+  paint_steam(canvas, art, sea_row(camera, acid_ratio), steam);
   paint_spores(canvas, art, camera, FAR_SPORE_DEPTH, 2.0F,
                {color(255, 150, 220, 0.5F), color(170, 255, 150, 0.4F)},
                FAR_SPORE_SEED);
   paint_spores(canvas, art, camera, NEAR_SPORE_DEPTH, 4.0F,
                {color(255, 80, 200, 0.45F), color(140, 255, 120, 0.4F)},
                NEAR_SPORE_SEED);
-  art.look(canvas, origin(camera), camera.zoom);
-  paint_steam(canvas, art, acid_surface(acid_ratio), 1.0F, steam);
 }
 
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
