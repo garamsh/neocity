@@ -1,6 +1,5 @@
 #include "drawing.hpp"
 
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
@@ -526,13 +525,14 @@ void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                                   tint);
 }
 
+void Art::next_frame() { ++frame; }
+
 Art::Tween &Art::tween(const godot::String &name, float target) const {
-  const auto time = now();
-  const auto frame = static_cast<std::uint64_t>(
-      godot::Engine::get_singleton()->get_frames_drawn());
-  auto &kept = tweens[name];
-  // A value missing from the last drawn frame was off screen: it starts over.
-  if (kept.seen == 0 || frame > kept.frame + 1) {
+  const auto time = clock();
+  auto [found, fresh] = tweens.try_emplace(name);
+  auto &kept = found->second;
+  // A value missing from the frame before was off screen: it starts over.
+  if (fresh || kept.frame + 1 < frame) {
     kept = {.from = target, .to = target, .started = time};
   }
   kept.seen = time;
@@ -574,6 +574,14 @@ float Art::seconds() const {
 }
 
 void Art::pin(float held) { pinned = held; }
+
+std::uint64_t Art::clock() const {
+  if (pinned) {
+    return static_cast<std::uint64_t>(
+        std::llround(static_cast<double>(std::max(*pinned, 0.0F)) * 1.0e6));
+  }
+  return now() - loaded;
+}
 
 void Art::note_waterline(float band, float band_left, float sea) const {
   const float zoom = placed.get_scale().x;

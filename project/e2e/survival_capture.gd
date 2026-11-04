@@ -17,9 +17,10 @@ extends SceneTree
 ## and vending machines do not read warm and lit. The camera shows a part of
 ## the city, so each look is measured on every city frame that shows what it
 ## looks at, and fails when none does.
-## The scene's clock, which runs its ambient motion and its finishing pass, is
-## pinned and moves only when the capture moves it, so every city frame shows
-## the same moment on every run.
+## The scene's clock, which runs its ambient motion, its finishing pass and
+## every eased value of the screen, is pinned and moves only when the capture
+## moves it: by each frame's delta, and past the longest eased motion before
+## each saved frame, so every frame shows the same moment on every run.
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
@@ -132,8 +133,9 @@ const FRAME_RATE: float = 60.0
 const RATE_FRAMES: int = 600
 ## How far one 100ms movement unit carries a running actor, in sub-cells.
 const RUN_UNIT: int = 50
-## Longer than the screen's longest eased motion.
-const SETTLE_MSEC: int = 400
+## Longer than the screen's longest eased motion, in seconds of the scene's
+## clock.
+const SETTLE_SECONDS: float = 0.4
 ## The rows at the top of the play area the teeth are read over; the least
 ## share of the pixels their picture covers there that must show it, within
 ## TEETH_TOLERANCE in each channel, low because a high walkway hides them
@@ -194,6 +196,7 @@ func _run() -> void:
 	scene = current_scene as MainScene
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
+	process_frame.connect(_tick)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
 	await _tap(KEY_2)
@@ -541,10 +544,10 @@ func _int(field: String) -> int:
 	var value: int = scene.survival_status().get(field, 0)
 	return value
 
-## Waits on the real clock first: --fixed-fps runs frames faster than real time,
-## and the screen's eased motion runs on the real clock.
+## Moves the scene's clock past the screen's longest eased motion first.
 func _save(screen: String) -> Image:
-	OS.delay_msec(SETTLE_MSEC)
+	clock += SETTLE_SECONDS
+	scene.pin_scene_clock(clock)
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var destination: String = ProjectSettings.globalize_path("user://survival/" + screen + ".png")
@@ -1070,6 +1073,11 @@ func _tap(code: Key) -> void:
 	await _frames(2)
 	_key(code, false)
 	await _frames(8)
+
+## Moves the scene's clock by the frame's delta, as the real clock would.
+func _tick() -> void:
+	clock += root.get_process_delta_time()
+	scene.pin_scene_clock(clock)
 
 func _frames(count: int) -> void:
 	for frame: int in range(count):
