@@ -450,17 +450,15 @@ void hud_panel(godot::Node2D &canvas, godot::Rect2 area) {
   cover(canvas, area);
 }
 
-/// A flat button with its words centred on its height, dark on the accent.
+/// A dark button with its words centred on its height, gold when marked.
 void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
                   godot::Rect2 area, const String &text, int size,
                   bool marked) {
   const auto tones = rendering::palette();
   rendering::button(canvas, area, marked);
-  const float lip = marked ? 4.0F : 0.0F;
   drawing.text(canvas, area.position.x + BUTTON_PAD,
                area.position.y +
-                   (area.size.y - lip + static_cast<float>(size) * CAP_HEIGHT) /
-                       2.0F,
+                   (area.size.y + static_cast<float>(size) * CAP_HEIGHT) / 2.0F,
                text, size, marked ? tones.gold : tones.white, CHANGING);
 }
 
@@ -1885,12 +1883,12 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                                               : rendering::Image::AppraiserIdle,
                     Vector2(SETUP_X + 44.0F, y + 26.0F));
     }
-    const auto ink = chosen ? tones.ink : tones.white;
+    const auto ink = chosen ? tones.gold : tones.white;
     drawing.text(canvas, SETUP_X + 160.0F, y + 52.0F,
                  number(number_key) + "   " + label.at(0), 32, ink,
                  Weight::Bold);
     drawing.text(canvas, SETUP_X + 160.0F, y + 86.0F, label.at(1), 24,
-                 chosen ? tones.ink : tones.muted);
+                 chosen ? tones.white : tones.muted);
     y += SETUP_PITCH;
     ++number_key;
   }

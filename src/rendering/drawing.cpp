@@ -328,8 +328,8 @@ void frame(godot::Node2D &canvas, godot::Rect2 area, std::size_t kind) {
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
   frame(canvas, area, 1);
   if (marked) {
-    canvas.draw_rect(rect(area.position.x + 9.0F, area.position.y + 9.0F,
-                          area.size.x - 18.0F, 2.0F),
+    canvas.draw_rect(rect(area.position.x + 9.0F, area.position.y + 12.0F, 2.0F,
+                          std::max(2.0F, area.size.y - 24.0F)),
                      palette().gold);
   }
 }
