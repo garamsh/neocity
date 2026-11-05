@@ -1,6 +1,6 @@
 # ADR 0015: Stand lit shops on short supports under the teeth
 
-> Status: accepted; the teeth along the top of the screen superseded by ADR-0018
+> Status: accepted; the teeth along the top of the screen superseded by ADR-0018; the support under each end of a run superseded by ADR-0020
 > Date: 2026-11-04
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

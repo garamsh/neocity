@@ -4,32 +4,39 @@
   {
    "path": "backgrounds/throat.png",
    "size": [
-    880,
-    600
+    674,
+    459
    ],
    "scale": 1,
-   "colours": 218946,
-   "depicts": "Back layer, cut from the search mockup: the monster's fleshy palate with its cream fangs hanging from the top edge, over the pink throat and its uvula; opaque"
+   "colours": 147448,
+   "depicts": "Back layer, cut from the search mockup at the screen's size: the monster's fleshy palate with its cream fangs hanging from the top edge, over the pink throat and its uvula; opaque"
   },
   {
    "path": "backgrounds/city.png",
    "size": [
-    700,
-    520
+    1280,
+    490
    ],
    "scale": 1,
-   "colours": 173857,
-   "depicts": "Middle layer, cut from the search mockup: a swallowed city of tilted indigo towers with orange windows and an elevated railway with lit trains, sunk in pink flesh; clear above the skyline"
+   "colours": 290319,
+   "depicts": "Middle layer across the first screen: original tilted indigo towers, lit trains and pink flesh, with foreground occlusions repaired only inside explicit polygons from the recorded inpaint source; clear above the skyline",
+   "provenance": {
+    "tool": "image_gen.imagegen (built-in), one edit",
+    "source": "docs/art/production/monster-mouth-escape-inpaint-source-v1.png",
+    "sha256": "078c50ce99b05b1476dd9a1344d30134c7c3a70081bebf03c5f4b1fa527102f0",
+    "prompt": "docs/art/production/monster-mouth-escape-inpaint-prompt-v1.txt",
+    "adoption": "Only foreground-repair polygons; original train restoration excludes foreground occluders through the final repair fill. Original pixels outside the repair union stay unchanged before skyline masking/resampling."
+   }
   },
   {
    "path": "backgrounds/acid.png",
    "size": [
-    1480,
-    381
+    1280,
+    338
    ],
    "scale": 1,
-   "colours": 292405,
-   "depicts": "Front layer, cut from the search mockup: the glowing green acid lake with sunken train cars and broken pillars; clear above its surface"
+   "colours": 233295,
+   "depicts": "The original acid lake and sunken trains across the screen, with only the named old erases in occluded areas; a masked skyline of drowned ruins above its surface, with no copied shore strip"
   },
   {
    "path": "characters/chef_idle.png",
@@ -252,94 +259,84 @@
    "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind, one arm up"
   },
   {
-   "path": "world/platform.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Walkway deck tile: riveted iron beam with an orange top rail; tiles horizontally"
-  },
-  {
    "path": "world/ladder.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Ladder tile: two rungs; tiles vertically"
-  },
-  {
-   "path": "world/ladder_broken.png",
-   "size": [
-    32,
-    64
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Broken ladder: snapped rails and missing rungs, two cells tall"
-  },
-  {
-   "path": "world/door_cold_store.png",
-   "size": [
-    32,
-    64
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Cold store door: riveted steel with a frosted window"
-  },
-  {
-   "path": "world/door_broken.png",
-   "size": [
-    32,
-    64
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Broken door: smashed and boarded"
-  },
-  {
-   "path": "world/building_wall.png",
    "size": [
     64,
     64
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Building body tile: indigo concrete with lit and dark windows; tiles in both directions"
+   "colours": 3092,
+   "depicts": "One cell of the search mockup's ladder down the gauge pillar, over the pillar behind it; tiles vertically"
+  },
+  {
+   "path": "world/ladder_broken.png",
+   "size": [
+    64,
+    128
+   ],
+   "scale": 1,
+   "colours": 3961,
+   "depicts": "Two cells of the search mockup's gauge ladder with rungs and a rail torn away"
+  },
+  {
+   "path": "world/door_cold_store.png",
+   "size": [
+    64,
+    128
+   ],
+   "scale": 1,
+   "colours": 6791,
+   "depicts": "A door cut from the search mockup's gauge pillar: its yellow and black hazard panel"
+  },
+  {
+   "path": "world/door_broken.png",
+   "size": [
+    64,
+    128
+   ],
+   "scale": 1,
+   "colours": 4955,
+   "depicts": "The hazard-panel door torn open"
+  },
+  {
+   "path": "world/building_wall.png",
+   "size": [
+    1280,
+    264
+   ],
+   "scale": 1,
+   "colours": 52756,
+   "depicts": "Building fronts of the first screen, cut from the search mockup: one band a cell deep per row a building stands in, the kitchen's lit shelves over its loft floor, then the tower shop's two rows, then the kitchen loft's face and the dark under it, carried on past the loft's end, for the rows the map leaves between the loft and the walkway; a cell of building shows the band of its row at its column"
   },
   {
    "path": "world/vending_machine.png",
    "size": [
-    56,
-    62
+    96,
+    118
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Red vending machine lit from inside: rows of cans and jars behind glass under a glowing top panel"
+   "colours": 10086,
+   "depicts": "The search mockup's red vending machine, lit from inside, cans behind cracked glass"
   },
   {
    "path": "world/shop.png",
    "size": [
-    120,
-    114
+    1280,
+    256
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Lit corner shop: a slanted iron roof over brick walls, its open front glowing amber over shelves of jars and crates, a lantern at the eave"
+   "colours": 86256,
+   "depicts": "Lit shop fronts of the first screen, cut from the search mockup: two cells deep above the kitchen loft floor and above the gauge ledge; a shop shows the band of its floor around its column"
   },
   {
    "path": "world/vendor_cart.png",
    "size": [
-    62,
-    84
+    128,
+    64
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Street stall: a noodle cart under a slanted tin roof, its counter glowing amber under a hanging lantern"
+   "colours": 7125,
+   "depicts": "The search mockup's kitchen shelf of crates, greens and pots, for the noodle vendor's stall"
   },
   {
    "path": "world/noodle_vendor.png",
@@ -354,62 +351,42 @@
   {
    "path": "world/kiosk.png",
    "size": [
-    86,
-    86
+    64,
+    64
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Wrecked kiosk with flesh slime on the roof"
-  },
-  {
-   "path": "world/bridge.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Rotten bridge tile: dark planks; tiles horizontally"
+   "colours": 3312,
+   "depicts": "The search mockup's boxed unit on the kitchen's left wall"
   },
   {
    "path": "world/ferry.png",
    "size": [
-    192,
-    112
+    256,
+    100
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Drifted ferry: rusty hull, lit cabin, lantern"
+   "colours": 24237,
+   "depicts": "The search mockup's sunken train car, drifting"
   },
   {
    "path": "world/bag_washed_up.png",
    "size": [
-    40,
-    66
+    56,
+    62
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Washed-up bag: slimy backpack with a sparkle"
-  },
-  {
-   "path": "world/bag_roof.png",
-   "size": [
-    44,
-    47
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Roof bag: roped duffel with a sparkle"
+   "colours": 3297,
+   "depicts": "The search mockup's yellow backpack with a sparkle, on the lower walkway"
   },
   {
    "path": "world/cold_store.png",
    "size": [
-    128,
-    128
+    192,
+    192
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Cold store block in scaffolding with a steel door and lamp"
+   "colours": 29216,
+   "depicts": "The tower shop over the gauge ledge, cut from the search mockup where the first screen shows it, for its twin in the east half"
   },
   {
    "path": "world/acid_drip.png",
@@ -418,98 +395,18 @@
     96
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Acid drip hazard: flesh blob, falling drops and a splash, three cells tall"
+   "colours": 2714,
+   "depicts": "The search mockup's red drip running from the upper walkway"
   },
   {
    "path": "walkway/deck.png",
    "size": [
-    32,
-    28
+    1280,
+    336
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Walkway deck: a thick deck of violet stone blocks with an orange lit top, the feet line along its top, over a steel beam; tiles horizontally"
-  },
-  {
-   "path": "walkway/deck_rivets.png",
-   "size": [
-    32,
-    28
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Walkway deck variant: a riveted joint plate"
-  },
-  {
-   "path": "walkway/deck_worn.png",
-   "size": [
-    32,
-    28
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Walkway deck variant: cracked stone blocks"
-  },
-  {
-   "path": "walkway/deck_corroded.png",
-   "size": [
-    32,
-    28
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Walkway deck eaten by the acid: pitted stone, green stains, holes in the beam"
-  },
-  {
-   "path": "walkway/flesh_drip.png",
-   "size": [
-    40,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Flesh grown over a walkway's front edge, dripping; hangs from just under its top"
-  },
-  {
-   "path": "walkway/end_left.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Snapped left end of a walkway deck: jagged stone and bent rebar on its left"
-  },
-  {
-   "path": "walkway/end_right.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Snapped right end of a walkway deck: jagged stone and bent rebar on its right"
-  },
-  {
-   "path": "walkway/pillar.png",
-   "size": [
-    24,
-    32
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Support: a square pillar of slate stone blocks; tiles vertically"
-  },
-  {
-   "path": "walkway/column.png",
-   "size": [
-    24,
-    32
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Support: a bolted iron I-beam column; tiles vertically"
+   "colours": 64252,
+   "depicts": "Walkway decks of the first screen, cut from the search mockup at the screen's size: one band a cell deep per floor line, top to bottom the kitchen roof, the shop roof, the kitchen loft, the upper walkway with the gauge ledge, the lower walkway with the rope bridge, and its plain deck again across the screen for the pier and the sunken train; a cell of ground shows the band of its row at its column"
   },
   {
    "path": "icons/ingredient_tomato.png",
@@ -794,232 +691,22 @@
   {
    "path": "ground/rubble.png",
    "size": [
-    32,
-    24
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Rubble heap that blocks a walkway cell; stands on the deck"
-  },
-  {
-   "path": "ground/bridge_plank.png",
-   "size": [
-    32,
-    14
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Plank bridge: rough planks and a metal sheet tied with rope, spanning a gap at road height; repeats horizontally"
-  },
-  {
-   "path": "ground/car_buried.png",
-   "size": [
-    32,
-    24
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Wrecked car sunk into a walkway; stands on the deck"
-  },
-  {
-   "path": "decor/train_car_lit.png",
-   "size": [
-    128,
-    80
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Tilted elevated train car, lit orange windows, bent bogies"
-  },
-  {
-   "path": "decor/train_car_wrecked.png",
-   "size": [
-    128,
-    75
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Tilted elevated train car, roof torn open, dripping flesh slime"
-  },
-  {
-   "path": "decor/facade_tall.png",
-   "size": [
-    62,
-    128
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Collapsed apartment facade: tall, jagged top, two lit windows, rebar"
-  },
-  {
-   "path": "decor/facade_low.png",
-   "size": [
-    82,
-    104
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Collapsed shop facade: low, crumbling corner, flesh slime at the base"
-  },
-  {
-   "path": "decor/cables_sagging.png",
-   "size": [
-    56,
-    54
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Cable bundle sagging between two snapped stubs"
-  },
-  {
-   "path": "decor/cables_hanging.png",
-   "size": [
-    44,
-    60
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Two cables hanging straight down with frayed ends and a spark"
-  },
-  {
-   "path": "decor/pipe_bent.png",
-   "size": [
-    42,
-    48
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Rusty pipe hanging at an angle from a broken end"
-  },
-  {
-   "path": "decor/pipes_valve.png",
-   "size": [
-    48,
-    59
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Two rusty pipes side by side with a cracked joint and a valve wheel"
-  },
-  {
-   "path": "decor/neon_box.png",
-   "size": [
     64,
-    64
+    32
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Dead neon box sign: unlit noodle-bowl tubes, hanging from a chain"
+   "colours": 1977,
+   "depicts": "The search mockup's rubble of stones on the lower walkway"
   },
   {
-   "path": "decor/neon_blade.png",
+   "path": "walkway/structure.png",
    "size": [
-    32,
-    100
+    1280,
+    366
    ],
    "scale": 1,
-   "colours": 12,
-   "depicts": "Dead neon blade sign: tall, unlit stripes and a star"
-  },
-  {
-   "path": "decor/flesh_vines.png",
-   "size": [
-    83,
-    84
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Flesh vines drooping from above, dripping"
-  },
-  {
-   "path": "decor/flesh_tendril.png",
-   "size": [
-    27,
-    75
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Flesh tendril twisting up from a small base"
-  },
-  {
-   "path": "decor/flesh_tumor.png",
-   "size": [
-    60,
-    46
-   ],
-   "scale": 1,
-   "colours": 11,
-   "depicts": "Lumpy flesh growth with veins and pustules"
-  },
-  {
-   "path": "decor/flesh_polyps.png",
-   "size": [
-    56,
-    51
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Cluster of three glossy flesh polyps"
-  },
-  {
-   "path": "decor/rubble_low.png",
-   "size": [
-    64,
-    64
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Low rubble heap: concrete chunks, bricks and rebar"
-  },
-  {
-   "path": "decor/rubble_high.png",
-   "size": [
-    64,
-    64
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "High rubble heap: blocks, a blank sign post and flesh slime"
-  },
-  {
-   "path": "decor/pillar_snapped.png",
-   "size": [
-    40,
-    69
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Overpass pillar snapped at the top, rebar bent out"
-  },
-  {
-   "path": "decor/pillar_deck.png",
-   "size": [
-    66,
-    69
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Overpass pillar with a piece of deck still on top"
-  },
-  {
-   "path": "decor/lamp_standing.png",
-   "size": [
-    32,
-    66
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Street lamp standing, dim amber bulb"
-  },
-  {
-   "path": "decor/lamp_bent.png",
-   "size": [
-    40,
-    58
-   ],
-   "scale": 1,
-   "colours": 12,
-   "depicts": "Street lamp bent over, head hanging, bulb smashed"
+   "colours": 35583,
+   "depicts": "Under and over the walkways of the first screen, cut from the search mockup: the posts, the chain and the gauge pillar down to the acid, the cable sagging under the upper walkway and the street lamp on it; down to the lake's surface, clear between them and where the backdrop's flesh and towers and the lake's glow show"
   }
  ]
 }

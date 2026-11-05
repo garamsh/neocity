@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://f2sovlfxwaa"
-path="res://.godot/imported/facade_low.png-13d84bd4c2478726d06d060a06010284.ctex"
+uid="uid://brlmkb8dcoctb"
+path="res://.godot/imported/structure.png-3867a5dd87af81a92ebfdf84c2db0606.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://levels/monster_mouth_escape/art/decor/facade_low.png"
-dest_files=["res://.godot/imported/facade_low.png-13d84bd4c2478726d06d060a06010284.ctex"]
+source_file="res://levels/monster_mouth_escape/art/walkway/structure.png"
+dest_files=["res://.godot/imported/structure.png-3867a5dd87af81a92ebfdf84c2db0606.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

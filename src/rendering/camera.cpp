@@ -24,8 +24,9 @@ constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
 /// How far ahead of a lone human the camera looks, in scene pixels.
 constexpr float LOOK_AHEAD = 80.0F;
-/// How far above its feet the camera aims at a human: about its waist.
-constexpr float WAIST = 32.0F;
+/// How far above its feet the camera aims at a human, so a human on the upper
+/// walkway stands on it where the mockup draws that walkway, at screen row 325.
+constexpr float WAIST = 12.0F;
 /// Room kept around two humans, in scene pixels: sideways, and above and
 /// below their feet.
 constexpr float ROOM_ACROSS = 256.0F;

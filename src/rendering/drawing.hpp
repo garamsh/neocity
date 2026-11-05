@@ -118,23 +118,13 @@ enum class Image : std::uint8_t {
   AppraiserLand,
   AppraiserClimb,
   Deck,
-  DeckRivets,
-  DeckWorn,
-  DeckCorroded,
-  FleshDrip,
-  EndLeft,
-  EndRight,
-  Pillar,
-  Column,
+  Structure,
   Rubble,
-  PlankBridge,
-  BuriedCar,
   BuildingWall,
   Shop,
   VendingMachine,
   VendorCart,
   NoodleVendor,
-  BagRoof,
   BagWashedUp,
   Ladder,
   LadderBroken,
@@ -144,28 +134,6 @@ enum class Image : std::uint8_t {
   Kiosk,
   ColdStore,
   Ferry,
-  Platform,
-  Bridge,
-  TrainCarLit,
-  TrainCarWrecked,
-  FacadeTall,
-  FacadeLow,
-  CablesSagging,
-  CablesHanging,
-  PipeBent,
-  PipesValve,
-  NeonBox,
-  NeonBlade,
-  FleshVines,
-  FleshTendril,
-  FleshTumor,
-  FleshPolyps,
-  RubbleLow,
-  RubbleHigh,
-  PillarSnapped,
-  PillarDeck,
-  LampStanding,
-  LampBent,
   HeartFull,
   HeartEmpty,
   IconDay,
@@ -247,8 +215,9 @@ public:
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
-  /// Draws the `source` part of `image` into `destination`, each colour
-  /// multiplied by `tint`.
+  /// Draws the `source` part of `image`, in the units `size` gives, into
+  /// `destination`, each colour multiplied by `tint`; a negative destination
+  /// width or height reflects that axis about its position.
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
@@ -272,6 +241,8 @@ public:
   /// How many seconds of the clock `seconds` reads `name` has been on the
   /// screen; one missing from the frame before appears afresh.
   [[nodiscard]] float shown_for(const godot::String &name) const;
+  /// How large `image` is drawn in the scene: a picture cut from the mockup
+  /// for the map's cells holds two of its pixels to a scene pixel each way.
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Seconds of a steady real clock since the art loaded, or where `pin`
   /// holds it; the scene's ambient motion, its finishing pass and every eased

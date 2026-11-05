@@ -51,8 +51,10 @@ const CELL: int = 32
 ## under its cell's floor line, where an actor's feet are.
 const LEAD_CELLS: Array[Vector2i] = [Vector2i(2, 6), Vector2i(4, 8), Vector2i(8, 8), Vector2i(18, 5), Vector2i(19, 5)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
-## edge under those cells reads than the scenery in the cells, above the deck.
-const GROUND_LEAD: float = 0.12
+## edge under those cells reads than the scenery in the cells, above the deck:
+## the mockup's decks, cut with their own top edge, lead by as little as 0.057,
+## on 27-city-jumping-the-rubble.
+const GROUND_LEAD: float = 0.04
 ## The rows of a walkway's lit top edge, as the city draws it: the ground a
 ## player walks on, read over the scenery above it.
 const EDGE_ROWS: int = 4
@@ -61,7 +63,7 @@ const EDGE_ROWS: int = 4
 const FACE_ROWS: Vector2i = Vector2i(8, 24)
 ## The screen row of the acid band's surface at no acid and at the acid that
 ## ends the run, as the city draws it; it rises evenly between them.
-const BAND_LOW: int = 470
+const BAND_LOW: int = 489
 const BAND_HIGH: int = 240
 ## The screen rows under the band's surface that the value layers read as the
 ## acid.
@@ -72,6 +74,12 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## reads 0.21 to 0.24 over its walkways' 0.10 to 0.13; the walkways, not yet
 ## redrawn from it, read 0.14 to 0.16, at least 0.048 under the backdrop.
 const FACE_GAP: float = 0.03
+## The fewest pixels clear of the plates and the HUD that a cell's face, or
+## the scenery above it, is read over.
+const CLEAR_PIXELS: int = 32
+## How far over the acid band's surface its light reaches what stands there:
+## the finish shader's six glow bands of 8 screen pixels.
+const ACID_LIGHT_REACH: int = 48
 const ACID_GAP: float = 0.05
 ## How much a pixel's green channel leads its red and blue, from 0 to 1, for
 ## it to read as glowing acid, and the least share of the band's pixels that
@@ -88,9 +96,11 @@ const STAIR_CELLS: Array[Vector2i] = [Vector2i(9, 9)]
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
 ## as the city draws it.
 const ACID_LOW: int = 518
-## How far above that surface, in screen pixels, the sea in the scene, with
-## the light over it, covers the acid band behind the map.
-const SEA_REACH: int = 64
+## How far above that surface, in screen pixels, the sea in the scene covers
+## the acid band behind the map: the acid picture's 21 rows over its surface,
+## its heave of 3 and a margin of 8. Its light over it never reaches the band's
+## rows, which take the band's own light.
+const SEA_REACH: int = 32
 ## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
 ## a stair's diagonal read than the EDGE_ROWS just under it.
 const STEP_LEAD: float = 0.15
@@ -164,7 +174,7 @@ const SETTLE_SECONDS: float = 0.4
 const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.03
 const TEETH_TOLERANCE: float = 0.06
-const TEETH_COVER: float = 0.05
+const TEETH_COVER: float = 0.02
 ## How a fang's cream reads in the throat picture: its red and green at least
 ## these, and its green no less than its blue, which the pink flesh's is.
 const FANG_RED: float = 0.75
@@ -669,6 +679,10 @@ func _save_city(screen: String) -> Image:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var drawn_sea: float = scene.get_node("World").get_meta("sea_surface", -1.0)
+	if drawn_sea != float(_sea_top(view)):
+		_fail("%s: drawn near sea %.1f differs from the projected sea below the far shore at %d" % [screen, drawn_sea, _sea_top(view)])
+		return frame
 	var sources: int = labelled.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
@@ -701,8 +715,8 @@ func _save_city(screen: String) -> Image:
 	if misnamed != "":
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
-	print("Capture: %s at zoom %.2f, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen) or not _layers(frame, view, screen) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	print("Capture: %s at zoom %.2f, the scene's origin at %s, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, view.origin, scene.get_node("World").get_meta("backdrop_layers", [])])
+	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen, plates + hud) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
 		return frame
 	city_frames += 1
 	return frame
@@ -731,26 +745,27 @@ func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
 
 ## Whether the walkway's lit top edge leads the scenery right above it by
-## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more;
-## the control is that the scenery is not black.
-func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
-	var ground: float = 0.0
-	var behind: float = 0.0
+## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more,
+## of the pixels clear of the plates covered; the control is that the scenery
+## is not black.
+func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+	var ground: Vector2 = Vector2.ZERO
+	var behind: Vector2 = Vector2.ZERO
 	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
 			continue
-		ground += _luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS)
-		behind += _luminance(frame, view, corner, CELL)
+		ground += _clear_luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS, covered)
+		behind += _clear_luminance(frame, view, corner, CELL, covered)
 		shown += 1
-	if shown < 2:
+	if shown < 2 or ground.y == 0.0 or behind.y == 0.0:
 		return true
-	ground /= shown
-	behind /= shown
+	ground.x /= ground.y
+	behind.x /= behind.y
 	ground_frames += 1
-	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground - behind, shown, ground, behind, GROUND_LEAD])
-	if behind <= 0.0 or ground - behind < GROUND_LEAD:
+	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
+	if behind.x <= 0.0 or ground.x - behind.x < GROUND_LEAD:
 		_fail("%s: the ground does not read over the scenery behind it" % screen)
 		return false
 	return true
@@ -759,18 +774,26 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String) -> bool:
 ## shows, when it shows two or more: the walkways' faces darkest, the backdrop
 ## in the cells above them brighter by FACE_GAP, and, where the frame shows the
 ## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
-## those pixels brighter than the backdrop by ACID_GAP. The control is that
-## the faces are not black.
-func _layers(frame: Image, view: Transform2D, screen: String) -> bool:
+## those pixels brighter than the backdrop by ACID_GAP. A face the band's
+## light reaches, within ACID_LIGHT_REACH over its surface, is lit green as the
+## mockup lights its posts over the lake, and is not read. Only the pixels
+## clear of the rectangles covered are read, and a cell with fewer than
+## CLEAR_PIXELS of them in its face or above it is not read. The control is
+## that the faces are not black.
+func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
 	var face: float = 0.0
 	var behind: float = 0.0
 	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
-		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)):
+		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)) or (view * (corner + Vector2(0, CELL + FACE_ROWS.y))).y > _band_top() - ACID_LIGHT_REACH:
 			continue
-		face += _luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x)
-		behind += _luminance(frame, view, corner, CELL)
+		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered)
+		var cell_behind: Vector2 = _clear_luminance(frame, view, corner, CELL, covered)
+		if cell_face.y < CLEAR_PIXELS or cell_behind.y < CLEAR_PIXELS:
+			continue
+		face += cell_face.x / cell_face.y
+		behind += cell_behind.x / cell_behind.y
 		shown += 1
 	if shown < 2:
 		return true
@@ -814,7 +837,7 @@ func _band_top() -> int:
 ## Whether the sea in the scene, drawn over the acid band, reaches none of the
 ## BAND_ROWS under the band's surface.
 func _band_clear(view: Transform2D) -> bool:
-	return (view * Vector2(0, _acid_surface())).y - SEA_REACH >= _band_top() + BAND_ROWS.y
+	return _sea_top(view) - SEA_REACH >= _band_top() + BAND_ROWS.y
 
 ## Over the BAND_ROWS under the acid band's surface across the screen, every
 ## other column: the share of pixels whose green leads their red and blue by
@@ -883,7 +906,7 @@ func _acid_moves(screen: String) -> bool:
 	var bottom: int = _band_top() + BAND_ROWS.y
 	var which: String = "acid band"
 	if not _band_clear(view):
-		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		var sea: int = _sea_top(view)
 		top = sea + SEA_ROWS.x
 		bottom = sea + SEA_ROWS.y
 		which = "sea"
@@ -999,7 +1022,7 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 	var covered: Array = plates + scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", [])
 	var acid_rows: Vector2i = Vector2i(_band_top() + BAND_ROWS.x, _band_top() + BAND_ROWS.y)
 	if not _band_clear(view):
-		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		var sea: int = _sea_top(view)
 		acid_rows = Vector2i(sea + SEA_ROWS.x, sea + SEA_ROWS.y)
 	var top: int = int(PLAY.position.y)
 	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
@@ -1063,12 +1086,14 @@ func _differ(one: Color, other: Color) -> bool:
 	return maxf(absf(one.r - other.r), maxf(absf(one.g - other.g), absf(one.b - other.b))) > DENSE_TOLERANCE
 
 ## Whether, over the columns where the acid shows under its surface, the band's
-## where the sea does not cover it and the sea's otherwise, the LIT_ROWS above
-## that surface lead the UNLIT_ROWS of backdrop higher up in green by
-## LIGHT_GAP, when the play area shows both. The control is that the acid shows
-## under the surface in LIGHT_COLUMNS of the columns read.
+## where the sea does not cover it or stands below it and the sea's otherwise,
+## the LIT_ROWS above that surface lead the UNLIT_ROWS of backdrop higher up in
+## green by LIGHT_GAP, when the play area shows both. Under the band's surface
+## the rows above the sea are the band's acid, not backdrop. The control is that
+## the acid shows under the surface in LIGHT_COLUMNS of the columns read.
 func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
-	var surface: int = _band_top() if _band_clear(view) else floori((view * Vector2(0, _acid_surface())).y)
+	var sea: int = _sea_top(view)
+	var surface: int = _band_top() if _band_clear(view) or _band_top() < sea else sea
 	if surface + UNLIT_ROWS.x < PLAY.position.y or surface + ACID_UNDER.back() >= PLAY.end.y:
 		return true
 	var lit: float = 0.0
@@ -1211,6 +1236,10 @@ func _frame() -> Image:
 	await RenderingServer.frame_post_draw
 	return root.get_texture().get_image()
 
+## The near sea cannot stand above the far shore in screen perspective.
+func _sea_top(view: Transform2D) -> int:
+	return maxi(floori((view * Vector2(0, _acid_surface())).y), _band_top())
+
 ## The scene row of the acid's surface in the frame the status describes.
 func _acid_surface() -> float:
 	var status: Dictionary = scene.survival_status()
@@ -1238,6 +1267,19 @@ func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> 
 		for x: int in range(CELL):
 			total += _pixel(frame, view, corner + Vector2(x, y))
 	return total / (CELL * rows)
+
+## The summed luminance, as x, and the count, as y, of the screen pixels of a
+## cell-wide band of scene rows whose top-left is corner that lie clear of the
+## rectangles covered.
+func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array) -> Vector2:
+	var found: Vector2 = Vector2.ZERO
+	for y: int in range(rows):
+		for x: int in range(CELL):
+			var at: Vector2 = view * (corner + Vector2(x + 0.5, y + 0.5))
+			if covered.any(func(area: Rect2) -> bool: return area.has_point(at)):
+				continue
+			found += Vector2(_pixel(frame, view, corner + Vector2(x, y)), 1.0)
+	return found
 
 ## The luminance of the screen pixel at the middle of the scene pixel at point.
 func _pixel(frame: Image, view: Transform2D, point: Vector2) -> float:
