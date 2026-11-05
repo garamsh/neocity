@@ -91,9 +91,11 @@ constexpr float FOOT_Y = SCREEN_HEIGHT - MARGIN - FOOT_HEIGHT;
 constexpr float FRAME = 7.0F;
 constexpr float ACTOR_WIDTH = 232.0F;
 constexpr float PORTRAIT = 64.0F;
-/// The part of an actor's idle frame its portrait shows, doubled.
-constexpr float FACE_X = 16.0F;
-constexpr float FACE_Y = 6.0F;
+/// The head of each original cut, in scene pixels, shown at its native size.
+constexpr float CHEF_FACE_X = 12.0F;
+constexpr float CHEF_FACE_Y = 5.0F;
+constexpr float APPRAISER_FACE_X = 24.0F;
+constexpr float APPRAISER_FACE_Y = 27.0F;
 constexpr float FACE = 32.0F;
 constexpr float ACTOR_COLUMN = MARGIN + PORTRAIT + 12.0F;
 constexpr float ACTOR_TEXT_WIDTH = ACTOR_WIDTH - ACTOR_COLUMN - FRAME;
@@ -1069,7 +1071,10 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.image_part(canvas,
                      actor == Actor::Chef ? rendering::Image::ChefIdle
                                           : rendering::Image::AppraiserIdle,
-                     rect(FACE_X, FACE_Y, FACE, FACE), face);
+                     rect(actor == Actor::Chef ? CHEF_FACE_X : APPRAISER_FACE_X,
+                          actor == Actor::Chef ? CHEF_FACE_Y : APPRAISER_FACE_Y,
+                          FACE, FACE),
+                     face);
   const float column = x + ACTOR_COLUMN;
   const String status = actor_status(frame, actor);
   drawing.text(canvas, column, FOOT_Y + 22.0F, status, SMALL_SIZE,

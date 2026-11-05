@@ -211,7 +211,8 @@ public:
   [[nodiscard]] std::vector<int> take_sizes() const;
   /// Draws `image` at its own size times a whole `scale`, its top-left corner
   /// on the pixel at `position`; `mirrored` flips it horizontally in place.
-  /// Each colour is multiplied by `tint`.
+  /// Each colour is multiplied by `tint`. A canvas with `character_layers`
+  /// receives the drawn character texture, screen area and reflection there.
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;

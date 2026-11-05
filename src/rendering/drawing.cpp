@@ -2,6 +2,8 @@
 
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 
 #include <survival/content.hpp>
@@ -200,12 +202,12 @@ godot::Ref<godot::Texture2D> load_texture(const godot::String &path) {
 std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
 
 /// Picture pixels to a scene pixel each way: two for the pictures cut from the
-/// mockup for the map's cells, drawn one to a screen pixel at the close
-/// camera, and one for every other.
+/// mockup for the map's cells and actors, drawn one to a screen pixel at the
+/// close camera, and one for every other.
 float density(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
-  const bool cut =
-      folder == "walkway" || folder == "world" || folder == "ground";
+  const bool cut = folder == "walkway" || folder == "world" ||
+                   folder == "ground" || folder == "characters";
   return cut && image != Image::NoodleVendor ? 2.0F : 1.0F;
 }
 
@@ -430,6 +432,22 @@ std::vector<int> Art::take_sizes() const { return std::exchange(sizes, {}); }
 void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
                 float scale, bool mirrored, godot::Color tint) const {
   const Vector2 drawn = size(image) * scale;
+  if (canvas.has_meta("character_layers") &&
+      godot::String(path(image)).get_slice("/", 0) == "characters") {
+    godot::Array layers = canvas.get_meta("character_layers", godot::Array());
+    godot::Dictionary layer;
+    layer.set("role", godot::String(path(image)).get_file().begins_with("chef_")
+                          ? "chef"
+                          : "appraiser");
+    layer.set("texture", images.at(slot(image)));
+    const Vector2 zoom = placed.get_scale();
+    layer.set("area",
+              godot::Rect2(placed.get_origin() + position.floor() * zoom,
+                           drawn * zoom));
+    layer.set("mirrored", mirrored);
+    layers.push_back(layer);
+    canvas.set_meta("character_layers", layers);
+  }
   if (!mirrored) {
     canvas.draw_texture_rect(images.at(slot(image)),
                              godot::Rect2(position.floor(), drawn), false,

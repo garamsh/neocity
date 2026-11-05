@@ -9,14 +9,16 @@ Subcommands, all driven by assets.json beside this file:
                          detected, otherwise an even division of the crop. A seamless asset's
                          crop is a third wider or taller than the tile it makes. A "cut" asset
                          keeps its source's own pixels, filled and cleared where it says, at the
-                         source's size or resized to the screen's
+                         source's size or resized to the screen's. A pose articulates a cut's
+                         masked limbs with nearest sampling and the original colours
   sheet RAW_DIR ART CONCEPT_DIR OUT
                          write the review sheet: the concept images, a mock frame, 8x close-ups
                          (sheet poses beside sprites, plain renders beside processed), every asset
   check ART              measure every runtime PNG in ART's manifest and exit 1 when one breaks a
                          clean-art rule: lone pixels, its folder's colour limit, and for character
                          sprites the lit outline and the light from above, but for the folders cut
-                         from the concept; and for those folders one picture pixel to a screen pixel
+                         from the concept and the chef/appraiser cuts; those keep their own
+                         colours and light, and one picture pixel to a screen pixel
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -56,7 +58,7 @@ COLOUR_LIMITS = {
     "title": 32,
 }
 LOGO_COLOURS = 16
-# Folders of the world and character sprites, which keep the lit outline and the light from above.
+# Sprite folders whose non-cut assets keep the lit outline and the light from above.
 SPRITE_FOLDERS = ("characters", "world", "walkway", "ground", "decor")
 # The share of side and bottom edge pixels that must be no lighter than the pixel inside them.
 EDGE_SHARE = 0.95
@@ -68,6 +70,9 @@ THIN_SHARE = 0.1
 # Folders cut from the concept with its own pixels, which keep its colours and its own light:
 # neither the colour limit, the lone-pixel limit nor the sprite rules apply to them.
 CONCEPT_CUT_FOLDERS = ("backgrounds", "walkway", "world", "ground", "decor")
+CHARACTER_FRAMES = ("idle", "walk_1", "walk_2", "walk_3", "walk_4", "run_1", "run_2", "jump", "fall", "land", "climb")
+CONCEPT_CHARACTERS = tuple(f"characters/{role}_{frame}.png"
+                           for role in ("chef", "appraiser") for frame in CHARACTER_FRAMES)
 
 
 def read_png(path):
@@ -830,16 +835,67 @@ def cut_source(asset, raw_dir, cache, sources):
     return rows
 
 
+def articulate(base, rig, pose):
+    """Moves masked limbs with nearest sampling, retaining the idle's colours and body pixels."""
+    height, width = len(base), len(base[0])
+    clear = (0, 0, 0, 0)
+    body = [list(row) for row in base]
+    layers = []
+    for name, part in rig.items():
+        limb = polygon_mask(base, part["mask"])
+        for y, row in enumerate(limb):
+            for x, pixel in enumerate(row):
+                if pixel[3]:
+                    body[y][x] = clear
+        move = pose["limbs"].get(name, {})
+        angle = math.radians(move.get("angle", 0))
+        cosine, sine = math.cos(angle), math.sin(angle)
+        px, py = part["pivot"]
+        dy = 0
+        if "floor" in move:
+            bottom = max(round(py + (x - px) * sine + (y - py) * cosine)
+                         for y, row in enumerate(limb) for x, pixel in enumerate(row) if pixel[3])
+            dy += move["floor"] - bottom
+        moved = [[clear] * width for _ in range(height)]
+        for y in range(height):
+            for x in range(width):
+                sx = round(px + (x - px) * cosine + (y - dy - py) * sine)
+                sy = round(py - (x - px) * sine + (y - dy - py) * cosine)
+                if 0 <= sx < width and 0 <= sy < height:
+                    moved[y][x] = limb[sy][sx]
+        layers.append((part.get("front", False), moved))
+    canvas = [[clear] * width for _ in range(height)]
+    for front, rows in layers:
+        if not front:
+            paste(canvas, rows, 0, 0)
+    dx, dy = pose.get("body", [0, 0])
+    paste(canvas, crop(body, [-dx, -dy, width, height]), 0, 0)
+    for front, rows in layers:
+        if front:
+            paste(canvas, rows, 0, 0)
+    return canvas
+
+
 def render(asset, raw_dir, palette, cache, sources, plain=False, done=None):
     """Returns (rgba rows, report). plain renders the earlier nearest-neighbour pipeline for review.
 
     done maps the path of each asset already rendered to its palette-index cells; an asset that
-    matches another reads that one's cells from it.
+    matches another reads that one's cells from it. Cut rows and rigs are cached separately
+    so a pose can retain the base cut's colours without palette processing.
     """
+    if "pose" in asset:
+        pose = asset["pose"]
+        rows = articulate(cache["rendered:" + pose["base"]], cache["rig:" + pose["base"]], pose)
+        return rows, {"colours": len({pixel[:3] for row in rows for pixel in row if pixel[3]}),
+                      "pitch": [1, 1], "grid": "articulated cut"}
     source = asset["source"]
     load(source, raw_dir, cache, sources)
     if "cut" in asset:
-        return cut(asset, raw_dir, cache, sources)
+        rows, report = cut(asset, raw_dir, cache, sources)
+        cache["rendered:" + asset["path"]] = rows
+        if "rig" in asset:
+            cache["rig:" + asset["path"]] = asset["rig"]
+        return rows, report
     width, height = asset["size"]
     scale = asset.get("scale", 1)
     logical = (width // scale, height // scale)
@@ -1028,12 +1084,12 @@ def problems(path, rows, scale):
     limit = LOGO_COLOURS if path == "title/logo.png" else COLOUR_LIMITS.get(folder)
     found = []
     m = measure(rows, scale)
-    cut = folder in CONCEPT_CUT_FOLDERS
+    cut = folder in CONCEPT_CUT_FOLDERS or path in CONCEPT_CHARACTERS
     if not cut and m["lone"] > LONE_LIMIT:
         found.append(f"{m['lone']:.2%} lone pixels, over {LONE_LIMIT:.0%}")
     if not cut and (limit is None or m["colours"] > limit):
         found.append(f"{m['colours']} colours, over the {folder} limit of {limit}")
-    if folder in SCREEN_PIXEL_FOLDERS:
+    if folder in SCREEN_PIXEL_FOLDERS or path in CONCEPT_CHARACTERS:
         thin = thin_share(rows)
         if thin is None or thin < THIN_SHARE:
             share = "no" if thin is None else f"{thin:.0%} of"

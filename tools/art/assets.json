@@ -295,21 +295,6 @@
   "logo": {
    "url": "https://img.recraft.ai/7DLPUbzI8Gqz3BHliwqpEJcKcfSjDd2NdkFBt8X4zgw/raw:1/plain/abs://prod/images/a9e62625-5451-40d0-8697-3fdef4bc02c8"
   },
-  "chef_moves": {
-   "url": "https://img.recraft.ai/MjvxEZCO5M-JtfK711N5sS3B2E6zMVPUXvZuBoSRID0/raw:1/plain/abs://prod/images/753c2d65-3560-42f5-a8dc-c0f14d7fe324"
-  },
-  "chef_poses": {
-   "url": "https://img.recraft.ai/bktj0OVpjKemF6W8JbK-8GJvlxpLBQzQTrwVM-2HhtM/raw:1/plain/abs://prod/images/7709e732-f7a8-4119-98bd-d8f9f43b7768"
-  },
-  "appraiser_moves": {
-   "url": "https://img.recraft.ai/ISWEhy32sBeDmECE5sqkTHMqXu_VEQWvJ-KrjiCBXr0/raw:1/plain/abs://prod/images/57c047ed-bd67-4b03-a9b6-6561376f7e5c"
-  },
-  "appraiser_poses": {
-   "url": "https://img.recraft.ai/1ts8Lg9wKCW5nKdGpiuWiHiedNLn2X1p8GpD7bxmy1o/raw:1/plain/abs://prod/images/40bf408d-c0ad-44b7-b652-ae6038db7384"
-  },
-  "appraiser_fixes": {
-   "url": "https://img.recraft.ai/hoYbyEPBd4Ey131CLZGclIvF1pkZUTqRAwMU5Ku_CqY/raw:1/plain/abs://prod/images/648fd951-77a9-4e44-b116-c4e1dd6fca69"
-  },
   "background_inpaint_v1": {
    "file": "docs/art/production/monster-mouth-escape-inpaint-source-v1.png",
    "sha256": "078c50ce99b05b1476dd9a1344d30134c7c3a70081bebf03c5f4b1fa527102f0"
@@ -10796,509 +10781,1572 @@
   },
   {
    "path": "characters/chef_idle.png",
-   "source": "chef_poses",
+   "source": "concept_search_mockup",
    "crop": [
-    -20,
-    -38,
-    395,
-    395
+    298,
+    201,
+    128,
+    128
    ],
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       324,
+       235
+      ],
+      [
+       325,
+       227
+      ],
+      [
+       331,
+       222
+      ],
+      [
+       339,
+       222
+      ],
+      [
+       342,
+       217
+      ],
+      [
+       351,
+       213
+      ],
+      [
+       361,
+       214
+      ],
+      [
+       363,
+       212
+      ],
+      [
+       369,
+       214
+      ],
+      [
+       371,
+       219
+      ],
+      [
+       371,
+       227
+      ],
+      [
+       367,
+       232
+      ],
+      [
+       370,
+       238
+      ],
+      [
+       377,
+       239
+      ],
+      [
+       377,
+       245
+      ],
+      [
+       383,
+       243
+      ],
+      [
+       378,
+       251
+      ],
+      [
+       379,
+       263
+      ],
+      [
+       374,
+       271
+      ],
+      [
+       381,
+       277
+      ],
+      [
+       384,
+       284
+      ],
+      [
+       390,
+       282
+      ],
+      [
+       393,
+       284
+      ],
+      [
+       396,
+       288
+      ],
+      [
+       400,
+       288
+      ],
+      [
+       401,
+       293
+      ],
+      [
+       397,
+       299
+      ],
+      [
+       392,
+       300
+      ],
+      [
+       388,
+       295
+      ],
+      [
+       384,
+       299
+      ],
+      [
+       379,
+       298
+      ],
+      [
+       377,
+       307
+      ],
+      [
+       382,
+       311
+      ],
+      [
+       384,
+       317
+      ],
+      [
+       377,
+       323
+      ],
+      [
+       371,
+       327
+      ],
+      [
+       366,
+       324
+      ],
+      [
+       365,
+       317
+      ],
+      [
+       355,
+       312
+      ],
+      [
+       345,
+       311
+      ],
+      [
+       340,
+       318
+      ],
+      [
+       336,
+       322
+      ],
+      [
+       330,
+       327
+      ],
+      [
+       322,
+       327
+      ],
+      [
+       318,
+       323
+      ],
+      [
+       315,
+       315
+      ],
+      [
+       317,
+       310
+      ],
+      [
+       322,
+       310
+      ],
+      [
+       327,
+       313
+      ],
+      [
+       325,
+       308
+      ],
+      [
+       324,
+       304
+      ],
+      [
+       316,
+       305
+      ],
+      [
+       315,
+       302
+      ],
+      [
+       310,
+       304
+      ],
+      [
+       306,
+       300
+      ],
+      [
+       305,
+       295
+      ],
+      [
+       307,
+       286
+      ],
+      [
+       312,
+       279
+      ],
+      [
+       314,
+       274
+      ],
+      [
+       322,
+       269
+      ],
+      [
+       330,
+       268
+      ],
+      [
+       335,
+       266
+      ],
+      [
+       331,
+       261
+      ],
+      [
+       327,
+       261
+      ],
+      [
+       325,
+       258
+      ],
+      [
+       329,
+       254
+      ],
+      [
+       327,
+       249
+      ],
+      [
+       331,
+       249
+      ],
+      [
+       328,
+       244
+      ],
+      [
+       327,
+       240
+      ]
+     ],
+     [
+      [
+       395,
+       286
+      ],
+      [
+       407,
+       275
+      ],
+      [
+       402,
+       271
+      ],
+      [
+       402,
+       269
+      ],
+      [
+       410,
+       262
+      ],
+      [
+       421,
+       271
+      ],
+      [
+       413,
+       282
+      ],
+      [
+       409,
+       283
+      ],
+      [
+       407,
+       279
+      ],
+      [
+       398,
+       290
+      ]
+     ]
+    ],
+    "clear_colours": [
+     {
+      "hues": [
+       260,
+       318
+      ],
+      "saturation": 0.45,
+      "lightness": 0.12
+     }
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), standing, arms down"
+   "depicts": "Chef (ART-CHAR-001), standing cut from the search mockup",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     298,
+     201,
+     128,
+     128
+    ],
+    "mask": "explicit silhouette; original RGB retained"
+   },
+   "rig": {
+    "left_leg": {
+     "mask": [
+      [
+       [
+        0,
+        108
+       ],
+       [
+        40,
+        108
+       ],
+       [
+        45,
+        103
+       ],
+       [
+        56,
+        104
+       ],
+       [
+        60,
+        110
+       ],
+       [
+        60,
+        128
+       ],
+       [
+        0,
+        128
+       ]
+      ]
+     ],
+     "pivot": [
+      43,
+      104
+     ]
+    },
+    "right_leg": {
+     "mask": [
+      [
+       [
+        60,
+        108
+       ],
+       [
+        65,
+        102
+       ],
+       [
+        86,
+        102
+       ],
+       [
+        128,
+        108
+       ],
+       [
+        128,
+        128
+       ],
+       [
+        60,
+        128
+       ]
+      ]
+     ],
+     "pivot": [
+      67,
+      104
+     ]
+    },
+    "left_arm": {
+     "mask": [
+      [
+       [
+        0,
+        83
+       ],
+       [
+        32,
+        83
+       ],
+       [
+        32,
+        104
+       ],
+       [
+        0,
+        104
+       ]
+      ]
+     ],
+     "pivot": [
+      25,
+      85
+     ],
+     "front": true
+    },
+    "tool_arm": {
+     "mask": [
+      [
+       [
+        98,
+        58
+       ],
+       [
+        128,
+        58
+       ],
+       [
+        128,
+        102
+       ],
+       [
+        78,
+        102
+       ],
+       [
+        78,
+        80
+       ],
+       [
+        98,
+        80
+       ]
+      ]
+     ],
+     "pivot": [
+      80,
+      85
+     ],
+     "front": true
+    }
+   }
   },
   {
    "path": "characters/chef_walk_1.png",
-   "source": "chef_moves",
-   "crop": [
-    -20,
-    -38,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": 0,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": 0,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 0
+     },
+     "tool_arm": {
+      "angle": 0
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), walk 1 of 4: right foot forward"
+   "depicts": "Chef (ART-CHAR-001), walk 1, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_2.png",
-   "source": "chef_moves",
-   "crop": [
-    315,
-    -38,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -35,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": -38,
+      "floor": 120
+     },
+     "left_arm": {
+      "angle": -5
+     },
+     "tool_arm": {
+      "angle": 4
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), walk 2 of 4: passing"
+   "depicts": "Chef (ART-CHAR-001), walk 2, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_3.png",
-   "source": "chef_moves",
-   "crop": [
-    662,
-    -38,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -62,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": 58,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 7
+     },
+     "tool_arm": {
+      "angle": -5
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), walk 3 of 4: left foot forward"
+   "depicts": "Chef (ART-CHAR-001), walk 3, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_4.png",
-   "source": "chef_moves",
-   "crop": [
-    1002,
-    -38,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -55,
+      "floor": 120
+     },
+     "right_leg": {
+      "angle": 36,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 4
+     },
+     "tool_arm": {
+      "angle": -3
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), walk 4 of 4: passing"
+   "depicts": "Chef (ART-CHAR-001), walk 4, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_run_1.png",
-   "source": "chef_moves",
-   "crop": [
-    -11,
-    334,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": 16,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": -18,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": -14
+     },
+     "tool_arm": {
+      "angle": -8
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), run 1 of 2: long stride, leaning forward"
+   "depicts": "Chef (ART-CHAR-001), run 1, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_run_2.png",
-   "source": "chef_moves",
-   "crop": [
-    333,
-    340,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -72,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": 70,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 12
+     },
+     "tool_arm": {
+      "angle": 7
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), run 2 of 2: the other leg forward"
+   "depicts": "Chef (ART-CHAR-001), run 2, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_jump.png",
-   "source": "chef_moves",
-   "crop": [
-    665,
-    317,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -48,
+      "floor": 121
+     },
+     "right_leg": {
+      "angle": 12,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": -24
+     },
+     "tool_arm": {
+      "angle": -18
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), rising: knees tucked, arms up"
+   "depicts": "Chef (ART-CHAR-001), jump, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_fall.png",
-   "source": "chef_moves",
-   "crop": [
-    1000,
-    357,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -25,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": 35,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": -16
+     },
+     "tool_arm": {
+      "angle": 10
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), falling: legs down, arms up"
+   "depicts": "Chef (ART-CHAR-001), fall, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_land.png",
-   "source": "chef_poses",
-   "crop": [
-    315,
-    -38,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -55,
+      "floor": 125
+     },
+     "right_leg": {
+      "angle": 48,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 10
+     },
+     "tool_arm": {
+      "angle": 6
+     }
+    },
+    "body": [
+     0,
+     3
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), landing: arms out for balance"
+   "depicts": "Chef (ART-CHAR-001), land, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_climb.png",
-   "source": "chef_poses",
-   "crop": [
-    680,
-    -15,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/chef_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -38,
+      "floor": 115
+     },
+     "right_leg": {
+      "angle": 25,
+      "floor": 125
+     },
+     "left_arm": {
+      "angle": 68
+     },
+     "tool_arm": {
+      "angle": -38
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Chef (ART-CHAR-001), climbing, seen from behind, one arm up"
+   "depicts": "Chef (ART-CHAR-001), climb, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_idle.png",
-   "source": "appraiser_poses",
+   "source": "concept_search_mockup",
    "crop": [
-    -15,
-    -55,
-    395,
-    395
+    409,
+    203,
+    128,
+    128
    ],
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       436,
+       303
+      ],
+      [
+       437,
+       297
+      ],
+      [
+       442,
+       292
+      ],
+      [
+       447,
+       290
+      ],
+      [
+       454,
+       288
+      ],
+      [
+       455,
+       284
+      ],
+      [
+       452,
+       280
+      ],
+      [
+       455,
+       275
+      ],
+      [
+       462,
+       275
+      ],
+      [
+       463,
+       272
+      ],
+      [
+       462,
+       268
+      ],
+      [
+       461,
+       265
+      ],
+      [
+       465,
+       260
+      ],
+      [
+       472,
+       258
+      ],
+      [
+       476,
+       260
+      ],
+      [
+       476,
+       265
+      ],
+      [
+       481,
+       261
+      ],
+      [
+       483,
+       265
+      ],
+      [
+       487,
+       258
+      ],
+      [
+       491,
+       259
+      ],
+      [
+       493,
+       266
+      ],
+      [
+       497,
+       262
+      ],
+      [
+       500,
+       264
+      ],
+      [
+       499,
+       270
+      ],
+      [
+       504,
+       273
+      ],
+      [
+       508,
+       269
+      ],
+      [
+       513,
+       267
+      ],
+      [
+       517,
+       272
+      ],
+      [
+       514,
+       277
+      ],
+      [
+       511,
+       279
+      ],
+      [
+       512,
+       285
+      ],
+      [
+       518,
+       290
+      ],
+      [
+       518,
+       297
+      ],
+      [
+       514,
+       303
+      ],
+      [
+       505,
+       306
+      ],
+      [
+       505,
+       310
+      ],
+      [
+       503,
+       316
+      ],
+      [
+       497,
+       321
+      ],
+      [
+       491,
+       321
+      ],
+      [
+       490,
+       326
+      ],
+      [
+       484,
+       330
+      ],
+      [
+       476,
+       329
+      ],
+      [
+       469,
+       324
+      ],
+      [
+       464,
+       321
+      ],
+      [
+       459,
+       326
+      ],
+      [
+       450,
+       330
+      ],
+      [
+       442,
+       329
+      ],
+      [
+       436,
+       325
+      ],
+      [
+       437,
+       321
+      ],
+      [
+       442,
+       314
+      ],
+      [
+       444,
+       311
+      ],
+      [
+       439,
+       309
+      ]
+     ]
+    ],
+    "clear_colours": [
+     {
+      "hues": [
+       260,
+       318
+      ],
+      "saturation": 0.45,
+      "lightness": 0.12
+     }
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), standing with the magnifier"
+   "depicts": "Appraiser (ART-CHAR-002), standing cut from the search mockup",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     409,
+     203,
+     128,
+     128
+    ],
+    "mask": "explicit silhouette; original RGB retained"
+   },
+   "rig": {
+    "left_leg": {
+     "mask": [
+      [
+       [
+        0,
+        115
+       ],
+       [
+        61,
+        115
+       ],
+       [
+        61,
+        128
+       ],
+       [
+        0,
+        128
+       ]
+      ]
+     ],
+     "pivot": [
+      51,
+      115
+     ]
+    },
+    "right_leg": {
+     "mask": [
+      [
+       [
+        61,
+        115
+       ],
+       [
+        73,
+        114
+       ],
+       [
+        79,
+        119
+       ],
+       [
+        82,
+        121
+       ],
+       [
+        82,
+        125
+       ],
+       [
+        78,
+        128
+       ],
+       [
+        61,
+        128
+       ]
+      ]
+     ],
+     "pivot": [
+      65,
+      116
+     ]
+    },
+    "left_arm": {
+     "mask": [
+      [
+       [
+        24,
+        95
+       ],
+       [
+        48,
+        95
+       ],
+       [
+        48,
+        112
+       ],
+       [
+        24,
+        112
+       ]
+      ]
+     ],
+     "pivot": [
+      41,
+      98
+     ],
+     "front": true
+    }
+   }
   },
   {
    "path": "characters/appraiser_walk_1.png",
-   "source": "appraiser_moves",
-   "crop": [
-    -14,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": 0,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": 0,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 0
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 1 of 4: right foot forward"
+   "depicts": "Appraiser (ART-CHAR-002), walk 1, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_2.png",
-   "source": "appraiser_moves",
-   "crop": [
-    325,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -35,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": -38,
+      "floor": 121
+     },
+     "left_arm": {
+      "angle": -5
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 2 of 4: passing"
+   "depicts": "Appraiser (ART-CHAR-002), walk 2, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_3.png",
-   "source": "appraiser_moves",
-   "crop": [
-    668,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -62,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": 58,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 7
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 3 of 4: left foot forward"
+   "depicts": "Appraiser (ART-CHAR-002), walk 3, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_4.png",
-   "source": "appraiser_moves",
-   "crop": [
-    1012,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -55,
+      "floor": 121
+     },
+     "right_leg": {
+      "angle": 36,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 4
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), walk 4 of 4: passing"
+   "depicts": "Appraiser (ART-CHAR-002), walk 4, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_run_1.png",
-   "source": "appraiser_moves",
-   "crop": [
-    1,
-    334,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": 16,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": -18,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": -14
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), run 1 of 2: long stride"
+   "depicts": "Appraiser (ART-CHAR-002), run 1, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_run_2.png",
-   "source": "appraiser_moves",
-   "crop": [
-    336,
-    334,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -72,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": 70,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 12
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), run 2 of 2: the other leg forward"
+   "depicts": "Appraiser (ART-CHAR-002), run 2, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_jump.png",
-   "source": "appraiser_fixes",
-   "crop": [
-    1013,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -48,
+      "floor": 122
+     },
+     "right_leg": {
+      "angle": 12,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": -24
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), rising: both arms up, one magnifier"
+   "depicts": "Appraiser (ART-CHAR-002), jump, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_fall.png",
-   "source": "appraiser_moves",
-   "crop": [
-    1007,
-    340,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -25,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": 35,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": -16
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), falling: legs down, arms up"
+   "depicts": "Appraiser (ART-CHAR-002), fall, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_land.png",
-   "source": "appraiser_poses",
-   "crop": [
-    324,
-    -55,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -55,
+      "floor": 126
+     },
+     "right_leg": {
+      "angle": 48,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 10
+     }
+    },
+    "body": [
+     0,
+     3
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), landing: knees bent"
+   "depicts": "Appraiser (ART-CHAR-002), land, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_climb.png",
-   "source": "appraiser_fixes",
-   "crop": [
-    1013,
-    352,
-    395,
-    395
-   ],
+   "source": "concept_search_mockup",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "edge": "lit",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "pose": {
+    "base": "characters/appraiser_idle.png",
+    "limbs": {
+     "left_leg": {
+      "angle": -38,
+      "floor": 116
+     },
+     "right_leg": {
+      "angle": 25,
+      "floor": 126
+     },
+     "left_arm": {
+      "angle": 68
+     }
+    },
+    "body": [
+     0,
+     0
+    ]
    },
-   "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind, one arm up"
+   "depicts": "Appraiser (ART-CHAR-002), climb, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "world/ladder.png",
