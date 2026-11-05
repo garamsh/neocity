@@ -31,8 +31,8 @@ void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
 /// Draws an opaque pixel panel filling `area`: a dark fill inside a thick
 /// original mockup rim, repeating native edge pixels between cut corners.
 void panel(godot::Node2D &canvas, godot::Rect2 area);
-/// Draws a pixel button filling `area` in a panel's frame, filled in the
-/// accent rule inside its original mockup rim when `marked`.
+/// Draws a dark button in the original mockup frame, with a gold mark along
+/// its left interior edge when `marked`.
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
 /// Draws a dark slot sunk into a panel, filling `area`.
 void inset(godot::Node2D &canvas, godot::Rect2 area);

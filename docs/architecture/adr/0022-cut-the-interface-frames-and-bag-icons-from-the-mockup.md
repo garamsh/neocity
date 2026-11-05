@@ -1,13 +1,13 @@
 # ADR 0022: Cut the interface frames and bag icons from the mockup
 
-> Status: proposed
+> Status: accepted
 > Date: 2026-11-06
 
 Append-only: once merged, the body below is not rewritten. A changed decision means a new ADR.
 
 ## Context
 
-[Issue #192](https://github.com/garamsh/neocity/issues/192#issuecomment-6670011576) applies the user's original-mockup direction to the interface. The code-drawn frames of ADR 0010 approximate its outlines but omit their detail. The original search mockup at commit `241124d5ba2dcef937c904623f1e5e3cb03fbcf5` supplies the frame borders and four ingredient pictures, and the larger recorded sources supply the other icons.
+[Issue #192](https://github.com/garamsh/neocity/issues/192#issuecomment-6670011576) applies the user's original-mockup direction to the interface. The [PM adoption](https://github.com/garamsh/neocity/issues/192#issuecomment-6670742939) accepts this source-cut policy. The code-drawn frames of ADR 0010 approximate its outlines but omit their detail. The original search mockup at commit `241124d5ba2dcef937c904623f1e5e3cb03fbcf5` supplies the frame borders and four ingredient pictures, and the larger recorded sources supply the other icons.
 
 Alternatives considered:
 
