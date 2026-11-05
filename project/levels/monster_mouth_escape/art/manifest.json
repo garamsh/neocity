@@ -18,7 +18,7 @@
     490
    ],
    "scale": 1,
-   "colours": 284011,
+   "colours": 290319,
    "depicts": "Middle layer across the first screen: original tilted indigo towers, lit trains and pink flesh, with foreground occlusions repaired only inside explicit polygons from the recorded inpaint source; clear above the skyline",
    "provenance": {
     "tool": "image_gen.imagegen (built-in), one edit",

@@ -732,6 +732,18 @@ def polygon_mask(rows, polygons):
     return kept
 
 
+def feather_flesh(rows, depth):
+    """Blends only pink flesh in each column's top depth rows; blue city and dark outlines stay opaque."""
+    out = [list(row) for row in rows]
+    for x in range(len(rows[0])):
+        top = next((y for y, row in enumerate(rows) if row[x][3]), len(rows))
+        for y in range(top, min(len(rows), top + depth)):
+            r, g, b, a = rows[y][x]
+            if r > g + 20 and b > g + 20 and r >= b and max(r, g, b) >= 80:
+                out[y][x] = (r, g, b, round(a * (y - top) / depth))
+    return out
+
+
 def cut(asset, raw_dir, cache, sources):
     """Returns (rgba rows, report) for an asset cut from its source with the source's own pixels.
 
@@ -745,7 +757,8 @@ def cut(asset, raw_dir, cache, sources):
     pixel is made clear. Each clear colour rule then clears the pixels whose hue in degrees lies
     in its hues and whose saturation and lightness reach its own, inside its within rects when it
     has any. A mask keeps only the union of its polygons, independent of colour. The crop is
-    cut out last; a list of crops is cut and stacked top to bottom.
+    cut out last; a list of crops is cut and stacked top to bottom. feather_flesh blends only
+    pink tissue in the mask's first rows, retaining blue architecture and dark outlines.
     """
     spec = asset["cut"]
     plain = not spec.get("fills") and not spec.get("clear_above")
@@ -783,6 +796,8 @@ def cut(asset, raw_dir, cache, sources):
                     row[x] = (0, 0, 0, 0)
     if "mask" in spec:
         rows = polygon_mask(rows, spec["mask"])
+    if "feather_flesh" in spec:
+        rows = feather_flesh(rows, spec["feather_flesh"])
     boxes = asset["crop"] if isinstance(asset["crop"][0], list) else [asset["crop"]]
     rows = [row for box in boxes for row in crop(rows, box)]
     if [len(rows[0]), len(rows)] != asset["size"]:

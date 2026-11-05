@@ -119,6 +119,20 @@ class ResampleTest(unittest.TestCase):
 
 
 class CutTest(unittest.TestCase):
+    def test_flesh_feathering_preserves_blue_and_dark_outlines_and_stops_at_its_band(self):
+        pink, blue = (200, 40, 170, 255), (30, 40, 140, 255)
+        near_blue = (180, 40, 190, 255)
+        source = [[CLEAR] * 4] + [[pink, blue, DARK, near_blue] for _ in range(4)]
+        asset = {"path": "backgrounds/test.png", "source": "test", "crop": [0, 0, 4, 5],
+                 "size": [4, 5], "cut": {"feather_flesh": 2}}
+        rows, _ = pixelize.cut(asset, None, {"test": source}, {})
+        self.assertEqual(rows, [[CLEAR] * 4, [(200, 40, 170, 0), blue, DARK, near_blue],
+                                [(200, 40, 170, 128), blue, DARK, near_blue],
+                                [pink, blue, DARK, near_blue], [pink, blue, DARK, near_blue]])
+        asset["cut"] = {}
+        unchanged, _ = pixelize.cut(asset, None, {"test": source}, {})
+        self.assertEqual(unchanged, source)
+
     def test_a_polygon_keeps_its_silhouette_even_when_the_background_has_the_same_colour(self):
         asset = {
             "path": "walkway/test.png", "source": "test",
