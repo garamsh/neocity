@@ -29,10 +29,10 @@ godot::Rect2 rect(float x, float y, float w, float h);
 void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
              godot::Color fill);
 /// Draws an opaque pixel panel filling `area`: a dark fill inside a thick
-/// light rim, lit from above, between dark lines, its corners cut back.
+/// original mockup rim, repeating native edge pixels between cut corners.
 void panel(godot::Node2D &canvas, godot::Rect2 area);
 /// Draws a pixel button filling `area` in a panel's frame, filled in the
-/// accent with a darker lip along its bottom when `marked`.
+/// accent rule inside its original mockup rim when `marked`.
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
 /// Draws a dark slot sunk into a panel, filling `area`.
 void inset(godot::Node2D &canvas, godot::Rect2 area);

@@ -71,6 +71,10 @@ THIN_SHARE = 0.1
 # neither the colour limit, the lone-pixel limit nor the sprite rules apply to them.
 CONCEPT_CUT_FOLDERS = ("backgrounds", "walkway", "world", "ground", "decor")
 CHARACTER_FRAMES = ("idle", "walk_1", "walk_2", "walk_3", "walk_4", "run_1", "run_2", "jump", "fall", "land", "climb")
+CONCEPT_INTERFACE = ("ui/frame_panel.png", "ui/frame_button.png", "ui/frame_slot.png",
+                     "ui/icon_day.png", "ui/icon_clock.png",
+                     "icons/ingredient_mushroom.png", "icons/ingredient_tomato.png",
+                     "icons/ingredient_fish.png", "icons/ingredient_pickles.png")
 CONCEPT_CHARACTERS = tuple(f"characters/{role}_{frame}.png"
                            for role in ("chef", "appraiser") for frame in CHARACTER_FRAMES)
 
@@ -776,6 +780,12 @@ def cut(asset, raw_dir, cache, sources):
             rows = resample(rows, *spec["screen"])
             if plain:
                 cache[resized] = [list(row) for row in rows]
+    if "interior" in spec:
+        x, y, w, h = spec["interior"]
+        sx, sy = spec["fill_at"]
+        fill = rows[sy][sx]
+        for yy in range(y, y + h):
+            rows[yy][x:x + w] = [fill] * w
     taken = [list(row) for row in rows]
     for x, y, w, h, dx, dy in spec.get("patches", []):
         for yy in range(y, y + h):
@@ -1084,7 +1094,7 @@ def problems(path, rows, scale):
     limit = LOGO_COLOURS if path == "title/logo.png" else COLOUR_LIMITS.get(folder)
     found = []
     m = measure(rows, scale)
-    cut = folder in CONCEPT_CUT_FOLDERS or path in CONCEPT_CHARACTERS
+    cut = folder in CONCEPT_CUT_FOLDERS or path in CONCEPT_CHARACTERS or path in CONCEPT_INTERFACE
     if not cut and m["lone"] > LONE_LIMIT:
         found.append(f"{m['lone']:.2%} lone pixels, over {LONE_LIMIT:.0%}")
     if not cut and (limit is None or m["colours"] > limit):

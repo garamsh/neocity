@@ -23,14 +23,6 @@ namespace {
 
 using godot::Vector2;
 
-/// A frame's layers, outside in: a dark line, a light rim, its shaded lower
-/// part, and the inner dark line, each on whole pixels.
-constexpr float FRAME_LINE = 2.0F;
-constexpr float FRAME_RIM = 3.0F;
-/// How far a frame's corners are cut back, so they read as pixel-rounded.
-constexpr float FRAME_NOTCH = 2.0F;
-/// The darker lip along a marked button's bottom edge.
-constexpr float LIP = 4.0F;
 /// Points on each rounded corner.
 constexpr int CORNER_STEPS = 6;
 constexpr std::uint64_t GLIDE_MICROSECONDS = 280000;
@@ -286,42 +278,63 @@ void notched(godot::Node2D &canvas, godot::Rect2 area, float notch,
   canvas.draw_rect(whole.grow_individual(0.0F, -notch, 0.0F, -notch), fill);
 }
 
-/// The dark line and light rim every frame shares, with `fill` inside them.
-void frame(godot::Node2D &canvas, godot::Rect2 area, godot::Color rim,
-           godot::Color fill) {
-  const auto tones = palette();
-  notched(canvas, area, FRAME_NOTCH, tones.outline);
-  const auto lit = area.grow(-FRAME_LINE);
-  notched(canvas, lit, FRAME_NOTCH, rim);
-  // The rim's lower part is in shade, lit from above like the art.
-  notched(canvas, lit.grow_individual(0.0F, -lit.size.y / 2.0F, 0.0F, 0.0F),
-          FRAME_NOTCH, rim.darkened(0.25F));
-  notched(canvas, lit.grow(-FRAME_RIM), 1.0F, tones.outline);
-  canvas.draw_rect(lit.grow(-FRAME_RIM - 1.0F), fill);
+/// Repeats a cut frame's edge pixels between its native nine-pixel corners.
+void frame(godot::Node2D &canvas, godot::Rect2 area, std::size_t kind) {
+  static const std::array textures{
+      load_texture("res://levels/monster_mouth_escape/art/ui/frame_panel.png"),
+      load_texture("res://levels/monster_mouth_escape/art/ui/frame_button.png"),
+      load_texture("res://levels/monster_mouth_escape/art/ui/frame_slot.png")};
+  const auto &texture = textures.at(kind);
+  constexpr float EDGE = 9.0F;
+  const Vector2 native = texture->get_size();
+  const std::array source_x{0.0F, EDGE, native.x - EDGE};
+  const std::array source_y{0.0F, EDGE, native.y - EDGE};
+  const std::array source_width{EDGE, 1.0F, EDGE};
+  const std::array source_height{EDGE, 1.0F, EDGE};
+  const std::array target_x{area.position.x, area.position.x + EDGE,
+                            area.get_end().x - EDGE};
+  const std::array target_y{area.position.y, area.position.y + EDGE,
+                            area.get_end().y - EDGE};
+  const std::array target_width{EDGE, area.size.x - 2.0F * EDGE, EDGE};
+  const std::array target_height{EDGE, area.size.y - 2.0F * EDGE, EDGE};
+  for (std::size_t y = 0; y < 3; ++y) {
+    for (std::size_t x = 0; x < 3; ++x) {
+      canvas.draw_texture_rect_region(
+          texture,
+          rect(target_x.at(x), target_y.at(y), target_width.at(x),
+               target_height.at(y)),
+          rect(source_x.at(x), source_y.at(y), source_width.at(x),
+               source_height.at(y)));
+    }
+  }
+  godot::Dictionary drawn =
+      canvas.get_meta("interface_frames", godot::Dictionary());
+  godot::Dictionary observation;
+  observation.set("texture", texture);
+  observation.set("area", area);
+  drawn.set(texture->get_path(), observation);
+  canvas.set_meta("interface_frames", drawn);
 }
 
 } // namespace
 
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
-  const auto tones = palette();
-  if (!marked) {
-    frame(canvas, area, tones.rim, tones.raised);
-    return;
+  frame(canvas, area, 1);
+  if (marked) {
+    canvas.draw_rect(rect(area.position.x + 9.0F, area.position.y + 9.0F,
+                          area.size.x - 18.0F, 2.0F),
+                     palette().gold);
   }
-  frame(canvas, area, tones.gold.lightened(0.3F), tones.gold);
-  const auto inner = area.grow(-FRAME_LINE - FRAME_RIM - 1.0F);
-  canvas.draw_rect(
-      inner.grow_individual(0.0F, LIP - inner.size.y, 0.0F, 0.0F).abs(),
-      color(204, 136, 28, 1.0F));
 }
 
-void panel(godot::Node2D &canvas, godot::Rect2 area) {
-  const auto tones = palette();
-  frame(canvas, area, tones.rim, tones.surface);
-}
+void panel(godot::Node2D &canvas, godot::Rect2 area) { frame(canvas, area, 0); }
 
 void inset(godot::Node2D &canvas, godot::Rect2 area) {
   const auto tones = palette();
+  if (area.size.x >= 32.0F && area.size.y >= 32.0F) {
+    frame(canvas, area, 2);
+    return;
+  }
   notched(canvas, area, 1.0F, tones.outline);
   canvas.draw_rect(area.grow_individual(-2.0F, -2.0F, -1.0F, -1.0F).round(),
                    tones.background);

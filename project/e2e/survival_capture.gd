@@ -677,6 +677,48 @@ func _save(screen: String) -> Image:
 	print("Capture: ", destination)
 	return frame
 
+## Reads the textures actually drawn and their native corners in this frame.
+func _interface_corners(frame: Image, screen: String) -> bool:
+	var expected: Dictionary = {"frame_panel.png": Vector2i(368, 46), "frame_button.png": Vector2i(163, 54), "frame_slot.png": Vector2i(73, 79)}
+	var drawn: Dictionary = scene.get_meta("interface_frames", {})
+	if drawn.is_empty():
+		_fail("%s: no actual interface frame textures were observed" % screen)
+		return false
+	for path: String in drawn:
+		var observation: Dictionary = drawn[path]
+		var texture: Texture2D = observation["texture"]
+		var image: Image = texture.get_image()
+		if image.get_size() != expected.get(path.get_file(), Vector2i.ZERO):
+			_fail("%s: interface texture %s loaded at %s" % [screen, path, image.get_size()])
+			return false
+		var area: Rect2 = observation["area"]
+		var compared: int = 0
+		for y: int in range(9):
+			for x: int in range(9):
+				var original: Color = image.get_pixel(x, y)
+				var at: Vector2i = Vector2i(area.position) + Vector2i(x, y)
+				if original.a < 1.0 or not Rect2i(Vector2i.ZERO, frame.get_size()).has_point(at):
+					continue
+				if not frame.get_pixelv(at).is_equal_approx(original):
+					_fail("%s: %s native corner differs at %s" % [screen, path.get_file(), at])
+					return false
+				compared += 1
+		if compared < 8:
+			_fail("%s: fewer than eight opaque native corner pixels for %s" % [screen, path])
+			return false
+	return true
+
+## Whether a plate intersects the actual drawn character's opaque pixels.
+func _plate_covers_character(plate: Rect2, layer: Dictionary) -> bool:
+	var character_area: Rect2 = layer["area"]
+	var area: Rect2 = plate.intersection(character_area)
+	var alpha: Image = layer["alpha"]
+	for y: int in range(floori(area.position.y), ceili(area.end.y)):
+		for x: int in range(floori(area.position.x), ceili(area.end.x)):
+			if _character_opaque(alpha, layer, Vector2(x, y) + Vector2(0.5, 0.5)):
+				return true
+	return false
+
 ## Saves a city frame and fails it when one word plate covers another, or a
 ## plate other than a source's count covers a source, when a plate lies under
 ## a HUD panel or note, when it
@@ -685,6 +727,8 @@ func _save(screen: String) -> Image:
 ## NEXT names to walk to, or when a look it shows is wrong.
 func _save_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
+	if not _interface_corners(frame, screen):
+		return frame
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
@@ -698,6 +742,11 @@ func _save_city(screen: String) -> Image:
 		var texture: Texture2D = layer["texture"]
 		sampled["alpha"] = texture.get_image()
 		character_masks.append(sampled)
+	for layer: Dictionary in character_masks:
+		for plate: Rect2 in scene.get_meta("map_counts", []):
+			if _plate_covers_character(plate, layer):
+				_fail("%s: source icon plate covers the actual character silhouette" % screen)
+				return frame
 	var sources: int = labelled.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):

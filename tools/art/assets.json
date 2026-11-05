@@ -13252,59 +13252,213 @@
   },
   {
    "path": "icons/ingredient_tomato.png",
-   "source": "red_ingredients",
+   "source": "concept_search_mockup",
    "crop": [
-    66,
-    82,
-    606,
-    606
+    533,
+    643,
+    56,
+    56
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
-   "colours": 12,
-   "outline": "#0a060e",
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      280,
-      350
-     ],
-     "hue": 357,
-     "saturation": 1.1
-    }
-   ],
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       547,
+       647
+      ],
+      [
+       561,
+       646
+      ],
+      [
+       568,
+       649
+      ],
+      [
+       568,
+       656
+      ],
+      [
+       566,
+       658
+      ],
+      [
+       568,
+       686
+      ],
+      [
+       565,
+       691
+      ],
+      [
+       552,
+       692
+      ],
+      [
+       545,
+       688
+      ],
+      [
+       545,
+       657
+      ],
+      [
+       543,
+       655
+      ],
+      [
+       543,
+       650
+      ]
+     ]
+    ]
    },
-   "depicts": "Ingredient icon: tomato"
+   "depicts": "Original mockup bag icon: tomato",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     533,
+     643,
+     56,
+     56
+    ],
+    "policy": "source colours and silhouette retained; native screen pixels",
+    "item_id": 1
+   }
   },
   {
    "path": "icons/ingredient_fish.png",
-   "source": "ingredients",
+   "source": "concept_search_mockup",
    "crop": [
-    346,
-    0,
-    342,
-    342
+    604,
+    646,
+    56,
+    56
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
-   "colours": 12,
-   "outline": "#0a060e",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       608,
+       682
+      ],
+      [
+       608,
+       676
+      ],
+      [
+       613,
+       669
+      ],
+      [
+       621,
+       663
+      ],
+      [
+       625,
+       656
+      ],
+      [
+       632,
+       660
+      ],
+      [
+       644,
+       658
+      ],
+      [
+       654,
+       650
+      ],
+      [
+       659,
+       651
+      ],
+      [
+       657,
+       658
+      ],
+      [
+       654,
+       663
+      ],
+      [
+       655,
+       668
+      ],
+      [
+       660,
+       672
+      ],
+      [
+       658,
+       675
+      ],
+      [
+       650,
+       670
+      ],
+      [
+       644,
+       674
+      ],
+      [
+       636,
+       680
+      ],
+      [
+       626,
+       685
+      ],
+      [
+       615,
+       687
+      ],
+      [
+       608,
+       685
+      ]
+     ]
+    ]
    },
-   "depicts": "Ingredient icon: fish"
+   "depicts": "Original mockup bag icon: fish",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     604,
+     646,
+     56,
+     56
+    ],
+    "policy": "source colours and silhouette retained; native screen pixels",
+    "item_id": 2
+   }
   },
   {
    "path": "icons/ingredient_kelp.png",
@@ -13316,8 +13470,8 @@
     308
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13331,49 +13485,213 @@
   },
   {
    "path": "icons/ingredient_mushroom.png",
-   "source": "ingredients",
+   "source": "concept_search_mockup",
    "crop": [
-    0,
-    330,
-    346,
-    346
+    467,
+    642,
+    56,
+    56
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
-   "colours": 12,
-   "outline": "#0a060e",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       479,
+       645
+      ],
+      [
+       492,
+       645
+      ],
+      [
+       499,
+       649
+      ],
+      [
+       501,
+       655
+      ],
+      [
+       510,
+       658
+      ],
+      [
+       514,
+       664
+      ],
+      [
+       513,
+       672
+      ],
+      [
+       504,
+       677
+      ],
+      [
+       499,
+       674
+      ],
+      [
+       496,
+       683
+      ],
+      [
+       499,
+       688
+      ],
+      [
+       496,
+       694
+      ],
+      [
+       486,
+       691
+      ],
+      [
+       480,
+       684
+      ],
+      [
+       479,
+       674
+      ],
+      [
+       471,
+       670
+      ],
+      [
+       469,
+       664
+      ],
+      [
+       472,
+       654
+      ]
+     ]
+    ]
    },
-   "depicts": "Ingredient icon: mushroom"
+   "depicts": "Original mockup bag icon: mushroom",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     467,
+     642,
+     56,
+     56
+    ],
+    "policy": "source colours and silhouette retained; native screen pixels",
+    "item_id": 4
+   }
   },
   {
    "path": "icons/ingredient_pickles.png",
-   "source": "ingredients",
+   "source": "concept_search_mockup",
    "crop": [
-    354,
-    356,
-    316,
-    316
+    679,
+    643,
+    56,
+    56
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
-   "colours": 12,
-   "outline": "#0a060e",
-   "largest_only": true,
-   "key": {
-    "colour": "#ffffff",
-    "tolerance": 48
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "mask": [
+     [
+      [
+       694,
+       647
+      ],
+      [
+       708,
+       647
+      ],
+      [
+       712,
+       650
+      ],
+      [
+       712,
+       655
+      ],
+      [
+       710,
+       658
+      ],
+      [
+       714,
+       662
+      ],
+      [
+       714,
+       687
+      ],
+      [
+       711,
+       692
+      ],
+      [
+       699,
+       693
+      ],
+      [
+       692,
+       689
+      ],
+      [
+       691,
+       663
+      ],
+      [
+       694,
+       658
+      ],
+      [
+       691,
+       654
+      ],
+      [
+       691,
+       649
+      ]
+     ]
+    ]
    },
-   "depicts": "Ingredient icon: pickles"
+   "depicts": "Original mockup bag icon: pickles",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     679,
+     643,
+     56,
+     56
+    ],
+    "policy": "source colours and silhouette retained; native screen pixels",
+    "item_id": 5
+   }
   },
   {
    "path": "icons/ingredient_meat.png",
@@ -13385,8 +13703,8 @@
     722
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13418,8 +13736,8 @@
     299
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13441,8 +13759,8 @@
     768
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13464,8 +13782,8 @@
     753
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13487,8 +13805,8 @@
     728
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13510,8 +13828,8 @@
     400
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13532,8 +13850,8 @@
     520
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13554,8 +13872,8 @@
     380
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13576,8 +13894,8 @@
     412
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13598,8 +13916,8 @@
     432
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13620,8 +13938,8 @@
     412
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13642,8 +13960,8 @@
     360
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13665,8 +13983,8 @@
     360
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13688,8 +14006,8 @@
     360
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13711,8 +14029,8 @@
     360
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13734,8 +14052,8 @@
     360
    ],
    "size": [
-    48,
-    48
+    56,
+    56
    ],
    "scale": 1,
    "colours": 12,
@@ -13811,54 +14129,67 @@
   },
   {
    "path": "ui/icon_day.png",
-   "source": "ui",
+   "source": "concept_search_mockup",
    "crop": [
-    424,
-    757,
-    204,
-    204
+    24,
+    14,
+    32,
+    32
    ],
    "size": [
     32,
     32
    ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "key": {
-    "alpha": true
+   "scale": 1,
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ]
    },
-   "depicts": "Day icon: yellow sun"
+   "depicts": "Original mockup sun",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "crop": [
+     24,
+     14,
+     32,
+     32
+    ],
+    "policy": "source colours; native screen pixels"
+   }
   },
   {
    "path": "ui/icon_clock.png",
-   "source": "ui",
+   "source": "concept_search_mockup",
    "crop": [
-    636,
-    775,
-    174,
-    174
+    1121,
+    14,
+    32,
+    32
    ],
    "size": [
     32,
     32
    ],
-   "scale": 2,
-   "colours": 12,
-   "largest_only": true,
-   "recolour": [
-    {
-     "hues": [
-      190,
-      345
-     ],
-     "saturation": 0.2
-    }
-   ],
-   "key": {
-    "alpha": true
+   "scale": 1,
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ]
    },
-   "depicts": "Clock icon: grey case, yellow face"
+   "depicts": "Original mockup clock",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "crop": [
+     1121,
+     14,
+     32,
+     32
+    ],
+    "policy": "source colours; native screen pixels"
+   }
   },
   {
    "path": "workshop/kitchen.png",
@@ -14485,6 +14816,252 @@
     ]
    },
    "depicts": "Under and over the walkways of the first screen, cut from the search mockup: the posts, the chain and the gauge pillar down to the acid, the cable sagging under the upper walkway and the street lamp on it; down to the lake's surface, clear between them and where the backdrop's flesh and towers and the lake's glow show"
+  },
+  {
+   "path": "ui/frame_panel.png",
+   "source": "concept_search_mockup",
+   "crop": [
+    455,
+    6,
+    368,
+    46
+   ],
+   "size": [
+    368,
+    46
+   ],
+   "scale": 1,
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "interior": [
+     464,
+     15,
+     350,
+     28
+    ],
+    "fill_at": [
+     465,
+     16
+    ],
+    "mask": [
+     [
+      [
+       463,
+       8
+      ],
+      [
+       815,
+       8
+      ],
+      [
+       821,
+       14
+      ],
+      [
+       821,
+       44
+      ],
+      [
+       815,
+       50
+      ],
+      [
+       463,
+       50
+      ],
+      [
+       457,
+       44
+      ],
+      [
+       457,
+       14
+      ]
+     ]
+    ]
+   },
+   "depicts": "Text-free original mockup frame panel",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     455,
+     6,
+     368,
+     46
+    ],
+    "policy": "original border pixels; interior cleared of baked words/icons; nine-pixel corners and repeated edge strips"
+   }
+  },
+  {
+   "path": "ui/frame_button.png",
+   "source": "concept_search_mockup",
+   "crop": [
+    1107,
+    647,
+    163,
+    54
+   ],
+   "size": [
+    163,
+    54
+   ],
+   "scale": 1,
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "interior": [
+     1116,
+     656,
+     145,
+     36
+    ],
+    "fill_at": [
+     1117,
+     657
+    ],
+    "mask": [
+     [
+      [
+       1115,
+       649
+      ],
+      [
+       1262,
+       649
+      ],
+      [
+       1268,
+       655
+      ],
+      [
+       1268,
+       693
+      ],
+      [
+       1262,
+       699
+      ],
+      [
+       1115,
+       699
+      ],
+      [
+       1109,
+       693
+      ],
+      [
+       1109,
+       655
+      ]
+     ]
+    ]
+   },
+   "depicts": "Text-free original mockup frame button",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     1107,
+     647,
+     163,
+     54
+    ],
+    "policy": "original border pixels; interior cleared of baked words/icons; nine-pixel corners and repeated edge strips"
+   }
+  },
+  {
+   "path": "ui/frame_slot.png",
+   "source": "concept_search_mockup",
+   "crop": [
+    455,
+    623,
+    73,
+    79
+   ],
+   "size": [
+    73,
+    79
+   ],
+   "scale": 1,
+   "cut": {
+    "screen": [
+     1280,
+     720
+    ],
+    "interior": [
+     464,
+     632,
+     55,
+     61
+    ],
+    "fill_at": [
+     465,
+     633
+    ],
+    "mask": [
+     [
+      [
+       463,
+       625
+      ],
+      [
+       520,
+       625
+      ],
+      [
+       526,
+       631
+      ],
+      [
+       526,
+       694
+      ],
+      [
+       520,
+       700
+      ],
+      [
+       463,
+       700
+      ],
+      [
+       457,
+       694
+      ],
+      [
+       457,
+       631
+      ]
+     ]
+    ]
+   },
+   "depicts": "Text-free original mockup frame slot",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     455,
+     623,
+     73,
+     79
+    ],
+    "policy": "original border pixels; interior cleared of baked words/icons; nine-pixel corners and repeated edge strips"
+   }
   }
  ]
 }
