@@ -18,17 +18,17 @@
     398
    ],
    "scale": 1,
-   "colours": 111461,
+   "colours": 111121,
    "depicts": "Middle layer, cut from the search mockup at the screen's size: a swallowed city of tilted indigo towers with orange windows and an elevated railway with lit trains, sunk in pink flesh; clear above the skyline"
   },
   {
    "path": "backgrounds/acid.png",
    "size": [
-    1133,
+    1280,
     292
    ],
    "scale": 1,
-   "colours": 231922,
+   "colours": 236696,
    "depicts": "Front layer, cut from the search mockup at the screen's size: the glowing green acid lake with sunken train cars and broken pillars, under a strip of the far shore's ruins over the throat's glow, with the walkway and the post the mockup stands there filled from beside them"
   },
   {
@@ -298,7 +298,7 @@
     264
    ],
    "scale": 1,
-   "colours": 65221,
+   "colours": 52756,
    "depicts": "Building fronts of the first screen, cut from the search mockup: one band a cell deep per row a building stands in, the kitchen's lit shelves over its loft floor, then the tower shop's two rows, then the kitchen loft's face and the dark under it, carried on past the loft's end, for the rows the map leaves between the loft and the walkway; a cell of building shows the band of its row at its column"
   },
   {
@@ -318,7 +318,7 @@
     256
    ],
    "scale": 1,
-   "colours": 100489,
+   "colours": 86256,
    "depicts": "Lit shop fronts of the first screen, cut from the search mockup: two cells deep above the kitchen loft floor and above the gauge ledge; a shop shows the band of its floor around its column"
   },
   {
@@ -398,7 +398,7 @@
     336
    ],
    "scale": 1,
-   "colours": 122722,
+   "colours": 64252,
    "depicts": "Walkway decks of the first screen, cut from the search mockup at the screen's size: one band a cell deep per floor line, top to bottom the kitchen roof, the shop roof, the kitchen loft, the upper walkway with the gauge ledge, the lower walkway with the rope bridge, and its plain deck again across the screen for the pier and the sunken train; a cell of ground shows the band of its row at its column"
   },
   {
@@ -698,7 +698,7 @@
     366
    ],
    "scale": 1,
-   "colours": 33523,
+   "colours": 35583,
    "depicts": "Under and over the walkways of the first screen, cut from the search mockup: the posts, the chain and the gauge pillar down to the acid, the cable sagging under the upper walkway and the street lamp on it; down to the lake's surface, clear between them and where the backdrop's flesh and towers and the lake's glow show"
   }
  ]

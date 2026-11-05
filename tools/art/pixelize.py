@@ -713,6 +713,25 @@ def resample(rows, width, height):
     return transpose(along(transpose(along(rows, width)), height))
 
 
+def polygon_mask(rows, polygons):
+    """Keeps pixel centres inside the union of the source-coordinate polygons."""
+    kept = [[(0, 0, 0, 0)] * len(rows[0]) for _ in rows]
+    for polygon in polygons:
+        edges = list(zip(polygon, polygon[1:] + polygon[:1]))
+        for y in range(max(0, min(p[1] for p in polygon)), min(len(rows), max(p[1] for p in polygon))):
+            scan = y + 0.5
+            crossings = sorted(
+                x1 + (scan - y1) * (x2 - x1) / (y2 - y1)
+                for (x1, y1), (x2, y2) in edges
+                if min(y1, y2) <= scan < max(y1, y2)
+            )
+            for left, right in zip(crossings[::2], crossings[1::2]):
+                start, end = max(0, math.ceil(left - 0.5)), min(len(rows[0]), math.ceil(right - 0.5))
+                if start < end:
+                    kept[y][start:end] = rows[y][start:end]
+    return kept
+
+
 def cut(asset, raw_dir, cache, sources):
     """Returns (rgba rows, report) for an asset cut from its source with the source's own pixels.
 
@@ -724,7 +743,9 @@ def cut(asset, raw_dir, cache, sources):
     away, each clear rect is made clear, and outside the keep rects, when there are any, every
     pixel is made clear. Each clear colour rule then clears the pixels whose hue in degrees lies
     in its hues and whose saturation and lightness reach its own, inside its within rects when it
-    has any. The crop is cut out last; a list of crops is cut and stacked top to bottom.
+    has any. A mask keeps only the union of its polygons, independent of colour. The crop is
+    cut out last; a list of crops is cut and stacked top to bottom. fade_bottom blends a
+    backdrop's last rows into the layer behind it instead of ending on a straight edge.
     """
     spec = asset["cut"]
     plain = not spec.get("fills") and not spec.get("clear_above")
@@ -760,8 +781,13 @@ def cut(asset, raw_dir, cache, sources):
                 h, l, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
                 if a and low <= h * 360 <= high and sat >= rule["saturation"] and l >= rule["lightness"]:
                     row[x] = (0, 0, 0, 0)
+    if "mask" in spec:
+        rows = polygon_mask(rows, spec["mask"])
     boxes = asset["crop"] if isinstance(asset["crop"][0], list) else [asset["crop"]]
     rows = [row for box in boxes for row in crop(rows, box)]
+    fade = spec.get("fade_bottom", 0)
+    for y in range(max(0, len(rows) - fade), len(rows)):
+        rows[y] = [(r, g, b, round(a * (len(rows) - 1 - y) / fade)) for r, g, b, a in rows[y]]
     if [len(rows[0]), len(rows)] != asset["size"]:
         raise ValueError(f"{asset['path']}: crop {asset['crop']} does not give size {asset['size']}")
     used = {pixel[:3] for row in rows for pixel in row if pixel[3]}

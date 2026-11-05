@@ -11,7 +11,7 @@ The runtime art set for the monster-mouth escape game and how to draw it.
 - The map grid is 40×16 cells of 32 px in a 1280×720 scene, which the city's camera shows at twice its size, or at its own size for two players who do not fit at twice; the backdrop layers, the sea in the scene and the interface are drawn at their own size on the screen at every zoom. Columns 0 to 19 are the search mockup's first city screen, and columns 20 to 39 show the same columns again.
 - Every PNG is drawn at 1:1 pixels of its layer: the scene's for the world and characters, the screen's for the backdrop and the interface. Scale 2 or 4 means the art is drawn on a 2×2 or 4×4 pixel grid; draw it at its listed size, not enlarged again. Sample with nearest filtering.
 - [ADR 0017](../../../../docs/architecture/adr/0017-draw-every-picture-one-pixel-to-a-screen-pixel-at-the-close-camera.md) sets one density, one picture pixel to a screen pixel at the default camera. `backgrounds/` is drawn so, at scale 1, and `walkway/`, `world/` and `ground/` are cut at twice the scene's resolution, 64 px a cell. The other folders keep their scale until their stage redraws them at twice the scene's resolution: 64 px a cell, 128×128 character frames.
-- Every pixel is fully opaque or fully clear.
+- Sprite masks are fully opaque or fully clear. The resampled backdrop skyline has coverage alpha, and the city fades into the throat along its bottom.
 - No image contains text except `title/logo.png`. The engine draws every word and number.
 
 ## Clean-art rules
@@ -29,9 +29,9 @@ Every PNG keeps these, and `pixelize.py check` measures them on the art's own pi
 
 The whole search mockup, `docs/art/concept-art/monster-mouth-escape/search-mockup-v1.png` at commit `241124d5ba2dcef937c904623f1e5e3cb03fbcf5`, is resampled once to the 1280×720 screen, and the three layers are cut from that copy with its own pixels: what the mockup shows of the map, its characters and the interface over a layer is filled by a Recraft erase of that region. `tools/art/assets.json` lists each layer's fills and clear regions in the mockup's pixels and its crop in the screen's.
 
-- `backgrounds/throat.png` (674×459, opaque) is the back layer: the fleshy palate with the mockup's cream fangs hanging from its top edge, over the pink throat and its uvula. Draw it with its top edge at the screen's top.
-- `backgrounds/city.png` (536×398) is the middle layer: a swallowed city of tilted towers with orange windows and an elevated railway with lit trains, sunk in flesh, clear above the skyline.
-- `backgrounds/acid.png` (1133×292) is the acid, both the band nearest behind the map and the sea in the scene, each drawn at its own size on the screen: the glowing acid lake with sunken trains and broken pillars, its surface 61 rows below the picture's top edge, under a strip of the far shore's ruins that meets the city layer's bottom on the first city screen. Move the layer so that surface follows the acid level, and fill any screen area below it with its bottom row.
+- `backgrounds/throat.png` (674×459, opaque) is the back layer: the fleshy palate with the mockup's cream fangs hanging from its top edge, over the pink throat and its uvula. Draw it with its top edge at the screen's top and continue its bottom row behind the other layers.
+- `backgrounds/city.png` (536×398) is the middle layer: a swallowed city of tilted towers with orange windows and an elevated railway with lit trains, sunk in flesh, clear above the skyline and fading into the throat along its bottom.
+- `backgrounds/acid.png` (1280×292) is the acid, both the band nearest behind the map and the sea in the scene, each drawn at its own size on the screen: the glowing acid lake with sunken trains and broken pillars, its surface 61 rows below the picture's top edge, with the original far shore masked to its skyline above that surface. Only the background band includes the shore; the foreground sea starts at its water surface. Move each surface with its acid level, and fill any screen area below the picture with its bottom row.
 - On the first city screen each layer stands where the mockup shows it.
 - `glow.tres` is the blend-add material of the layer that adds light over the scene.
 
@@ -52,7 +52,7 @@ Each picture is cut from the mockup at the screen's size where the first city sc
 | Building fronts, a cell deep per row, and the kitchen loft's face under its deck | `world/building_wall.png` | Four |
 | Lit shop fronts, two cells deep over their floor | `world/shop.png` | Two: the kitchen loft's and the gauge ledge's |
 
-- Where the mockup shows its backdrop between these pieces, the cut clears the backdrop's magenta and blue, so the game's own layers show through when the camera moves; each deck band's lit top rows are kept whole.
+- The cut keeps explicit source-coordinate silhouettes of decks, walls, shop fronts and supports, so the backdrop between them remains clear regardless of its colour. The last upper-walkway cell takes a level deck patch from beside it: the map's step starts one cell farther east than the mockup's.
 - The decks keep a lit top edge drawn over their top rows, for the walked-on surface. A ramp is one cell of deck tilted from the floor line of its own cell down to the row below, and stairs are the same deck cut into steps.
 - `ground/rubble.png` stands on its deck in a cell of rubble ground.
 - The ladders, doors, vending machine, cart, kiosk, cold store, ferry, washed-up bag and acid drip in `world/` are each the mockup's own piece.

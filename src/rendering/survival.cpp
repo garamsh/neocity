@@ -1301,13 +1301,15 @@ float sea_row(const View &camera, float acid_ratio) {
 /// `width`, mirrored where `width` is negative: its surface glows, and below
 /// it the sea fades over a few steps to the `deep` tint.
 void paint_sea(godot::Node2D &canvas, const Art &art, float left, float top,
-               float width, godot::Color deep_tint) {
+               float width, godot::Color deep_tint, bool shore) {
   const Vector2 acid = art.size(Image::Acid);
   const auto band = [&](float from, float height, godot::Color tint) {
     art.image_part(canvas, Image::Acid, rect(0.0F, from, acid.x, height),
                    rect(left, top + from, width, height), tint);
   };
-  band(0.0F, ACID_SURFACE_DEPTH, acid_tint());
+  if (shore) {
+    band(0.0F, ACID_SURFACE_DEPTH, acid_tint());
+  }
   for (int step = 0; step < ACID_FADE_STEPS; ++step) {
     band(ACID_SURFACE_DEPTH + static_cast<float>(step) * ACID_FADE_STEP,
          ACID_FADE_STEP,
@@ -1334,9 +1336,19 @@ void paint_layer(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
                  Vector2 drift, godot::Color tint) {
   const float width = art.size(image).x;
   for (int copy = -1; copy <= 1; ++copy) {
-    art.image(canvas, image,
-              at + drift + Vector2(static_cast<float>(copy) * width, 0.0F),
-              1.0F, copy != 0, tint);
+    const Vector2 corner =
+        at + drift + Vector2(static_cast<float>(copy) * width, 0.0F);
+    art.image(canvas, image, corner, 1.0F, copy != 0, tint);
+    if (image == Image::Throat) {
+      const float height = art.size(image).y;
+      const float bottom = corner.y + height;
+      if (bottom < SCREEN_HEIGHT) {
+        art.image_part(canvas, image, rect(0.0F, height - 1.0F, width, 1.0F),
+                       rect(corner.x + (copy != 0 ? width : 0.0F), bottom,
+                            copy != 0 ? -width : width, SCREEN_HEIGHT - bottom),
+                       tint);
+      }
+    }
   }
 }
 
@@ -1344,17 +1356,17 @@ void paint_layer(godot::Node2D &canvas, const Art &art, Image image, Vector2 at,
 /// `surface`, slid sideways by `slide` beside mirrored copies of itself so it
 /// covers the screen's width, fading below to the `deep` tint.
 void paint_acid(godot::Node2D &canvas, const Art &art, float surface,
-                float slide, godot::Color deep_tint) {
+                float slide, godot::Color deep_tint, bool shore) {
   const float width = art.size(Image::Acid).x;
   for (int copy = -1; copy <= 1; ++copy) {
     const float left = slide + static_cast<float>(copy) * width;
     // Odd copies are mirrored, so neighbours meet without a seam.
     if (copy % 2 != 0) {
       paint_sea(canvas, art, left + width, surface - ACID_SURFACE_DEPTH, -width,
-                deep_tint);
+                deep_tint, shore);
     } else {
       paint_sea(canvas, art, left, surface - ACID_SURFACE_DEPTH, width,
-                deep_tint);
+                deep_tint, shore);
     }
   }
 }
@@ -1366,7 +1378,7 @@ void paint_acid(godot::Node2D &canvas, const Art &art, float surface,
 void paint_band(godot::Node2D &canvas, const Art &art, float acid_ratio,
                 float left) {
   paint_acid(canvas, art, std::floor(band_surface(acid_ratio)), left,
-             band_deep_tint());
+             band_deep_tint(), true);
 }
 
 } // namespace
@@ -1398,7 +1410,7 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   paint_band(canvas, art, acid_ratio, band_left);
   // The sea in the scene is drawn at its own size too, moving with the map.
   const float sea = sea_row(camera, acid_ratio);
-  paint_acid(canvas, art, sea, drift(camera, 1.0F).x, sea_deep_tint());
+  paint_acid(canvas, art, sea, drift(camera, 1.0F).x, sea_deep_tint(), false);
   godot::Array layers;
   layers.push_back(throat);
   layers.push_back(city);

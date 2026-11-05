@@ -119,6 +119,35 @@ class ResampleTest(unittest.TestCase):
 
 
 class CutTest(unittest.TestCase):
+    def test_a_polygon_keeps_its_silhouette_even_when_the_background_has_the_same_colour(self):
+        asset = {
+            "path": "walkway/test.png", "source": "test",
+            "crop": [0, 0, 6, 4], "size": [6, 4],
+            "cut": {"mask": [[[0, 0], [4, 0], [0, 4]], [[4, 2], [6, 2], [6, 4], [4, 4]]]},
+        }
+        source = [[DARK] * 6 for _ in range(4)]
+        rows, _ = pixelize.cut(asset, None, {"test": source}, {})
+        self.assertEqual(rows, [
+            [DARK, DARK, DARK, CLEAR, CLEAR, CLEAR],
+            [DARK, DARK, CLEAR, CLEAR, CLEAR, CLEAR],
+            [DARK, CLEAR, CLEAR, CLEAR, DARK, DARK],
+            [CLEAR, CLEAR, CLEAR, CLEAR, DARK, DARK],
+        ])
+
+    def test_a_polygon_outside_the_left_edge_keeps_no_pixels(self):
+        source = [[DARK] * 6 for _ in range(4)]
+        offscreen = [[-4, 0], [-1, 0], [-1, 4], [-4, 4]]
+        onscreen = [[1, 0], [4, 0], [4, 4], [1, 4]]
+        self.assertEqual(pixelize.polygon_mask(source, [offscreen]), [[CLEAR] * 6 for _ in range(4)])
+        self.assertEqual(pixelize.polygon_mask(source, [offscreen, onscreen]),
+                         [[CLEAR, DARK, DARK, DARK, CLEAR, CLEAR] for _ in range(4)])
+
+    def test_a_backdrop_fades_only_its_cropped_bottom_rows(self):
+        asset = {"path": "backgrounds/test.png", "source": "test", "crop": [0, 1, 1, 4],
+                 "size": [1, 4], "cut": {"fade_bottom": 2}}
+        rows, _ = pixelize.cut(asset, None, {"test": [[DARK] for _ in range(6)]}, {})
+        self.assertEqual(rows, [[DARK], [DARK], [(30, 20, 40, 128)], [(30, 20, 40, 0)]])
+
     def test_a_clear_colour_rule_with_within_rects_clears_only_inside_them(self):
         pink = (230, 60, 200, 255)
         asset = {

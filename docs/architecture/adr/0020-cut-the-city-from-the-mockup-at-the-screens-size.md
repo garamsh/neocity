@@ -30,8 +30,8 @@ A picture of the map's cells shows the mockup where the first city screen draws 
 - **Building fronts:** a band per building row.
 - **Shop fronts:** two cells of the mockup over their floor, across the building standing right over that floor when there is one, as the mockup's kitchen fills its loft.
 - **Posts:** the mockup's posts, chain, gauge pillar, cable and lamp, as one picture under each 20-column half.
-- **Backdrop between the pieces:** where the mockup shows its backdrop between the posts, decks, building fronts and shop fronts, those pixels are made clear by their hue, so the game's own layers show there when the camera moves.
-- **Acid band:** the mockup's lake with a strip of its far shore above the surface, which meets the city layer's bottom on the first city screen.
+- **Backdrop between the pieces:** where the mockup shows its backdrop between the posts, decks, building fronts and shop fronts, explicit source-coordinate masks keep the structures and clear those pixels regardless of their hue, so the game's own layers show there when the camera moves.
+- **Acid band:** the mockup's lake with its original far shore masked to the skyline above the surface; the city fades into the throat at its bottom, and the throat continues below it. The foreground sea draws only water, so its own moving surface never lays a second shore over the lake.
 
 The kitchen loft's band is taken from the mockup's loft floor, 53 pixels below the loft row the map gives it. The kitchen front above the loft is taken from the same height.
 
@@ -41,17 +41,17 @@ This supersedes ADR 0018's cut at the mockup's own size and ADR 0015's support u
 
 ## Consequences
 
-- `tools/art/pixelize.py` resizes a cut asset's source to the screen when the asset says `screen`. It patches out the two characters with the mockup's own pixels beside them, clears the backdrop's hues inside the rects each asset names, and stacks bands. `pixelize_test.py` checks that the resampling is the area average and repeatable, and that a hue is cleared only inside those rects.
+- `tools/art/pixelize.py` resizes a cut asset's source to the screen when the asset says `screen`. It patches out the two characters with the mockup's own pixels beside them, keeps the silhouettes each asset names, and stacks bands. `pixelize_test.py` checks the area average, repeatability, polygon union and off-canvas clipping, and the city's bottom fade.
 - `walkway/`, `world/` and `ground/` hold pictures cut from the mockup, at twice the scene's resolution, and `decor/` is gone. The colour limit, the lone-pixel rule and the sprite rules do not apply to them. The density rule does. The noodle vendor, a person, keeps its earlier picture until the characters' stage.
 - The camera aims 12 scene pixels above a lone human's feet, not 32. A human on the upper walkway then stands at screen row 325, where the mockup draws it at about 329, and on the lower walkway at 389, where the mockup draws about 383.
 - The kitchen loft stands 53 pixels higher on the screen than the mockup's. The kitchen front over it is the mockup's lower 64 rows of the kitchen, not its whole height.
 - The decks keep a lit top edge drawn over their top rows, as ADR 0011 decides for the walked-on surface. It is the one change from the mockup's pixels in the walkways.
 - A tilted cell that is not a step down to the left is drawn as a level deck. The fallen slab drawn along a run of tilted cells goes, since the map has none.
-- Each deck band's lit top rows are left out of the hue clearing, so the pink rim light the mockup gives the walked-on surface stays. Backdrop pixels darker or less saturated than the clearing reaches still show at the pieces' edges away from the first screen.
+- Source-coordinate silhouettes replace hue clearing on the decks, walls, shops and supports. The map's last upper-walkway cell gets a level deck patch from its neighbour, so its visible top follows its collision surface rather than the mockup's earlier step.
 
 ## Signs the decision was wrong
 
 - The east half reads as a copy of the first screen, and players lose their way between the two.
-- The backdrop left at the edges of the cut pictures reads as a seam once the camera leaves the first screen, and the pictures need hand-cut masks.
+- A silhouette still carries visible backdrop at its edges, or the city and far shore separate as the camera moves.
 - At the scene's own size, the resampled pictures, read from their half-size mipmaps, lose too much of the mockup's detail.
 - The kitchen loft's 53-pixel offset reads as wrong beside the mockup, and the map needs a loft row that the open-air rule allows.
