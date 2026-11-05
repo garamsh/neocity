@@ -31,7 +31,9 @@ A picture of the map's cells shows the mockup where the first city screen draws 
 - **Shop fronts:** two cells of the mockup over their floor, across the building standing right over that floor when there is one, as the mockup's kitchen fills its loft.
 - **Posts:** the mockup's posts, chain, gauge pillar, cable and lamp, as one picture under each 20-column half.
 - **Backdrop between the pieces:** where the mockup shows its backdrop between the posts, decks, building fronts and shop fronts, explicit source-coordinate masks keep the structures and clear those pixels regardless of their hue, so the game's own layers show there when the camera moves.
-- **Acid band:** the mockup's lake with its original far shore masked to the skyline above the surface; the city fades into the throat at its bottom, and the throat continues below it. The foreground sea draws only water, so its own moving surface never lays a second shore over the lake.
+- **Acid band:** the mockup's lake with its original far shore masked to the skyline above the surface; the city spans the screen, retaining the original exposed background and repairing the foreground occlusions with a recorded local source, and the throat continues below it. The foreground sea draws only water, so its own moving surface never lays a second shore over the lake.
+
+The city layer spans the original screen. Its source remains the mockup outside the explicit foreground-repair polygons; only those polygons take pixels from the locally committed built-in ImageGen edit, whose prompt and digest are recorded in the art provenance. The edit repairs the flat brown regions left by the earlier erase without replacing the original visible throat, train or shore. The generated source is not deterministic; regenerating its runtime derivatives from that committed source is.
 
 The kitchen loft's band is taken from the mockup's loft floor, 53 pixels below the loft row the map gives it. The kitchen front above the loft is taken from the same height.
 
@@ -41,7 +43,7 @@ This supersedes ADR 0018's cut at the mockup's own size and ADR 0015's support u
 
 ## Consequences
 
-- `tools/art/pixelize.py` resizes a cut asset's source to the screen when the asset says `screen`. It patches out the two characters with the mockup's own pixels beside them, keeps the silhouettes each asset names, and stacks bands. `pixelize_test.py` checks the area average, repeatability, polygon union and off-canvas clipping, and the city's bottom fade.
+- `tools/art/pixelize.py` resizes a cut asset's source to the screen when the asset says `screen`. It patches out the two characters with the mockup's own pixels beside them, keeps the silhouettes each asset names, and stacks bands. `pixelize_test.py` checks the area average, repeatability, polygon union and off-canvas clipping, and preservation outside a repair polygon.
 - `walkway/`, `world/` and `ground/` hold pictures cut from the mockup, at twice the scene's resolution, and `decor/` is gone. The colour limit, the lone-pixel rule and the sprite rules do not apply to them. The density rule does. The noodle vendor, a person, keeps its earlier picture until the characters' stage.
 - The camera aims 12 scene pixels above a lone human's feet, not 32. A human on the upper walkway then stands at screen row 325, where the mockup draws it at about 329, and on the lower walkway at 389, where the mockup draws about 383.
 - The kitchen loft stands 53 pixels higher on the screen than the mockup's. The kitchen front over it is the mockup's lower 64 rows of the kitchen, not its whole height.

@@ -737,15 +737,15 @@ def cut(asset, raw_dir, cache, sources):
 
     Each fill, in order, replaces the pixels of its rects, [x, y, w, h], and of its columns,
     [x, w, y], from row y down, with the same pixels of its fill source, whose top-left lies at
-    at; the pixels above each clear column [x, w, y] are then made clear. Those boxes are in the
+    at. A fill may instead name source-coordinate polygons, keeping every pixel outside
+    their union unchanged; the pixels above each clear column [x, w, y] are then made clear. Those boxes are in the
     source's pixels. With screen, [w, h], the source is then resized to the screen, and every
     later box is in the screen's pixels: each patch [x, y, w, h, dx, dy] takes the pixels dx, dy
     away, each clear rect is made clear, and outside the keep rects, when there are any, every
     pixel is made clear. Each clear colour rule then clears the pixels whose hue in degrees lies
     in its hues and whose saturation and lightness reach its own, inside its within rects when it
     has any. A mask keeps only the union of its polygons, independent of colour. The crop is
-    cut out last; a list of crops is cut and stacked top to bottom. fade_bottom blends a
-    backdrop's last rows into the layer behind it instead of ending on a straight edge.
+    cut out last; a list of crops is cut and stacked top to bottom.
     """
     spec = asset["cut"]
     plain = not spec.get("fills") and not spec.get("clear_above")
@@ -785,9 +785,6 @@ def cut(asset, raw_dir, cache, sources):
         rows = polygon_mask(rows, spec["mask"])
     boxes = asset["crop"] if isinstance(asset["crop"][0], list) else [asset["crop"]]
     rows = [row for box in boxes for row in crop(rows, box)]
-    fade = spec.get("fade_bottom", 0)
-    for y in range(max(0, len(rows) - fade), len(rows)):
-        rows[y] = [(r, g, b, round(a * (len(rows) - 1 - y) / fade)) for r, g, b, a in rows[y]]
     if [len(rows[0]), len(rows)] != asset["size"]:
         raise ValueError(f"{asset['path']}: crop {asset['crop']} does not give size {asset['size']}")
     used = {pixel[:3] for row in rows for pixel in row if pixel[3]}
@@ -801,6 +798,12 @@ def cut_source(asset, raw_dir, cache, sources):
     for fill in spec.get("fills", []):
         filled = load(fill["source"], raw_dir, cache, sources)
         left, top = fill["at"]
+        if "polygons" in fill:
+            masked = polygon_mask(rows, fill["polygons"])
+            for yy, row in enumerate(masked):
+                for xx, pixel in enumerate(row):
+                    if pixel[3]:
+                        rows[yy][xx] = filled[yy - top][xx - left]
         boxes = list(fill.get("rects", []))
         boxes += [[x, y, w, top + len(filled) - y] for x, w, y in fill.get("columns", [])]
         for x, y, w, h in boxes:
@@ -930,6 +933,7 @@ def process(raw_dir, art_dir):
                 "scale": asset.get("scale", 1),
                 "colours": report["colours"],
                 "depicts": asset["depicts"],
+                **({"provenance": asset["provenance"]} if "provenance" in asset else {}),
             }
         )
         print(f"{asset['path']}: {report['colours']} colours, block {report['pitch']} px, {report['grid']} grid")

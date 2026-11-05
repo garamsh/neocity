@@ -40,7 +40,7 @@ constexpr float SCREEN_HEIGHT = 720.0F;
 /// The acid surface at acid 0: the top of row 14, below every ground row.
 constexpr float ACID_LOW = MAP_Y + 14.0F * CELL;
 /// How far below the acid picture's top edge its surface lies.
-constexpr float ACID_SURFACE_DEPTH = 61.0F;
+constexpr float ACID_SURFACE_DEPTH = 107.0F;
 /// Below its surface the acid fades to its deep colour over this many steps
 /// of this many pixels.
 constexpr int ACID_FADE_STEPS = 6;
@@ -58,16 +58,10 @@ constexpr float STAIR_FACE = 10.0F;
 /// The deck's warm lit rows under its outline, which each stair's tread is
 /// stretched from.
 constexpr float STAIR_TREAD = 2.0F;
-/// Where each backdrop layer's top-left stands on the screen while the
-/// camera rests. Each is cut from the search mockup, and they stand so that
-/// the first city screen of the capture, 4-city-collect-prompt, which slides
-/// them 70, 164 and 281 pixels right of here, shows each where the mockup
-/// does with the mockup's column 196 at the screen's left edge: the throat,
-/// cut from the mockup's column 560 and top row, its fangs hanging from the
-/// screen's top edge; the city, cut from its column 640 and row 60; and the
-/// acid band, cut from its column 0.
+/// Resting screen anchors before camera drift, aligning each layer's source
+/// coordinates with the mockup on the first city view.
 constexpr Vector2 THROAT_AT(333.0F, 0.0F);
-constexpr Vector2 CITY_AT(266.0F, 36.0F);
+constexpr Vector2 CITY_AT(-224.0F, -10.0F);
 constexpr float BAND_LEFT = -384.0F;
 /// The part of the kitchen picture the workshop shows between the top bar and
 /// the panels, with the kitchen floor along its bottom.

@@ -142,11 +142,14 @@ class CutTest(unittest.TestCase):
         self.assertEqual(pixelize.polygon_mask(source, [offscreen, onscreen]),
                          [[CLEAR, DARK, DARK, DARK, CLEAR, CLEAR] for _ in range(4)])
 
-    def test_a_backdrop_fades_only_its_cropped_bottom_rows(self):
-        asset = {"path": "backgrounds/test.png", "source": "test", "crop": [0, 1, 1, 4],
-                 "size": [1, 4], "cut": {"fade_bottom": 2}}
-        rows, _ = pixelize.cut(asset, None, {"test": [[DARK] for _ in range(6)]}, {})
-        self.assertEqual(rows, [[DARK], [DARK], [(30, 20, 40, 128)], [(30, 20, 40, 0)]])
+    def test_a_fill_changes_only_the_named_polygon_with_the_original_pixels_outside_it(self):
+        asset = {"path": "backgrounds/test.png", "source": "original", "crop": [0, 0, 4, 2],
+                 "size": [4, 2], "cut": {"fills": [{"source": "repair", "at": [0, 0],
+                     "polygons": [[[1, 0], [3, 0], [3, 1], [1, 1]]]}]}}
+        original = [[DARK] * 4 for _ in range(2)]
+        rows, _ = pixelize.cut(asset, None, {"original": original, "repair": [[LIGHT] * 4 for _ in range(2)]}, {})
+        self.assertEqual(rows, [[DARK, LIGHT, LIGHT, DARK], [DARK] * 4])
+        self.assertEqual(original, [[DARK] * 4 for _ in range(2)])
 
     def test_a_clear_colour_rule_with_within_rects_clears_only_inside_them(self):
         pink = (230, 60, 200, 255)

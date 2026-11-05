@@ -14,22 +14,29 @@
   {
    "path": "backgrounds/city.png",
    "size": [
-    536,
-    398
+    1280,
+    490
    ],
    "scale": 1,
-   "colours": 111121,
-   "depicts": "Middle layer, cut from the search mockup at the screen's size: a swallowed city of tilted indigo towers with orange windows and an elevated railway with lit trains, sunk in pink flesh; clear above the skyline"
+   "colours": 282256,
+   "depicts": "Middle layer across the first screen: original tilted indigo towers, lit trains and pink flesh, with foreground occlusions repaired only inside explicit polygons from the recorded inpaint source; clear above the skyline",
+   "provenance": {
+    "tool": "image_gen.imagegen (built-in), one edit",
+    "source": "docs/art/production/monster-mouth-escape-inpaint-source-v1.png",
+    "sha256": "078c50ce99b05b1476dd9a1344d30134c7c3a70081bebf03c5f4b1fa527102f0",
+    "prompt": "docs/art/production/monster-mouth-escape-inpaint-prompt-v1.txt",
+    "adoption": "Only cut.fills polygons; original pixels outside their union are unchanged before skyline masking and resampling."
+   }
   },
   {
    "path": "backgrounds/acid.png",
    "size": [
     1280,
-    292
+    338
    ],
    "scale": 1,
-   "colours": 236696,
-   "depicts": "Front layer, cut from the search mockup at the screen's size: the glowing green acid lake with sunken train cars and broken pillars, under a strip of the far shore's ruins over the throat's glow, with the walkway and the post the mockup stands there filled from beside them"
+   "colours": 233295,
+   "depicts": "The original acid lake and sunken trains across the screen, with only the named old erases in occluded areas; a masked skyline of drowned ruins above its surface, with no copied shore strip"
   },
   {
    "path": "characters/chef_idle.png",
