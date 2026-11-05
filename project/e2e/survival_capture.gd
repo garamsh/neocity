@@ -677,7 +677,7 @@ func _save(screen: String) -> Image:
 	print("Capture: ", destination)
 	return frame
 
-## Reads the textures actually drawn and their native corners in this frame.
+## Reads actual frame textures; the first city has no screen fade over its native corners.
 func _interface_corners(frame: Image, screen: String) -> bool:
 	var expected: Dictionary = {"frame_panel.png": Vector2i(368, 46), "frame_button.png": Vector2i(163, 54), "frame_slot.png": Vector2i(73, 79)}
 	var drawn: Dictionary = scene.get_meta("interface_frames", {})
@@ -691,6 +691,8 @@ func _interface_corners(frame: Image, screen: String) -> bool:
 		if image.get_size() != expected.get(path.get_file(), Vector2i.ZERO):
 			_fail("%s: interface texture %s loaded at %s" % [screen, path, image.get_size()])
 			return false
+		if screen != "4-city-collect-prompt":
+			continue
 		var area: Rect2 = observation["area"]
 		var compared: int = 0
 		for y: int in range(9):
@@ -707,6 +709,25 @@ func _interface_corners(frame: Image, screen: String) -> bool:
 			_fail("%s: fewer than eight opaque native corner pixels for %s" % [screen, path])
 			return false
 	return true
+
+## The nearest transparent screen pixel beside an opaque character pixel must stay free.
+func _character_plate_control(layer: Dictionary, screen: String) -> bool:
+	var alpha: Image = layer["alpha"]
+	var area: Rect2 = layer["area"]
+	if alpha.get_size() != Vector2i(128, 128) or area.size.x < 64.0:
+		_fail("%s: source-plate control did not load the actual 128px character" % screen)
+		return false
+	for y: int in range(ceili(area.position.y), floori(area.end.y)):
+		for x: int in range(ceili(area.position.x), floori(area.end.x) - 1):
+			var at: Vector2 = Vector2(x, y)
+			if not _character_opaque(alpha, layer, at + Vector2(0.5, 0.5)) or _character_opaque(alpha, layer, at + Vector2(1.5, 0.5)):
+				continue
+			if not _plate_covers_character(Rect2(at, Vector2.ONE), layer) or _plate_covers_character(Rect2(at + Vector2.RIGHT, Vector2.ONE), layer):
+				_fail("%s: source-plate alpha control confused the nearest opaque and transparent pixels" % screen)
+				return false
+			return true
+	_fail("%s: no opaque character pixel beside a transparent one for the plate control" % screen)
+	return false
 
 ## Whether a plate intersects the actual drawn character's opaque pixels.
 func _plate_covers_character(plate: Rect2, layer: Dictionary) -> bool:
@@ -743,6 +764,8 @@ func _save_city(screen: String) -> Image:
 		sampled["alpha"] = texture.get_image()
 		character_masks.append(sampled)
 	for layer: Dictionary in character_masks:
+		if not _character_plate_control(layer, screen):
+			return frame
 		for plate: Rect2 in scene.get_meta("map_counts", []):
 			if _plate_covers_character(plate, layer):
 				_fail("%s: source icon plate covers the actual character silhouette" % screen)

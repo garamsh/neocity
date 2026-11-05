@@ -159,6 +159,9 @@ enum class Image : std::uint8_t {
   DishMeatStew,
   DishTruffleSoup,
   DishSurfAndTurf,
+  FramePanel,
+  FrameButton,
+  FrameSlot,
   TitleKeyArt,
   TitleLogo
 };

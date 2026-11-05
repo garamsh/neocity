@@ -176,6 +176,12 @@ const char *path(Image image) {
     return "icons/dish_truffle_soup.png";
   case Image::DishSurfAndTurf:
     return "icons/dish_surf_and_turf.png";
+  case Image::FramePanel:
+    return "ui/frame_panel.png";
+  case Image::FrameButton:
+    return "ui/frame_button.png";
+  case Image::FrameSlot:
+    return "ui/frame_slot.png";
   case Image::TitleKeyArt:
     return "title/key_art.png";
   case Image::TitleLogo:
@@ -280,11 +286,12 @@ void notched(godot::Node2D &canvas, godot::Rect2 area, float notch,
 
 /// Repeats a cut frame's edge pixels between its native nine-pixel corners.
 void frame(godot::Node2D &canvas, godot::Rect2 area, std::size_t kind) {
-  static const std::array textures{
-      load_texture("res://levels/monster_mouth_escape/art/ui/frame_panel.png"),
-      load_texture("res://levels/monster_mouth_escape/art/ui/frame_button.png"),
-      load_texture("res://levels/monster_mouth_escape/art/ui/frame_slot.png")};
-  const auto &texture = textures.at(kind);
+  area = area.round();
+  static constexpr std::array frames{Image::FramePanel, Image::FrameButton,
+                                     Image::FrameSlot};
+  const auto texture =
+      load_texture(godot::String("res://levels/monster_mouth_escape/art/") +
+                   path(frames.at(kind)));
   constexpr float EDGE = 9.0F;
   const Vector2 native = texture->get_size();
   const std::array source_x{0.0F, EDGE, native.x - EDGE};
