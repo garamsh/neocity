@@ -464,9 +464,22 @@ Look Art::looking() const {
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   const float scale = density(image);
+  const bool mirrored = destination.size.x < 0.0F || destination.size.y < 0.0F;
+  if (mirrored) {
+    canvas.draw_set_transform_matrix(
+        placed *
+        godot::Transform2D(0.0F,
+                           Vector2(destination.size.x < 0.0F ? -1.0F : 1.0F,
+                                   destination.size.y < 0.0F ? -1.0F : 1.0F),
+                           0.0F, destination.position));
+    destination = godot::Rect2(Vector2(), destination.size.abs());
+  }
   canvas.draw_texture_rect_region(
       images.at(slot(image)), destination,
       godot::Rect2(source.position * scale, source.size * scale), tint);
+  if (mirrored) {
+    canvas.draw_set_transform_matrix(placed);
+  }
 }
 
 void Art::next_frame() { ++frame; }

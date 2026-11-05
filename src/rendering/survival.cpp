@@ -45,6 +45,8 @@ constexpr float ACID_SURFACE_DEPTH = 107.0F;
 /// of this many pixels.
 constexpr int ACID_FADE_STEPS = 6;
 constexpr float ACID_FADE_STEP = 6.0F;
+/// Deep water continues in reflected strips, meeting on the same source row.
+constexpr float ACID_DEEP_ROWS = 64.0F;
 /// The rows of a ground tile's top edge, which a player walks on, drawn lit.
 constexpr float GROUND_EDGE = 4.0F;
 /// The dark top outline of the walkway deck pictures, which their lit top edge
@@ -1284,11 +1286,11 @@ float band_surface(float acid_ratio) {
                                         (BAND_HIGH - BAND_LOW));
 }
 
-/// The screen row of the surface of the sea in the scene at `acid_ratio`, as
-/// `camera` shows it, on a whole pixel.
+/// The projected near sea stays below the far shore in screen perspective.
 float sea_row(const View &camera, float acid_ratio) {
-  return std::floor(
-      to_screen(camera, Vector2(0.0F, acid_surface(acid_ratio))).y);
+  return std::max(
+      std::floor(to_screen(camera, Vector2(0.0F, acid_surface(acid_ratio))).y),
+      std::floor(band_surface(acid_ratio)));
 }
 
 /// Draws the acid picture with its top edge at `top`, from `left` across
@@ -1314,11 +1316,19 @@ void paint_sea(godot::Node2D &canvas, const Art &art, float left, float top,
   const float deep =
       ACID_SURFACE_DEPTH + static_cast<float>(ACID_FADE_STEPS) * ACID_FADE_STEP;
   band(deep, acid.y - deep, deep_tint);
-  const float bottom = top + acid.y;
-  if (bottom < SCREEN_HEIGHT) {
-    art.image_part(canvas, Image::Acid, rect(0.0F, acid.y - 1.0F, acid.x, 1.0F),
-                   rect(left, bottom, width, SCREEN_HEIGHT - bottom),
-                   deep_tint);
+  const float repeat = std::min(ACID_DEEP_ROWS, acid.y - deep);
+  float bottom = top + acid.y;
+  bool reflected = true;
+  while (bottom < SCREEN_HEIGHT) {
+    const float rows = std::min(repeat, SCREEN_HEIGHT - bottom);
+    art.image_part(
+        canvas, Image::Acid,
+        rect(0.0F, reflected ? acid.y - rows : acid.y - repeat, acid.x, rows),
+        rect(left, reflected ? bottom + rows : bottom, width,
+             reflected ? -rows : rows),
+        deep_tint);
+    bottom += rows;
+    reflected = !reflected;
   }
 }
 
@@ -1405,6 +1415,7 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
   // The sea in the scene is drawn at its own size too, moving with the map.
   const float sea = sea_row(camera, acid_ratio);
   paint_acid(canvas, art, sea, drift(camera, 1.0F).x, sea_deep_tint(), false);
+  canvas.set_meta("sea_surface", sea);
   godot::Array layers;
   layers.push_back(throat);
   layers.push_back(city);

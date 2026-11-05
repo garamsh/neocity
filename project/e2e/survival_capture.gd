@@ -679,6 +679,10 @@ func _save_city(screen: String) -> Image:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var drawn_sea: float = scene.get_node("World").get_meta("sea_surface", -1.0)
+	if drawn_sea != float(_sea_top(view)):
+		_fail("%s: drawn near sea %.1f differs from the projected sea below the far shore at %d" % [screen, drawn_sea, _sea_top(view)])
+		return frame
 	var sources: int = labelled.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
@@ -833,7 +837,7 @@ func _band_top() -> int:
 ## Whether the sea in the scene, drawn over the acid band, reaches none of the
 ## BAND_ROWS under the band's surface.
 func _band_clear(view: Transform2D) -> bool:
-	return (view * Vector2(0, _acid_surface())).y - SEA_REACH >= _band_top() + BAND_ROWS.y
+	return _sea_top(view) - SEA_REACH >= _band_top() + BAND_ROWS.y
 
 ## Over the BAND_ROWS under the acid band's surface across the screen, every
 ## other column: the share of pixels whose green leads their red and blue by
@@ -902,7 +906,7 @@ func _acid_moves(screen: String) -> bool:
 	var bottom: int = _band_top() + BAND_ROWS.y
 	var which: String = "acid band"
 	if not _band_clear(view):
-		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		var sea: int = _sea_top(view)
 		top = sea + SEA_ROWS.x
 		bottom = sea + SEA_ROWS.y
 		which = "sea"
@@ -1018,7 +1022,7 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 	var covered: Array = plates + scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", [])
 	var acid_rows: Vector2i = Vector2i(_band_top() + BAND_ROWS.x, _band_top() + BAND_ROWS.y)
 	if not _band_clear(view):
-		var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+		var sea: int = _sea_top(view)
 		acid_rows = Vector2i(sea + SEA_ROWS.x, sea + SEA_ROWS.y)
 	var top: int = int(PLAY.position.y)
 	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
@@ -1088,7 +1092,7 @@ func _differ(one: Color, other: Color) -> bool:
 ## the rows above the sea are the band's acid, not backdrop. The control is that
 ## the acid shows under the surface in LIGHT_COLUMNS of the columns read.
 func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
-	var sea: int = floori((view * Vector2(0, _acid_surface())).y)
+	var sea: int = _sea_top(view)
 	var surface: int = _band_top() if _band_clear(view) or _band_top() < sea else sea
 	if surface + UNLIT_ROWS.x < PLAY.position.y or surface + ACID_UNDER.back() >= PLAY.end.y:
 		return true
@@ -1231,6 +1235,10 @@ func _frame() -> Image:
 	await process_frame
 	await RenderingServer.frame_post_draw
 	return root.get_texture().get_image()
+
+## The near sea cannot stand above the far shore in screen perspective.
+func _sea_top(view: Transform2D) -> int:
+	return maxi(floori((view * Vector2(0, _acid_surface())).y), _band_top())
 
 ## The scene row of the acid's surface in the frame the status describes.
 func _acid_surface() -> float:

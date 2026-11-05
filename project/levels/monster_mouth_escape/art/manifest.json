@@ -18,14 +18,14 @@
     490
    ],
    "scale": 1,
-   "colours": 282256,
+   "colours": 284011,
    "depicts": "Middle layer across the first screen: original tilted indigo towers, lit trains and pink flesh, with foreground occlusions repaired only inside explicit polygons from the recorded inpaint source; clear above the skyline",
    "provenance": {
     "tool": "image_gen.imagegen (built-in), one edit",
     "source": "docs/art/production/monster-mouth-escape-inpaint-source-v1.png",
     "sha256": "078c50ce99b05b1476dd9a1344d30134c7c3a70081bebf03c5f4b1fa527102f0",
     "prompt": "docs/art/production/monster-mouth-escape-inpaint-prompt-v1.txt",
-    "adoption": "Only cut.fills polygons; original pixels outside their union are unchanged before skyline masking and resampling."
+    "adoption": "Only foreground-repair polygons; original train restoration excludes foreground occluders through the final repair fill. Original pixels outside the repair union stay unchanged before skyline masking/resampling."
    }
   },
   {

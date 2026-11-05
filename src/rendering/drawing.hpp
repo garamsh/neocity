@@ -216,7 +216,8 @@ public:
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
   /// Draws the `source` part of `image`, in the units `size` gives, into
-  /// `destination`, each colour multiplied by `tint`.
+  /// `destination`, each colour multiplied by `tint`; a negative destination
+  /// width or height reflects that axis about its position.
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
