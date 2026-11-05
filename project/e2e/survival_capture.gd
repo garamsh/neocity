@@ -219,6 +219,8 @@ var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
 var dense_frames: int = 0
+var character_frames: Dictionary[String, int] = {"chef": 0, "appraiser": 0}
+var character_masks: Array[Dictionary] = []
 var light_frames: int = 0
 var teeth_frames: int = 0
 var support_frames: int = 0
@@ -235,6 +237,8 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 func _run() -> void:
+	if not _character_mask_control():
+		return
 	await _frames(2)
 	scene = current_scene as MainScene
 	scene.pin_survival_seed(11)
@@ -421,6 +425,11 @@ func _run() -> void:
 		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
 	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	for role: String in character_frames:
+		if character_frames[role] == 0:
+			_fail("the %s character was never measured" % role)
+			return
+	print("Capture: character size and interior density measured in ", character_frames, " city frames.")
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -683,6 +692,12 @@ func _save_city(screen: String) -> Image:
 	if drawn_sea != float(_sea_top(view)):
 		_fail("%s: drawn near sea %.1f differs from the projected sea below the far shore at %d" % [screen, drawn_sea, _sea_top(view)])
 		return frame
+	character_masks.clear()
+	for layer: Dictionary in scene.get_node("World").get_meta("character_layers", []):
+		var sampled: Dictionary = layer.duplicate()
+		var texture: Texture2D = layer["texture"]
+		sampled["alpha"] = texture.get_image()
+		character_masks.append(sampled)
 	var sources: int = labelled.size()
 	for first: int in range(plates.size()):
 		for second: int in range(first + 1, plates.size()):
@@ -716,7 +731,7 @@ func _save_city(screen: String) -> Image:
 		_fail("%s: %s" % [screen, misnamed])
 		return frame
 	print("Capture: %s at zoom %.2f, the scene's origin at %s, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, view.origin, scene.get_node("World").get_meta("backdrop_layers", [])])
-	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen, plates + hud) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen):
+	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen, plates + hud) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen) or not _characters_dense(frame, view, screen, plates + hud):
 		return frame
 	city_frames += 1
 	return frame
@@ -751,20 +766,25 @@ func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
 	var ground: Vector2 = Vector2.ZERO
 	var behind: Vector2 = Vector2.ZERO
+	var including_actors: Vector2 = Vector2.ZERO
+	var ground_including_actors: Vector2 = Vector2.ZERO
 	var shown: int = 0
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + EDGE_ROWS)):
 			continue
-		ground += _clear_luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS, covered)
-		behind += _clear_luminance(frame, view, corner, CELL, covered)
+		ground += _clear_luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS, covered, true)
+		ground_including_actors += _clear_luminance(frame, view, corner + Vector2(0, CELL), EDGE_ROWS, covered)
+		behind += _clear_luminance(frame, view, corner, CELL, covered, true)
+		including_actors += _clear_luminance(frame, view, corner, CELL, covered)
 		shown += 1
 	if shown < 2 or ground.y == 0.0 or behind.y == 0.0:
 		return true
 	ground.x /= ground.y
 	behind.x /= behind.y
 	ground_frames += 1
-	print("Capture: %s: the ground leads the scenery above it by %.3f over %d cells (ground %.3f, scenery %.3f, at least %.3f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
+	print("Capture: %s: contrast including opaque actors %.6f (ground %.6f, scenery %.6f), excluding them %.6f; sampled %.0f ground and %.0f scenery pixels." % [screen, ground_including_actors.x / ground_including_actors.y - including_actors.x / including_actors.y, ground_including_actors.x / ground_including_actors.y, including_actors.x / including_actors.y, ground.x - behind.x, ground.y, behind.y])
+	print("Capture: %s: the ground leads the scenery above it by %.6f over %d cells (ground %.6f, scenery %.6f, at least %.3f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
 	if behind.x <= 0.0 or ground.x - behind.x < GROUND_LEAD:
 		_fail("%s: the ground does not read over the scenery behind it" % screen)
 		return false
@@ -788,8 +808,8 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)) or (view * (corner + Vector2(0, CELL + FACE_ROWS.y))).y > _band_top() - ACID_LIGHT_REACH:
 			continue
-		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered)
-		var cell_behind: Vector2 = _clear_luminance(frame, view, corner, CELL, covered)
+		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered, true)
+		var cell_behind: Vector2 = _clear_luminance(frame, view, corner, CELL, covered, true)
 		if cell_face.y < CLEAR_PIXELS or cell_behind.y < CLEAR_PIXELS:
 			continue
 		face += cell_face.x / cell_face.y
@@ -1045,6 +1065,101 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		dense_frames += 1
 	return true
 
+## Whether a sampled screen pixel is painted by a character, retaining the
+## transparent gaps inside its bounding rectangle as scenery samples.
+func _character_covers(point: Vector2) -> bool:
+	for layer: Dictionary in character_masks:
+		var mask: Image = layer["alpha"]
+		if _character_opaque(mask, layer, point):
+			return true
+	return false
+
+## An opaque foreground pixel is excluded while its nearest transparent
+## neighbour inside the same bounds remains in the scenery measurement.
+func _character_mask_control() -> bool:
+	var frame: Image = Image.create(CELL, CELL, false, Image.FORMAT_RGBA8)
+	frame.fill(Color(0.2, 0.2, 0.2))
+	frame.set_pixel(16, 16, Color.WHITE)
+	frame.set_pixel(16, 17, Color.GREEN)
+	var mask: Image = Image.create(CELL, CELL, false, Image.FORMAT_RGBA8)
+	mask.fill(Color.TRANSPARENT)
+	mask.set_pixel(16, 16, Color.WHITE)
+	character_masks.assign([{ "area": Rect2(0, 0, CELL, CELL), "alpha": mask, "mirrored": false }])
+	var all_pixels: Vector2 = _clear_luminance(frame, Transform2D(), Vector2.ZERO, CELL, [])
+	var scenery: Vector2 = _clear_luminance(frame, Transform2D(), Vector2.ZERO, CELL, [], true)
+	var valid: bool = _character_covers(Vector2(16.5, 16.5)) and not _character_covers(Vector2(16.5, 17.5)) and all_pixels.y == CELL * CELL and scenery.y == CELL * CELL - 1 and is_equal_approx(scenery.x, all_pixels.x - 1.0)
+	character_masks.clear()
+	if not valid:
+		_fail("character alpha control excluded a transparent gap or retained an opaque pixel")
+		return false
+	print("Capture: character alpha control excluded one opaque pixel, retained its transparent neighbour and the other 1023 scenery pixels.")
+	return true
+
+
+## Checks the actual drawn texture's silhouette at the close camera, then reads
+## the rendered frame only inside its opaque interior, excluding plates and HUD.
+## Background and item detail cannot contribute to this character measurement.
+func _characters_dense(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+	if not is_equal_approx(view.x.x, 2.0):
+		return true
+	var layers: Array = scene.get_node("World").get_meta("character_layers", [])
+	for index: int in range(layers.size()):
+		var layer: Dictionary = layers[index]
+		var role: String = layer["role"]
+		var area: Rect2 = layer["area"]
+		if not PLAY.encloses(area):
+			continue
+		var texture: Texture2D = layer["texture"]
+		var mask: Image = texture.get_image()
+		print("Capture: %s: %s loaded texture %s, actual draw area %s." % [screen, role, mask.get_size(), area])
+		var height: float = mask.get_used_rect().size.y * area.size.y / mask.get_height()
+		var target: float = 115.0 if role == "chef" else 72.0
+		if absf(height - target) > 6.0:
+			_fail("%s: %s silhouette is %.1f screen pixels tall, original %.0f +/- 6" % [screen, role, height, target])
+			return false
+		var edges: Vector2i = Vector2i.ZERO
+		var thin: Vector2i = Vector2i.ZERO
+		for y: int in range(maxi(1, int(area.position.y)), mini(frame.get_height() - 1, int(ceilf(area.end.y)))):
+			for x: int in range(maxi(1, int(area.position.x)), mini(frame.get_width() - 1, int(ceilf(area.end.x)))):
+				var point: Vector2 = Vector2(x + 0.5, y + 0.5)
+				if covered.any(func(box: Rect2) -> bool: return box.grow(1).has_point(point)):
+					continue
+				var hidden: bool = false
+				for later: int in range(index + 1, layers.size()):
+					var later_layer: Dictionary = layers[later]
+					var later_area: Rect2 = later_layer["area"]
+					if later_area.has_point(point):
+						hidden = true
+				if hidden or not _character_opaque(mask, layer, point) or not _character_opaque(mask, layer, point + Vector2.LEFT) or not _character_opaque(mask, layer, point + Vector2.RIGHT) or not _character_opaque(mask, layer, point + Vector2.UP) or not _character_opaque(mask, layer, point + Vector2.DOWN):
+					continue
+				var pixel: Color = frame.get_pixel(x, y)
+				var left: bool = _differ(pixel, frame.get_pixel(x - 1, y))
+				var right: bool = _differ(pixel, frame.get_pixel(x + 1, y))
+				var up: bool = _differ(pixel, frame.get_pixel(x, y - 1))
+				var down: bool = _differ(pixel, frame.get_pixel(x, y + 1))
+				edges += Vector2i(1 if left or right else 0, 1 if up or down else 0)
+				thin += Vector2i(1 if left and right else 0, 1 if up and down else 0)
+		if mini(edges.x, edges.y) < 64:
+			continue
+		var share: float = minf(float(thin.x) / edges.x, float(thin.y) / edges.y)
+		print("Capture: %s: %s height %.0f, character-only thin share %.3f over %s edges." % [screen, role, height, share, edges])
+		if share < 0.1:
+			_fail("%s: %s character pixels are drawn in blocks" % [screen, role])
+			return false
+		character_frames[role] += 1
+	return true
+
+## Samples alpha from the texture the draw used, through that draw's area and reflection.
+func _character_opaque(mask: Image, layer: Dictionary, point: Vector2) -> bool:
+	var area: Rect2 = layer["area"]
+	var at: Vector2i = Vector2i(((point - area.position) / area.size * Vector2(mask.get_size())).floor())
+	if not Rect2i(Vector2i.ZERO, mask.get_size()).has_point(at):
+		return false
+	if layer["mirrored"]:
+		at.x = mask.get_width() - 1 - at.x
+	return mask.get_pixelv(at).a > 0.99
+
+
 ## Over the screen rows from rows.x to rows.y, every other row and column,
 ## each pixel clear of the rectangles covered and, for the teeth, only where
 ## the frame shows the throat's fangs, within TEETH_TOLERANCE in
@@ -1270,12 +1385,14 @@ func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> 
 
 ## The summed luminance, as x, and the count, as y, of the screen pixels of a
 ## cell-wide band of scene rows whose top-left is corner that lie clear of the
-## rectangles covered.
-func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array) -> Vector2:
+## rectangles covered, optionally also clear of opaque foreground character pixels.
+func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array, exclude_characters: bool = false) -> Vector2:
 	var found: Vector2 = Vector2.ZERO
 	for y: int in range(rows):
 		for x: int in range(CELL):
 			var at: Vector2 = view * (corner + Vector2(x + 0.5, y + 0.5))
+			if exclude_characters and _character_covers(at.floor() + Vector2(0.5, 0.5)):
+				continue
 			if covered.any(func(area: Rect2) -> bool: return area.has_point(at)):
 				continue
 			found += Vector2(_pixel(frame, view, corner + Vector2(x, y)), 1.0)

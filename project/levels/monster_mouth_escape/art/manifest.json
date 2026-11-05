@@ -41,222 +41,330 @@
   {
    "path": "characters/chef_idle.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 15,
-   "depicts": "Chef (ART-CHAR-001), standing, arms down"
+   "colours": 5499,
+   "depicts": "Chef (ART-CHAR-001), standing cut from the search mockup",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     298,
+     201,
+     128,
+     128
+    ],
+    "mask": "explicit silhouette; original RGB retained"
+   }
   },
   {
    "path": "characters/chef_walk_1.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 15,
-   "depicts": "Chef (ART-CHAR-001), walk 1 of 4: right foot forward"
+   "colours": 5499,
+   "depicts": "Chef (ART-CHAR-001), walk 1, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_2.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 14,
-   "depicts": "Chef (ART-CHAR-001), walk 2 of 4: passing"
+   "colours": 5251,
+   "depicts": "Chef (ART-CHAR-001), walk 2, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_3.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 14,
-   "depicts": "Chef (ART-CHAR-001), walk 3 of 4: left foot forward"
+   "colours": 5206,
+   "depicts": "Chef (ART-CHAR-001), walk 3, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_walk_4.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 13,
-   "depicts": "Chef (ART-CHAR-001), walk 4 of 4: passing"
+   "colours": 5243,
+   "depicts": "Chef (ART-CHAR-001), walk 4, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_run_1.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 14,
-   "depicts": "Chef (ART-CHAR-001), run 1 of 2: long stride, leaning forward"
+   "colours": 5383,
+   "depicts": "Chef (ART-CHAR-001), run 1, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_run_2.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), run 2 of 2: the other leg forward"
+   "colours": 5161,
+   "depicts": "Chef (ART-CHAR-001), run 2, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_jump.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Chef (ART-CHAR-001), rising: knees tucked, arms up"
+   "colours": 5152,
+   "depicts": "Chef (ART-CHAR-001), jump, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_fall.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 15,
-   "depicts": "Chef (ART-CHAR-001), falling: legs down, arms up"
+   "colours": 5217,
+   "depicts": "Chef (ART-CHAR-001), fall, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_land.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 15,
-   "depicts": "Chef (ART-CHAR-001), landing: arms out for balance"
+   "colours": 5123,
+   "depicts": "Chef (ART-CHAR-001), land, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/chef_climb.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 15,
-   "depicts": "Chef (ART-CHAR-001), climbing, seen from behind, one arm up"
+   "colours": 4913,
+   "depicts": "Chef (ART-CHAR-001), climb, articulated original cut",
+   "provenance": {
+    "source": "characters/chef_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_idle.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), standing with the magnifier"
+   "colours": 3436,
+   "depicts": "Appraiser (ART-CHAR-002), standing cut from the search mockup",
+   "provenance": {
+    "source": "concept_search_mockup",
+    "screen": [
+     1280,
+     720
+    ],
+    "crop": [
+     409,
+     203,
+     128,
+     128
+    ],
+    "mask": "explicit silhouette; original RGB retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_1.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), walk 1 of 4: right foot forward"
+   "colours": 3436,
+   "depicts": "Appraiser (ART-CHAR-002), walk 1, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_2.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), walk 2 of 4: passing"
+   "colours": 3288,
+   "depicts": "Appraiser (ART-CHAR-002), walk 2, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_3.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), walk 3 of 4: left foot forward"
+   "colours": 3264,
+   "depicts": "Appraiser (ART-CHAR-002), walk 3, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_walk_4.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), walk 4 of 4: passing"
+   "colours": 3267,
+   "depicts": "Appraiser (ART-CHAR-002), walk 4, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_run_1.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), run 1 of 2: long stride"
+   "colours": 3384,
+   "depicts": "Appraiser (ART-CHAR-002), run 1, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_run_2.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), run 2 of 2: the other leg forward"
+   "colours": 3251,
+   "depicts": "Appraiser (ART-CHAR-002), run 2, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_jump.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), rising: both arms up, one magnifier"
+   "colours": 3243,
+   "depicts": "Appraiser (ART-CHAR-002), jump, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_fall.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), falling: legs down, arms up"
+   "colours": 3303,
+   "depicts": "Appraiser (ART-CHAR-002), fall, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_land.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 16,
-   "depicts": "Appraiser (ART-CHAR-002), landing: knees bent"
+   "colours": 3215,
+   "depicts": "Appraiser (ART-CHAR-002), land, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "characters/appraiser_climb.png",
    "size": [
-    64,
-    64
+    128,
+    128
    ],
    "scale": 1,
-   "colours": 14,
-   "depicts": "Appraiser (ART-CHAR-002), climbing, seen from behind, one arm up"
+   "colours": 3223,
+   "depicts": "Appraiser (ART-CHAR-002), climb, articulated original cut",
+   "provenance": {
+    "source": "characters/appraiser_idle.png",
+    "method": "nearest-sampled rigid articulation; original RGB and head retained"
+   }
   },
   {
    "path": "world/ladder.png",

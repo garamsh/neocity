@@ -1012,8 +1012,10 @@ void paint_actor(godot::Node2D &canvas, const Art &art,
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
+  const float anchor = actor == Actor::Chef ? 26.0F : 33.0F;
+  const float pivot = shown.mirrored ? size.x - anchor : anchor;
   art.image(canvas, shown.image,
-            Vector2(feet.x - size.x / 2.0F + offset, feet.y - size.y), 1.0F,
+            Vector2(feet.x - pivot + offset, feet.y - size.y), 1.0F,
             shown.mirrored);
 }
 
@@ -1496,6 +1498,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   for (const auto &marker : markers) {
     paint_source(canvas, art, marker);
   }
+  canvas.set_meta("character_layers", godot::Array());
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,
                 0.0F);
@@ -1572,6 +1575,7 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
 }
 
 void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
+  canvas.set_meta("character_layers", godot::Array());
   art.image_part(canvas, Image::Kitchen,
                  rect(0.0F, KITCHEN_SOURCE_Y, SCREEN_WIDTH, KITCHEN_HEIGHT),
                  rect(0.0F, KITCHEN_Y, SCREEN_WIDTH, KITCHEN_HEIGHT));

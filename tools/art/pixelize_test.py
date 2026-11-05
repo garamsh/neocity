@@ -100,6 +100,37 @@ class CheckTest(unittest.TestCase):
     def test_the_screen_pixel_rule_skips_the_sprites(self):
         self.assertEqual(problems(pixelize.upscale(sprite(), 2), "characters/test.png"), [])
 
+    def test_original_character_cuts_keep_colours_but_reject_enlarged_pixels(self):
+        dense = [[(x * 10, y * 10, (x + y) * 5, 255) for x in range(24)] for y in range(24)]
+        self.assertEqual(problems(dense, "characters/chef_idle.png"), [])
+        blocks = pixelize.upscale(dense, 2)
+        found = problems(blocks, "characters/chef_idle.png")
+        self.assertEqual(len(found), 1)
+        self.assertIn("drawn in blocks", found[0])
+        self.assertEqual(problems(blocks, "backgrounds/test.png"), found)
+
+
+class ArticulateTest(unittest.TestCase):
+    def test_the_zero_pose_retains_every_original_pixel(self):
+        base = sprite()
+        rig = {"arm": {"mask": [[[0, 0], [10, 0], [10, 22], [0, 22]]], "pivot": [10, 10]}}
+        self.assertEqual(pixelize.articulate(base, rig, {"limbs": {}}), base)
+
+    def test_a_raised_limb_keeps_its_original_colour_and_moves_only_its_pixels(self):
+        base = [[CLEAR] * 8 for _ in range(8)]
+        base[4][3], base[4][4], base[2][5] = LIGHT, MID, DARK
+        rig = {"arm": {"mask": [[[2, 3], [5, 3], [5, 6], [2, 6]]], "pivot": [3, 4]}}
+        self.assertEqual(pixelize.articulate(base, rig, {"limbs": {}}), base)
+        raised = pixelize.articulate(base, rig, {"limbs": {"arm": {"angle": -90}}})
+        self.assertEqual(raised[4][3], LIGHT)
+        self.assertEqual(raised[3][3], MID)
+        self.assertEqual(raised[4][4], CLEAR)
+        self.assertEqual(raised[2][5], DARK)
+        grounded = pixelize.articulate(base, rig, {"limbs": {"arm": {"angle": -90, "floor": 6}}})
+        self.assertEqual(grounded[6][3], LIGHT)
+        self.assertEqual(grounded[5][3], MID)
+        self.assertEqual(grounded[2][5], DARK)
+
 
 class ResampleTest(unittest.TestCase):
     def test_each_pixel_is_the_average_of_the_area_it_covers(self):
