@@ -71,7 +71,7 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
 ## than the backdrop above them, and how much brighter the acid band's glowing
 ## pixels read than that backdrop. The least face gap on the captured city
-## frames is 0.077834.
+## frames is 0.077833.
 const FACE_GAP: float = 0.077
 ## The fewest pixels clear of the plates and the HUD that a cell's face, or
 ## the scenery above it, is read over.
