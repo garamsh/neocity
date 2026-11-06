@@ -665,6 +665,10 @@ func _first_day() -> void:
 		return
 	if not await _camera_holds("the first city screen"):
 		return
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var upper_walkway: float = (view * Vector2(0, MAP_ORIGIN.y + 9 * 32)).y
+	if not _check(absf(upper_walkway - 329.0) <= 8.0, "the upper walkway stands within 8px of mockup row 329: %.1f" % upper_walkway):
+		return
 	if not _points_to_goal("the first city screen"):
 		return
 	if not _check(await _pause_shows_escape_goal(), "the pause screen over the city, and not the city, shows when escape checks begin"):

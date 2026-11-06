@@ -52,9 +52,9 @@ const CELL: int = 32
 const LEAD_CELLS: Array[Vector2i] = [Vector2i(2, 6), Vector2i(4, 8), Vector2i(8, 8), Vector2i(18, 5), Vector2i(19, 5)]
 ## How much brighter, in mean luminance from 0 to 1, the walkway's lit top
 ## edge under those cells reads than the scenery in the cells, above the deck:
-## the mockup's decks, cut with their own top edge, lead by as little as 0.057,
-## on 27-city-jumping-the-rubble.
-const GROUND_LEAD: float = 0.04
+## the least on the captured city frames is 0.068559, against 0.038126
+## over the same cells and bands in the screen-sized mockup.
+const GROUND_LEAD: float = 0.06
 ## The rows of a walkway's lit top edge, as the city draws it: the ground a
 ## player walks on, read over the scenery above it.
 const EDGE_ROWS: int = 4
@@ -70,10 +70,9 @@ const BAND_HIGH: int = 240
 const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
 ## than the backdrop above them, and how much brighter the acid band's glowing
-## pixels read than that backdrop. The mockup's backdrop, cut into the layers,
-## reads 0.21 to 0.24 over its walkways' 0.10 to 0.13; the walkways, not yet
-## redrawn from it, read 0.14 to 0.16, at least 0.048 under the backdrop.
-const FACE_GAP: float = 0.03
+## pixels read than that backdrop. The least face gap on the captured city
+## frames is 0.077834.
+const FACE_GAP: float = 0.077
 ## The fewest pixels clear of the plates and the HUD that a cell's face, or
 ## the scenery above it, is read over.
 const CLEAR_PIXELS: int = 32
@@ -84,10 +83,9 @@ const ACID_GAP: float = 0.05
 ## How much a pixel's green channel leads its red and blue, from 0 to 1, for
 ## it to read as glowing acid, and the least share of the band's pixels that
 ## read so, with its sunken trains, the pillars and the walkways in front:
-## the mockup's acid lake, its trains standing in the rows read, glows over
-## 0.175 of them at the least on the city frames.
+## the least share on the captured city frames is 0.355331.
 const ACID_GREEN: float = 0.1
-const ACID_SHARE: float = 0.1
+const ACID_SHARE: float = 0.355
 ## The stairs down from the upper walkway, rising to the left across its cell
 ## from its floor line down to the row below, so its walked-on part lies above
 ## that diagonal.
@@ -152,7 +150,7 @@ const PARTED_SETTLE: int = 60
 ## of 17b4d09, drawn in blocks: teeth 0.05, backdrop 0.01, acid 0.15; with
 ## the layers cut from the mockup, on every city frame that reads them:
 ## teeth 0.79 to 0.88, backdrop 0.45 to 0.61, acid 0.68 to 0.87.
-const DENSE_SHARE: Dictionary[String, float] = {"teeth": 0.4, "backdrop": 0.25, "acid": 0.5}
+const DENSE_SHARE: Dictionary[String, float] = {"teeth": 0.4, "backdrop": 0.25, "acid": 0.5, "walkways": 0.5, "shops": 0.65}
 const DENSE_TOLERANCE: float = 0.01
 ## The least edge pixels, along the rows and along the columns, a layer must
 ## show for its density to be read.
@@ -169,12 +167,14 @@ const SETTLE_SECONDS: float = 0.4
 ## there from the throat; the least share of the pixels the throat's fangs
 ## cover there that must show them, within TEETH_TOLERANCE in each channel,
 ## low because a high walkway hides them where it crosses the top of the
-## screen, the lowest city frame, 17-city-high-acid, showing 0.109 of them; and
-## the least share of the pixels read the fangs must cover.
+## screen; and the least share of the pixels read the fangs must cover.
+## The captured city frames show at least 0.313433 of the fangs, covering
+## at least 0.035531 of the sample; the same throat cut placed over the
+## screen-sized mockup covers 0.044 of it.
 const TEETH_ROWS: int = 96
-const TEETH_SHARE: float = 0.03
+const TEETH_SHARE: float = 0.313
 const TEETH_TOLERANCE: float = 0.06
-const TEETH_COVER: float = 0.02
+const TEETH_COVER: float = 0.035
 ## How a fang's cream reads in the throat picture: its red and green at least
 ## these, and its green no less than its blue, which the pink flesh's is.
 const FANG_RED: float = 0.75
@@ -192,7 +192,7 @@ const SUPPORT_SHARE: float = 0.07
 const LIT_AREAS: Array[Rect2] = [Rect2(180, 180, 120, 114), Rect2(628, 244, 120, 114), Rect2(404, 328, 56, 62), Rect2(849, 210, 62, 84)]
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
-const LIT_SHARE: float = 0.15
+const LIT_SHARE: float = 0.200
 
 ## The size of the screen every check above measures, and the window sizes it
 ## is shown at afterwards: twice and three times it, and a 1280x720 window at
@@ -219,6 +219,7 @@ var layer_frames: int = 0
 var acid_frames: int = 0
 var band_frames: int = 0
 var dense_frames: int = 0
+var dense_city_frames: Dictionary[String, int] = {"walkways": 0, "shops": 0}
 var character_frames: Dictionary[String, int] = {"chef": 0, "appraiser": 0}
 var character_masks: Array[Dictionary] = []
 var light_frames: int = 0
@@ -425,6 +426,11 @@ func _run() -> void:
 		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
 	print("Capture: the ground was measured in %d, the layers in %d, the acid over the backdrop in %d, the acid band in %d, the stairs in %d, the stairs beside the deck in %d, the density in %d, the acid light in %d, the teeth in %d, the supports in %d and the lit structures in %d city frames." % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
+	for layer: String in dense_city_frames:
+		if dense_city_frames[layer] == 0:
+			_fail("the %s density was never measured" % layer)
+			return
+	print("Capture: city layer density measured in ", dense_city_frames, " city frames.")
 	for role: String in character_frames:
 		if character_frames[role] == 0:
 			_fail("the %s character was never measured" % role)
@@ -856,7 +862,7 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Arr
 	behind.x /= behind.y
 	ground_frames += 1
 	print("Capture: %s: contrast including opaque actors %.6f (ground %.6f, scenery %.6f), excluding them %.6f; sampled %.0f ground and %.0f scenery pixels." % [screen, ground_including_actors.x / ground_including_actors.y - including_actors.x / including_actors.y, ground_including_actors.x / ground_including_actors.y, including_actors.x / including_actors.y, ground.x - behind.x, ground.y, behind.y])
-	print("Capture: %s: the ground leads the scenery above it by %.6f over %d cells (ground %.6f, scenery %.6f, at least %.3f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
+	print("Capture: %s: the ground leads the scenery above it by %.6f over %d cells (ground %.6f, scenery %.6f, at least %.6f)." % [screen, ground.x - behind.x, shown, ground.x, behind.x, GROUND_LEAD])
 	if behind.x <= 0.0 or ground.x - behind.x < GROUND_LEAD:
 		_fail("%s: the ground does not read over the scenery behind it" % screen)
 		return false
@@ -892,7 +898,7 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 	face /= shown
 	behind /= shown
 	layer_frames += 1
-	print("Capture: %s: the walkways' faces read %.3f under the backdrop's %.3f over %d cells (at least %.3f darker)." % [screen, face, behind, shown, FACE_GAP])
+	print("Capture: %s: the walkways' faces read %.6f under the backdrop's %.6f over %d cells (at least %.6f darker)." % [screen, face, behind, shown, FACE_GAP])
 	if face <= 0.0 or behind - face < FACE_GAP:
 		_fail("%s: the walkways do not read darker than the backdrop" % screen)
 		return false
@@ -900,7 +906,7 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 		return true
 	var band: Vector2 = _acid_band(frame)
 	acid_frames += 1
-	print("Capture: %s: the acid band glows green over %.3f of it, at %.3f over the backdrop's %.3f (at least %.3f of it, %.3f brighter)." % [screen, band.x, band.y, behind, ACID_SHARE, ACID_GAP])
+	print("Capture: %s: the acid band glows green over %.6f of it, at %.6f over the backdrop's %.6f (at least %.6f of it, %.6f brighter)." % [screen, band.x, band.y, behind, ACID_SHARE, ACID_GAP])
 	if band.x < ACID_SHARE or band.y - behind < ACID_GAP:
 		_fail("%s: the acid band does not read brighter than the backdrop" % screen)
 		return false
@@ -913,7 +919,7 @@ func _band_shows(frame: Image, view: Transform2D, screen: String) -> bool:
 		return true
 	var share: float = _acid_band(frame).x
 	band_frames += 1
-	print("Capture: %s: the acid band at row %d glows green over %.3f of it (at least %.3f)." % [screen, _band_top(), share, ACID_SHARE])
+	print("Capture: %s: the acid band at row %d glows green over %.6f of it (at least %.6f)." % [screen, _band_top(), share, ACID_SHARE])
 	if share < ACID_SHARE:
 		_fail("%s: the acid band does not show green at no acid" % screen)
 		return false
@@ -1094,7 +1100,7 @@ func _cell(actor: Dictionary) -> Vector2i:
 	return Vector2i(x, y)
 
 ## Whether the camera draws the scene at one of its ZOOMS and, at twice the
-## scene's size, the teeth, the backdrop under them and the acid each stand in
+## scene's size, the teeth, backdrop, acid, walkways and shops each stand in
 ## pixels one screen pixel wide and tall: of each one's edge pixels clear of
 ## the word plates and the HUD, its DENSE_SHARE along the rows and along the
 ## columns differ from both their neighbours. The teeth are read where the
@@ -1103,7 +1109,9 @@ func _cell(actor: Dictionary) -> Vector2i:
 ## pixels over the BAND_ROWS under the band's surface where the sea does not
 ## cover them, else the SEA_ROWS under the sea's surface. A layer is read when
 ## the frame shows DENSE_EDGES of its edge pixels along each, and the frame
-## counts as measured when all three are.
+## counts as measured when all five are. Walkways use the faces of
+## LEAD_CELLS and shops use LIT_AREAS, excluding opaque characters. Their
+## least measured shares are 0.554849 and 0.720035, respectively.
 func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
 	var zoom: float = view.x.x
 	if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
@@ -1118,10 +1126,19 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		acid_rows = Vector2i(sea + SEA_ROWS.x, sea + SEA_ROWS.y)
 	var top: int = int(PLAY.position.y)
 	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
+	var walkways: Array[Rect2] = []
+	for cell: Vector2i in LEAD_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
+		walkways.append(view * Rect2(corner + Vector2(0, CELL + FACE_ROWS.x), Vector2(CELL, FACE_ROWS.y - FACE_ROWS.x)))
+	var shops: Array[Rect2] = []
+	for area: Rect2 in LIT_AREAS:
+		shops.append(view * area)
 	var layers: Dictionary = {
 		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, "teeth"),
 		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, ""),
 		"acid": _thin(frame, acid_rows, covered, "acid"),
+		"walkways": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "city", walkways),
+		"shops": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "city", shops),
 	}
 	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %s, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
 	var read: int = 0
@@ -1130,6 +1147,8 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		if found.y < DENSE_EDGES:
 			continue
 		read += 1
+		if dense_city_frames.has(layer):
+			dense_city_frames[layer] += 1
 		if found.x < DENSE_SHARE[layer]:
 			_fail("%s: the %s is drawn in pixels larger than a screen pixel" % [screen, layer])
 			return false
@@ -1233,19 +1252,22 @@ func _character_opaque(mask: Image, layer: Dictionary, point: Vector2) -> bool:
 
 
 ## Over the screen rows from rows.x to rows.y, every other row and column,
-## each pixel clear of the rectangles covered and, for the teeth, only where
+## each pixel clear of the rectangles covered, inside an area for city
+## layers and clear of opaque characters there, and, for the teeth, only where
 ## the frame shows the throat's fangs, within TEETH_TOLERANCE in
 ## each channel, and for the acid, only where its green leads by ACID_GREEN:
 ## of the pixels that differ from a neighbour along the row, the share that
 ## differ from both, and the same along the column; the smaller of the two
 ## shares, as x, and the fewer of the two counts of such pixels, as y.
-func _thin(frame: Image, rows: Vector2i, covered: Array, only: String) -> Vector2:
+func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Array[Rect2] = []) -> Vector2:
 	var edges: Vector2i = Vector2i.ZERO
 	var thin: Vector2i = Vector2i.ZERO
 	var width: int = int(PLAY.size.x)
 	for y: int in range(maxi(rows.x, 1), mini(rows.y, frame.get_height() - 1), 2):
 		for x: int in range(1, width - 1, 2):
 			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y))):
+				continue
+			if only == "city" and (_character_covers(Vector2(x + 0.5, y + 0.5)) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y)))):
 				continue
 			var pixel: Color = frame.get_pixel(x, y)
 			if only == "acid" and _green(pixel) < ACID_GREEN:
@@ -1329,7 +1351,7 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 	var cover: float = float(covered) / count
 	var share: float = float(matched) / maxi(covered, 1)
 	teeth_frames += 1
-	print("Capture: %s: %.3f of the %.3f of the top %d rows of the play area the fangs cover show them (at least %.3f of at least %.3f)." % [screen, share, cover, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
+	print("Capture: %s: %.6f of the %.6f of the top %d rows of the play area the fangs cover show them (at least %.6f of at least %.6f)." % [screen, share, cover, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
 	if cover < TEETH_COVER or share < TEETH_SHARE:
 		_fail("%s: the fangs do not hang from the top of the play area" % screen)
 		return false
@@ -1407,7 +1429,7 @@ func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 		return true
 	var share: float = float(warm) / count
 	lit_frames += 1
-	print("Capture: %s: %.3f of the lit structures' %d scene pixels read warm and bright (at least %.3f)." % [screen, share, count, LIT_SHARE])
+	print("Capture: %s: %.6f of the lit structures' %d scene pixels read warm and bright (at least %.6f)." % [screen, share, count, LIT_SHARE])
 	if share < LIT_SHARE:
 		_fail("%s: the shops, stalls and vending machines do not read lit" % screen)
 		return false
