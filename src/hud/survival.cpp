@@ -119,9 +119,9 @@ constexpr float SOLO_BUTTON_HEIGHT = 36.0F;
 /// a panel taller than the other corners'.
 constexpr float PLAYER_TAG = 30.0F;
 constexpr float DUO_BUTTON = ACTION_INNER - PLAYER_TAG;
-constexpr float DUO_BUTTON_HEIGHT = 26.0F;
-constexpr float DUO_ROW = 44.0F;
-constexpr float DUO_HEIGHT = 2.0F * DUO_ROW + 12.0F;
+constexpr float DUO_BUTTON_HEIGHT = 36.0F;
+constexpr float DUO_ROW = 56.0F;
+constexpr float DUO_HEIGHT = 2.0F * DUO_ROW + 24.0F;
 constexpr int DUO_SIZE = SMALL_SIZE;
 /// The base's task card over the bottom corners.
 constexpr float TASK_WIDTH = 820.0F;
@@ -1279,13 +1279,14 @@ std::vector<ActionRow> action_rows(const SurvivalFrame &frame) {
          .hint = Vector2(left + 2.0F, FOOT_Y + FOOT_HEIGHT - 14.0F)});
     return rows;
   }
-  float row = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT + 8.0F;
+  float row = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT + 12.0F;
   for (const auto &[actor, set] : players) {
     rows.push_back(
         {.actor = actor,
          .set = set,
          .button = rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_BUTTON_HEIGHT),
-         .hint = Vector2(left + PLAYER_TAG + 2.0F, row + DUO_ROW - 4.0F)});
+         .hint = Vector2(left + PLAYER_TAG + 2.0F,
+                         row + DUO_BUTTON_HEIGHT + 14.0F)});
     row += DUO_ROW;
   }
   return rows;
@@ -1307,7 +1308,7 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
   for (const auto &row : rows) {
     const auto &keys = KEY_LABELS.at(row.set);
     if (!alone) {
-      drawing.text(canvas, ACTION_X + 10.0F, row.button.position.y + 18.0F,
+      drawing.text(canvas, ACTION_X + 10.0F, row.button.position.y + 23.0F,
                    "P" + number(row.set + 1), SMALL_SIZE, tones.cyan,
                    Weight::Bold);
     }
