@@ -453,41 +453,59 @@ godot::Rect2 deck_source(survival::GridPosition cell) {
 
 /// A walkway deck under the floor line of `cell`, stained by the acid when
 /// `corroded`, under its top edge lit warm and bright, so the surface a player
-/// walks on reads first.
+/// walks on reads first; exposed stone courses and the loft underside recede
+/// beneath that full-width edge.
 void paint_deck(godot::Node2D &canvas, const Art &art,
                 std::span<const survival::GroundCell> standing,
                 survival::GridPosition cell, bool corroded) {
   const godot::Rect2 source = deck_source(cell);
   const godot::Color tint = corroded ? corroded_tint() : untinted();
   const Vector2 at(cell_x(cell.x), floor_y(cell.y));
+  const bool loft = cell.y == LOFT_ROW;
   const bool left = !has_ground(standing, {.x = cell.x - 1, .y = cell.y});
   const bool right = !has_ground(standing, {.x = cell.x + 1, .y = cell.y});
   if (!left && !right) {
     art.image_part(canvas, Image::Deck, source,
                    rect(at.x, at.y, CELL, DECK_DEPTH), tint);
+    if (loft) {
+      art.image_part(
+          canvas, Image::BuildingWall,
+          rect(mockup_x(cell.x), UNDERSIDE_TOP, CELL, UNDERSIDE_DEPTH),
+          rect(at.x, at.y + DECK_DEPTH, CELL, UNDERSIDE_DEPTH));
+    }
   } else {
-    constexpr std::array LEFT{0.0F, 0.0F, 0.5F, 1.0F, 0.5F, 1.5F, 2.0F,
-                              1.5F, 2.5F, 2.0F, 3.5F, 3.0F, 4.5F, 6.0F};
-    constexpr std::array RIGHT{0.0F, 0.0F, 0.5F, 1.5F, 1.0F, 0.5F, 1.5F,
-                               2.0F, 3.0F, 2.5F, 3.5F, 3.0F, 5.0F, 6.0F};
-    for (std::size_t row = 0; row < LEFT.size(); ++row) {
+    constexpr std::array LEFT{0.0F, 0.0F, 0.5F, 0.5F, 0.5F, 2.0F, 1.0F, 1.0F,
+                              1.0F, 2.5F, 2.0F, 2.0F, 4.5F, 6.0F, 6.0F, 6.0F,
+                              5.0F, 5.0F, 5.0F, 4.0F, 4.0F, 4.0F, 5.0F, 5.0F,
+                              4.0F, 4.0F, 6.0F, 6.0F, 7.0F, 7.0F, 9.0F, 11.0F};
+    constexpr std::array RIGHT{
+        0.0F, 0.0F, 0.5F, 0.5F, 0.5F, 1.5F, 1.0F, 1.0F, 1.0F,  3.0F, 2.5F,
+        2.5F, 5.0F, 6.0F, 6.0F, 5.5F, 5.5F, 4.5F, 4.5F, 4.0F,  5.0F, 5.0F,
+        3.5F, 3.5F, 4.5F, 4.5F, 6.5F, 6.5F, 8.0F, 8.0F, 10.0F, 12.0F};
+    const float depth = loft ? DECK_DEPTH + UNDERSIDE_DEPTH : DECK_DEPTH;
+    for (std::size_t row = 0; row < static_cast<std::size_t>(depth / 2.0F);
+         ++row) {
       const float y = static_cast<float>(row) * 2.0F;
+      const bool under = y >= DECK_DEPTH;
+      const Image image = under ? Image::BuildingWall : Image::Deck;
+      const float source_y =
+          under ? UNDERSIDE_TOP + y - DECK_DEPTH : source.position.y + y;
+      const godot::Color face_tint = under ? untinted() : tint;
       const float inset_left = left ? LEFT.at(row) : 0.0F;
       const float inset_right = right ? RIGHT.at(row) : 0.0F;
       const float width = CELL - inset_left - inset_right;
-      art.image_part(canvas, Image::Deck,
-                     rect(source.position.x + inset_left, source.position.y + y,
-                          width, 2.0F),
-                     rect(at.x + inset_left, at.y + y, width, 2.0F), tint);
+      art.image_part(
+          canvas, image,
+          rect(source.position.x + inset_left, source_y, width, 2.0F),
+          rect(at.x + inset_left, at.y + y, width, 2.0F), face_tint);
       if (y >= GROUND_EDGE) {
         for (const float edge : {left ? inset_left : -1.0F,
                                  right ? CELL - inset_right - 0.5F : -1.0F}) {
           if (edge >= 0.0F) {
-            art.image_part(canvas, Image::Deck,
-                           rect(source.position.x + edge, source.position.y + y,
-                                0.5F, 2.0F),
+            art.image_part(canvas, image,
+                           rect(source.position.x + edge, source_y, 0.5F, 2.0F),
                            rect(at.x + edge, at.y + y, 0.5F, 2.0F),
-                           tint * stringer_tint());
+                           face_tint * stringer_tint());
           }
         }
       }
@@ -587,12 +605,6 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
     return;
   }
   paint_deck(canvas, art, standing, ground.cell, eaten);
-  if (ground.cell.y == LOFT_ROW) {
-    art.image_part(
-        canvas, Image::BuildingWall,
-        rect(mockup_x(ground.cell.x), UNDERSIDE_TOP, CELL, UNDERSIDE_DEPTH),
-        rect(at.x, at.y + DECK_DEPTH, CELL, UNDERSIDE_DEPTH));
-  }
   if (ground.kind == GroundKind::Rubble) {
     art.image(canvas, Image::Rubble,
               Vector2(at.x, at.y - art.size(Image::Rubble).y));
@@ -1515,6 +1527,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach) {
+  canvas.set_meta("deck_layers", godot::Array());
   const auto &objects = view.world.objects;
   const auto paint_kind = [&](ObjectKind kind, const auto &paint) {
     for (const auto &object : objects) {
