@@ -89,8 +89,8 @@ constexpr float NOTE_FADE_SECONDS = 1.0F;
 constexpr float FOOT_HEIGHT = 84.0F;
 constexpr float FOOT_Y = SCREEN_HEIGHT - MARGIN - FOOT_HEIGHT;
 constexpr float FRAME = 7.0F;
-constexpr float ACTOR_WIDTH = 232.0F;
-constexpr float PORTRAIT = 64.0F;
+constexpr float ACTOR_WIDTH = 208.0F;
+constexpr float PORTRAIT = 72.0F;
 /// The head of each original cut, in scene pixels, shown at its native size.
 constexpr float CHEF_FACE_X = 12.0F;
 constexpr float CHEF_FACE_Y = 5.0F;
@@ -101,15 +101,15 @@ constexpr float ACTOR_COLUMN = MARGIN + PORTRAIT + 12.0F;
 constexpr float ACTOR_TEXT_WIDTH = ACTOR_WIDTH - ACTOR_COLUMN - FRAME;
 constexpr float HEART_PITCH = 26.0F;
 constexpr std::uint32_t STAMINA_SEGMENTS = 5;
-constexpr float SEGMENT_WIDTH = 24.0F;
+constexpr float SEGMENT_WIDTH = 19.0F;
 constexpr float SEGMENT_HEIGHT = 8.0F;
 constexpr float BAG_X = MARGIN + 2.0F * (ACTOR_WIDTH + GAP);
 constexpr std::size_t BAG_SLOTS = 7;
-constexpr float SLOT = 56.0F;
-constexpr float SLOT_PITCH = 58.0F;
+constexpr float SLOT = 64.0F;
+constexpr float SLOT_PITCH = 66.0F;
 constexpr float BAG_WIDTH =
     static_cast<float>(BAG_SLOTS) * SLOT_PITCH - 2.0F + 2.0F * 10.0F;
-constexpr float ICON = 48.0F;
+constexpr float ICON = 56.0F;
 constexpr float ACTION_X = BAG_X + BAG_WIDTH + GAP;
 constexpr float ACTION_WIDTH = SCREEN_WIDTH - MARGIN - ACTION_X;
 constexpr float ACTION_INNER = ACTION_WIDTH - 2.0F * 10.0F;
@@ -119,9 +119,9 @@ constexpr float SOLO_BUTTON_HEIGHT = 36.0F;
 /// a panel taller than the other corners'.
 constexpr float PLAYER_TAG = 30.0F;
 constexpr float DUO_BUTTON = ACTION_INNER - PLAYER_TAG;
-constexpr float DUO_BUTTON_HEIGHT = 26.0F;
-constexpr float DUO_ROW = 44.0F;
-constexpr float DUO_HEIGHT = 2.0F * DUO_ROW + 12.0F;
+constexpr float DUO_BUTTON_HEIGHT = 36.0F;
+constexpr float DUO_ROW = 56.0F;
+constexpr float DUO_HEIGHT = 2.0F * DUO_ROW + 24.0F;
 constexpr int DUO_SIZE = SMALL_SIZE;
 /// The base's task card over the bottom corners.
 constexpr float TASK_WIDTH = 820.0F;
@@ -413,7 +413,7 @@ std::map<std::uint32_t, std::uint32_t> pack_of(const GameView &view) {
   return pack;
 }
 
-/// Draws the 48 px icon of `name` with its top-left corner at `at`; a name the
+/// Draws the 56 px icon of `name` with its top-left corner at `at`; a name the
 /// art set has no icon for is written there instead.
 void paint_item(godot::Node2D &canvas, const rendering::Art &drawing,
                 std::string_view name, Vector2 at) {
@@ -450,18 +450,16 @@ void hud_panel(godot::Node2D &canvas, godot::Rect2 area) {
   cover(canvas, area);
 }
 
-/// A flat button with its words centred on its height, dark on the accent.
+/// A dark button with its words centred on its height, gold when marked.
 void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
                   godot::Rect2 area, const String &text, int size,
                   bool marked) {
   const auto tones = rendering::palette();
   rendering::button(canvas, area, marked);
-  const float lip = marked ? 4.0F : 0.0F;
   drawing.text(canvas, area.position.x + BUTTON_PAD,
                area.position.y +
-                   (area.size.y - lip + static_cast<float>(size) * CAP_HEIGHT) /
-                       2.0F,
-               text, size, marked ? tones.ink : tones.white, CHANGING);
+                   (area.size.y + static_cast<float>(size) * CAP_HEIGHT) / 2.0F,
+               text, size, marked ? tones.gold : tones.white, CHANGING);
 }
 
 /// How wide a button must be to hold `text` at `size`.
@@ -1064,10 +1062,12 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto &view = frame.view;
   const bool human = survival::key_set(frame.control, actor).has_value();
-  hud_panel(canvas, rect(x, FOOT_Y, ACTOR_WIDTH, FOOT_HEIGHT));
+  canvas.draw_rect(rect(x, FOOT_Y + 8.0F, ACTOR_WIDTH, FOOT_HEIGHT - 8.0F),
+                   tones.background);
+  cover(canvas, rect(x, FOOT_Y, ACTOR_WIDTH, FOOT_HEIGHT));
   const float top = FOOT_Y + (FOOT_HEIGHT - PORTRAIT) / 2.0F;
   const auto face = rect(x + MARGIN + 2.0F, top, PORTRAIT, PORTRAIT);
-  rendering::inset(canvas, face.grow(2.0F));
+  rendering::panel(canvas, face.grow(7.0F));
   drawing.image_part(canvas,
                      actor == Actor::Chef ? rendering::Image::ChefIdle
                                           : rendering::Image::AppraiserIdle,
@@ -1080,11 +1080,8 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.text(canvas, column, FOOT_Y + 22.0F, status, SMALL_SIZE,
                human ? tones.cyan : tones.muted, CHANGING);
   if (role_tool_state(view, actor) == survival::ToolState::Damaged) {
-    drawing.text(canvas,
-                 column + drawing.text_width(status + String("  "), SMALL_SIZE,
-                                             CHANGING),
-                 FOOT_Y + 22.0F, DAMAGED_TOOL, SMALL_SIZE, tones.danger,
-                 CHANGING);
+    drawing.text(canvas, column, FOOT_Y + 79.0F, DAMAGED_TOOL, SMALL_SIZE,
+                 tones.danger, CHANGING);
   }
   paint_hearts(canvas, drawing, column - 4.0F, FOOT_Y + 24.0F,
                state_of(view, actor).health);
@@ -1150,7 +1147,7 @@ std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
 void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
                const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
-  hud_panel(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
+  cover(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
   const auto items = bag_of(frame);
   const std::size_t slots = std::max(BAG_SLOTS, items.size());
   // More kinds than slots share the bag's width, each slot showing its
@@ -1165,7 +1162,7 @@ void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
   };
   for (std::size_t index = 0; index < slots; ++index) {
     const auto at = slot_at(index);
-    rendering::inset(canvas, rect(at.x, at.y, SLOT, SLOT));
+    rendering::inset(canvas, rect(at.x, FOOT_Y, SLOT, FOOT_HEIGHT));
     if (index < items.size()) {
       paint_item(canvas, drawing, items.at(index).name,
                  at + Vector2(4.0F, 4.0F));
@@ -1282,13 +1279,14 @@ std::vector<ActionRow> action_rows(const SurvivalFrame &frame) {
          .hint = Vector2(left + 2.0F, FOOT_Y + FOOT_HEIGHT - 14.0F)});
     return rows;
   }
-  float row = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT + 8.0F;
+  float row = SCREEN_HEIGHT - MARGIN - DUO_HEIGHT + 12.0F;
   for (const auto &[actor, set] : players) {
     rows.push_back(
         {.actor = actor,
          .set = set,
          .button = rect(left + PLAYER_TAG, row, DUO_BUTTON, DUO_BUTTON_HEIGHT),
-         .hint = Vector2(left + PLAYER_TAG + 2.0F, row + DUO_ROW - 4.0F)});
+         .hint = Vector2(left + PLAYER_TAG + 2.0F,
+                         row + DUO_BUTTON_HEIGHT + 14.0F)});
     row += DUO_ROW;
   }
   return rows;
@@ -1310,7 +1308,7 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
   for (const auto &row : rows) {
     const auto &keys = KEY_LABELS.at(row.set);
     if (!alone) {
-      drawing.text(canvas, ACTION_X + 10.0F, row.button.position.y + 18.0F,
+      drawing.text(canvas, ACTION_X + 10.0F, row.button.position.y + 23.0F,
                    "P" + number(row.set + 1), SMALL_SIZE, tones.cyan,
                    Weight::Bold);
     }
@@ -1886,12 +1884,12 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                                               : rendering::Image::AppraiserIdle,
                     Vector2(SETUP_X + 44.0F, y + 26.0F));
     }
-    const auto ink = chosen ? tones.ink : tones.white;
+    const auto ink = chosen ? tones.gold : tones.white;
     drawing.text(canvas, SETUP_X + 160.0F, y + 52.0F,
                  number(number_key) + "   " + label.at(0), 32, ink,
                  Weight::Bold);
     drawing.text(canvas, SETUP_X + 160.0F, y + 86.0F, label.at(1), 24,
-                 chosen ? tones.ink : tones.muted);
+                 chosen ? tones.white : tones.muted);
     y += SETUP_PITCH;
     ++number_key;
   }
@@ -2095,6 +2093,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const std::vector<rendering::Burst> &bursts,
                     std::optional<Tip> tip) {
   canvas.set_meta("hud_panels", godot::Array());
+  canvas.set_meta("interface_frames", godot::Dictionary());
   drawing.shift(canvas, {});
   const bool city = frame.view.progression.phase == Phase::Exploration;
   if (city) {
@@ -2527,13 +2526,13 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   for (const auto &line : day_result(frame)) {
     lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 2.0F * INSET));
   }
-  // An actor's top line in its widest form, and in this frame's.
+  // Status and damaged-tool words occupy separate lines.
   for (const auto actor : ACTORS) {
-    lines.push_back(fitted(actor_status(frame, actor) + "  " + DAMAGED_TOOL,
-                           SMALL_SIZE, ACTOR_TEXT_WIDTH));
+    lines.push_back(
+        fitted(actor_status(frame, actor), SMALL_SIZE, ACTOR_TEXT_WIDTH));
   }
-  lines.push_back(fitted(String("AI  at base  ") + DAMAGED_TOOL, SMALL_SIZE,
-                         ACTOR_TEXT_WIDTH));
+  lines.push_back(fitted("AI  at base", SMALL_SIZE, ACTOR_TEXT_WIDTH));
+  lines.push_back(fitted(DAMAGED_TOOL, SMALL_SIZE, ACTOR_TEXT_WIDTH));
   // The city's action: a lone human's button and keys, or each of two
   // humans' rows, with every place its key can act on in the button, and
   // the hold's words in place of the verb.

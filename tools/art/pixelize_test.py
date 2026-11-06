@@ -150,6 +150,19 @@ class ResampleTest(unittest.TestCase):
 
 
 class CutTest(unittest.TestCase):
+    def test_erasing_baked_words_preserves_the_nearest_border_pixels(self):
+        source = [[DARK] * 6 for _ in range(5)]
+        source[2][2] = LIGHT
+        source[2][3] = MID
+        asset = {"path": "ui/test.png", "source": "test", "crop": [0, 0, 6, 5],
+                 "size": [6, 5], "cut": {"interior": [2, 1, 2, 3], "fill_at": [0, 0]}}
+        rows, _ = pixelize.cut(asset, None, {"test": source}, {})
+        self.assertEqual(rows, [[DARK] * 6 for _ in range(5)])
+        source[2][1] = LIGHT
+        control, _ = pixelize.cut(asset, None, {"test": source}, {})
+        self.assertEqual(control[2][1:4], [LIGHT, DARK, DARK])
+        self.assertEqual(source[2][2:4], [LIGHT, MID])
+
     def test_flesh_feathering_preserves_blue_and_dark_outlines_and_stops_at_its_band(self):
         pink, blue = (200, 40, 170, 255), (30, 40, 140, 255)
         near_blue = (180, 40, 190, 255)

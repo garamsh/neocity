@@ -1161,6 +1161,25 @@ Labels label_city(const Art &art, const survival::Content &content,
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
   }
+  const auto keep_actor = [&](Actor actor, const survival::Body &body,
+                              float offset) {
+    const auto now = view.progression.world_time;
+    const auto shown = pose(actor, body, art.track(actor, body, now), now);
+    const Vector2 size = art.size(shown.image);
+    const Vector2 feet = feet_of(art, actor, body);
+    const float anchor = actor == Actor::Chef ? 26.0F : 33.0F;
+    const float pivot = shown.mirrored ? size.x - anchor : anchor;
+    plates.keep_clear(to_screen(
+        camera,
+        godot::Rect2(Vector2(feet.x - pivot + offset, feet.y - size.y), size)));
+  };
+  if (party.chef_out) {
+    keep_actor(Actor::Chef, view.exploration.chef.body, 0.0F);
+  }
+  if (party.appraiser_out) {
+    keep_actor(Actor::Appraiser, view.exploration.appraiser.body,
+               party.shared ? 10.0F : 0.0F);
+  }
   for (const auto &marker : markers) {
     const auto cell = on_screen(marker.object.area);
     const auto count = godot::String::num_int64(marker.stock.remaining);

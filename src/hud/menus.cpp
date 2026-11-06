@@ -124,9 +124,10 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
     drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 38.0F,
                  godot::String::num_int64(static_cast<std::int64_t>(number)) +
                      "   " + entry_label(entry),
-                 32, chosen ? tones.ink : tones.white, rendering::Weight::Bold);
+                 32, chosen ? tones.gold : tones.white,
+                 rendering::Weight::Bold);
     drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 64.0F,
-                 entry_summary(entry), 16, chosen ? tones.ink : tones.muted);
+                 entry_summary(entry), 16, chosen ? tones.white : tones.muted);
     y += ENTRY_PITCH;
     ++number;
   }
