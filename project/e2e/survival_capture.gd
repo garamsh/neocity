@@ -70,8 +70,7 @@ const BAND_HIGH: int = 240
 const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
 ## than the backdrop above them, and how much brighter the acid band's glowing
-## pixels read than that backdrop. The least face gap on the captured city
-## frames is 0.077833.
+## pixels read than that backdrop.
 const FACE_GAP: float = 0.077
 ## The fewest pixels clear of the plates and the HUD that a cell's face, or
 ## the scenery above it, is read over.
@@ -1234,8 +1233,8 @@ func _cell(actor: Dictionary) -> Vector2i:
 ## cover them, else the SEA_ROWS under the sea's surface. A layer is read when
 ## the frame shows DENSE_EDGES of its edge pixels along each, and the frame
 ## counts as measured when all five are. Walkways use the faces of
-## LEAD_CELLS and shops use LIT_AREAS, excluding opaque characters. Their
-## least measured shares are 0.554849 and 0.720035, respectively.
+## LEAD_CELLS and shops use LIT_AREAS, excluding opaque characters. The
+## actual drawn deck footprint also excludes the new end notches.
 func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
 	var zoom: float = view.x.x
 	if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):

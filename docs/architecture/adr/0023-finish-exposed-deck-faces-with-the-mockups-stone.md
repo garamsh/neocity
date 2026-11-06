@@ -1,6 +1,6 @@
 # ADR 0023: Finish exposed deck faces with the mockup's stone
 
-> Status: proposed
+> Status: accepted
 > Date: 2026-11-06
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.
@@ -9,7 +9,7 @@ Append-only: once merged, the body below is not rewritten. A fact later found wr
 
 [ADR 0020](0020-cut-the-city-from-the-mockup-at-the-screens-size.md) keeps each screen-sized mockup band at its map column and permits only a warm top-edge treatment. The user's [finishing feedback in #198](https://github.com/garamsh/neocity/issues/198) identifies the rectangular exposed deck ends as unfinished. Cutting a continuous band at a cell boundary exposes a straight vertical face and bottom corner that the original illustration did not draw as an end.
 
-The [prototype review](https://github.com/garamsh/neocity/issues/198#issuecomment-6681971643) accepts recessing the lower face while retaining the full walked-on edge. The [scope decision](https://github.com/garamsh/neocity/issues/198#issuecomment-6686160610) asks for that exception to ADR 0020 to be recorded. The existing stairs' mismatch with the simulation's flat cell floors belongs to [#200](https://github.com/garamsh/neocity/issues/200), separately from this local finishing work.
+The [prototype review](https://github.com/garamsh/neocity/issues/198#issuecomment-6681971643) accepts recessing the lower face while retaining the full walked-on edge. The [scope decision](https://github.com/garamsh/neocity/issues/198#issuecomment-6686160610) asks for that exception to ADR 0020 to be recorded, and the [finishing review](https://github.com/garamsh/neocity/issues/198#issuecomment-6686374184) adopts the refined contour and loft underside. The existing stairs' mismatch with the simulation's flat cell floors belongs to [#200](https://github.com/garamsh/neocity/issues/200), separately from this local finishing work.
 
 Alternatives considered:
 
