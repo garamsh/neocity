@@ -455,12 +455,44 @@ godot::Rect2 deck_source(survival::GridPosition cell) {
 /// `corroded`, under its top edge lit warm and bright, so the surface a player
 /// walks on reads first.
 void paint_deck(godot::Node2D &canvas, const Art &art,
+                std::span<const survival::GroundCell> standing,
                 survival::GridPosition cell, bool corroded) {
   const godot::Rect2 source = deck_source(cell);
   const godot::Color tint = corroded ? corroded_tint() : untinted();
   const Vector2 at(cell_x(cell.x), floor_y(cell.y));
-  art.image_part(canvas, Image::Deck, source,
-                 rect(at.x, at.y, CELL, DECK_DEPTH), tint);
+  const bool left = !has_ground(standing, {.x = cell.x - 1, .y = cell.y});
+  const bool right = !has_ground(standing, {.x = cell.x + 1, .y = cell.y});
+  if (!left && !right) {
+    art.image_part(canvas, Image::Deck, source,
+                   rect(at.x, at.y, CELL, DECK_DEPTH), tint);
+  } else {
+    constexpr std::array LEFT{0.0F, 0.0F, 0.5F, 1.0F, 0.5F, 1.5F, 2.0F,
+                              1.5F, 2.5F, 2.0F, 3.5F, 3.0F, 4.5F, 6.0F};
+    constexpr std::array RIGHT{0.0F, 0.0F, 0.5F, 1.5F, 1.0F, 0.5F, 1.5F,
+                               2.0F, 3.0F, 2.5F, 3.5F, 3.0F, 5.0F, 6.0F};
+    for (std::size_t row = 0; row < LEFT.size(); ++row) {
+      const float y = static_cast<float>(row) * 2.0F;
+      const float inset_left = left ? LEFT.at(row) : 0.0F;
+      const float inset_right = right ? RIGHT.at(row) : 0.0F;
+      const float width = CELL - inset_left - inset_right;
+      art.image_part(canvas, Image::Deck,
+                     rect(source.position.x + inset_left, source.position.y + y,
+                          width, 2.0F),
+                     rect(at.x + inset_left, at.y + y, width, 2.0F), tint);
+      if (y >= GROUND_EDGE) {
+        for (const float edge : {left ? inset_left : -1.0F,
+                                 right ? CELL - inset_right - 0.5F : -1.0F}) {
+          if (edge >= 0.0F) {
+            art.image_part(canvas, Image::Deck,
+                           rect(source.position.x + edge, source.position.y + y,
+                                0.5F, 2.0F),
+                           rect(at.x + edge, at.y + y, 0.5F, 2.0F),
+                           tint * stringer_tint());
+          }
+        }
+      }
+    }
+  }
   art.image_part(
       canvas, Image::Deck,
       rect(source.position.x, source.position.y + OUTLINE, CELL, GROUND_EDGE),
@@ -519,13 +551,14 @@ void paint_stairs(godot::Node2D &canvas, const Art &art,
 /// reached is `corroded`.
 void paint_tilted(godot::Node2D &canvas, const Art &art,
                   std::span<const survival::GroundCell> cells,
+                  std::span<const survival::GroundCell> standing,
                   const survival::GroundCell &ground, bool corroded) {
   const auto [x, y] = ground.cell;
   if (rise(cells, x, x, y) == Rise::Left) {
     paint_stairs(canvas, art, ground.cell,
                  corroded ? corroded_tint() : untinted());
   } else {
-    paint_deck(canvas, art, ground.cell, corroded);
+    paint_deck(canvas, art, standing, ground.cell, corroded);
   }
 }
 
@@ -541,6 +574,7 @@ bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 /// every cell it covers.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
                        std::span<const survival::GroundCell> cells,
+                       std::span<const survival::GroundCell> standing,
                        const survival::GroundCell &ground,
                        std::optional<LandmarkKind> picture, float surface) {
   if (picture == LandmarkKind::Ferry) {
@@ -549,10 +583,10 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
   const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
   const bool eaten = corroded(at.y, surface);
   if (ground.kind == GroundKind::TiltedSlab) {
-    paint_tilted(canvas, art, cells, ground, eaten);
+    paint_tilted(canvas, art, cells, standing, ground, eaten);
     return;
   }
-  paint_deck(canvas, art, ground.cell, eaten);
+  paint_deck(canvas, art, standing, ground.cell, eaten);
   if (ground.cell.y == LOFT_ROW) {
     art.image_part(
         canvas, Image::BuildingWall,
@@ -694,9 +728,14 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
                          box.size.y + FERRY_SINK));
     }
   }
+  std::vector<survival::GroundCell> standing;
+  standing.reserve(ground.size());
   for (const auto &cell : ground) {
-    paint_ground_cell(canvas, art, content.ground, cell.ground, cell.picture,
-                      surface);
+    standing.push_back(cell.ground);
+  }
+  for (const auto &cell : ground) {
+    paint_ground_cell(canvas, art, content.ground, standing, cell.ground,
+                      cell.picture, surface);
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
