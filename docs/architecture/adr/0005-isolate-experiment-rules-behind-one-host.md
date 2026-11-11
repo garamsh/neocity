@@ -15,7 +15,7 @@ This supersedes ADR 0004's designation of `gameplay` as the single build-enforce
 
 ## Consequences
 
-- A contributor adds an experiment by creating one source folder and one scene folder, plus one entry in each of a fixed list of shared registration files that [experiments](../experiments.md#registration-and-launch) keeps; no other experiment or main-game rule changes.
+- A contributor adds an experiment by creating one source folder and one scene folder, plus one entry in each of a fixed list of shared registration files that [experiments](https://github.com/garamsh/neocity/blob/8258d39dbc860daa3f60a24976e3d835e6b082d2/docs/architecture/experiments.md#registration-and-launch) keeps; no other experiment or main-game rule changes.
 - The developer page and direct launch play the same scene, so an experiment cannot behave differently between the two entries.
 - An experiment's Godot node draws itself in 2D or 3D with Godot primitives and reads its own input; the host only mounts and unmounts it. The host keeps no per-experiment commands, so it cannot enforce fixed-tick delivery for experiments — each node steps its rules from Godot's physics tick.
 - A shared configurable game engine, runtime discovery of experiment folders, a plugin loader, separate Godot projects, and per-experiment graphics backends are rejected: none is needed to try ideas side by side.
