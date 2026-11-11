@@ -70,8 +70,7 @@ const BAND_HIGH: int = 240
 const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
 ## than the backdrop above them, and how much brighter the acid band's glowing
-## pixels read than that backdrop. The least face gap on the captured city
-## frames is 0.077833.
+## pixels read than that backdrop.
 const FACE_GAP: float = 0.077
 ## The fewest pixels clear of the plates and the HUD that a cell's face, or
 ## the scenery above it, is read over.
@@ -222,6 +221,10 @@ var dense_frames: int = 0
 var dense_city_frames: Dictionary[String, int] = {"walkways": 0, "shops": 0}
 var character_frames: Dictionary[String, int] = {"chef": 0, "appraiser": 0}
 var character_masks: Array[Dictionary] = []
+var deck_footprint: Image = Image.create(1280, 720, false, Image.FORMAT_RGBA8)
+var deck_alpha_checked: bool = false
+var finished_ends: int = 0
+var destroyed_end: bool = false
 var light_frames: int = 0
 var teeth_frames: int = 0
 var support_frames: int = 0
@@ -436,6 +439,10 @@ func _run() -> void:
 			_fail("the %s character was never measured" % role)
 			return
 	print("Capture: character size and interior density measured in ", character_frames, " city frames.")
+	if finished_ends < 4 or not destroyed_end:
+		_fail("exposed deck ends were not measured before and after destruction")
+		return
+	print("Capture: finished ends measured on %d representative sides, including a newly exposed end after destruction." % finished_ends)
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -759,6 +766,8 @@ func _save_city(screen: String) -> Image:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	if not _read_decks(screen):
+		return frame
 	var drawn_sea: float = scene.get_node("World").get_meta("sea_surface", -1.0)
 	if drawn_sea != float(_sea_top(view)):
 		_fail("%s: drawn near sea %.1f differs from the projected sea below the far shore at %d" % [screen, drawn_sea, _sea_top(view)])
@@ -811,6 +820,8 @@ func _save_city(screen: String) -> Image:
 	print("Capture: %s at zoom %.2f, the scene's origin at %s, the backdrop's layers slid by %s from where they rest." % [screen, view.x.x, view.origin, scene.get_node("World").get_meta("backdrop_layers", [])])
 	if not _ground_leads(frame, view, screen, plates) or not _layers(frame, view, screen, plates + hud) or not _band_shows(frame, view, screen) or not _stairs_lit(frame, view, screen) or not _dense(frame, view, screen, plates) or not _acid_lights(frame, view, screen) or not _teeth_show(frame, screen) or not _supports_open(frame, view, screen) or not _shops_lit(frame, view, screen) or not _characters_dense(frame, view, screen, plates + hud):
 		return frame
+	if not _finished_decks(frame, view, screen, plates + hud):
+		return frame
 	city_frames += 1
 	return frame
 
@@ -836,6 +847,117 @@ func _misnamed() -> String:
 ## the play area.
 func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
+
+## Stamps the loaded source alpha through the fragment and transform actually drawn.
+func _stamp_deck(target: Image, source: Image, cut: Rect2, destination: Rect2, transform: Transform2D) -> void:
+	var area: Rect2 = transform * destination
+	var fragment: Image = source.get_region(Rect2i(cut))
+	fragment.resize(maxi(1, roundi(area.size.x)), maxi(1, roundi(area.size.y)), Image.INTERPOLATE_NEAREST)
+	target.blend_rect(fragment, Rect2i(Vector2i.ZERO, fragment.get_size()), Vector2i(area.position.round()))
+
+## The nearest opaque/transparent source pixels inside one fragment stay distinct.
+func _deck_alpha_control(source: Image) -> bool:
+	for y: int in range(source.get_height()):
+		for x: int in range(source.get_width() - 1):
+			if source.get_pixel(x, y).a < 0.99 or source.get_pixel(x + 1, y).a > 0.01:
+				continue
+			var probe: Image = Image.create(2, 1, false, Image.FORMAT_RGBA8)
+			_stamp_deck(probe, source, Rect2(x, y, 2, 1), Rect2(0, 0, 2, 1), Transform2D())
+			if not _deck_opaque(probe, Vector2(0.5, 0.5)) or _deck_opaque(probe, Vector2(1.5, 0.5)):
+				_fail("deck fragment alpha control confused nearest opaque and transparent source pixels")
+				return false
+			print("Capture: actual deck alpha control retained opaque %s and excluded its nearest transparent neighbour inside the same fragment." % Vector2i(x, y))
+			return true
+	_fail("loaded deck has no opaque source pixel beside a transparent pixel")
+	return false
+
+## Reconstructs only the deck's drawn footprint, leaving all scenery samples alone.
+func _read_decks(screen: String) -> bool:
+	deck_footprint.fill(Color.TRANSPARENT)
+	var layers: Array = scene.get_node("World").get_meta("deck_layers", [])
+	if layers.is_empty():
+		_fail("%s: no actual deck fragments were observed" % screen)
+		return false
+	var loaded: Dictionary = {}
+	for layer: Dictionary in layers:
+		var texture: Texture2D = layer["texture"]
+		var id: int = texture.get_instance_id()
+		if not loaded.has(id):
+			var pixels: Image = texture.get_image()
+			if texture.resource_path != "res://levels/monster_mouth_escape/art/walkway/deck.png" or pixels.get_size() != Vector2i(1280, 336):
+				_fail("%s: actual deck texture identity/size differs: %s %s" % [screen, texture.resource_path, pixels.get_size()])
+				return false
+			pixels.convert(Image.FORMAT_RGBA8)
+			loaded[id] = pixels
+			if not deck_alpha_checked:
+				if not _deck_alpha_control(pixels):
+					return false
+				deck_alpha_checked = true
+		var pixels: Image = loaded[id]
+		var cut: Rect2 = layer["source"]
+		var destination: Rect2 = layer["destination"]
+		var transform: Transform2D = layer["transform"]
+		_stamp_deck(deck_footprint, pixels, cut, destination, transform)
+	print("Capture: %s: actual deck footprint from %d fragments of %d loaded textures." % [screen, layers.size(), loaded.size()])
+	return true
+
+func _deck_opaque(mask: Image, at: Vector2) -> bool:
+	var point: Vector2i = Vector2i(at.floor())
+	return Rect2i(Vector2i.ZERO, mask.get_size()).has_point(point) and mask.get_pixelv(point).a >= 0.99
+
+## A real exposed side has a full contact edge, recessed courses, and a solid interior control.
+func _finished_end(frame: Image, view: Transform2D, screen: String, cell: Vector2i, right: bool, interior: Vector2i, covered: Array) -> bool:
+	var top: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+	var control: Vector2 = Vector2(MAP_ORIGIN + (interior + Vector2i.DOWN) * CELL)
+	var edge: float = CELL - 0.5 if right else 0.5
+	if not _deck_opaque(deck_footprint, view * (top + Vector2(edge, 2.5))):
+		_fail("%s: exposed side %s lost its walked-on edge" % [screen, cell])
+		return false
+	var pairs: int = 0
+	for depth: float in [8.5, 14.5, 20.5, 25.5]:
+		var solid: Vector2 = view * (top + Vector2(CELL - 10.5 if right else 10.5, depth))
+		var step: Vector2 = Vector2.RIGHT if right else Vector2.LEFT
+		for offset: int in range(1, roundi(11.0 * view.x.x)):
+			var outside: Vector2 = solid + step * offset
+			var inside: Vector2 = outside - step
+			if _deck_opaque(deck_footprint, outside):
+				continue
+			var local: Vector2 = view.affine_inverse() * outside - top
+			if local.x < 0.0 or local.x >= CELL:
+				break
+			var uninterrupted: Vector2 = view * (control + Vector2(local.x, depth))
+			if not _deck_opaque(deck_footprint, inside) or not _deck_opaque(deck_footprint, uninterrupted):
+				_fail("%s: an end notch also cut the adjacent uninterrupted deck" % screen)
+				return false
+			if not Rect2(Vector2.ZERO, Vector2(frame.get_size())).has_point(outside) or covered.any(func(area: Rect2) -> bool: return area.has_point(outside) or area.has_point(inside)) or _character_covers(inside):
+				break
+			if frame.get_pixelv(Vector2i(inside)).is_equal_approx(frame.get_pixelv(Vector2i(outside))):
+				_fail("%s: exposed-side stone and its neighbouring void have no visible difference" % screen)
+				return false
+			pairs += 1
+			break
+	if pairs < 3:
+		_fail("%s: fewer than three visible stone/void pairs on exposed side %s; rectangle finishing or obscured setup" % [screen, cell])
+		return false
+	finished_ends += 1
+	print("Capture: %s: finished %s side of %s retained contact and %d nearest stone/void pairs; adjacent interior %s stayed opaque." % [screen, "right" if right else "left", cell, pairs, interior])
+	return true
+
+func _finished_decks(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+	var objects: Dictionary = scene.survival_status()["objects"]
+	if screen == "4-city-collect-prompt":
+		if objects.get("Shallows", "") != "intact":
+			_fail("first-city exposed-end setup did not retain Shallows")
+			return false
+		return _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered) and _finished_end(frame, view, screen, Vector2i(14, 12), false, Vector2i(15, 12), covered) and _finished_end(frame, view, screen, Vector2i(19, 12), true, Vector2i(18, 12), covered)
+	if screen == "11-city-damaged":
+		if objects.get("Shallows", "") != "destroyed":
+			_fail("damaged-city exposed-end setup did not destroy Shallows")
+			return false
+		if not _finished_end(frame, view, screen, Vector2i(17, 12), false, Vector2i(18, 12), covered):
+			return false
+		destroyed_end = true
+	return true
 
 ## Whether the walkway's lit top edge leads the scenery right above it by
 ## GROUND_LEAD, over the LEAD_CELLS the frame shows, when it shows two or more,
@@ -877,7 +999,8 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Arr
 ## mockup lights its posts over the lake, and is not read. Only the pixels
 ## clear of the rectangles covered are read, and a cell with fewer than
 ## CLEAR_PIXELS of them in its face or above it is not read. The control is
-## that the faces are not black.
+## that the faces are not black. Only loaded-source alpha inside actual deck
+## fragments contributes to a face; new end notches remain scenery.
 func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
 	var face: float = 0.0
 	var behind: float = 0.0
@@ -886,7 +1009,7 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
 		if not _shows(view, corner, Vector2(CELL, CELL + FACE_ROWS.y)) or (view * (corner + Vector2(0, CELL + FACE_ROWS.y))).y > _band_top() - ACID_LIGHT_REACH:
 			continue
-		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered, true)
+		var cell_face: Vector2 = _clear_luminance(frame, view, corner + Vector2(0, CELL + FACE_ROWS.x), FACE_ROWS.y - FACE_ROWS.x, covered, true, true)
 		var cell_behind: Vector2 = _clear_luminance(frame, view, corner, CELL, covered, true)
 		if cell_face.y < CLEAR_PIXELS or cell_behind.y < CLEAR_PIXELS:
 			continue
@@ -1110,8 +1233,8 @@ func _cell(actor: Dictionary) -> Vector2i:
 ## cover them, else the SEA_ROWS under the sea's surface. A layer is read when
 ## the frame shows DENSE_EDGES of its edge pixels along each, and the frame
 ## counts as measured when all five are. Walkways use the faces of
-## LEAD_CELLS and shops use LIT_AREAS, excluding opaque characters. Their
-## least measured shares are 0.554849 and 0.720035, respectively.
+## LEAD_CELLS and shops use LIT_AREAS, excluding opaque characters. The
+## actual drawn deck footprint also excludes the new end notches.
 func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> bool:
 	var zoom: float = view.x.x
 	if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
@@ -1137,7 +1260,7 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, "teeth"),
 		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, ""),
 		"acid": _thin(frame, acid_rows, covered, "acid"),
-		"walkways": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "city", walkways),
+		"walkways": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "walkways", walkways),
 		"shops": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "city", shops),
 	}
 	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %s, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
@@ -1267,7 +1390,9 @@ func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Ar
 		for x: int in range(1, width - 1, 2):
 			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y))):
 				continue
-			if only == "city" and (_character_covers(Vector2(x + 0.5, y + 0.5)) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y)))):
+			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5)) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y)))):
+				continue
+			if only == "walkways" and not [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN].all(func(offset: Vector2) -> bool: return _deck_opaque(deck_footprint, Vector2(x + 0.5, y + 0.5) + offset)):
 				continue
 			var pixel: Color = frame.get_pixel(x, y)
 			if only == "acid" and _green(pixel) < ACID_GREEN:
@@ -1479,12 +1604,15 @@ func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> 
 
 ## The summed luminance, as x, and the count, as y, of the screen pixels of a
 ## cell-wide band of scene rows whose top-left is corner that lie clear of the
-## rectangles covered, optionally also clear of opaque foreground character pixels.
-func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array, exclude_characters: bool = false) -> Vector2:
+## rectangles covered, optionally excluding opaque characters or retaining only
+## the actually drawn deck footprint.
+func _clear_luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int, covered: Array, exclude_characters: bool = false, only_deck: bool = false) -> Vector2:
 	var found: Vector2 = Vector2.ZERO
 	for y: int in range(rows):
 		for x: int in range(CELL):
 			var at: Vector2 = view * (corner + Vector2(x + 0.5, y + 0.5))
+			if only_deck and not _deck_opaque(deck_footprint, at.floor() + Vector2(0.5, 0.5)):
+				continue
 			if exclude_characters and _character_covers(at.floor() + Vector2(0.5, 0.5)):
 				continue
 			if covered.any(func(area: Rect2) -> bool: return area.has_point(at)):

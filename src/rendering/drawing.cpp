@@ -502,6 +502,17 @@ Look Art::looking() const {
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   const float scale = density(image);
+  if (image == Image::Deck && canvas.has_meta("deck_layers")) {
+    godot::Array layers = canvas.get_meta("deck_layers", godot::Array());
+    godot::Dictionary layer;
+    layer.set("texture", images.at(slot(image)));
+    layer.set("source",
+              godot::Rect2(source.position * scale, source.size * scale));
+    layer.set("destination", destination);
+    layer.set("transform", placed);
+    layers.push_back(layer);
+    canvas.set_meta("deck_layers", layers);
+  }
   const bool mirrored = destination.size.x < 0.0F || destination.size.y < 0.0F;
   if (mirrored) {
     canvas.draw_set_transform_matrix(

@@ -55,7 +55,7 @@ Each picture is cut from the mockup at the screen's size where the first city sc
 | Lit shop fronts, two cells deep over their floor | `world/shop.png` | Two: the kitchen loft's and the gauge ledge's |
 
 - The cut keeps explicit source-coordinate silhouettes of decks, walls, shop fronts and supports, so the backdrop between them remains clear regardless of its colour. The last upper-walkway cell takes a level deck patch from beside it: the map's step starts one cell farther east than the mockup's.
-- The decks keep a lit top edge drawn over their top rows, for the walked-on surface. A ramp is one cell of deck tilted from the floor line of its own cell down to the row below, and stairs are the same deck cut into steps.
+- The decks keep a lit top edge drawn over their top rows, for the walked-on surface. At runtime an exposed side below that full-width edge is recessed in broken stone courses, its narrow rim shaded with the same source pixels; the loft underside continues that local silhouette. Current standing terrain determines exposure, including ends revealed by destruction, while uninterrupted interiors retain their original band. [ADR 0023](../../../../docs/architecture/adr/0023-finish-exposed-deck-faces-with-the-mockups-stone.md) records this local exception to ADR 0020. A ramp is one cell of deck tilted from the floor line of its own cell down to the row below, and stairs are the same deck cut into steps.
 - `ground/rubble.png` stands on its deck in a cell of rubble ground.
 - The ladders, doors, vending machine, cart, kiosk, cold store, ferry, washed-up bag and acid drip in `world/` are each the mockup's own piece.
 
