@@ -4,6 +4,7 @@
 #include "../rendering/drawing.hpp"
 #include "../rendering/feedback.hpp"
 #include "../rendering/survival.hpp"
+#include "display_rows.hpp"
 #include "pointer.hpp"
 
 #include <survival/companion.hpp>
@@ -189,12 +190,13 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const std::vector<rendering::Burst> &bursts,
                     std::optional<Tip> tip);
 /// Draws what holds the run over the frozen survival screen; the pause screen
-/// shows `volumes`. Leaves the button it drew on `canvas` as the
+/// shows `volumes` and `displays`. Leaves the button it drew on `canvas` as the
 /// `interruption_button` meta, a `Rect2`, empty with none, and marks the
 /// `hud_tip` under it as `held`.
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame,
-                        const std::array<VolumeRow, 2> &volumes);
+                        const std::array<VolumeRow, 2> &volumes,
+                        const std::vector<DisplayRow> &displays);
 /// Draws the dark stage under a cinematic scene or, with `fallback`, the
 /// placeholder card that stands in when no scene can play, with its button
 /// to skip it or leave for the main menu.
@@ -263,9 +265,10 @@ survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);
 [[nodiscard]] std::vector<Target>
 cinematic_targets(const rendering::Art &drawing);
 /// What a click acts on over a stopped run: the pause screen's continue,
-/// leave and volume blocks, or a question's answers.
+/// leave, volume blocks and display arrows, or a question's answers.
 [[nodiscard]] std::vector<Target>
 interruption_targets(const rendering::Art &drawing, Interruption interruption,
-                     const std::array<VolumeRow, 2> &volumes);
+                     const std::array<VolumeRow, 2> &volumes,
+                     const std::vector<DisplayRow> &displays);
 
 } // namespace neocity::hud

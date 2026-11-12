@@ -90,9 +90,15 @@ void move_cursor(std::size_t &cursor, std::size_t count,
   }
 }
 
+/// The pause screen's rows: the two volumes, then resolution and window.
+constexpr std::size_t PAUSE_ROWS = 4;
+constexpr std::size_t VOLUME_ROWS = 2;
+
 /// Marks the volume of `bus` and sets it to `level`.
-void set_volume(Volume &volume, audio::Bus bus, std::uint8_t level) {
+void set_volume(Volume &volume, std::size_t &pause_row, audio::Bus bus,
+                std::uint8_t level) {
   volume.marked = bus;
+  pause_row = bus == audio::Bus::Effects ? 0 : 1;
   (bus == audio::Bus::Effects ? volume.effects : volume.music) =
       std::min(level, VOLUME_STEPS);
 }
@@ -166,9 +172,9 @@ void quit_game() {
 } // namespace
 
 Session::Session(StartSurvival start_survival, CinematicStage cinematic_stage,
-                 SoundStage sound_stage)
-    : start(std::move(start_survival)), stage(std::move(cinematic_stage)),
-      sound(std::move(sound_stage)) {}
+                 SoundStage sound_stage, DisplayStage display_stage)
+    : start(std::move(start_survival)), displaying(std::move(display_stage)),
+      stage(std::move(cinematic_stage)), sound(std::move(sound_stage)) {}
 
 void Session::enter(Screen destination) {
   if (playback) {
@@ -201,6 +207,7 @@ void Session::choose(std::size_t option) {
     return;
   case Screen::Controls:
   case Screen::HowToPlay:
+  case Screen::Settings:
   case Screen::Survival:
     return;
   }
@@ -220,6 +227,9 @@ void Session::select(hud::TitleEntry entry) {
     return;
   case hud::TitleEntry::Quit:
     quit_game();
+    return;
+  case hud::TitleEntry::Settings:
+    enter(Screen::Settings);
     return;
   }
   std::abort();
@@ -260,6 +270,18 @@ void Session::advance_setup(const Command &command) {
   if (command.confirm) {
     cue(audio::Cue::MenuSelect);
     select(hud::SETUP_ENTRIES.at(setup_cursor));
+  }
+}
+
+void Session::advance_settings(const Command &command) {
+  constexpr std::size_t ROWS = 2;
+  if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
+    cue(audio::Cue::MenuMove);
+    move_cursor(settings_row, ROWS, command.step);
+  } else if (command.step) {
+    change_display(settings_row == 0 ? hud::DisplaySetting::Resolution
+                                     : hud::DisplaySetting::Window,
+                   *command.step == MenuStep::Left ? -1 : 1);
   }
 }
 
@@ -339,6 +361,8 @@ Session::shown_targets(const rendering::Art &drawing) const {
   case Screen::Controls:
   case Screen::HowToPlay:
     return hud::controls_targets(drawing);
+  case Screen::Settings:
+    return hud::settings_targets(drawing, display_rows(settings_row));
   case Screen::SurvivalSetup:
     return hud::setup_targets();
   case Screen::Survival:
@@ -350,7 +374,8 @@ Session::shown_targets(const rendering::Art &drawing) const {
     }
     if (interruption) {
       return hud::interruption_targets(drawing, *interruption,
-                                       volume_rows(volume));
+                                       volume_rows(volume),
+                                       display_rows(pause_display_row()));
     }
     return hud::survival_targets(drawing, *framed);
   }
@@ -377,8 +402,14 @@ void Session::click_at(Command &command, godot::Vector2 point) {
           }
         } else if constexpr (std::is_same_v<Pressed, hud::DishPress>) {
           command.dish_step = press.direction;
+        } else if constexpr (std::is_same_v<Pressed, hud::DisplayPress>) {
+          if (screen == Screen::Survival) {
+            pause_row = VOLUME_ROWS + static_cast<std::size_t>(press.setting);
+          }
+          settings_row = static_cast<std::size_t>(press.setting);
+          change_display(press.setting, press.step);
         } else {
-          set_volume(volume, press.bus, press.level);
+          set_volume(volume, pause_row, press.bus, press.level);
           send_volume();
           cue(audio::Cue::MenuMove);
         }
@@ -410,6 +441,7 @@ void Session::advance_screen(double delta, const Command &command) {
       return;
     case Screen::Controls:
     case Screen::HowToPlay:
+    case Screen::Settings:
     case Screen::SurvivalSetup:
       cue(audio::Cue::MenuBack);
       enter(Screen::Main);
@@ -420,6 +452,10 @@ void Session::advance_screen(double delta, const Command &command) {
   // action.
   if (waiting_for_release) {
     waiting_for_release = command.controls_held;
+    return;
+  }
+  if (screen == Screen::Settings) {
+    advance_settings(command);
     return;
   }
   if (command.option &&
@@ -486,7 +522,7 @@ void Session::advance_interruption(hud::Interruption open,
       cue(audio::Cue::MenuBack);
       interruption = hud::Interruption::Resuming;
     } else if (command.step) {
-      adjust_volume(*command.step);
+      adjust_pause(*command.step);
     } else if (command.menu) {
       interruption = hud::Interruption::ConfirmLeaveFromPause;
     }
@@ -541,25 +577,115 @@ void Session::age_bursts(double delta) {
   });
 }
 
-// Up and down choose the bus; left and right change its level by one step.
-void Session::adjust_volume(MenuStep step) {
+// Up and down choose the row; left and right change its level by one step, or
+// its display choice by one place.
+void Session::adjust_pause(MenuStep step) {
+  if (step == MenuStep::Up || step == MenuStep::Down) {
+    pause_row =
+        (pause_row + (step == MenuStep::Up ? PAUSE_ROWS - 1 : 1)) % PAUSE_ROWS;
+    if (pause_row < VOLUME_ROWS) {
+      volume.marked = pause_row == 0 ? audio::Bus::Effects : audio::Bus::Music;
+    }
+    cue(audio::Cue::MenuMove);
+    return;
+  }
+  const int direction = step == MenuStep::Left ? -1 : 1;
+  if (pause_row >= VOLUME_ROWS) {
+    change_display(pause_row == VOLUME_ROWS ? hud::DisplaySetting::Resolution
+                                            : hud::DisplaySetting::Window,
+                   direction);
+    return;
+  }
   auto &level =
       volume.marked == audio::Bus::Effects ? volume.effects : volume.music;
-  switch (step) {
-  case MenuStep::Up:
-  case MenuStep::Down:
-    volume.marked = volume.marked == audio::Bus::Effects ? audio::Bus::Music
-                                                         : audio::Bus::Effects;
-    break;
-  case MenuStep::Left:
+  if (direction < 0) {
     level = level > 0 ? static_cast<std::uint8_t>(level - 1) : level;
-    break;
-  case MenuStep::Right:
+  } else {
     level = level < VOLUME_STEPS ? static_cast<std::uint8_t>(level + 1) : level;
-    break;
   }
   send_volume();
   cue(audio::Cue::MenuMove);
+}
+
+void Session::change_display(hud::DisplaySetting setting, int step) {
+  const auto last = rendering::largest_fit(displaying.screen());
+  const auto &shown = displaying.shown;
+  auto next = shown;
+  switch (setting) {
+  case hud::DisplaySetting::Resolution:
+    if (shown.mode == rendering::WindowMode::Fullscreen) {
+      return;
+    }
+    next = rendering::stepped_resolution(rendering::fitted(shown, last), step,
+                                         last);
+    if (next.resolution == rendering::fitted(shown, last).resolution) {
+      return;
+    }
+    break;
+  case hud::DisplaySetting::Window:
+    next = rendering::toggled_mode(shown);
+    break;
+  }
+  displaying.shown = next;
+  display_saved = displaying.change(rendering::fitted(next, last));
+  cue(audio::Cue::MenuMove);
+}
+
+std::vector<hud::DisplayRow>
+Session::display_rows(std::optional<std::size_t> marked) const {
+  const auto shown = display_choice();
+  const bool full = shown.mode == rendering::WindowMode::Fullscreen;
+  const auto screen_size = displaying.screen();
+  const godot::String screen_label =
+      screen_size.x > 0 && screen_size.y > 0
+          ? godot::String::num_int64(screen_size.x) + "x" +
+                godot::String::num_int64(screen_size.y) + " (display)"
+          : godot::String("Display size");
+  return {
+      {.setting = hud::DisplaySetting::Resolution,
+       .name = "Resolution",
+       .value =
+           full ? screen_label : rendering::resolution_label(shown.resolution),
+       .refusal = full ? godot::String("Full screen uses the display's size.")
+                       : godot::String(),
+       .marked = marked == 0},
+      {.setting = hud::DisplaySetting::Window,
+       .name = "Window",
+       .value = full ? "Full screen" : "Windowed",
+       .refusal = godot::String(),
+       .marked = marked == 1}};
+}
+
+std::array<hud::VolumeRow, 2> Session::shown_volumes() const {
+  auto rows = volume_rows(volume);
+  if (pause_row >= VOLUME_ROWS) {
+    for (auto &row : rows) {
+      row.marked = false;
+    }
+  }
+  return rows;
+}
+
+rendering::Display Session::display_choice() const {
+  return rendering::fitted(displaying.shown,
+                           rendering::largest_fit(displaying.screen()));
+}
+
+godot::Dictionary Session::display_status() const {
+  const auto shown = display_choice();
+  const auto &size = rendering::RESOLUTIONS.at(shown.resolution);
+  godot::Dictionary status;
+  status.set("width", size.width);
+  status.set("height", size.height);
+  status.set("resolution", rendering::resolution_label(shown.resolution));
+  status.set("mode", rendering::mode_label(shown.mode));
+  status.set("saved", display_saved);
+  return status;
+}
+
+std::optional<std::size_t> Session::pause_display_row() const {
+  return pause_row >= VOLUME_ROWS ? std::optional{pause_row - VOLUME_ROWS}
+                                  : std::nullopt;
 }
 
 void Session::send_volume() const {
@@ -618,6 +744,9 @@ void Session::paint_screen(godot::Node2D &canvas,
   case Screen::HowToPlay:
     hud::paint_how_to_play(canvas, drawing);
     return;
+  case Screen::Settings:
+    hud::paint_settings(canvas, drawing, display_rows(settings_row));
+    return;
   case Screen::SurvivalSetup:
     hud::paint_survival_setup(canvas, drawing,
                               hud::SETUP_ENTRIES.at(setup_cursor));
@@ -630,7 +759,8 @@ void Session::paint_screen(godot::Node2D &canvas,
       hud::paint_survival(canvas, drawing, *framed, *shot, bursts, tips.open());
       if (interruption) {
         hud::paint_interruption(canvas, drawing, *interruption, *framed,
-                                volume_rows(volume));
+                                shown_volumes(),
+                                display_rows(pause_display_row()));
       }
     }
     return;
@@ -664,6 +794,8 @@ godot::String Session::screen_name() const {
     return "controls";
   case Screen::HowToPlay:
     return "how_to_play";
+  case Screen::Settings:
+    return "settings";
   case Screen::SurvivalSetup:
     return "survival_setup";
   case Screen::Survival:

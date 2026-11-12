@@ -15,8 +15,6 @@ namespace {
 
 using godot::Vector2;
 
-constexpr float SCREEN_WIDTH = 1280.0F;
-constexpr float SCREEN_HEIGHT = 720.0F;
 constexpr float SHAKE_PIXELS = 6.0F;
 /// Shakes per second while a burn shakes the world.
 constexpr float SHAKE_RATE = 38.0F;

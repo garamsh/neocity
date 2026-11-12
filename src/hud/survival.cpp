@@ -40,8 +40,8 @@ using survival::Location;
 using survival::Phase;
 
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
-constexpr float SCREEN_WIDTH = 1280.0F;
-constexpr float SCREEN_HEIGHT = 720.0F;
+using rendering::SCREEN_HEIGHT;
+using rendering::SCREEN_WIDTH;
 constexpr float INSET = rendering::PANEL_INSET;
 /// Every panel keeps this far from the screen's edge and from its neighbour.
 constexpr float MARGIN = 8.0F;
@@ -181,12 +181,12 @@ constexpr std::array FEED_RULES{
     "A hated dish, a lower score or no meal raises it.",
     "Full acid ends the run."};
 /// The volume rows' part at the bottom of the pause screen.
-constexpr float VOLUME_AREA = 104.0F;
+constexpr float VOLUME_AREA = 172.0F;
 constexpr float VOLUME_ROW_HEIGHT = 34.0F;
 constexpr float VOLUME_BLOCK_STEP = 18.0F;
 constexpr float VOLUME_BLOCKS_X = 240.0F;
 constexpr const char *VOLUME_KEYS =
-    "SOUND   W/S or up/down: choose   A/D or left/right: change";
+    "SOUND AND DISPLAY   W/S or up/down: choose   A/D or left/right: change";
 constexpr int PAUSE_ROW_SIZE = SMALL_SIZE;
 constexpr float NOTICE_BOX_X = 290.0F;
 constexpr float NOTICE_BOX_Y = 236.0F;
@@ -1927,7 +1927,8 @@ godot::Rect2 volume_block(std::size_t row, std::uint8_t step, float lift) {
 /// level blocks and a percentage, the row the left and right keys change
 /// marked in the accent.
 void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
-                   const std::array<VolumeRow, 2> &volumes, float lift) {
+                   const std::array<VolumeRow, 2> &volumes,
+                   const std::vector<DisplayRow> &displays, float lift) {
   const auto tones = rendering::palette();
   const float top = PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA;
   caption(canvas, drawing, PAUSE_TEXT_X, top, VOLUME_KEYS, tones.gold);
@@ -1956,6 +1957,8 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
                  y, volume_label(row), PAUSE_ROW_SIZE, tones.white, CHANGING);
     y += VOLUME_ROW_HEIGHT;
   }
+  paint_display_rows(canvas, drawing, displays, PAUSE_TEXT_X, y,
+                     VOLUME_ROW_HEIGHT);
 }
 
 /// The eaten or hated mark of a recipe the monster has had; empty otherwise.
@@ -2135,7 +2138,8 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
 
 void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame,
-                        const std::array<VolumeRow, 2> &volumes) {
+                        const std::array<VolumeRow, 2> &volumes,
+                        const std::vector<DisplayRow> &displays) {
   const auto tones = rendering::palette();
   const auto text = interruption_text(interruption);
   const float shown = drawing.entrance("interruption");
@@ -2164,7 +2168,7 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_button(canvas, drawing, button, text.at(2), INTERRUPTION_LINE_SIZE,
                  false);
     canvas.set_meta("interruption_button", button);
-    paint_volumes(canvas, drawing, volumes, lift);
+    paint_volumes(canvas, drawing, volumes, displays, lift);
     return;
   }
   rendering::panel(canvas, rect(NOTICE_BOX_X, NOTICE_BOX_Y + lift,
@@ -2185,7 +2189,8 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame) {
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(8, 6, 16, 1.0F));
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(8, 6, 16, 1.0F));
   if (!fallback) {
     return;
   }
@@ -2194,7 +2199,8 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
                          rendering::whole_scene());
   drawing.shift(canvas, {});
-  canvas.draw_rect(rect(0.0F, 0.0F, 1280.0F, 720.0F), color(14, 12, 26, 0.6F));
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(14, 12, 26, 0.6F));
   drawing.image(canvas, rendering::Image::ChefIdle,
                 godot::Vector2(130.0F, 300.0F), 2.0F);
   drawing.image(canvas, rendering::Image::AppraiserIdle,
@@ -2805,7 +2811,8 @@ std::vector<Target> cinematic_targets(const rendering::Art &drawing) {
 
 std::vector<Target>
 interruption_targets(const rendering::Art &drawing, Interruption interruption,
-                     const std::array<VolumeRow, 2> &volumes) {
+                     const std::array<VolumeRow, 2> &volumes,
+                     const std::vector<DisplayRow> &displays) {
   const auto text = interruption_text(interruption);
   const float lift = interruption_lift(drawing);
   std::vector<Target> targets;
@@ -2826,6 +2833,13 @@ interruption_targets(const rendering::Art &drawing, Interruption interruption,
                                .bus = volumes.at(row).bus,
                                .level = static_cast<std::uint8_t>(step + 1)}});
       }
+    }
+    const float display_top =
+        PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA +
+        static_cast<float>(volumes.size() + 1) * VOLUME_ROW_HEIGHT;
+    for (auto &target : display_row_targets(displays, PAUSE_TEXT_X, display_top,
+                                            VOLUME_ROW_HEIGHT)) {
+      targets.push_back(std::move(target));
     }
     return targets;
   }

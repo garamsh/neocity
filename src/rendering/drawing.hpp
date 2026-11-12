@@ -1,5 +1,7 @@
 #pragma once
 
+#include "screen.hpp"
+
 #include <survival/companion.hpp>
 #include <survival/exploration.hpp>
 #include <survival/simulation.hpp>

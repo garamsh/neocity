@@ -97,9 +97,11 @@ const VOLUME_NAME_OFFSET: float = 200.0
 const SCREEN_MIDDLE: float = 360.0
 ## The face the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
-## The face's grid, in pixels per em, which every drawn size is a multiple of.
+## The face's grid, in layout units per em, which every drawn size is a multiple of.
+## A layout unit is 1.5 canvas pixels, so this keeps the face's pixels square on
+## the layout grid and not on the screen's, as ADR 0024 records.
 const FONT_GRID: int = 8
-## The smallest size the interface draws a word at.
+## The smallest size, in layout units, the interface draws a word at.
 const MIN_TEXT_SIZE: int = 16
 ## When the escape checks begin, which the pause screen names.
 const ESCAPE_GOAL: String = "Escape checks from day 30"
@@ -1717,7 +1719,7 @@ func _drawn_lines() -> PackedStringArray:
 	return scene.get_meta("screen_text", PackedStringArray())
 
 ## Whether every word the last frame drew was drawn at a whole multiple of the
-## font's grid, 16 pixels at the least, and the font is imported without
+## font's grid, 16 layout units at the least, and the font is imported without
 ## antialiasing; the control is that the frame drew words at all.
 func _text_on_grid(where: String) -> bool:
 	var sizes: PackedInt32Array = scene.get_meta("screen_text_sizes", PackedInt32Array())

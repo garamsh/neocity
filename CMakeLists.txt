@@ -54,6 +54,7 @@ add_library(
     SHARED
     src/audio/sound.cpp
     src/audio/speaker.cpp
+    src/hud/display_rows.cpp
     src/hud/menus.cpp
     src/hud/pointer.cpp
     src/hud/survival.cpp
@@ -61,6 +62,7 @@ add_library(
     src/input/survival.cpp
     src/register_types.cpp
     src/rendering/camera.cpp
+    src/rendering/display.cpp
     src/rendering/drawing.cpp
     src/rendering/feedback.cpp
     src/rendering/survival.cpp

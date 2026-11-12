@@ -13,18 +13,18 @@ namespace {
 using rendering::color;
 using rendering::rect;
 
-constexpr float SCREEN_WIDTH = 1280.0F;
-constexpr float SCREEN_HEIGHT = 720.0F;
+using rendering::SCREEN_HEIGHT;
+using rendering::SCREEN_WIDTH;
 /// Panels keep this far from the screen's edge.
 constexpr float MARGIN = 8.0F;
 /// The logo's lettering starts 52 px into its picture.
 constexpr float LOGO_X = 24.0F;
 constexpr float LOGO_Y = -44.0F;
 constexpr float ENTRY_X = 790.0F;
-constexpr float ENTRY_Y = 214.0F;
+constexpr float ENTRY_Y = 200.0F;
 constexpr float ENTRY_WIDTH = 460.0F;
-constexpr float ENTRY_HEIGHT = 88.0F;
-constexpr float ENTRY_PITCH = 96.0F;
+constexpr float ENTRY_HEIGHT = 66.0F;
+constexpr float ENTRY_PITCH = 74.0F;
 constexpr float ENTRY_TEXT_X = 24.0F;
 constexpr float FOOT_Y = 612.0F;
 /// The controls page lines up with the pause screen, whose rows it shares.
@@ -40,6 +40,10 @@ constexpr const char *CONTROLS_BACK = "Back to the title";
 constexpr float HOW_LEAD_Y = 136.0F;
 constexpr float HOW_ROW_Y = 190.0F;
 constexpr float HOW_ROW_HEIGHT = 42.0F;
+/// The settings page's rows under its title.
+constexpr float SETTINGS_ROW_Y = 170.0F;
+constexpr float SETTINGS_ROW_HEIGHT = 56.0F;
+constexpr float SETTINGS_HINT_Y = 330.0F;
 
 godot::Rect2 entry_area(std::size_t index) {
   return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
@@ -61,6 +65,8 @@ const char *entry_label(TitleEntry entry) {
     return "HOW TO PLAY";
   case TitleEntry::Quit:
     return "QUIT";
+  case TitleEntry::Settings:
+    return "SETTINGS";
   }
   std::abort();
 }
@@ -75,6 +81,8 @@ const char *entry_summary(TitleEntry entry) {
     return "What a day asks of you, in a line each.";
   case TitleEntry::Quit:
     return "Close the game.";
+  case TitleEntry::Settings:
+    return "Window size and full screen.";
   }
   std::abort();
 }
@@ -121,12 +129,15 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
   std::size_t number = 1;
   for (const TitleEntry entry : TITLE_ENTRIES) {
     const bool chosen = entry == selected;
-    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 38.0F,
-                 godot::String::num_int64(static_cast<std::int64_t>(number)) +
-                     "   " + entry_label(entry),
-                 32, chosen ? tones.gold : tones.white,
-                 rendering::Weight::Bold);
-    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 64.0F,
+    const godot::String label = entry_label(entry);
+    drawing.text(
+        canvas, ENTRY_X + ENTRY_TEXT_X, y + 30.0F,
+        number <= NUMBERED_ENTRIES
+            ? godot::String::num_int64(static_cast<std::int64_t>(number)) +
+                  "   " + label
+            : label,
+        32, chosen ? tones.gold : tones.white, rendering::Weight::Bold);
+    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 54.0F,
                  entry_summary(entry), 16, chosen ? tones.white : tones.muted);
     y += ENTRY_PITCH;
     ++number;
@@ -169,12 +180,43 @@ void paint_how_to_play(godot::Node2D &canvas, const rendering::Art &drawing) {
                CONTROLS_BACK, 24, tones.white);
 }
 
+void paint_settings(godot::Node2D &canvas, const rendering::Art &drawing,
+                    const std::vector<DisplayRow> &rows) {
+  const auto tones = rendering::palette();
+  backdrop(canvas, drawing, 0.6F);
+  rendering::panel(
+      canvas, rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Settings", 40,
+               tones.white, rendering::Weight::Bold);
+  paint_display_rows(canvas, drawing, rows, CONTROLS_TEXT_X, SETTINGS_ROW_Y,
+                     SETTINGS_ROW_HEIGHT);
+  drawing.text(canvas, CONTROLS_TEXT_X, SETTINGS_HINT_Y,
+               "W/S or up/down: choose   A/D or left/right: change", 16,
+               tones.muted);
+  drawing.text(canvas, CONTROLS_TEXT_X, SETTINGS_HINT_Y + 28.0F,
+               "The picture is drawn at the window's own resolution.", 16,
+               tones.muted);
+  rendering::button(canvas, back_area(drawing), false);
+  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
+               CONTROLS_BACK, 24, tones.white);
+}
+
 std::vector<Target> title_targets() {
   std::vector<Target> targets;
   targets.reserve(TITLE_ENTRIES.size());
   for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
     targets.push_back(
         {.area = entry_area(index), .press = OptionPress{index + 1}});
+  }
+  return targets;
+}
+
+std::vector<Target> settings_targets(const rendering::Art &drawing,
+                                     const std::vector<DisplayRow> &rows) {
+  auto targets = controls_targets(drawing);
+  for (auto &target : display_row_targets(rows, CONTROLS_TEXT_X, SETTINGS_ROW_Y,
+                                          SETTINGS_ROW_HEIGHT)) {
+    targets.push_back(std::move(target));
   }
   return targets;
 }

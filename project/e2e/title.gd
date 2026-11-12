@@ -74,9 +74,15 @@ func _cursor_chooses_each_entry() -> bool:
 		return false
 	await _tap(KEY_W)
 	await _tap(KEY_UP)
+	await _tap(KEY_ENTER)
+	if not _check(scene.screen_name() == "settings", "W then up wrap from New game to Settings, the fifth and last entry"):
+		return false
+	await _tap(KEY_M)
+	if not _check(scene.screen_name() == "main", "M goes back from the Settings page"):
+		return false
 	await _tap(KEY_DOWN)
 	await _tap(KEY_ENTER)
-	if not _check(scene.screen_name() == "survival_setup", "W, up and down wrap past Quit back to New game"):
+	if not _check(scene.screen_name() == "survival_setup", "down from Settings wraps to New game"):
 		return false
 	await _tap(KEY_M)
 	return _check(scene.screen_name() == "main", "M goes back from the choice of players")

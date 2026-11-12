@@ -1,6 +1,6 @@
 # ADR 0017: Draw every picture one pixel to a screen pixel at the close camera
 
-> Status: accepted
+> Status: accepted; the 1280×720 screen at whole multiples superseded by ADR 0024
 > Date: 2026-11-04
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

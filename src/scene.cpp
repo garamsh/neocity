@@ -2,6 +2,8 @@
 
 #include "hud/survival.hpp"
 #include "input/menu.hpp"
+#include "rendering/display.hpp"
+#include "rendering/screen.hpp"
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/engine.hpp>
@@ -10,6 +12,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/transform2d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <utility>
@@ -28,8 +31,6 @@ constexpr const char *GLOW_MATERIAL =
 /// The shader material of the pass that finishes the scene and its light.
 constexpr const char *FINISH_MATERIAL =
     "res://levels/monster_mouth_escape/art/finish.tres";
-/// The canvas the finishing pass covers.
-constexpr godot::Vector2 SCREEN_SIZE(1280.0F, 720.0F);
 
 /// Loads a layer's material and gives it to `layer`, stopping the host when
 /// either fails.
@@ -91,7 +92,25 @@ MainScene::MainScene()
                                     if (speaker) {
                                       speaker->volume(bus, level);
                                     }
-                                  }}) {}
+                                  }},
+          session::DisplayStage{
+              .shown = rendering::load_display(rendering::DISPLAY_FILE),
+              .screen =
+                  [this] {
+                    return pinned_screen.value_or(rendering::display_size());
+                  },
+              .change =
+                  [this](const rendering::Display &display) {
+                    rendering::apply_display(*this, display);
+                    const bool saved = rendering::save_display(
+                        display, rendering::DISPLAY_FILE);
+                    if (!saved) {
+                      godot::UtilityFunctions::push_error(
+                          "Could not save the display choice to ",
+                          rendering::DISPLAY_FILE);
+                    }
+                    return saved;
+                  }}) {}
 
 void MainScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
@@ -104,8 +123,12 @@ void MainScene::_bind_methods() {
                               &MainScene::pin_survival_seed);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_scene_clock", "seconds"),
                               &MainScene::pin_scene_clock);
+  godot::ClassDB::bind_method(godot::D_METHOD("pin_display_size", "size"),
+                              &MainScene::pin_display_size);
   godot::ClassDB::bind_method(godot::D_METHOD("sound_status"),
                               &MainScene::sound_status);
+  godot::ClassDB::bind_method(godot::D_METHOD("display_status"),
+                              &MainScene::display_status);
 }
 
 void MainScene::_ready() {
@@ -113,6 +136,8 @@ void MainScene::_ready() {
     return;
   }
   drawing = rendering::Art::load();
+  scale_canvas();
+  rendering::apply_display(*this, session.display_choice());
   speaker = audio::Speaker::attach(*this);
   world = memnew(godot::Node2D);
   glow = memnew(godot::Node2D);
@@ -184,7 +209,8 @@ void MainScene::draw_finish() {
   finishing->set("shader_parameter/sea", line->sea);
   finishing->set("shader_parameter/grid_origin", line->origin);
   finishing->set("shader_parameter/grid", line->zoom);
-  finish->draw_rect(godot::Rect2(0.0F, 0.0F, SCREEN_SIZE.x, SCREEN_SIZE.y),
+  finish->draw_rect(godot::Rect2(0.0F, 0.0F, rendering::SCREEN_WIDTH,
+                                 rendering::SCREEN_HEIGHT),
                     godot::Color(1.0F, 1.0F, 1.0F));
 }
 
@@ -198,6 +224,22 @@ godot::String MainScene::screen_name() const { return session.screen_name(); }
 
 godot::Dictionary MainScene::survival_status() const {
   return session.survival_status();
+}
+
+godot::Dictionary MainScene::display_status() const {
+  return session.display_status();
+}
+
+void MainScene::scale_canvas() {
+  // The art is laid out at 1280x720 and the canvas is 1920x1080; the window's
+  // stretch fits the canvas, this takes the layout onto it.
+  const godot::Variant found = call("get_viewport");
+  godot::Object *viewport = found;
+  if (viewport != nullptr) {
+    viewport->set("global_canvas_transform",
+                  godot::Transform2D().scaled(godot::Vector2(
+                      rendering::ART_SCALE, rendering::ART_SCALE)));
+  }
 }
 
 godot::Dictionary MainScene::sound_status() const {
@@ -222,6 +264,8 @@ void MainScene::pin_scene_clock(double seconds) {
     drawing->pin(static_cast<float>(seconds));
   }
 }
+
+void MainScene::pin_display_size(godot::Vector2i size) { pinned_screen = size; }
 
 session::SurvivalFeatures MainScene::start_survival() {
   const auto seed = pinned_seed.value_or(
