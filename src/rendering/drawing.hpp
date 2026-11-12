@@ -164,6 +164,28 @@ enum class Image : std::uint8_t {
   FramePanel,
   FrameButton,
   FrameSlot,
+  HdChefIdle,
+  HdChefWalk1,
+  HdChefWalk2,
+  HdChefWalk3,
+  HdChefWalk4,
+  HdChefRun1,
+  HdChefRun2,
+  HdChefJump,
+  HdChefFall,
+  HdChefLand,
+  HdChefClimb,
+  HdAppraiserIdle,
+  HdAppraiserWalk1,
+  HdAppraiserWalk2,
+  HdAppraiserWalk3,
+  HdAppraiserWalk4,
+  HdAppraiserRun1,
+  HdAppraiserRun2,
+  HdAppraiserJump,
+  HdAppraiserFall,
+  HdAppraiserLand,
+  HdAppraiserClimb,
   TitleKeyArt,
   TitleLogo
 };
@@ -249,8 +271,8 @@ public:
   /// How many seconds of the clock `seconds` reads `name` has been on the
   /// screen; one missing from the frame before appears afresh.
   [[nodiscard]] float shown_for(const godot::String &name) const;
-  /// How large `image` is drawn in the scene: a picture cut from the mockup
-  /// for the map's cells holds two of its pixels to a scene pixel each way.
+  /// The picture size in layout units, compensating the canvas scale for HD
+  /// backgrounds and both the close camera and canvas scale for HD city art.
   [[nodiscard]] godot::Vector2 size(Image image) const;
   /// Seconds of a steady real clock since the art loaded, or where `pin`
   /// holds it; the scene's ambient motion, its finishing pass and every eased

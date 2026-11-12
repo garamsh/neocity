@@ -32,7 +32,7 @@ struct Shot {
 /// Where a point of the city, in sub-cells, falls on the canvas.
 [[nodiscard]] godot::Vector2 map_point(survival::Position position);
 /// Draws the backdrop behind every survival screen as `camera` shows the
-/// scene, in layers cut from the search mockup that move less with the
+/// scene, in HD layers that move less with the
 /// camera the farther back they are: the monster's throat with its fleshy
 /// palate and its fangs hanging from the top of the screen, breathing on
 /// `art`'s clock, the swallowed city, and an acid lake of sunken trains and
@@ -41,7 +41,7 @@ struct Shot {
 /// mockup. Then the acid sea in the scene, whose surface rises with
 /// `acid_ratio`, from below the map's lowest ground row at 0 to the top of the
 /// map at 1, and fades below it to a deep green. Every layer is drawn at its
-/// own size whatever `camera`'s zoom, one picture pixel to a screen pixel.
+/// native canvas density whatever `camera`'s zoom.
 /// Leaves on the canvas where
 /// each layer slid to as the `backdrop_layers` meta, an array of Vector2
 /// offsets from where it rests, back to front, and the throat's top-left as

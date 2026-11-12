@@ -1,7 +1,7 @@
 {
   "version": "day-one-hd-environment-v1",
   "issue": 210,
-  "status": "candidate environment assets; runtime integration and creative acceptance pending",
+  "status": "connected to city rendering by issue #212; creative acceptance pending",
   "screen": [
     1920,
     1080

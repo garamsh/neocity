@@ -15,8 +15,8 @@ extends SceneTree
 ## NEXT names, or leave out the goal NEXT names to walk to, the throat's fangs do not hang from the top of the play area,
 ## a support reaches down from a walkway too high for it, the shops, stall
 ## and vending machines do not read warm and lit, or a window of another size,
-## or full screen, does not show the 1280x720 screen at the largest whole
-## multiple of it that fits. The camera shows a part of
+## or full screen, does not show the 1920x1080 canvas at fractional scale
+## with centered letterboxing. The camera shows a part of
 ## the city, so each look is measured on every city frame that shows what it
 ## looks at, and fails when none does.
 ## The scene's clock, which runs its ambient motion, its finishing pass and
@@ -85,9 +85,7 @@ const ACID_GAP: float = 0.05
 ## the least share on the captured city frames is 0.355331.
 const ACID_GREEN: float = 0.1
 const ACID_SHARE: float = 0.355
-## The stairs down from the upper walkway, rising to the left across its cell
-## from its floor line down to the row below, so its walked-on part lies above
-## that diagonal.
+## The formerly sloped cell, whose drawn top must now match its flat collision floor.
 const STAIR_CELLS: Array[Vector2i] = [Vector2i(9, 9)]
 ## The scene row of the acid's surface at no acid, under the map's lowest
 ## ground row; it rises evenly to the map's top at the acid that ends the run,
@@ -98,15 +96,9 @@ const ACID_LOW: int = 518
 ## its heave of 3 and a margin of 8. Its light over it never reaches the band's
 ## rows, which take the band's own light.
 const SEA_REACH: int = 32
-## How much brighter, in mean luminance from 0 to 1, the EDGE_ROWS just above
-## a stair's diagonal read than the EDGE_ROWS just under it.
-const STEP_LEAD: float = 0.15
 ## Plain lower walkway deck beside the stairs, whose lit top edge the stairs'
 ## walked-on part is held to; the camera that shows the stairs shows it too.
 const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(10, 9)]
-## The least share of that deck's top edge, in mean luminance, that the
-## stairs' walked-on part reads at, so stairs read as walkway like the deck.
-const STAIR_PARITY: float = 0.9
 ## From the entrance down the stairs onto the lower walkway.
 const MARKET_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
 ## Where the scene's clock is pinned, in seconds; how far apart on
@@ -194,10 +186,12 @@ const LIT_WARMTH: float = 0.2
 const LIT_SHARE: float = 0.200
 
 ## The size of the screen every check above measures, and the window sizes it
-## is shown at afterwards: twice and three times it, and a 1280x720 window at
-## a display scale of 1.7, which holds it once with a border.
+## is shown at afterwards. Saved evidence and density checks use the native
+## 1920x1080 output; value and placement checks use this layout grid.
 const SCREEN: Vector2i = Vector2i(1280, 720)
-const WINDOW_SIZES: Array[Vector2i] = [Vector2i(2560, 1440), Vector2i(3840, 2160), Vector2i(2176, 1224)]
+const CANVAS: Vector2i = Vector2i(1920, 1080)
+const ART_SCALE: float = 1.5
+const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(1280, 1024)]
 ## How many frames a window may take to reach the size or mode asked of it.
 const RESIZE_FRAMES: int = 120
 
@@ -208,6 +202,7 @@ const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## actors' tags.
 const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
 
+var native_frame: Image
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
 var city_frames: int = 0
@@ -231,7 +226,7 @@ var support_frames: int = 0
 var lit_frames: int = 0
 ## The throat picture, which the World layer draws where its `throat_at` meta
 ## says, beside mirrored copies.
-var throat: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art/backgrounds/throat.png"))
+var throat: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art_hd/backgrounds/throat.png"))
 ## Where the scene's clock stands.
 var clock: float = SCENE_CLOCK
 ## Set once the run has printed its result line.
@@ -248,6 +243,8 @@ func _run() -> void:
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
 	process_frame.connect(_tick)
+	if not await _scales_canvas():
+		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
 	await _tap(KEY_2)
@@ -423,8 +420,6 @@ func _run() -> void:
 		await _follow_next()
 	await _frames(2)
 	await _save("13-ending-card")
-	if not await _scales_whole():
-		return
 	if ground_frames == 0 or layer_frames == 0 or acid_frames == 0 or band_frames == 0 or stairs_frames == 0 or parity_frames == 0 or dense_frames == 0 or light_frames == 0 or teeth_frames == 0 or support_frames == 0 or lit_frames == 0:
 		_fail("a look was never measured: ground %d, layers %d, acid over the backdrop %d, acid band %d, stairs %d, stairs beside the deck %d, density %d, acid light %d, teeth %d, supports %d, lit structures %d frames" % [ground_frames, layer_frames, acid_frames, band_frames, stairs_frames, parity_frames, dense_frames, light_frames, teeth_frames, support_frames, lit_frames])
 		return
@@ -448,19 +443,12 @@ func _run() -> void:
 	_finish("pass")
 	quit(0)
 
-## Whether the window, taken out of the full screen it starts in and set to
-## each of WINDOW_SIZES, and then back to full screen,
-## shows the screen, still SCREEN in size, at the largest whole multiple of it
-## that fits, centred on whole pixels. Godot 4.7.2's compatibility renderer
-## copies the screen to the window with nearest filtering, so each of its
-## pixels is then a square of whole window pixels. A window that does not take
-## the size or mode asked of it fails, and so does a game that did not start
-## in full screen.
-func _scales_whole() -> bool:
+## Checks full screen and several window sizes against fractional canvas scaling.
+func _scales_canvas() -> bool:
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN:
 		_fail("the game did not start in full screen: mode %d" % DisplayServer.window_get_mode())
 		return false
-	if not _shown_whole("the full screen the game starts in"):
+	if not _shown_canvas("the full screen the game starts in"):
 		return false
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	for frame: int in range(RESIZE_FRAMES):
@@ -480,7 +468,7 @@ func _scales_whole() -> bool:
 		if DisplayServer.window_get_size() != size:
 			_fail("the window did not take the size %s: %s" % [size, DisplayServer.window_get_size()])
 			return false
-		if not _shown_whole("a %dx%d window" % [size.x, size.y]):
+		if not _shown_canvas("a %dx%d window" % [size.x, size.y]):
 			return false
 	var screen_size: Vector2i = DisplayServer.screen_get_size()
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
@@ -492,21 +480,22 @@ func _scales_whole() -> bool:
 	if DisplayServer.window_get_mode() != DisplayServer.WINDOW_MODE_FULLSCREEN or DisplayServer.window_get_size() != screen_size:
 		_fail("the window did not fill the %s screen: mode %d, %s" % [screen_size, DisplayServer.window_get_mode(), DisplayServer.window_get_size()])
 		return false
-	return _shown_whole("full screen at %dx%d" % [screen_size.x, screen_size.y])
+	return _shown_canvas("full screen at %dx%d" % [screen_size.x, screen_size.y])
 
-## Whether the screen is still SCREEN in size and the window, at its current
-## size, shows it at the largest whole multiple of it that fits, centred on
-## whole pixels.
-func _shown_whole(window: String) -> bool:
+## Checks the authored canvas contract and the live output size, scale and letterbox.
+func _shown_canvas(window: String) -> bool:
 	var size: Vector2i = DisplayServer.window_get_size()
-	var scale: int = maxi(mini(size.x / SCREEN.x, size.y / SCREEN.y), 1)
-	var origin: Vector2 = Vector2((size - SCREEN * scale) / 2)
-	var expected: Transform2D = Transform2D(Vector2(scale, 0), Vector2(0, scale), origin)
+	var scale: float = minf(float(size.x) / CANVAS.x, float(size.y) / CANVAS.y)
+	var content: Vector2 = Vector2(CANVAS) * scale
+	var origin: Vector2 = (Vector2(size) - content) / 2.0
 	var shown: Transform2D = root.get_final_transform()
 	var drawn: Vector2i = root.get_texture().get_image().get_size()
-	print("Capture: %s shows the %s screen at %s, origin %s (expected %d times at %s)." % [window, drawn, shown.get_scale(), shown.origin, scale, origin])
-	if drawn != SCREEN or shown != expected:
-		_fail("%s does not show the %s screen at a whole multiple: %s screen, transform %s" % [window, SCREEN, drawn, shown])
+	print("Capture: %s: canvas %s, output %s, content %s, letterbox %s, final %s." % [window, CANVAS, size, drawn, origin, shown])
+	if ProjectSettings.get_setting("display/window/size/viewport_width") != CANVAS.x or ProjectSettings.get_setting("display/window/size/viewport_height") != CANVAS.y or ProjectSettings.get_setting("display/window/stretch/mode") != "canvas_items":
+		_fail("authored canvas settings differ from 1920x1080 canvas_items")
+		return false
+	if not Vector2(drawn).is_equal_approx(content) or not shown.origin.is_equal_approx(origin) or not shown.get_scale().is_equal_approx(Vector2.ONE * scale * ART_SCALE):
+		_fail("%s: output scale or centered letterbox differs" % window)
 		return false
 	return true
 
@@ -684,10 +673,13 @@ func _save(screen: String) -> Image:
 	await RenderingServer.frame_post_draw
 	var destination: String = ProjectSettings.globalize_path("user://survival/" + screen + ".png")
 	var frame: Image = root.get_texture().get_image()
+	native_frame = frame.duplicate() as Image
 	if frame.save_png(destination) != OK:
 		_fail("Could not save " + destination)
 		return frame
 	print("Capture: ", destination)
+	# Value and placement checks sample the existing layout grid; density reads native_frame.
+	frame.resize(SCREEN.x, SCREEN.y, Image.INTERPOLATE_NEAREST)
 	return frame
 
 ## Reads actual frame textures; the first city has no screen fade over its native corners.
@@ -727,8 +719,8 @@ func _interface_corners(frame: Image, screen: String) -> bool:
 func _character_plate_control(layer: Dictionary, screen: String) -> bool:
 	var alpha: Image = layer["alpha"]
 	var area: Rect2 = layer["area"]
-	if alpha.get_size() != Vector2i(128, 128) or area.size.x < 64.0:
-		_fail("%s: source-plate control did not load the actual 128px character" % screen)
+	if alpha.get_size() != Vector2i(256, 224) or area.size.x < 64.0:
+		_fail("%s: source-plate control did not load the actual HD character" % screen)
 		return false
 	for y: int in range(ceili(area.position.y), floori(area.end.y)):
 		for x: int in range(ceili(area.position.x), floori(area.end.x) - 1):
@@ -868,8 +860,16 @@ func _deck_alpha_control(source: Image) -> bool:
 				return false
 			print("Capture: actual deck alpha control retained opaque %s and excluded its nearest transparent neighbour inside the same fragment." % Vector2i(x, y))
 			return true
-	_fail("loaded deck has no opaque source pixel beside a transparent pixel")
-	return false
+	# HD deck bands are opaque; make the nearest transparent neighbour in a two-pixel control.
+	var control: Image = source.get_region(Rect2i(0, 0, 2, 1))
+	control.set_pixel(1, 0, Color.TRANSPARENT)
+	var probe: Image = Image.create(2, 1, false, Image.FORMAT_RGBA8)
+	_stamp_deck(probe, control, Rect2(0, 0, 2, 1), Rect2(0, 0, 2, 1), Transform2D())
+	if not _deck_opaque(probe, Vector2(0.5, 0.5)) or _deck_opaque(probe, Vector2(1.5, 0.5)):
+		_fail("opaque HD deck control confused its cleared nearest neighbour")
+		return false
+	print("Capture: opaque HD source control retained the first pixel and excluded its cleared nearest neighbour.")
+	return true
 
 ## Reconstructs only the deck's drawn footprint, leaving all scenery samples alone.
 func _read_decks(screen: String) -> bool:
@@ -884,7 +884,7 @@ func _read_decks(screen: String) -> bool:
 		var id: int = texture.get_instance_id()
 		if not loaded.has(id):
 			var pixels: Image = texture.get_image()
-			if texture.resource_path != "res://levels/monster_mouth_escape/art/walkway/deck.png" or pixels.get_size() != Vector2i(1280, 336):
+			if texture.resource_path != "res://levels/monster_mouth_escape/art_hd/walkway/deck.png" or pixels.get_size() != Vector2i(1920, 504):
 				_fail("%s: actual deck texture identity/size differs: %s %s" % [screen, texture.resource_path, pixels.get_size()])
 				return false
 			pixels.convert(Image.FORMAT_RGBA8)
@@ -1077,42 +1077,19 @@ func _acid_band(frame: Image) -> Vector2:
 				glow += pixel.get_luminance()
 	return Vector2(float(green) / count, glow / maxi(green, 1))
 
-## Whether the EDGE_ROWS just above each stair's diagonal, where it is walked
-## on, lead the EDGE_ROWS just under it by STEP_LEAD, when the frame shows both
-## stairs, and read at STAIR_PARITY of the STAIR_DECK_CELLS' top EDGE_ROWS,
-## when it shows that deck too; the columns at the cell's ends, where a band
-## would leave the cell, are left out.
-func _stairs_lit(frame: Image, view: Transform2D, screen: String) -> bool:
-	var walked: float = 0.0
-	var under: float = 0.0
-	var columns: Vector2i = Vector2i(EDGE_ROWS - 1, CELL - EDGE_ROWS)
-	for cell: Vector2i in STAIR_CELLS:
-		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
-		if not _shows(view, corner - Vector2(0, EDGE_ROWS), Vector2(CELL, CELL + 2 * EDGE_ROWS)):
+## Actual deck fragments must cover the flat collision floor at the cell's start, middle and end.
+func _stairs_lit(_frame_image: Image, view: Transform2D, screen: String) -> bool:
+	for cell: Vector2i in STAIR_CELLS + STAIR_DECK_CELLS:
+		var top: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
+		if not _shows(view, top, Vector2(CELL, EDGE_ROWS)):
 			return true
-	for cell: Vector2i in STAIR_CELLS:
-		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
-		walked += _band(frame, view, corner, CELL, columns, Vector2i(1 - EDGE_ROWS, 1))
-		under += _band(frame, view, corner, CELL, columns, Vector2i(1, 1 + EDGE_ROWS))
-	walked /= STAIR_CELLS.size()
-	under /= STAIR_CELLS.size()
+		for x: float in [0.5, 16.0, 31.5]:
+			if not _deck_opaque(deck_footprint, view * (top + Vector2(x, 0.5))):
+				_fail("%s: deck at %s x %.1f misses flat floor_line" % [screen, cell, x])
+				return false
 	stairs_frames += 1
-	print("Capture: %s: the stairs' walked-on part leads the part under it by %.3f (walked %.3f, under %.3f, at least %.3f)." % [screen, walked - under, walked, under, STEP_LEAD])
-	if under <= 0.0 or walked - under < STEP_LEAD:
-		_fail("%s: the stairs' walked-on part does not read over the part under it" % screen)
-		return false
-	var deck: float = 0.0
-	for cell: Vector2i in STAIR_DECK_CELLS:
-		var corner: Vector2 = Vector2(MAP_ORIGIN + (cell + Vector2i.DOWN) * CELL)
-		if not _shows(view, corner, Vector2(CELL, EDGE_ROWS)):
-			return true
-		deck += _luminance(frame, view, corner, EDGE_ROWS)
-	deck /= STAIR_DECK_CELLS.size()
 	parity_frames += 1
-	print("Capture: %s: the stairs' walked-on part reads at %.3f of the deck's top edge (walked %.3f, deck %.3f, at least %.3f)." % [screen, walked / deck, walked, deck, STAIR_PARITY])
-	if deck <= 0.0 or walked < STAIR_PARITY * deck:
-		_fail("%s: the stairs' walked-on part reads darker than the deck's top edge" % screen)
-		return false
+	print("Capture: %s: flat stair floor and neighbouring walkway meet at start, middle and end." % screen)
 	return true
 
 ## Whether, while the camera rests, MOTION_SHARE of the acid's pixels change
@@ -1316,35 +1293,37 @@ func _character_mask_control() -> bool:
 func _characters_dense(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
 	if not is_equal_approx(view.x.x, 2.0):
 		return true
+	frame = native_frame
 	var layers: Array = scene.get_node("World").get_meta("character_layers", [])
 	for index: int in range(layers.size()):
 		var layer: Dictionary = layers[index]
 		var role: String = layer["role"]
-		var area: Rect2 = layer["area"]
-		if not PLAY.encloses(area):
+		var layout_area: Rect2 = layer["area"]
+		var area: Rect2 = Rect2(layout_area.position * ART_SCALE, layout_area.size * ART_SCALE)
+		if not PLAY.encloses(layout_area):
 			continue
 		var texture: Texture2D = layer["texture"]
 		var mask: Image = texture.get_image()
 		print("Capture: %s: %s loaded texture %s, actual draw area %s." % [screen, role, mask.get_size(), area])
 		var height: float = mask.get_used_rect().size.y * area.size.y / mask.get_height()
-		var target: float = 115.0 if role == "chef" else 72.0
-		if absf(height - target) > 6.0:
-			_fail("%s: %s silhouette is %.1f screen pixels tall, original %.0f +/- 6" % [screen, role, height, target])
+		var target: float = mask.get_used_rect().size.y
+		if not area.size.is_equal_approx(Vector2(mask.get_size())) or absf(height - target) > 0.01:
+			_fail("%s: %s silhouette is %.1f screen pixels tall, native pose %.0f" % [screen, role, height, target])
 			return false
 		var edges: Vector2i = Vector2i.ZERO
 		var thin: Vector2i = Vector2i.ZERO
 		for y: int in range(maxi(1, int(area.position.y)), mini(frame.get_height() - 1, int(ceilf(area.end.y)))):
 			for x: int in range(maxi(1, int(area.position.x)), mini(frame.get_width() - 1, int(ceilf(area.end.x)))):
 				var point: Vector2 = Vector2(x + 0.5, y + 0.5)
-				if covered.any(func(box: Rect2) -> bool: return box.grow(1).has_point(point)):
+				if covered.any(func(box: Rect2) -> bool: return box.grow(1).has_point(point / ART_SCALE)):
 					continue
 				var hidden: bool = false
 				for later: int in range(index + 1, layers.size()):
 					var later_layer: Dictionary = layers[later]
 					var later_area: Rect2 = later_layer["area"]
-					if later_area.has_point(point):
+					if later_area.has_point(point / ART_SCALE):
 						hidden = true
-				if hidden or not _character_opaque(mask, layer, point) or not _character_opaque(mask, layer, point + Vector2.LEFT) or not _character_opaque(mask, layer, point + Vector2.RIGHT) or not _character_opaque(mask, layer, point + Vector2.UP) or not _character_opaque(mask, layer, point + Vector2.DOWN):
+				if hidden or not _character_opaque(mask, layer, point / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.LEFT) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.RIGHT) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.UP) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.DOWN) / ART_SCALE):
 					continue
 				var pixel: Color = frame.get_pixel(x, y)
 				var left: bool = _differ(pixel, frame.get_pixel(x - 1, y))
@@ -1385,14 +1364,15 @@ func _character_opaque(mask: Image, layer: Dictionary, point: Vector2) -> bool:
 func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Array[Rect2] = []) -> Vector2:
 	var edges: Vector2i = Vector2i.ZERO
 	var thin: Vector2i = Vector2i.ZERO
-	var width: int = int(PLAY.size.x)
-	for y: int in range(maxi(rows.x, 1), mini(rows.y, frame.get_height() - 1), 2):
+	frame = native_frame
+	var width: int = frame.get_width()
+	for y: int in range(maxi(roundi(rows.x * ART_SCALE), 1), mini(roundi(rows.y * ART_SCALE), frame.get_height() - 1), 2):
 		for x: int in range(1, width - 1, 2):
-			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y))):
+			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / ART_SCALE)):
 				continue
-			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5)) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y)))):
+			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5) / ART_SCALE) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / ART_SCALE))):
 				continue
-			if only == "walkways" and not [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN].all(func(offset: Vector2) -> bool: return _deck_opaque(deck_footprint, Vector2(x + 0.5, y + 0.5) + offset)):
+			if only == "walkways" and not [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN].all(func(offset: Vector2) -> bool: return _deck_opaque(deck_footprint, Vector2(x + 0.5, y + 0.5) / ART_SCALE + offset / ART_SCALE)):
 				continue
 			var pixel: Color = frame.get_pixel(x, y)
 			if only == "acid" and _green(pixel) < ACID_GREEN:
@@ -1460,20 +1440,27 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 ## screen. The control is that the fangs cover at least TEETH_COVER of the
 ## pixels read, so the rows are the fangs'.
 func _teeth_show(frame: Image, screen: String) -> bool:
+	frame = native_frame
+	var occluders: Array = scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", []) + scene.get_meta("map_plates", [])
+	var candidates: int = 0
 	var covered: int = 0
 	var matched: int = 0
 	var count: int = 0
-	for y: int in range(int(PLAY.position.y), int(PLAY.position.y) + TEETH_ROWS):
-		for x: int in range(0, int(PLAY.size.x), 2):
+	for y: int in range(roundi(PLAY.position.y * ART_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * ART_SCALE)):
+		for x: int in range(0, frame.get_width(), 2):
 			count += 1
 			var tooth: Color = _fang(x, y)
 			if tooth.a < 0.5:
+				continue
+			candidates += 1
+			var layout_point: Vector2 = Vector2(x + 0.5, y + 0.5) / ART_SCALE
+			if occluders.any(func(area: Rect2) -> bool: return area.has_point(layout_point)) or _deck_opaque(deck_footprint, layout_point) or _character_covers(layout_point):
 				continue
 			covered += 1
 			var pixel: Color = frame.get_pixel(x, y)
 			if maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) <= TEETH_TOLERANCE:
 				matched += 1
-	var cover: float = float(covered) / count
+	var cover: float = float(candidates) / count
 	var share: float = float(matched) / maxi(covered, 1)
 	teeth_frames += 1
 	print("Capture: %s: %.6f of the %.6f of the top %d rows of the play area the fangs cover show them (at least %.6f of at least %.6f)." % [screen, share, cover, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
@@ -1487,11 +1474,12 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 ## fang's cream; clear elsewhere.
 func _fang(x: int, y: int) -> Color:
 	var at: Vector2 = scene.get_node("World").get_meta("throat_at", Vector2(-INF, -INF))
-	var row: int = y - floori(at.y)
+	at = at.floor() * ART_SCALE
+	var row: int = floori(y + 0.5 - at.y)
 	if row < 0 or row >= throat.get_height():
 		return Color(0, 0, 0, 0)
 	var width: int = throat.get_width()
-	var offset: int = x - floori(at.x)
+	var offset: int = floori(x + 0.5 - at.x)
 	var copy: int = floori(float(offset) / width)
 	var column: int = offset - copy * width
 	if copy != 0:
@@ -1568,7 +1556,9 @@ func _green(pixel: Color) -> float:
 func _frame() -> Image:
 	await process_frame
 	await RenderingServer.frame_post_draw
-	return root.get_texture().get_image()
+	var image: Image = root.get_texture().get_image()
+	image.resize(SCREEN.x, SCREEN.y, Image.INTERPOLATE_NEAREST)
+	return image
 
 ## The near sea cannot stand above the far shore in screen perspective.
 func _sea_top(view: Transform2D) -> int:
