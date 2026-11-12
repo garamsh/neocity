@@ -1,0 +1,882 @@
+{
+  "version": 1,
+  "issue": "https://github.com/garamsh/neocity/issues/211",
+  "screen_reference": [
+    1920,
+    1080
+  ],
+  "canvas": [
+    256,
+    224
+  ],
+  "baseline_y": 204,
+  "pivot": [
+    128,
+    204
+  ],
+  "facing": "right",
+  "sampling": "nearest",
+  "alpha": "binary",
+  "status": "candidate; assets only, not integrated into runtime",
+  "provenance": "docs/art/production/characters-hd-provenance.txt",
+  "frames": [
+    {
+      "file": "chef_idle.png",
+      "actor": "chef",
+      "pose": "idle",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        131,
+        172,
+        70,
+        32
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        0,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        26
+      ],
+      "sha256": "46d83285a00d9fa60b702a97a0b28db49f69fa76ec68e9dfda87d4760153d57c"
+    },
+    {
+      "file": "chef_walk_1.png",
+      "actor": "chef",
+      "pose": "walk_1",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        134,
+        171,
+        66,
+        33
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        384,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        27
+      ],
+      "sha256": "d3f41fb873c9a135db65ff7d1f9c46557cb95afbae4e4814fe00cca88ac4a2d3"
+    },
+    {
+      "file": "chef_walk_2.png",
+      "actor": "chef",
+      "pose": "walk_2",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        122,
+        171,
+        77,
+        33
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        768,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        27
+      ],
+      "sha256": "8efc015cc4d16bcd5ff88145a9ae28cd1f8512c9887bca5fc6c0e37f12a5015c"
+    },
+    {
+      "file": "chef_walk_3.png",
+      "actor": "chef",
+      "pose": "walk_3",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        127,
+        171,
+        74,
+        33
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        1152,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        27
+      ],
+      "sha256": "c4a8a69bd29d0841587fa81adaf7379976e8eec45ddbf61b34cc495437561c28"
+    },
+    {
+      "file": "chef_walk_4.png",
+      "actor": "chef",
+      "pose": "walk_4",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        125,
+        170,
+        74,
+        34
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        0,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        27
+      ],
+      "sha256": "26470a4eb17629c40d3ee763c85056f49c65269ee671a95c8d87eb0e5d41655c"
+    },
+    {
+      "file": "chef_run_1.png",
+      "actor": "chef",
+      "pose": "run_1",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        155,
+        169,
+        50,
+        35
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        384,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        27
+      ],
+      "sha256": "66dd1769f338cf8af09cd9fc671b67e9258a9d093678ae56770190a5f84eee5f"
+    },
+    {
+      "file": "chef_run_2.png",
+      "actor": "chef",
+      "pose": "run_2",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        138,
+        172,
+        69,
+        32
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-correction-source.png",
+      "source_sha256": "86761148d5a99706a3ceef195a072aaa7301df7df7b07157464955d6adc1b95c",
+      "source_crop": [
+        768,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        24
+      ],
+      "sha256": "de0a13219fccb2f9eb9a42473325f8781bd8eb300a0f969a5101b42c3a87bacc"
+    },
+    {
+      "file": "chef_jump.png",
+      "actor": "chef",
+      "pose": "jump",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        138,
+        158,
+        63,
+        28
+      ],
+      "lowest_pixel_exclusive_y": 186,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        1152,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        24
+      ],
+      "sha256": "d1707cb77b05781408a9ca0dd8be000b66778cbfb172e5751a9e972ed043a61a"
+    },
+    {
+      "file": "chef_fall.png",
+      "actor": "chef",
+      "pose": "fall",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        151,
+        175,
+        53,
+        21
+      ],
+      "lowest_pixel_exclusive_y": 196,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        0,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        15
+      ],
+      "sha256": "6d29373617f12c6d115aaf357519e7096f5b114d2ead0f44c65c69c0c0cc814b"
+    },
+    {
+      "file": "chef_land.png",
+      "actor": "chef",
+      "pose": "land",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        157,
+        164,
+        49,
+        40
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        384,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        21
+      ],
+      "sha256": "d4eec3e6a7adcbb4f61244749d872cb6b9129936551386459678e75b14b1fdf7"
+    },
+    {
+      "file": "chef_climb.png",
+      "actor": "chef",
+      "pose": "climb",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        136,
+        177,
+        49,
+        27
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-chef-source.png",
+      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source_crop": [
+        768,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.5602605863192183,
+      "resize_pixels": [
+        215,
+        191
+      ],
+      "placement": [
+        20,
+        21
+      ],
+      "sha256": "717f25d52190e93ddd816b890cbcf4ac1a0baff998360ff817385f7ba64f95cb"
+    },
+    {
+      "file": "appraiser_idle.png",
+      "actor": "appraiser",
+      "pose": "idle",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        97,
+        108,
+        82,
+        96
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        0,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "fba6e01c15e30e660f9ccbe6903ec0fb8da70f6bfebc9f9b6f4201f5ae2db903"
+    },
+    {
+      "file": "appraiser_walk_1.png",
+      "actor": "appraiser",
+      "pose": "walk_1",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        101,
+        108,
+        79,
+        96
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        384,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "49b3c724f545e6bab8deda48f535855e9a9ffa3491b96e3e5f6332e2c7204444"
+    },
+    {
+      "file": "appraiser_walk_2.png",
+      "actor": "appraiser",
+      "pose": "walk_2",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        96,
+        108,
+        84,
+        96
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        768,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "869c58a1f625535e85073c951659694f2267656ddb90ffa2b065066b6c81005e"
+    },
+    {
+      "file": "appraiser_walk_3.png",
+      "actor": "appraiser",
+      "pose": "walk_3",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        99,
+        108,
+        82,
+        96
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        1152,
+        0,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "b0f51d33663901a30060d3c75ac2ba43a9bd2d08e728ad8229382690976cb8d2"
+    },
+    {
+      "file": "appraiser_walk_4.png",
+      "actor": "appraiser",
+      "pose": "walk_4",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        95,
+        109,
+        86,
+        95
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        0,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "3c4f6ad81bbeb9a15857f32a4db13a98604eeed9405b9deedfca1d429a2df0b9"
+    },
+    {
+      "file": "appraiser_run_1.png",
+      "actor": "appraiser",
+      "pose": "run_1",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        113,
+        107,
+        75,
+        97
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        384,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        86
+      ],
+      "sha256": "1edaf1511899c2aa35dfc88454c71f0c54b9869a85328e6cb8a6602068f0248b"
+    },
+    {
+      "file": "appraiser_run_2.png",
+      "actor": "appraiser",
+      "pose": "run_2",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        112,
+        112,
+        64,
+        92
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-correction-source.png",
+      "source_sha256": "b357cb60ac81c20437febfe598fbc5b3fb852828e33a71f45326d3312cfae83f",
+      "source_crop": [
+        768,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        80
+      ],
+      "sha256": "fa36ccad3bb35d82eccc412b5dbbeaa203500a5e056cbab6fa2150232c7d7ee0"
+    },
+    {
+      "file": "appraiser_jump.png",
+      "actor": "appraiser",
+      "pose": "jump",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        102,
+        106,
+        80,
+        80
+      ],
+      "lowest_pixel_exclusive_y": 186,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        1152,
+        341,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        78
+      ],
+      "sha256": "7d338fe4bf1d92034f42b705168db9695934c339095572712eb6fc3686a75587"
+    },
+    {
+      "file": "appraiser_fall.png",
+      "actor": "appraiser",
+      "pose": "fall",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        110,
+        110,
+        71,
+        86
+      ],
+      "lowest_pixel_exclusive_y": 196,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        0,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        75
+      ],
+      "sha256": "0515baeed93097a7c1774bfa78f8630d229e03cf1d961794a31b3e378e6024ae"
+    },
+    {
+      "file": "appraiser_land.png",
+      "actor": "appraiser",
+      "pose": "land",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        111,
+        98,
+        71,
+        106
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-source.png",
+      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source_crop": [
+        384,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        80
+      ],
+      "sha256": "8af8d7776beab245b292042973d88e536d54695676f523591e21763c2320022f"
+    },
+    {
+      "file": "appraiser_climb.png",
+      "actor": "appraiser",
+      "pose": "climb",
+      "size": [
+        256,
+        224
+      ],
+      "baseline_y": 204,
+      "pivot": [
+        128,
+        204
+      ],
+      "visible_bounds": [
+        108,
+        116,
+        69,
+        88
+      ],
+      "lowest_pixel_exclusive_y": 204,
+      "source": "docs/art/production/characters-hd-appraiser-correction-source.png",
+      "source_sha256": "b357cb60ac81c20437febfe598fbc5b3fb852828e33a71f45326d3312cfae83f",
+      "source_crop": [
+        768,
+        682,
+        384,
+        341
+      ],
+      "source_scale": 0.39705882352941174,
+      "resize_pixels": [
+        152,
+        135
+      ],
+      "placement": [
+        52,
+        80
+      ],
+      "sha256": "d2ac375e04d317fa36f3475566bfa4d04cd4ef067f31874f258e3ea27fb70a0b"
+    }
+  ]
+}
