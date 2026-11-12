@@ -251,12 +251,14 @@ bool hd(Image image) {
          (image >= Image::HdChefIdle && image <= Image::HdAppraiserClimb);
 }
 
-/// Native picture pixels per layout unit, before the camera and canvas.
+/// Native picture pixels per layout unit, before the camera and canvas. The
+/// noodle vendor was drawn at the layout size and keeps it.
 float density(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
   const bool world = folder == "walkway" || folder == "world" ||
                      folder == "ground" || folder == "characters";
-  return (world ? 2.0F : 1.0F) * (hd(image) ? ART_SCALE : 1.0F);
+  const bool cell_dense = world && image != Image::NoodleVendor;
+  return (cell_dense ? 2.0F : 1.0F) * (hd(image) ? ART_SCALE : 1.0F);
 }
 
 /// The outline of `area` with its corners rounded by `radius`, clockwise from
