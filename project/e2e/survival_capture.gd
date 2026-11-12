@@ -190,7 +190,7 @@ const LIT_SHARE: float = 0.200
 const SCREEN: Vector2i = Vector2i(1280, 720)
 const CANVAS: Vector2i = Vector2i(1920, 1080)
 const CANVAS_SCALE: float = float(CANVAS.x) / SCREEN.x
-const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(1280, 1024)]
+const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(2560, 1440), Vector2i(3840, 2160), Vector2i(2176, 1224), Vector2i(1280, 1024)]
 ## How many frames a window may take to reach the size or mode asked of it.
 const RESIZE_FRAMES: int = 120
 
