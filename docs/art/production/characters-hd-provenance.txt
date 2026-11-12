@@ -20,7 +20,7 @@ Reference
 
 Generation
 - Only the built-in ImageGen tool was used; no third-party generation service
-  or public upload. The tool exposes no model identifier, seed or quality
+  or external image-hosting upload. The tool exposes no model identifier, seed or quality
   setting in this session; these are not inferred.
 - Four calls: chef sheet; appraiser sheet; chef run correction; appraiser run
   and extra climbing arm correction. Each returned a 1536x1024 RGBA PNG.
