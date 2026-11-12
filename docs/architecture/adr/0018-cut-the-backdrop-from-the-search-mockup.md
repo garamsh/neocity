@@ -1,6 +1,6 @@
 # ADR 0018: Cut the backdrop from the search mockup
 
-> Status: accepted; the cut at the mockup's own size superseded by ADR-0020; city art superseded by ADR 0025
+> Status: accepted; the cut at the mockup's own size superseded by ADR-0020; city art superseded by ADR-0025
 > Date: 2026-11-04
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

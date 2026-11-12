@@ -1,6 +1,6 @@
 # ADR 0025: Draw the city with native HD art
 
-> Status: proposed
+> Status: accepted
 > Date: 2026-11-13
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.
@@ -24,7 +24,7 @@ This replaces ADRs 0018 and 0020's city source and resampling decisions and ADR 
 ## Consequences
 
 - `ART_SCALE` remains the single transition scale. Retiring it globally would also change the interface and layout coordinates.
-- Nearest filtering retains native detail at 1080p. At the distant camera and other output sizes, sampling follows the smaller projection; native density is claimed only at the close camera on the 1920×1080 output.
+- Nearest filtering retains native detail at 1080p. At the distant camera and other output sizes, sampling follows the smaller projection; native density is claimed only at the close camera on the 1920×1080 output. The supplied HD imports have no mipmaps, so the distant view uses nearest samples of the smaller projection.
 - The art checker reads both HD manifests, measures native dimensions and fine edge detail, and verifies the asset hashes independently of the legacy palette and mockup-cut rules.
 - Captures save the native output. Layout value and placement checks sample a nearest-reduced layout image; density checks read the native capture. Window checks measure fractional canvas scale and centered letterboxing.
 - The stair check observes drawn deck fragments and the real actor's floor in both travel directions, with the old stair and an adjacent flat deck as its controls.
