@@ -190,7 +190,7 @@ const LIT_SHARE: float = 0.200
 ## 1920x1080 output; value and placement checks use this layout grid.
 const SCREEN: Vector2i = Vector2i(1280, 720)
 const CANVAS: Vector2i = Vector2i(1920, 1080)
-const ART_SCALE: float = 1.5
+const CANVAS_SCALE: float = float(CANVAS.x) / SCREEN.x
 const WINDOW_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(1600, 900), Vector2i(1920, 1080), Vector2i(1280, 1024)]
 ## How many frames a window may take to reach the size or mode asked of it.
 const RESIZE_FRAMES: int = 120
@@ -494,7 +494,7 @@ func _shown_canvas(window: String) -> bool:
 	if ProjectSettings.get_setting("display/window/size/viewport_width") != CANVAS.x or ProjectSettings.get_setting("display/window/size/viewport_height") != CANVAS.y or ProjectSettings.get_setting("display/window/stretch/mode") != "canvas_items":
 		_fail("authored canvas settings differ from 1920x1080 canvas_items")
 		return false
-	if not Vector2(drawn).is_equal_approx(content) or not shown.origin.is_equal_approx(origin) or not shown.get_scale().is_equal_approx(Vector2.ONE * scale * ART_SCALE):
+	if not Vector2(drawn).is_equal_approx(content) or not shown.origin.is_equal_approx(origin) or not shown.get_scale().is_equal_approx(Vector2.ONE * scale * CANVAS_SCALE):
 		_fail("%s: output scale or centered letterbox differs" % window)
 		return false
 	return true
@@ -1299,7 +1299,7 @@ func _characters_dense(frame: Image, view: Transform2D, screen: String, covered:
 		var layer: Dictionary = layers[index]
 		var role: String = layer["role"]
 		var layout_area: Rect2 = layer["area"]
-		var area: Rect2 = Rect2(layout_area.position * ART_SCALE, layout_area.size * ART_SCALE)
+		var area: Rect2 = Rect2(layout_area.position * CANVAS_SCALE, layout_area.size * CANVAS_SCALE)
 		if not PLAY.encloses(layout_area):
 			continue
 		var texture: Texture2D = layer["texture"]
@@ -1315,15 +1315,15 @@ func _characters_dense(frame: Image, view: Transform2D, screen: String, covered:
 		for y: int in range(maxi(1, int(area.position.y)), mini(frame.get_height() - 1, int(ceilf(area.end.y)))):
 			for x: int in range(maxi(1, int(area.position.x)), mini(frame.get_width() - 1, int(ceilf(area.end.x)))):
 				var point: Vector2 = Vector2(x + 0.5, y + 0.5)
-				if covered.any(func(box: Rect2) -> bool: return box.grow(1).has_point(point / ART_SCALE)):
+				if covered.any(func(box: Rect2) -> bool: return box.grow(1).has_point(point / CANVAS_SCALE)):
 					continue
 				var hidden: bool = false
 				for later: int in range(index + 1, layers.size()):
 					var later_layer: Dictionary = layers[later]
 					var later_area: Rect2 = later_layer["area"]
-					if later_area.has_point(point / ART_SCALE):
+					if later_area.has_point(point / CANVAS_SCALE):
 						hidden = true
-				if hidden or not _character_opaque(mask, layer, point / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.LEFT) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.RIGHT) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.UP) / ART_SCALE) or not _character_opaque(mask, layer, (point + Vector2.DOWN) / ART_SCALE):
+				if hidden or not _character_opaque(mask, layer, point / CANVAS_SCALE) or not _character_opaque(mask, layer, (point + Vector2.LEFT) / CANVAS_SCALE) or not _character_opaque(mask, layer, (point + Vector2.RIGHT) / CANVAS_SCALE) or not _character_opaque(mask, layer, (point + Vector2.UP) / CANVAS_SCALE) or not _character_opaque(mask, layer, (point + Vector2.DOWN) / CANVAS_SCALE):
 					continue
 				var pixel: Color = frame.get_pixel(x, y)
 				var left: bool = _differ(pixel, frame.get_pixel(x - 1, y))
@@ -1366,13 +1366,13 @@ func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Ar
 	var thin: Vector2i = Vector2i.ZERO
 	frame = native_frame
 	var width: int = frame.get_width()
-	for y: int in range(maxi(roundi(rows.x * ART_SCALE), 1), mini(roundi(rows.y * ART_SCALE), frame.get_height() - 1), 2):
+	for y: int in range(maxi(roundi(rows.x * CANVAS_SCALE), 1), mini(roundi(rows.y * CANVAS_SCALE), frame.get_height() - 1), 2):
 		for x: int in range(1, width - 1, 2):
-			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / ART_SCALE)):
+			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / CANVAS_SCALE)):
 				continue
-			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5) / ART_SCALE) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / ART_SCALE))):
+			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5) / CANVAS_SCALE) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / CANVAS_SCALE))):
 				continue
-			if only == "walkways" and not [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN].all(func(offset: Vector2) -> bool: return _deck_opaque(deck_footprint, Vector2(x + 0.5, y + 0.5) / ART_SCALE + offset / ART_SCALE)):
+			if only == "walkways" and not [Vector2.ZERO, Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN].all(func(offset: Vector2) -> bool: return _deck_opaque(deck_footprint, Vector2(x + 0.5, y + 0.5) / CANVAS_SCALE + offset / CANVAS_SCALE)):
 				continue
 			var pixel: Color = frame.get_pixel(x, y)
 			if only == "acid" and _green(pixel) < ACID_GREEN:
@@ -1446,14 +1446,14 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 	var covered: int = 0
 	var matched: int = 0
 	var count: int = 0
-	for y: int in range(roundi(PLAY.position.y * ART_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * ART_SCALE)):
+	for y: int in range(roundi(PLAY.position.y * CANVAS_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * CANVAS_SCALE)):
 		for x: int in range(0, frame.get_width(), 2):
 			count += 1
 			var tooth: Color = _fang(x, y)
 			if tooth.a < 0.5:
 				continue
 			candidates += 1
-			var layout_point: Vector2 = Vector2(x + 0.5, y + 0.5) / ART_SCALE
+			var layout_point: Vector2 = Vector2(x + 0.5, y + 0.5) / CANVAS_SCALE
 			if occluders.any(func(area: Rect2) -> bool: return area.has_point(layout_point)) or _deck_opaque(deck_footprint, layout_point) or _character_covers(layout_point):
 				continue
 			covered += 1
@@ -1474,7 +1474,7 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 ## fang's cream; clear elsewhere.
 func _fang(x: int, y: int) -> Color:
 	var at: Vector2 = scene.get_node("World").get_meta("throat_at", Vector2(-INF, -INF))
-	at = at.floor() * ART_SCALE
+	at = at.floor() * CANVAS_SCALE
 	var row: int = floori(y + 0.5 - at.y)
 	if row < 0 or row >= throat.get_height():
 		return Color(0, 0, 0, 0)
