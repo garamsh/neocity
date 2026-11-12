@@ -1,0 +1,102 @@
+Provenance of the issue #211 HD chef and appraiser animation assets.
+
+Version: 1; generated 2026-11-12 with Codex built-in ImageGen.
+Task: https://github.com/garamsh/neocity/issues/211
+Goal and creative authority: https://github.com/garamsh/neocity/issues/207
+Base: garamsh/neocity at 02c8e3df449d597dcb8fc0caeaa9d20bcd170625.
+Status: candidate art for PM review; runtime integration and creative acceptance
+are not established by these exports or by make ci.
+
+Reference
+- Mockup: docs/art/concept-art/monster-mouth-escape/search-mockup-v1.png
+  at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5 (1672x941).
+- ImageGen reference input: crop 320x180+385+260 from that original,
+  then ImageMagick point resize to 960x540; both actors visible.
+- Reference roles: mockup controls identity, proportions, costume, colour,
+  bold outlines and lighting. Character concept sheets were inspected for
+  identity; they were not supplied as generation inputs.
+- Comparison inspected: docs/architecture/evidence/survival/191-mockup-beside-city.png
+  at the base commit above. No pixels from existing runtime frames are reused.
+
+Generation
+- Only the built-in ImageGen tool was used; no third-party generation service
+  or public upload. The tool exposes no model identifier, seed or quality
+  setting in this session; these are not inferred.
+- Four calls: chef sheet; appraiser sheet; chef run correction; appraiser run
+  and extra climbing arm correction. Each returned a 1536x1024 RGBA PNG.
+- Requested transparent_background=true on all four calls.
+- Original outputs are retained byte-for-byte in characters-hd-{actor}-source.png
+  and characters-hd-{actor}-correction-source.png beside this file.
+- For each actor only run_2 uses the corrected sheet; appraiser climb also
+  uses its corrected sheet. All other cells use the initial sheet, so local
+  corrections cannot alter the accepted cells.
+- Prompts below are the exact text submitted to the built-in tool.
+
+Export
+- Manifest: project/levels/monster_mouth_escape/art_hd/characters/manifest.json.
+  It records every output/source SHA256, crop, scale, resize dimensions,
+  placement, visible bounds, canvas, baseline and pivot.
+- Cells: four columns by three rows, source crops 384x341, row origins
+  0, 341 and 682. Final cell is empty and unused.
+- Cell order: idle, walk_1, walk_2, walk_3, walk_4, run_1, run_2, jump,
+  fall, land, climb.
+- Each source cell is cropped and reset with +repage, then its alpha is
+  thresholded at 50 percent with ImageMagick. This discards soft transparency
+  and leaves masks exactly zero or 255; RGB is not palette-quantized.
+- A single shared scale per actor is derived from the idle cell's binary-alpha
+  visible height: 172/source_height for chef, 108/source_height for appraiser.
+  All that actor's cells use identical rounded resize dimensions and point
+  sampling. No enlargement of the old runtime cuts, interpolation, raster
+  warping, smoothing, rotation or pose-dependent scaling is used.
+- Each resized cell is composited Over onto transparent 256x224 pixels,
+  with the manifest's placement; metadata is stripped.
+- Pivot [128,204] and virtual floor baseline y=204 are shared. Grounded
+  silhouettes end at exclusive row 204, jump at 186 and fall at 196;
+  the baseline remains 204 for every frame. Raised knees and the compressed
+  landing naturally change the visible height without changing body scale.
+- All face right; integration should use nearest sampling and runtime mirroring.
+- Sprite pixels contain no text. Import metadata is produced by Godot import.
+- Evidence strips are 2816x224: one row per actor in the cell order above,
+  flat #252335 background, native pixels. Walk GIFs are 4-frame loops at
+  120 ms/frame; run GIFs are 2-frame loops at 100 ms/frame, both transparent.
+  These are asset previews, not captures of an integrated running game.
+
+Limitations
+- The frames are newly generated poses rather than identical rigid head
+  cutouts; small drawn differences remain. Native and enlarged sheets were
+  visually inspected for face, body scale, costume and prop continuity.
+- Runtime appearance, animation timing in the engine and two-player camera
+  behavior are not verified by this asset-only task.
+- No source code, existing art, global HD manifest, or other HD folder changed.
+
+
+Chef initial prompt
+Use case: stylized-concept. Production pixel-art animation sprite sheet, not a concept poster. Input image 1 is the exact identity, style, costume, lighting and proportions reference: use ONLY the yellow chef, ignore the green appraiser and the backdrop. Draw a NEW sharp detailed sprite sheet of this same chef for a 1920x1080 side-scroller. Yellow skin, wide toothy grin with open mouth, round white eyes, short dark teal hair swept sideways, magenta round earrings, tall floppy white toque, white double-breasted chef jacket with four magenta buttons, short black trousers, bare yellow feet, metal slotted spatula held in the leading right hand. Thick almost-black stepped contours, warm white/lavender coat shadows, amber highlights, crisp fine pixel clusters, original mockup's whimsical rugged look. Keep the mockup's large head and round body proportions, not a different redesign.
+
+Output transparent PNG sprite sheet with exactly 12 equal cells arranged FOUR columns and THREE rows, 1536x1024 overall. Every cell has a single complete chef, all facing RIGHT in three-quarter side view. Leave generous clear gutters. Same figure scale, head size, costume and prop throughout. Approximately 260 pixels high per standing chef at source density, to be reduced to 172px in the game; do not bake tiny enlarged block pixels. Align grounded feet at the same local row in each cell. No shadows on ground or scenery, no grid lines, no text, no labels, no numbers.
+
+Read cells left to right then top to bottom:
+Row 1: idle standing holding spatula forward; walk contact left leg forward/right leg back; walk passing left planted/right knee advancing; walk opposite contact right leg forward/left back.
+Row 2: walk opposite passing right planted/left knee advancing; RUN contact long stride and body leaning slightly right; RUN opposite stride same lean; JUMP upward with knees tucked, elbows raised and spatula retained.
+Row 3: FALL downward with feet lower and arms spread, spatula retained; LAND compressed knee bend with feet planted, hat and head same size; CLIMB side-facing right, one arm reaching high, one bent knee raised and other foot low, spatula retained; final cell EMPTY transparent.
+Strict visual consistency: repeat the exact same face/hat/head size without changing expression, draw actual changed leg/arm articulation rather than warping a picture, no missing fingers or objects, no extra poses. Real alpha transparency.
+
+Appraiser initial prompt
+Use case: stylized-concept. Production pixel-art animation sprite sheet, not a concept poster. Input image 1 is the exact identity, style, costume, lighting and proportions reference: use ONLY the short GREEN APPRAISER on the right, ignore the yellow chef and backdrop. Draw NEW sharp detailed sprites of this SAME appraiser for a 1920x1080 side-scroller. Lime green skin, squat compact round head tilted slightly forward, spiked crown-like head top, TWO silver bolts at upper left and upper right, a dark red X mark over the rear left eye, focused frowning mouth, large cyan magnifying glass held immediately before the forward right eye in his leading hand, dark near-black suit, magenta-red lapels and red tie with white shirt triangle, short dark trousers, black shoes. Thick almost-black stepped contours, warm green highlights and deep forest-green shadows, cyan lens with white glint, crisp fine pixel clusters; original mockup's whimsical rugged look. Keep the mockup's VERY large head and compact stubby body, not a tall human-shaped detective. Lens must remain beside the right eye in every pose, held by an attached hand.
+
+Output transparent PNG sprite sheet with exactly 12 equal cells arranged FOUR columns and THREE rows, 1536x1024 overall. Every cell has a single complete appraiser, all facing RIGHT in three-quarter side view. Leave generous clear gutters. Same figure scale, head size, costume and prop throughout. Approximately 250 pixels high per standing appraiser at source density, to be reduced to 108px in the game; do not bake tiny enlarged block pixels. Align grounded feet at the same local row in each cell. No shadows on ground or scenery, no grid lines, no text, no labels, no numbers.
+
+Read cells left to right then top to bottom:
+Row 1: idle standing with magnifier at right eye; walk contact left leg forward/right leg back; walk passing left planted/right knee advancing; walk opposite contact right leg forward/left back.
+Row 2: walk opposite passing right planted/left knee advancing; RUN contact long stride and body leaning slightly right; RUN opposite stride same lean; JUMP upward with knees tucked and free elbow raised, magnifier at eye.
+Row 3: FALL downward with feet lower and free arm spread, magnifier at eye; LAND compressed knee bend with feet planted, head same size; CLIMB side-facing right, free arm reaching high, one bent knee raised and other foot low, magnifier retained at eye; final cell EMPTY transparent.
+Strict visual consistency: repeat the exact same face/head size without changing expression, draw actual changed leg/arm articulation rather than warping a picture. No extra poses. Real alpha transparency.
+
+Chef correction prompt
+Use case: precise-object-edit. Edit this transparent production pixel-art chef animation sheet. Keep the 1536x1024 sheet layout and all sprites exactly the same EXCEPT the sprite in row TWO, column THREE (the second running pose, between the first running pose and the jumping pose). Change ONLY its legs into a distinct running passing pose: rear knee is bent sharply up under the coat, front foot points down beneath the torso, both feet off the ground; this must visibly alternate with the extended running stride in row two column two. Keep its head, hat, face, torso, arms, spatula, scale, outline, palette and rightward facing identical. All other ten sprites completely unchanged. No text, no background, retain true alpha transparency.
+
+Appraiser correction prompt
+Use case: precise-object-edit. Edit this transparent 1536x1024 pixel-art appraiser sheet, 4 columns by 3 rows. Keep every other sprite unchanged. TWO local corrections only.
+1. Row TWO column THREE is the second running pose: change ONLY its legs to a very distinct passing/suspended stride, one rear knee tucked tightly upward beneath the coat and one front foot pointing down below the torso. Both feet off the ground. Its silhouette must alternate with the extended running stride in row two column two. Keep exactly the same head, bolts, eye X, lens at right eye, suit, face, torso, arms and scale.
+2. Row THREE column THREE is climbing: it incorrectly has THREE ARMS. Draw exactly TWO arms total: one right hand holds the magnifying glass before his right eye; the free left arm reaches upward toward the upper right. ERASE the extra dangling arm/hand at the lower LEFT of the body, replacing that area with the compact side of his black suit jacket. Retain one raised knee and low rear foot. Keep head, bolts, lens, X, facial expression and scale unchanged.
+No text, no backdrop, retain actual alpha transparency. Do not change the other cells.
