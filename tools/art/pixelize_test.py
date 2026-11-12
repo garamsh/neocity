@@ -222,5 +222,17 @@ class CutTest(unittest.TestCase):
         self.assertEqual(rows, [[pink, DARK, CLEAR, DARK]])
 
 
+class HdArtTest(unittest.TestCase):
+    def test_native_detail_passes_but_nearest_double_at_the_same_dimensions_fails(self):
+        fine = [[LIGHT if (x + y) % 2 else DARK for x in range(16)] for y in range(16)]
+        coarse = [[LIGHT if (x // 2 + y // 2) % 2 else DARK for x in range(16)] for y in range(16)]
+        self.assertEqual(pixelize.hd_problems(fine, [16, 16]), [])
+        self.assertTrue(pixelize.hd_problems(coarse, [16, 16]))
+
+    def test_manifest_dimensions_are_measured(self):
+        fine = [[LIGHT if (x + y) % 2 else DARK for x in range(16)] for y in range(16)]
+        self.assertTrue(pixelize.hd_problems(fine, [17, 16]))
+
+
 if __name__ == "__main__":
     unittest.main()

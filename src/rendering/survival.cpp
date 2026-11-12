@@ -53,13 +53,6 @@ constexpr float GROUND_EDGE = 4.0F;
 /// is drawn from under, so the walked-on edge is the top of the deck. The
 /// pier's picture has none: its top row is its brightest.
 constexpr float OUTLINE = 1.0F;
-/// The rise of each step of stairs, cut from a walkway deck, and the first row
-/// of the deck's face, which stairs show under their steps.
-constexpr float STAIR_STEP = 8.0F;
-constexpr float STAIR_FACE = 10.0F;
-/// The deck's warm lit rows under its outline, which each stair's tread is
-/// stretched from.
-constexpr float STAIR_TREAD = 2.0F;
 /// Resting screen anchors before camera drift, aligning each layer's source
 /// coordinates with the mockup on the first city view.
 constexpr Vector2 THROAT_AT(333.0F, 0.0F);
@@ -72,6 +65,10 @@ constexpr float KITCHEN_Y = 62.0F;
 constexpr float KITCHEN_HEIGHT = 256.0F;
 constexpr float KITCHEN_FLOOR = 310.0F;
 constexpr float WORKSHOP_SCALE = 2.0F;
+/// The chef and appraiser frames' foot pivot (128, 204 picture pixels in the
+/// character manifests), in layout units.
+constexpr Vector2 ACTOR_PIVOT(128.0F / (2.0F * ART_SCALE),
+                              204.0F / (2.0F * ART_SCALE));
 constexpr Vector2 FEED_BUCKET(1205.0F, 202.0F);
 constexpr float DASH = 4.0F;
 /// Clears the head of a character that rises a cell above its own.
@@ -517,69 +514,6 @@ void paint_deck(godot::Node2D &canvas, const Art &art,
       rect(at.x, at.y, CELL, GROUND_EDGE), tint * ground_edge_tint());
 }
 
-/// Which way a step or a slab rises, or that it lies level.
-enum class Rise : std::uint8_t { Level, Right, Left };
-
-/// How the tilted ground from column `first` to `last` of row `y` rises: to
-/// the right where ground meets its left end a row down or its right end a
-/// row up, to the left the other way round, and level where neither does.
-Rise rise(std::span<const survival::GroundCell> cells, std::int32_t first,
-          std::int32_t last, std::int32_t y) {
-  if (has_ground(cells, {.x = first - 1, .y = y + 1}) ||
-      has_ground(cells, {.x = last + 1, .y = y - 1})) {
-    return Rise::Right;
-  }
-  if (has_ground(cells, {.x = last + 1, .y = y + 1}) ||
-      has_ground(cells, {.x = first - 1, .y = y - 1})) {
-    return Rise::Left;
-  }
-  return Rise::Level;
-}
-
-/// Stairs cut from a walkway deck, one cell wide, falling to the right from
-/// the floor line at `at` to the row below in steps of STAIR_STEP. Each step
-/// is a tread of the deck's warm lit rows, stretched down to the diagonal the
-/// stairs span, where a player walks on them, over the deck's face below that
-/// in its own colours shaded, a stringer facing away from the light.
-void paint_stairs(godot::Node2D &canvas, const Art &art,
-                  survival::GridPosition cell, godot::Color tint) {
-  const godot::Rect2 deck = deck_source(cell);
-  const Vector2 at(cell_x(cell.x), floor_y(cell.y));
-  for (int column = 0; column < static_cast<int>(CELL); ++column) {
-    const auto diagonal = static_cast<float>(column);
-    const float drop = std::floor(diagonal / STAIR_STEP) * STAIR_STEP;
-    const float lit = std::max(GROUND_EDGE, diagonal - drop + 1.0F);
-    const float x = at.x + diagonal;
-    const float y = at.y + drop;
-    const float source = deck.position.x + diagonal;
-    art.image_part(canvas, Image::Deck,
-                   rect(source, deck.position.y + OUTLINE, 1.0F, STAIR_TREAD),
-                   rect(x, y, 1.0F, lit), tint * ground_edge_tint());
-    art.image_part(canvas, Image::Deck,
-                   rect(source, deck.position.y + STAIR_FACE, 1.0F,
-                        DECK_DEPTH - STAIR_FACE),
-                   rect(x, y + lit, 1.0F, DECK_DEPTH - STAIR_FACE),
-                   tint * stringer_tint());
-  }
-}
-
-/// Tilted ground: stairs cut from the deck, one cell wide, where it rises to
-/// the left, spanning from the floor line of its own cell down to the row
-/// below; any other tilted cell is drawn as a level deck. A deck the acid has
-/// reached is `corroded`.
-void paint_tilted(godot::Node2D &canvas, const Art &art,
-                  std::span<const survival::GroundCell> cells,
-                  std::span<const survival::GroundCell> standing,
-                  const survival::GroundCell &ground, bool corroded) {
-  const auto [x, y] = ground.cell;
-  if (rise(cells, x, x, y) == Rise::Left) {
-    paint_stairs(canvas, art, ground.cell,
-                 corroded ? corroded_tint() : untinted());
-  } else {
-    paint_deck(canvas, art, standing, ground.cell, corroded);
-  }
-}
-
 /// Whether the acid surface at `surface` has risen over the bottom of the
 /// walkway deck whose top is at `top`.
 bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
@@ -591,7 +525,6 @@ bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 /// where the ground is rubble. The ferry's hull is drawn whole in place of
 /// every cell it covers.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
-                       std::span<const survival::GroundCell> cells,
                        std::span<const survival::GroundCell> standing,
                        const survival::GroundCell &ground,
                        std::optional<LandmarkKind> picture, float surface) {
@@ -600,10 +533,6 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
   }
   const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
   const bool eaten = corroded(at.y, surface);
-  if (ground.kind == GroundKind::TiltedSlab) {
-    paint_tilted(canvas, art, cells, standing, ground, eaten);
-    return;
-  }
   paint_deck(canvas, art, standing, ground.cell, eaten);
   if (ground.kind == GroundKind::Rubble) {
     art.image(canvas, Image::Rubble,
@@ -746,8 +675,8 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
     standing.push_back(cell.ground);
   }
   for (const auto &cell : ground) {
-    paint_ground_cell(canvas, art, content.ground, standing, cell.ground,
-                      cell.picture, surface);
+    paint_ground_cell(canvas, art, standing, cell.ground, cell.picture,
+                      surface);
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -975,23 +904,23 @@ struct Frames {
 };
 
 const Frames &frames(Actor actor) {
-  static const Frames chef{.idle = Image::ChefIdle,
-                           .walk = {Image::ChefWalk1, Image::ChefWalk2,
-                                    Image::ChefWalk3, Image::ChefWalk4},
-                           .run = {Image::ChefRun1, Image::ChefRun2},
-                           .jump = Image::ChefJump,
-                           .fall = Image::ChefFall,
-                           .land = Image::ChefLand,
-                           .climb = Image::ChefClimb};
+  static const Frames chef{.idle = Image::HdChefIdle,
+                           .walk = {Image::HdChefWalk1, Image::HdChefWalk2,
+                                    Image::HdChefWalk3, Image::HdChefWalk4},
+                           .run = {Image::HdChefRun1, Image::HdChefRun2},
+                           .jump = Image::HdChefJump,
+                           .fall = Image::HdChefFall,
+                           .land = Image::HdChefLand,
+                           .climb = Image::HdChefClimb};
   static const Frames appraiser{
-      .idle = Image::AppraiserIdle,
-      .walk = {Image::AppraiserWalk1, Image::AppraiserWalk2,
-               Image::AppraiserWalk3, Image::AppraiserWalk4},
-      .run = {Image::AppraiserRun1, Image::AppraiserRun2},
-      .jump = Image::AppraiserJump,
-      .fall = Image::AppraiserFall,
-      .land = Image::AppraiserLand,
-      .climb = Image::AppraiserClimb};
+      .idle = Image::HdAppraiserIdle,
+      .walk = {Image::HdAppraiserWalk1, Image::HdAppraiserWalk2,
+               Image::HdAppraiserWalk3, Image::HdAppraiserWalk4},
+      .run = {Image::HdAppraiserRun1, Image::HdAppraiserRun2},
+      .jump = Image::HdAppraiserJump,
+      .fall = Image::HdAppraiserFall,
+      .land = Image::HdAppraiserLand,
+      .climb = Image::HdAppraiserClimb};
   switch (actor) {
   case Actor::Chef:
     return chef;
@@ -1063,10 +992,10 @@ void paint_actor(godot::Node2D &canvas, const Art &art,
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
-  const float anchor = actor == Actor::Chef ? 26.0F : 33.0F;
+  const float anchor = ACTOR_PIVOT.x;
   const float pivot = shown.mirrored ? size.x - anchor : anchor;
   art.image(canvas, shown.image,
-            Vector2(feet.x - pivot + offset, feet.y - size.y), 1.0F,
+            Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y), 1.0F,
             shown.mirrored);
 }
 
@@ -1218,11 +1147,12 @@ Labels label_city(const Art &art, const survival::Content &content,
     const auto shown = pose(actor, body, art.track(actor, body, now), now);
     const Vector2 size = art.size(shown.image);
     const Vector2 feet = feet_of(art, actor, body);
-    const float anchor = actor == Actor::Chef ? 26.0F : 33.0F;
+    const float anchor = ACTOR_PIVOT.x;
     const float pivot = shown.mirrored ? size.x - anchor : anchor;
     plates.keep_clear(to_screen(
         camera,
-        godot::Rect2(Vector2(feet.x - pivot + offset, feet.y - size.y), size)));
+        godot::Rect2(Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y),
+                     size)));
   };
   if (party.chef_out) {
     keep_actor(Actor::Chef, view.exploration.chef.body, 0.0F);

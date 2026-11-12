@@ -17,7 +17,7 @@
   "facing": "right",
   "sampling": "nearest",
   "alpha": "binary",
-  "status": "candidate; assets only, not integrated into runtime",
+  "status": "connected to city rendering by issue #212; creative acceptance pending",
   "provenance": "docs/art/production/characters-hd-provenance.txt",
   "frames": [
     {

@@ -92,6 +92,50 @@ const char *path(Image image) {
     return "characters/appraiser_land.png";
   case Image::AppraiserClimb:
     return "characters/appraiser_climb.png";
+  case Image::HdChefIdle:
+    return "characters/chef_idle.png";
+  case Image::HdChefWalk1:
+    return "characters/chef_walk_1.png";
+  case Image::HdChefWalk2:
+    return "characters/chef_walk_2.png";
+  case Image::HdChefWalk3:
+    return "characters/chef_walk_3.png";
+  case Image::HdChefWalk4:
+    return "characters/chef_walk_4.png";
+  case Image::HdChefRun1:
+    return "characters/chef_run_1.png";
+  case Image::HdChefRun2:
+    return "characters/chef_run_2.png";
+  case Image::HdChefJump:
+    return "characters/chef_jump.png";
+  case Image::HdChefFall:
+    return "characters/chef_fall.png";
+  case Image::HdChefLand:
+    return "characters/chef_land.png";
+  case Image::HdChefClimb:
+    return "characters/chef_climb.png";
+  case Image::HdAppraiserIdle:
+    return "characters/appraiser_idle.png";
+  case Image::HdAppraiserWalk1:
+    return "characters/appraiser_walk_1.png";
+  case Image::HdAppraiserWalk2:
+    return "characters/appraiser_walk_2.png";
+  case Image::HdAppraiserWalk3:
+    return "characters/appraiser_walk_3.png";
+  case Image::HdAppraiserWalk4:
+    return "characters/appraiser_walk_4.png";
+  case Image::HdAppraiserRun1:
+    return "characters/appraiser_run_1.png";
+  case Image::HdAppraiserRun2:
+    return "characters/appraiser_run_2.png";
+  case Image::HdAppraiserJump:
+    return "characters/appraiser_jump.png";
+  case Image::HdAppraiserFall:
+    return "characters/appraiser_fall.png";
+  case Image::HdAppraiserLand:
+    return "characters/appraiser_land.png";
+  case Image::HdAppraiserClimb:
+    return "characters/appraiser_climb.png";
   case Image::Deck:
     return "walkway/deck.png";
   case Image::Structure:
@@ -199,14 +243,22 @@ godot::Ref<godot::Texture2D> load_texture(const godot::String &path) {
 
 std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
 
-/// Picture pixels to a scene pixel each way: two for the pictures cut from the
-/// mockup for the map's cells and actors, drawn one to a screen pixel at the
-/// close camera, and one for every other.
+/// HD counterparts keep the old layout size while retiring the canvas upscale.
+bool hd(Image image) {
+  const godot::String folder = godot::String(path(image)).get_slice("/", 0);
+  return folder == "backgrounds" || folder == "walkway" || folder == "world" ||
+         folder == "ground" ||
+         (image >= Image::HdChefIdle && image <= Image::HdAppraiserClimb);
+}
+
+/// Native picture pixels per layout unit, before the camera and canvas. The
+/// noodle vendor was drawn at the layout size and keeps it.
 float density(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
-  const bool cut = folder == "walkway" || folder == "world" ||
-                   folder == "ground" || folder == "characters";
-  return cut && image != Image::NoodleVendor ? 2.0F : 1.0F;
+  const bool world = folder == "walkway" || folder == "world" ||
+                     folder == "ground" || folder == "characters";
+  const bool cell_dense = world && image != Image::NoodleVendor;
+  return (cell_dense ? 2.0F : 1.0F) * (hd(image) ? ART_SCALE : 1.0F);
 }
 
 /// The outline of `area` with its corners rounded by `radius`, clockwise from
@@ -401,9 +453,11 @@ Art Art::load() {
   std::vector<godot::Ref<godot::Texture2D>> pictures;
   pictures.reserve(IMAGE_COUNT);
   for (std::size_t image = 0; image < IMAGE_COUNT; ++image) {
-    pictures.push_back(
-        load_texture(godot::String("res://levels/monster_mouth_escape/art/") +
-                     path(static_cast<Image>(image))));
+    const auto picture = static_cast<Image>(image);
+    pictures.push_back(load_texture(
+        godot::String(hd(picture) ? "res://levels/monster_mouth_escape/art_hd/"
+                                  : "res://levels/monster_mouth_escape/art/") +
+        path(picture)));
   }
   return {std::move(pictures), std::move(font)};
 }

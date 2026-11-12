@@ -1,6 +1,6 @@
 """Turn Recraft generations and the concept sheets into the monster-mouth escape runtime PNGs.
 
-Subcommands, all driven by assets.json beside this file:
+Subcommands; generation uses assets.json beside this file:
   fetch RAW_DIR          download every URL source and decode it to PNG with ImageMagick, and
                          read every "commit" source from the repository's history; a "file"
                          source is read from the repository instead
@@ -18,7 +18,8 @@ Subcommands, all driven by assets.json beside this file:
                          clean-art rule: lone pixels, its folder's colour limit, and for character
                          sprites the lit outline and the light from above, but for the folders cut
                          from the concept and the chef/appraiser cuts; those keep their own
-                         colours and light, and one picture pixel to a screen pixel
+                         colours and light, and one picture pixel to a screen pixel.
+                         HD manifests instead check native size, hash and edge detail
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -26,6 +27,7 @@ library, so the same raw PNGs always give the same bytes.
 
 import cmath
 import colorsys
+import hashlib
 import json
 import math
 import pathlib
@@ -1112,9 +1114,45 @@ def problems(path, rows, scale):
     return found, m
 
 
+def hd_problems(rows, size):
+    """Native HD art keeps fine edges and the dimensions promised by its manifest."""
+    found = []
+    if [len(rows[0]), len(rows)] != size:
+        found.append(f"actual size {[len(rows[0]), len(rows)]} differs from {size}")
+    thin = thin_share(rows)
+    if thin is None or thin < THIN_SHARE:
+        found.append(f"native edge detail {thin} is under {THIN_SHARE}")
+    return found
+
+
+def check_hd(art_dir):
+    """Check both HD owners without applying the legacy palette or cut-source rules."""
+    failed = count = 0
+    for manifest in (art_dir / "manifest.json", art_dir / "characters/manifest.json"):
+        spec = json.loads(manifest.read_text())
+        entries = spec.get("files", spec.get("frames", []))
+        if not entries:
+            raise ValueError(f"empty HD manifest: {manifest}")
+        for entry in entries:
+            path = manifest.parent / entry.get("path", entry.get("file"))
+            rows = read_png(path)[2]
+            found = hd_problems(rows, entry["size"])
+            if hashlib.sha256(path.read_bytes()).hexdigest() != entry["sha256"]:
+                found.append("PNG hash differs from the asset owner's manifest")
+            print(f"{path}: " + ("FAILS: " + "; ".join(found) if found else "native size, hash and edge detail pass"))
+            failed += bool(found)
+            count += 1
+    print(f"checked {count} HD PNGs listed in both manifests under {art_dir}: {failed} break a rule")
+    return failed
+
+
 def check(art_dir):
     """Measures every runtime PNG in the manifest and exits 1 when one breaks a clean-art rule."""
     art_dir = pathlib.Path(art_dir)
+    if art_dir.name == "art_hd":
+        if check_hd(art_dir):
+            sys.exit(1)
+        return
     files = json.loads((art_dir / "manifest.json").read_text())["files"]
     failed = 0
     for entry in files:
@@ -1126,6 +1164,9 @@ def check(art_dir):
         )
         failed += bool(found)
     print(f"checked {len(files)} PNGs listed in {art_dir / 'manifest.json'}: {failed} break a rule")
+    hd = art_dir.with_name("art_hd")
+    if hd.exists():
+        failed += check_hd(hd)
     if failed:
         sys.exit(1)
 
