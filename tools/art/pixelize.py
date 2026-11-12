@@ -1,6 +1,6 @@
 """Turn Recraft generations and the concept sheets into the monster-mouth escape runtime PNGs.
 
-Subcommands, all driven by assets.json beside this file:
+Subcommands; generation uses assets.json beside this file:
   fetch RAW_DIR          download every URL source and decode it to PNG with ImageMagick, and
                          read every "commit" source from the repository's history; a "file"
                          source is read from the repository instead
@@ -18,7 +18,8 @@ Subcommands, all driven by assets.json beside this file:
                          clean-art rule: lone pixels, its folder's colour limit, and for character
                          sprites the lit outline and the light from above, but for the folders cut
                          from the concept and the chef/appraiser cuts; those keep their own
-                         colours and light, and one picture pixel to a screen pixel
+                         colours and light, and one picture pixel to a screen pixel.
+                         HD manifests instead check native size, hash and edge detail
 
 fetch needs ImageMagick's magick to decode WebP; process and sheet use only the standard
 library, so the same raw PNGs always give the same bytes.
@@ -1163,7 +1164,7 @@ def check(art_dir):
         )
         failed += bool(found)
     print(f"checked {len(files)} PNGs listed in {art_dir / 'manifest.json'}: {failed} break a rule")
-    hd = art_dir if art_dir.name == "art_hd" else art_dir.with_name("art_hd")
+    hd = art_dir.with_name("art_hd")
     if hd.exists():
         failed += check_hd(hd)
     if failed:
