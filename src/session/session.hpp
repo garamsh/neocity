@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "../hud/menus.hpp"
+#include "../rendering/display.hpp"
 #include "../rendering/drawing.hpp"
 #include "sound.hpp"
 #include "survival_run.hpp"
@@ -19,12 +20,13 @@
 
 namespace neocity::session {
 
-/// The host's screens: the title screen, its controls and How to play pages,
-/// the choice of players, and the survival game.
+/// The host's screens: the title screen, its controls, How to play and
+/// settings pages, the choice of players, and the survival game.
 enum class Screen : std::uint8_t {
   Main,
   Controls,
   HowToPlay,
+  Settings,
   SurvivalSetup,
   Survival
 };
@@ -67,6 +69,15 @@ struct CinematicStage {
   std::function<void()> stop;
 };
 
+/// Keeps the player's display choice for the session: the host applies and
+/// stores a choice the session reports.
+struct DisplayStage {
+  /// The choice in force when the session opens.
+  rendering::Display shown;
+  /// Applies and stores a new choice.
+  std::function<void(const rendering::Display &display)> change;
+};
+
 /// Builds a fresh run's rule objects and hands back references to them.
 using StartSurvival = std::function<SurvivalFeatures()>;
 
@@ -82,10 +93,10 @@ struct Playback {
 /// root.
 class Session {
 public:
-  /// Receives the survival run factory, the stage that plays cinematics, and
-  /// the one that plays sound.
+  /// Receives the survival run factory, the stage that plays cinematics, the
+  /// one that plays sound, and the one that keeps the display choice.
   Session(StartSurvival start_survival, CinematicStage cinematic_stage,
-          SoundStage sound_stage);
+          SoundStage sound_stage, DisplayStage display_stage);
   /// Samples edges once and advances the open screen; a survival run takes all
   /// of the frame time.
   void advance(double delta, Command command);
@@ -111,6 +122,11 @@ public:
   /// Reports the open survival run, any cinematic over it, the tip on the
   /// screen and the tips the run has opened; empty with no run open.
   [[nodiscard]] godot::Dictionary survival_status() const;
+  /// Reports the display choice: its `width`, `height`, `resolution` label and
+  /// `mode`.
+  [[nodiscard]] godot::Dictionary display_status() const;
+  /// The display choice in force.
+  [[nodiscard]] const rendering::Display &display_choice() const;
 
 private:
   void advance_screen(double delta, const Command &command);
@@ -129,6 +145,7 @@ private:
   void select(hud::SetupEntry entry);
   void advance_title(const Command &command);
   void advance_setup(const Command &command);
+  void advance_settings(const Command &command);
   void start_run(survival::ControlMap control);
   void advance_run(SurvivalRun &open, double delta, const Command &command);
   void advance_interruption(hud::Interruption open, const Command &command);
@@ -141,41 +158,60 @@ private:
   void react(const std::vector<Moment> &found);
   /// Moves the flourishes on by `delta` seconds and drops the finished ones.
   void age_bursts(double delta);
-  void adjust_volume(MenuStep step);
+  /// Up and down choose a row of the pause screen's sound and display rows,
+  /// left and right change it.
+  void adjust_pause(MenuStep step);
+  /// Moves `setting` of the display choice `step` places and hands the new
+  /// choice to the host when it differs.
+  void change_display(hud::DisplaySetting setting, int step);
+  /// The display rows of the pause screen or the settings page, with the row
+  /// at index `marked` marked, or none.
+  [[nodiscard]] std::vector<hud::DisplayRow>
+  display_rows(std::optional<std::size_t> marked) const;
+  /// The marked display row of the pause screen; none while a volume is
+  /// marked.
+  [[nodiscard]] std::optional<std::size_t> pause_display_row() const;
+  /// The volume rows of the pause screen, marked only while a volume is.
+  [[nodiscard]] std::array<hud::VolumeRow, 2> shown_volumes() const;
   void send_volume() const;
   /// Keeps the open screen's music playing.
   void keep_music() const;
 
-  StartSurvival start;
-  std::optional<SurvivalRun> run;
   /// The number the next run's first logged event takes.
   std::uint64_t next_event = 0;
-  /// The open run's frame as the last advance left it, which every layer
-  /// draws and the status reports, so it is read once a frame.
-  std::optional<hud::SurvivalFrame> framed;
-  /// What `framed` shows, as the last aim worked it out.
-  std::optional<rendering::Shot> shot;
-  /// What a click acts on in what the screen shows, as the last aim worked
-  /// it out; a click acts on what the player saw.
-  std::vector<hud::Target> targets;
-  std::optional<godot::Vector2> pointer;
-  CinematicStage stage;
-  SoundStage sound;
-  Volume volume;
-  bool volume_sent = false;
-  Strides strides{};
-  /// The flourishes under way in the open run.
-  std::vector<rendering::Burst> bursts;
-  std::optional<Playback> playback;
-  std::optional<hud::Interruption> interruption;
-  /// The open run's first-play tips; a new run starts them afresh.
-  Tips tips;
-  Screen screen = Screen::Main;
+  /// The marked row of the pause screen: effects, music, resolution, window.
+  std::size_t pause_row = 0;
+  /// The marked row of the settings page: resolution, window.
+  std::size_t settings_row = 0;
   /// The marked title entry, an index into `hud::TITLE_ENTRIES`.
   std::size_t cursor = 0;
   /// The marked choice of players, an index into `hud::SETUP_ENTRIES`.
   std::size_t setup_cursor = 0;
+  /// What a click acts on in what the screen shows, as the last aim worked
+  /// it out; a click acts on what the player saw.
+  std::vector<hud::Target> targets;
+  /// The flourishes under way in the open run.
+  std::vector<rendering::Burst> bursts;
+  StartSurvival start;
+  std::optional<Playback> playback;
+  /// The open run's first-play tips; a new run starts them afresh.
+  Tips tips;
+  DisplayStage displaying;
+  /// What `framed` shows, as the last aim worked it out.
+  std::optional<rendering::Shot> shot;
+  CinematicStage stage;
+  SoundStage sound;
+  std::optional<SurvivalRun> run;
+  /// The open run's frame as the last advance left it, which every layer
+  /// draws and the status reports, so it is read once a frame.
+  std::optional<hud::SurvivalFrame> framed;
+  Strides strides{};
+  std::optional<godot::Vector2> pointer;
+  bool volume_sent = false;
+  Screen screen = Screen::Main;
   bool waiting_for_release = true;
+  std::optional<hud::Interruption> interruption;
+  Volume volume;
 };
 
 } // namespace neocity::session

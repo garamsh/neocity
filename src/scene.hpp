@@ -74,6 +74,9 @@ public:
   /// Reports what the speakers played and play now, for host checks; empty
   /// before the scene is ready.
   [[nodiscard]] godot::Dictionary sound_status() const;
+  /// Reports the display choice: its `width`, `height`, `resolution` label and
+  /// `mode`.
+  [[nodiscard]] godot::Dictionary display_status() const;
 
 protected:
   static void _bind_methods();
@@ -88,6 +91,8 @@ private:
   void draw_world();
   void draw_glow();
   void draw_finish();
+  /// Takes the art's layout onto the canvas the window shows.
+  void scale_canvas();
 
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;

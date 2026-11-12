@@ -16,7 +16,7 @@ using godot::String;
 constexpr int REFUSAL_SIZE = 2 * rendering::FONT_GRID;
 constexpr float REFUSAL_PAD = 10.0F;
 constexpr float REFUSAL_HEIGHT = 30.0F;
-constexpr float SCREEN_WIDTH = 1280.0F;
+using rendering::SCREEN_WIDTH;
 
 const char *actor_word(survival::Actor actor) {
   switch (actor) {
@@ -50,6 +50,16 @@ const char *bus_word(audio::Bus bus) {
     return "effects";
   case audio::Bus::Music:
     return "music";
+  }
+  std::abort();
+}
+
+const char *setting_word(DisplaySetting setting) {
+  switch (setting) {
+  case DisplaySetting::Resolution:
+    return "resolution";
+  case DisplaySetting::Window:
+    return "window";
   }
   std::abort();
 }
@@ -94,6 +104,9 @@ String press_name(const Press &press) {
         } else if constexpr (std::is_same_v<Pressed, DishPress>) {
           return pressed.direction == survival::Direction::Up ? "dish_up"
                                                               : "dish_down";
+        } else if constexpr (std::is_same_v<Pressed, DisplayPress>) {
+          return String("display_") + setting_word(pressed.setting) +
+                 (pressed.step < 0 ? "_prev" : "_next");
         } else {
           return String("volume_") + bus_word(pressed.bus) + "_" +
                  String::num_int64(pressed.level);

@@ -53,9 +53,18 @@ struct VolumePress {
   std::uint8_t level = 0;
 };
 
+/// A display setting the player changes.
+enum class DisplaySetting : std::uint8_t { Resolution, Window };
+
+/// `setting` moved one place, back for -1 and on for 1.
+struct DisplayPress {
+  DisplaySetting setting = DisplaySetting::Resolution;
+  int step = 0;
+};
+
 /// The key press a click stands for.
-using Press =
-    std::variant<OptionPress, MenuKey, PlayerPress, DishPress, VolumePress>;
+using Press = std::variant<OptionPress, MenuKey, PlayerPress, DishPress,
+                           VolumePress, DisplayPress>;
 
 /// A place on the screen that a click acts on, the press it stands for, and
 /// why it does nothing now; `refusal` is empty while it acts.
@@ -71,7 +80,7 @@ struct Target {
                                       godot::Vector2 point);
 
 /// Names `press` for the Godot checks, such as `option_2`,
-/// `appraiser_interact` or `volume_effects_3`.
+/// `appraiser_interact`, `volume_effects_3` or `display_window_next`.
 [[nodiscard]] godot::String press_name(const Press &press);
 
 /// Lights the target under `pointer` and writes its refusal over it, and

@@ -35,8 +35,8 @@ using survival::SourceKind;
 constexpr float CELL = 32.0F;
 constexpr float MAP_X = 64.0F;
 constexpr float MAP_Y = 70.0F;
-constexpr float SCREEN_WIDTH = 1280.0F;
-constexpr float SCREEN_HEIGHT = 720.0F;
+using rendering::SCREEN_HEIGHT;
+using rendering::SCREEN_WIDTH;
 /// The acid surface at acid 0: the top of row 14, below every ground row.
 constexpr float ACID_LOW = MAP_Y + 14.0F * CELL;
 /// How far below the acid picture's top edge its surface lies.

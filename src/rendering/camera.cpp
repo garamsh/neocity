@@ -12,10 +12,10 @@ namespace {
 using godot::Vector2;
 using survival::Actor;
 
-constexpr float SCREEN_WIDTH = 1280.0F;
-constexpr float SCREEN_HEIGHT = 720.0F;
+using rendering::SCREEN_HEIGHT;
+using rendering::SCREEN_WIDTH;
 /// The middle of the play area, between the top bar and the cards.
-constexpr Vector2 FOCUS(640.0F, 301.0F);
+constexpr Vector2 FOCUS(SCREEN_WIDTH / 2.0F, 301.0F);
 /// The play area's height on screen.
 constexpr float PLAY_HEIGHT = 478.0F;
 /// The camera's two zooms. Nothing between them is ever drawn, so each
