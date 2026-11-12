@@ -405,3 +405,6 @@ Runtime: backgrounds/city.png (the mockup's columns 640 to 1339 and rows 60 to 5
 
 acid_cut_fill: erase_region of the mockup's rows 560 to 940, 1672x381, masked over the walkways' pillars and chains standing in the acid, the acid sign's pillar, the flesh and crates at the right and the interface along the bottom. Credits: 1
 Runtime: backgrounds/acid.png (the mockup's columns 0 to 1479 and rows 560 to 940, this fill in the masked pixels, clear above the acid's surface; from version 11, resampled to the screen and cut 1133x292 from it, this fill across its top 140 rows, and the far shore kept above the surface)
+
+Day-one HD environment v1, issue #210, goal #207
+Separate candidate art_hd environment set at 1920x1080; existing art/ unchanged. Seven new built-in ImageGen sources use the first search mockup only as a style reference, with no original pixels adopted. Exact prompts, source hashes, processing and native target composition: docs/art/production/day-one-hd-provenance.txt. Assets and per-file roles: project/levels/monster_mouth_escape/art_hd/manifest.json. Runtime integration and creative acceptance are pending.

@@ -1,0 +1,425 @@
+{
+  "version": "day-one-hd-environment-v1",
+  "issue": 210,
+  "status": "candidate environment assets; runtime integration and creative acceptance pending",
+  "screen": [
+    1920,
+    1080
+  ],
+  "scale_policy": "one asset pixel per target screen pixel, no target composite resizing",
+  "reference": {
+    "commit": "241124d5ba2dcef937c904623f1e5e3cb03fbcf5",
+    "path": "docs/art/concept-art/monster-mouth-escape/search-mockup-v1.png",
+    "sha256": "eb8d8d525ef457ff5a85b3084a3b2798a4bba4c6845adfb3841aa8765cc71c8d",
+    "role": "style, palette, lighting and composition only; no source pixels adopted"
+  },
+  "provenance": "docs/art/production/day-one-hd-provenance.txt",
+  "files": [
+    {
+      "path": "backgrounds/throat.png",
+      "size": [
+        1011,
+        689
+      ],
+      "scale": 1,
+      "role": "Opaque back layer: wet magenta palate, cream fangs, luminous throat and hanging red uvula.",
+      "sha256": "6c6ba2441296474238439dd86997bc9a169186ca66a6c57264a3a0ba40863ea4",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-throat.png",
+        "source_sha256": "411921a13e092ffed6582c67f8d2663cdf3b93db40e32a9e09a76b84b85dbcd5",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "backgrounds/city.png",
+      "size": [
+        1920,
+        735
+      ],
+      "scale": 1,
+      "role": "Transparent middle layer: tilted indigo towers, amber windows, elevated rail and two trains sunk in pink tissue.",
+      "sha256": "7b9e0e9e90c101d5cda3b3df5953de301340db19fd9278fb1f3283896860b19b",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-city.png",
+        "source_sha256": "04a0f5ee66ad87b587dc0f289ca21b37bd387cfbddb2b5dfba97a808d33704ca",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "backgrounds/acid.png",
+      "size": [
+        1920,
+        507
+      ],
+      "scale": 1,
+      "role": "Lake layer: glowing green foam and reflections, drowned train cars, ruined pillars and far shore; transparent above skyline.",
+      "sha256": "9402ebe96cdedb66a85de94fd12ad316ba0c077c5b6627b5f78387820c84b6d2",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-acid.png",
+        "source_sha256": "34f2c6adb7c6add2e33ab0e376f2fefa6b92fc0698593b9d8162e9d1f8073502",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/ladder.png",
+      "size": [
+        96,
+        96
+      ],
+      "scale": 1,
+      "role": "One vertically repeating iron ladder cell with amber rungs.",
+      "sha256": "eb25fe1b9fa9c0b2f40ef0d6ebb4667ba7200f4b37777e117ca1b49aad6f45ee",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/ladder_broken.png",
+      "size": [
+        96,
+        192
+      ],
+      "scale": 1,
+      "role": "Two-cell ladder with torn rail and missing rungs.",
+      "sha256": "eacd9aa54e7d4727c57caae9efc9cae0249dbf10d424b7afa3b87aaa2ec83cda",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/door_cold_store.png",
+      "size": [
+        96,
+        192
+      ],
+      "scale": 1,
+      "role": "Closed steel door with yellow-black hazard stripes.",
+      "sha256": "12ad19154098c55d176c4f69f3b66fb674304784bc0d21964a81242fc285038f",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/door_broken.png",
+      "size": [
+        96,
+        192
+      ],
+      "scale": 1,
+      "role": "Broken open hazard door with bent steel and lit interior.",
+      "sha256": "09da0d849ab3df75076ba13c094f248e744d44590bdace9310d77ca1f1691e80",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/building_wall.png",
+      "size": [
+        1920,
+        396
+      ],
+      "scale": 1,
+      "role": "Four stacked masonry wall bands: kitchen front, tower upper front, tower lower front, loft underside; heights 96, 96, 96, 108.",
+      "sha256": "b2289763ea3f8b8d30ee5da00c72376dd9c087f4efae727d146a46cd60ebee59",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-deck.png",
+        "source_sha256": "2b3335109c9859b432990ac7900ea4251338574db4c48caecb9200a47c20dcce",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      },
+      "tile_period_x": 1920,
+      "cell_width": 96,
+      "band_heights": [
+        96,
+        96,
+        96,
+        108
+      ]
+    },
+    {
+      "path": "world/vending_machine.png",
+      "size": [
+        144,
+        177
+      ],
+      "scale": 1,
+      "role": "Red vending machine with cracked glass, cans and amber controls.",
+      "sha256": "c9fc86e42d3f0608ea5ba9f6eeae9291786cc057dcda2795efe695d86261c0d1",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/shop.png",
+      "size": [
+        1920,
+        384
+      ],
+      "scale": 1,
+      "role": "Two stacked 192px bands: amber kitchen front at left, amber tower shop front at right; transparent elsewhere.",
+      "sha256": "11d744eca1e5e27a0f9d573ea60ebaa670aacfbc0242074c61225bc168607494",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-shops.png",
+        "source_sha256": "15336609fe0173d4130865748f4f446a7cdebc2e278d03af9533fb03a7cdad84",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      },
+      "band_heights": [
+        192,
+        192
+      ]
+    },
+    {
+      "path": "world/vendor_cart.png",
+      "size": [
+        192,
+        96
+      ],
+      "scale": 1,
+      "role": "Wheeled vegetable-and-pot street vendor cart with fabric awning.",
+      "sha256": "3ac3475280f1b8cc79d275b0abaa382c841fac631156614ab904f2ed0bd2e366",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/noodle_vendor.png",
+      "size": [
+        39,
+        72
+      ],
+      "scale": 1,
+      "role": "Noodle vendor NPC holding a steaming ladle.",
+      "sha256": "dfbae1374d41c4c6cd9ae9d33f1118bd2296c20076764e7b2d1683afb48f0474",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/kiosk.png",
+      "size": [
+        96,
+        96
+      ],
+      "scale": 1,
+      "role": "Wall-mounted rusty terminal with amber abstract indicator bars and no text.",
+      "sha256": "f33c19f9920dd3ae64528e5c0953572ce23e5a1c4fc299291310228e8d3d200a",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": true,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/ferry.png",
+      "size": [
+        384,
+        150
+      ],
+      "scale": 1,
+      "role": "Complete indigo subway car with amber windows, isolated for the drifting ferry role.",
+      "sha256": "8a8034994a657d9032b9ebf1125752b3950c2608bce9b59a5fc41c559ee9a24e",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/bag_washed_up.png",
+      "size": [
+        84,
+        93
+      ],
+      "scale": 1,
+      "role": "Yellow-orange backpack with pockets, straps and a small shine.",
+      "sha256": "62408db29793641f8783e91c0f22cc7f7f7607d12d4f11575c708aa75776afcf",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/cold_store.png",
+      "size": [
+        288,
+        288
+      ],
+      "scale": 1,
+      "role": "Amber open-front cold-store room with produce crates and supply shelves.",
+      "sha256": "237099971479ffdca992abac44a7d8f75efe3ea97ec515d8efc095a540502279",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "world/acid_drip.png",
+      "size": [
+        48,
+        144
+      ],
+      "scale": 1,
+      "role": "Long red-orange slime drip.",
+      "sha256": "2f1fffd6d3cdcb81e8086322642b13f490536ae9b5574577e391b9ddb7e34e6a",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "walkway/deck.png",
+      "size": [
+        1920,
+        504
+      ],
+      "scale": 1,
+      "role": "Six stacked 84px bands: kitchen roof, tower roof, kitchen loft, upper walkway, lower walkway, plain pier.",
+      "sha256": "d0d6206189958b9246932344f88a77a00f0bb4d8c56b0222d45c4864ab2caf34",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-deck.png",
+        "source_sha256": "2b3335109c9859b432990ac7900ea4251338574db4c48caecb9200a47c20dcce",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      },
+      "tile_period_x": 1920,
+      "cell_width": 96,
+      "band_heights": [
+        84,
+        84,
+        84,
+        84,
+        84,
+        84
+      ]
+    },
+    {
+      "path": "ground/rubble.png",
+      "size": [
+        96,
+        48
+      ],
+      "scale": 1,
+      "role": "Low violet stone rubble with orange rim light.",
+      "sha256": "6c0e052916e97200a1d04721efb878a9119b98ea2a175937a22335df0960614c",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-props.png",
+        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "walkway/structure.png",
+      "size": [
+        1920,
+        549
+      ],
+      "scale": 1,
+      "role": "One transparent first-screen support sheet: lamp, cable, posts, hanging chain and ACID gauge pillar.",
+      "sha256": "d910e74045de43c2f07a912c372abfb11ab589ec18d892f17e4a37cf630fc8f0",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/day-one-hd-source-structure.png",
+        "source_sha256": "73957c5ba121a6e4c6059e910c48472c51fc9ff59a1096b8bd630e646b271544",
+        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
+        "manual_retouch": false,
+        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
+        "human_retouch": false
+      },
+      "target_origin": [
+        0,
+        292
+      ]
+    }
+  ]
+}
