@@ -12,10 +12,11 @@ The game opens on the title screen, the monster's mouth behind the game's logo:
 - **Controls** lists every key for both players, the pause screen's list with the pause and leave keys after it.
 - **How to play** explains each idea of the game in one line, the same lines the tips show.
 - **Quit** closes the game.
+- **Settings**, the last entry, sets the window's resolution, 1280×720, 1600×900, 1920×1080, 2560×1440 or 3840×2160, and whether it is a window or full screen. The game draws at the window's own resolution and letterboxes any other aspect ratio; the choice is kept between runs.
 
-On the title screen and on the choice of players, move the cursor with W or up and S or down, and press Enter; the number keys choose an entry directly, 1 to 4 on the title screen and 1 to 3 on the choice of players. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
+On the title screen and on the choice of players, move the cursor with W or up and S or down, and press Enter; the number keys choose an entry directly, 1 to 4 on the title screen, where Settings has no number, and 1 to 3 on the choice of players. M or Esc goes back to the title screen. During a run, M asks first, because progress is not saved. Release held keys after a menu choice before giving the next input.
 
-The mouse does what the keys do, so only movement needs the keyboard. Click a menu entry, the action button to collect or repair, the travel words to set out or return, the chef to cook, the appraiser's ingredients to appraise, the task card's step, its feed and end-of-day lines, the dish line to choose the next dish, or the pause chip. On the pause screen, click continue, leave, or a volume block. Something that can be clicked lights up under the mouse, and one that does nothing now says why. With two players on one mouse, the chef cooks, feeds and ends the day, the appraiser appraises, and in the city each player clicks their own button.
+The mouse does what the keys do, so only movement needs the keyboard. Click a menu entry, the action button to collect or repair, the travel words to set out or return, the chef to cook, the appraiser's ingredients to appraise, the task card's step, its feed and end-of-day lines, the dish line to choose the next dish, or the pause chip. On the pause screen, click continue, leave, a volume block, or an arrow beside the resolution or window mode; the Settings page has the same arrows. Something that can be clicked lights up under the mouse, and one that does nothing now says why. With two players on one mouse, the chef cooks, feeds and ends the day, the appraiser appraises, and in the city each player clicks their own button.
 
 | Input | Player 1 | Player 2 |
 |---|---|---|
@@ -32,7 +33,7 @@ The mouse does what the keys do, so only movement needs the keyboard. Click a me
 | Hand your actor to AI, playing together | X | N |
 | Pause or continue, listing every key | Esc | Esc |
 | Leave the run for the title screen | M, then Enter; Esc cancels | M, then Enter; Esc cancels |
-| Change the effects or music volume, on the pause screen | W/S or up/down to choose, A/D or left/right to change | the same |
+| Change the effects or music volume, the resolution or the window mode, on the pause screen or the Settings page | W/S or up/down to choose, A/D or left/right to change | the same |
 
 ## Run it
 
