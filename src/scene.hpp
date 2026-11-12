@@ -13,6 +13,7 @@
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
+#include <godot_cpp/variant/vector2i.hpp>
 
 #include <cstdint>
 #include <optional>
@@ -71,11 +72,14 @@ public:
   /// screen's eased values at `seconds` from then on, so host checks read the
   /// screen at a moment they choose.
   void pin_scene_clock(double seconds);
+  /// Pins the size the display counts as, for host checks that cannot count
+  /// on the machine's.
+  void pin_display_size(godot::Vector2i size);
   /// Reports what the speakers played and play now, for host checks; empty
   /// before the scene is ready.
   [[nodiscard]] godot::Dictionary sound_status() const;
-  /// Reports the display choice: its `width`, `height`, `resolution` label and
-  /// `mode`.
+  /// Reports the display choice in force: its `width`, `height`,
+  /// `resolution` label, `mode`, and whether the last change was `saved`.
   [[nodiscard]] godot::Dictionary display_status() const;
 
 protected:
@@ -96,6 +100,7 @@ private:
 
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
+  std::optional<godot::Vector2i> pinned_screen;
   session::Session session;
   std::optional<rendering::Art> drawing;
   std::optional<audio::Speaker> speaker;

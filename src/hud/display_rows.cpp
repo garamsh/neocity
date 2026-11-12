@@ -60,7 +60,8 @@ std::vector<Target> display_row_targets(const std::vector<DisplayRow> &rows,
     for (const bool forward : {false, true}) {
       targets.push_back({.area = arrow(left, y, forward),
                          .press = DisplayPress{.setting = row.setting,
-                                               .step = forward ? 1 : -1}});
+                                               .step = forward ? 1 : -1},
+                         .refusal = row.refusal});
     }
     y += pitch;
   }

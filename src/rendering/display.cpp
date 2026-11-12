@@ -18,6 +18,8 @@ constexpr const char *FULLSCREEN = "fullscreen";
 /// Godot's `Window.MODE_WINDOWED` and `Window.MODE_FULLSCREEN`.
 constexpr int GODOT_WINDOWED = 0;
 constexpr int GODOT_FULLSCREEN = 3;
+/// Godot's `DisplayServer.SCREEN_OF_MAIN_WINDOW`.
+constexpr int SCREEN_OF_MAIN_WINDOW = -1;
 
 /// A config file the trimmed bindings have no class for, made through the
 /// engine's `ClassDB`; empty when the engine cannot make one.
@@ -28,14 +30,20 @@ Variant new_config() {
                             : classes->call("instantiate", "ConfigFile");
 }
 
+/// Whether `result`, a call's answer, is the engine's `OK`; a nil or any other
+/// type is a failure.
+bool succeeded(const Variant &result) {
+  return result.get_type() == Variant::INT &&
+         static_cast<int>(result) == godot::OK;
+}
+
 } // namespace
 
 Display load_display(const godot::String &file) {
   Display display;
   const Variant config = new_config();
   godot::Object *object = config;
-  if (object == nullptr ||
-      static_cast<int>(object->call("load", file)) != godot::OK) {
+  if (object == nullptr || !succeeded(object->call("load", file))) {
     return display;
   }
   const Variant width = object->call("get_value", SECTION, "width", -1);
@@ -71,7 +79,7 @@ bool save_display(const Display &display, const godot::String &file) {
   object->call("set_value", SECTION, "width", size.width);
   object->call("set_value", SECTION, "height", size.height);
   object->call("set_value", SECTION, "mode", mode_label(display.mode));
-  return static_cast<int>(object->call("save", file)) == godot::OK;
+  return succeeded(object->call("save", file));
 }
 
 void apply_display(godot::Node &node, const Display &display) {
@@ -90,10 +98,37 @@ void apply_display(godot::Node &node, const Display &display) {
   window->call("move_to_center");
 }
 
-Display stepped_resolution(Display display, int step) {
-  const auto last = static_cast<int>(RESOLUTIONS.size()) - 1;
-  display.resolution = static_cast<std::size_t>(
-      std::clamp(static_cast<int>(display.resolution) + step, 0, last));
+godot::Vector2i display_size() {
+  godot::Object *server =
+      godot::Engine::get_singleton()->get_singleton("DisplayServer");
+  if (server == nullptr) {
+    return {};
+  }
+  const Variant size = server->call("screen_get_size", SCREEN_OF_MAIN_WINDOW);
+  return size.get_type() == Variant::VECTOR2I ? godot::Vector2i(size)
+                                              : godot::Vector2i();
+}
+
+std::size_t largest_fit(const godot::Vector2i &screen) {
+  std::size_t last = 0;
+  for (std::size_t index = 0; index < RESOLUTIONS.size(); ++index) {
+    const auto &choice = RESOLUTIONS.at(index);
+    if (screen.x <= 0 || screen.y <= 0 ||
+        (choice.width <= screen.x && choice.height <= screen.y)) {
+      last = index;
+    }
+  }
+  return last;
+}
+
+Display fitted(Display display, std::size_t last) {
+  display.resolution = std::min(display.resolution, last);
+  return display;
+}
+
+Display stepped_resolution(Display display, int step, std::size_t last) {
+  display.resolution = static_cast<std::size_t>(std::clamp(
+      static_cast<int>(display.resolution) + step, 0, static_cast<int>(last)));
   return display;
 }
 

@@ -95,10 +95,22 @@ MainScene::MainScene()
                                   }},
           session::DisplayStage{
               .shown = rendering::load_display(rendering::DISPLAY_FILE),
-              .change = [this](const rendering::Display &display) {
-                rendering::apply_display(*this, display);
-                rendering::save_display(display, rendering::DISPLAY_FILE);
-              }}) {}
+              .screen =
+                  [this] {
+                    return pinned_screen.value_or(rendering::display_size());
+                  },
+              .change =
+                  [this](const rendering::Display &display) {
+                    rendering::apply_display(*this, display);
+                    const bool saved = rendering::save_display(
+                        display, rendering::DISPLAY_FILE);
+                    if (!saved) {
+                      godot::UtilityFunctions::push_error(
+                          "Could not save the display choice to ",
+                          rendering::DISPLAY_FILE);
+                    }
+                    return saved;
+                  }}) {}
 
 void MainScene::_bind_methods() {
   godot::ClassDB::bind_method(godot::D_METHOD("screen_name"),
@@ -111,6 +123,8 @@ void MainScene::_bind_methods() {
                               &MainScene::pin_survival_seed);
   godot::ClassDB::bind_method(godot::D_METHOD("pin_scene_clock", "seconds"),
                               &MainScene::pin_scene_clock);
+  godot::ClassDB::bind_method(godot::D_METHOD("pin_display_size", "size"),
+                              &MainScene::pin_display_size);
   godot::ClassDB::bind_method(godot::D_METHOD("sound_status"),
                               &MainScene::sound_status);
   godot::ClassDB::bind_method(godot::D_METHOD("display_status"),
@@ -250,6 +264,8 @@ void MainScene::pin_scene_clock(double seconds) {
     drawing->pin(static_cast<float>(seconds));
   }
 }
+
+void MainScene::pin_display_size(godot::Vector2i size) { pinned_screen = size; }
 
 session::SurvivalFeatures MainScene::start_survival() {
   const auto seed = pinned_seed.value_or(

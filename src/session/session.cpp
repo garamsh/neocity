@@ -608,36 +608,52 @@ void Session::adjust_pause(MenuStep step) {
 }
 
 void Session::change_display(hud::DisplaySetting setting, int step) {
-  auto next = displaying.shown;
+  const auto last = rendering::largest_fit(displaying.screen());
+  const auto &shown = displaying.shown;
+  auto next = shown;
   switch (setting) {
   case hud::DisplaySetting::Resolution:
-    next = rendering::stepped_resolution(next, step);
+    if (shown.mode == rendering::WindowMode::Fullscreen) {
+      return;
+    }
+    next = rendering::stepped_resolution(rendering::fitted(shown, last), step,
+                                         last);
+    if (next.resolution == rendering::fitted(shown, last).resolution) {
+      return;
+    }
     break;
   case hud::DisplaySetting::Window:
-    next = rendering::toggled_mode(next);
+    next = rendering::toggled_mode(shown);
     break;
   }
-  if (next == displaying.shown) {
-    return;
-  }
   displaying.shown = next;
-  displaying.change(next);
+  display_saved = displaying.change(rendering::fitted(next, last));
   cue(audio::Cue::MenuMove);
 }
 
 std::vector<hud::DisplayRow>
 Session::display_rows(std::optional<std::size_t> marked) const {
-  const auto &shown = displaying.shown;
-  return {{.setting = hud::DisplaySetting::Resolution,
-           .name = "Resolution",
-           .value = rendering::resolution_label(shown.resolution),
-           .marked = marked == 0},
-          {.setting = hud::DisplaySetting::Window,
-           .name = "Window",
-           .value = shown.mode == rendering::WindowMode::Fullscreen
-                        ? "Full screen"
-                        : "Windowed",
-           .marked = marked == 1}};
+  const auto shown = display_choice();
+  const bool full = shown.mode == rendering::WindowMode::Fullscreen;
+  const auto screen_size = displaying.screen();
+  const godot::String screen_label =
+      screen_size.x > 0 && screen_size.y > 0
+          ? godot::String::num_int64(screen_size.x) + "x" +
+                godot::String::num_int64(screen_size.y) + " (display)"
+          : godot::String("Display size");
+  return {
+      {.setting = hud::DisplaySetting::Resolution,
+       .name = "Resolution",
+       .value =
+           full ? screen_label : rendering::resolution_label(shown.resolution),
+       .refusal = full ? godot::String("Full screen uses the display's size.")
+                       : godot::String(),
+       .marked = marked == 0},
+      {.setting = hud::DisplaySetting::Window,
+       .name = "Window",
+       .value = full ? "Full screen" : "Windowed",
+       .refusal = godot::String(),
+       .marked = marked == 1}};
 }
 
 std::array<hud::VolumeRow, 2> Session::shown_volumes() const {
@@ -650,18 +666,20 @@ std::array<hud::VolumeRow, 2> Session::shown_volumes() const {
   return rows;
 }
 
-const rendering::Display &Session::display_choice() const {
-  return displaying.shown;
+rendering::Display Session::display_choice() const {
+  return rendering::fitted(displaying.shown,
+                           rendering::largest_fit(displaying.screen()));
 }
 
 godot::Dictionary Session::display_status() const {
-  const auto &shown = displaying.shown;
+  const auto shown = display_choice();
   const auto &size = rendering::RESOLUTIONS.at(shown.resolution);
   godot::Dictionary status;
   status.set("width", size.width);
   status.set("height", size.height);
   status.set("resolution", rendering::resolution_label(shown.resolution));
   status.set("mode", rendering::mode_label(shown.mode));
+  status.set("saved", display_saved);
   return status;
 }
 

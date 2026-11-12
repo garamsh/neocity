@@ -74,8 +74,11 @@ struct CinematicStage {
 struct DisplayStage {
   /// The choice in force when the session opens.
   rendering::Display shown;
-  /// Applies and stores a new choice.
-  std::function<void(const rendering::Display &display)> change;
+  /// The size of the display the window is on; not positive in either when
+  /// unknown.
+  std::function<godot::Vector2i()> screen;
+  /// Applies and stores a new choice; false when it could not be stored.
+  std::function<bool(const rendering::Display &display)> change;
 };
 
 /// Builds a fresh run's rule objects and hands back references to them.
@@ -122,11 +125,12 @@ public:
   /// Reports the open survival run, any cinematic over it, the tip on the
   /// screen and the tips the run has opened; empty with no run open.
   [[nodiscard]] godot::Dictionary survival_status() const;
-  /// Reports the display choice: its `width`, `height`, `resolution` label and
-  /// `mode`.
+  /// Reports the display choice in force: its `width`, `height`,
+  /// `resolution` label, `mode`, and whether the last change was `saved`.
   [[nodiscard]] godot::Dictionary display_status() const;
-  /// The display choice in force.
-  [[nodiscard]] const rendering::Display &display_choice() const;
+  /// The display choice in force: the saved one with its resolution held to
+  /// what the display fits.
+  [[nodiscard]] rendering::Display display_choice() const;
 
 private:
   void advance_screen(double delta, const Command &command);
@@ -162,7 +166,8 @@ private:
   /// left and right change it.
   void adjust_pause(MenuStep step);
   /// Moves `setting` of the display choice `step` places and hands the new
-  /// choice to the host when it differs.
+  /// choice to the host when it differs; a full screen window has no
+  /// resolution to move.
   void change_display(hud::DisplaySetting setting, int step);
   /// The display rows of the pause screen or the settings page, with the row
   /// at index `marked` marked, or none.
@@ -208,6 +213,8 @@ private:
   Strides strides{};
   std::optional<godot::Vector2> pointer;
   bool volume_sent = false;
+  /// Whether the host stored the last display choice it was given.
+  bool display_saved = true;
   Screen screen = Screen::Main;
   bool waiting_for_release = true;
   std::optional<hud::Interruption> interruption;

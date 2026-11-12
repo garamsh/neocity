@@ -11,11 +11,13 @@
 namespace neocity::hud {
 
 /// One display setting on the pause screen or the settings page: its name, the
-/// choice it shows now, and whether the left and right keys change it.
+/// choice it shows now, why its arrows do nothing now (empty while they act),
+/// and whether the left and right keys change it.
 struct DisplayRow {
   DisplaySetting setting = DisplaySetting::Resolution;
   godot::String name;
   godot::String value;
+  godot::String refusal;
   bool marked = false;
 };
 
