@@ -65,6 +65,10 @@ constexpr float KITCHEN_Y = 62.0F;
 constexpr float KITCHEN_HEIGHT = 256.0F;
 constexpr float KITCHEN_FLOOR = 310.0F;
 constexpr float WORKSHOP_SCALE = 2.0F;
+/// The chef and appraiser frames' foot pivot (128, 204 picture pixels in the
+/// character manifests), in layout units.
+constexpr Vector2 ACTOR_PIVOT(128.0F / (2.0F * ART_SCALE),
+                              204.0F / (2.0F * ART_SCALE));
 constexpr Vector2 FEED_BUCKET(1205.0F, 202.0F);
 constexpr float DASH = 4.0F;
 /// Clears the head of a character that rises a cell above its own.
@@ -988,12 +992,11 @@ void paint_actor(godot::Node2D &canvas, const Art &art,
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
-  const float anchor = 128.0F / (2.0F * ART_SCALE);
+  const float anchor = ACTOR_PIVOT.x;
   const float pivot = shown.mirrored ? size.x - anchor : anchor;
-  art.image(
-      canvas, shown.image,
-      Vector2(feet.x - pivot + offset, feet.y - 204.0F / (2.0F * ART_SCALE)),
-      1.0F, shown.mirrored);
+  art.image(canvas, shown.image,
+            Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y), 1.0F,
+            shown.mirrored);
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -1144,12 +1147,12 @@ Labels label_city(const Art &art, const survival::Content &content,
     const auto shown = pose(actor, body, art.track(actor, body, now), now);
     const Vector2 size = art.size(shown.image);
     const Vector2 feet = feet_of(art, actor, body);
-    const float anchor = 128.0F / (2.0F * ART_SCALE);
+    const float anchor = ACTOR_PIVOT.x;
     const float pivot = shown.mirrored ? size.x - anchor : anchor;
     plates.keep_clear(to_screen(
-        camera, godot::Rect2(Vector2(feet.x - pivot + offset,
-                                     feet.y - 204.0F / (2.0F * ART_SCALE)),
-                             size)));
+        camera,
+        godot::Rect2(Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y),
+                     size)));
   };
   if (party.chef_out) {
     keep_actor(Actor::Chef, view.exploration.chef.body, 0.0F);
