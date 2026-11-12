@@ -3,8 +3,8 @@ extends SceneTree
 ## Captures real rendered frames of a played survival run into user://survival/,
 ## and fails when a city frame's ground does not read over the scenery behind it,
 ## its walkways, backdrop and acid band do not read dark to bright, the acid
-## band behind the map does not show green at no acid, the stairs' walked-on part does not
-## lead the part under it or reads darker than the deck's top edge, the acid's light does not rise
+## band behind the map does not show green at no acid, a deck misses its flat
+## collision floor, the acid's light does not rise
 ## above its surface, the acid stands still between two
 ## frames a moment apart on the scene's clock, the camera draws the scene at a
 ## zoom other than once or twice its size, the teeth, the backdrop or the acid
@@ -96,8 +96,7 @@ const ACID_LOW: int = 518
 ## its heave of 3 and a margin of 8. Its light over it never reaches the band's
 ## rows, which take the band's own light.
 const SEA_REACH: int = 32
-## Plain lower walkway deck beside the stairs, whose lit top edge the stairs'
-## walked-on part is held to; the camera that shows the stairs shows it too.
+## The adjacent normal walkway supplies the flat-floor control.
 const STAIR_DECK_CELLS: Array[Vector2i] = [Vector2i(10, 9)]
 ## From the entrance down the stairs onto the lower walkway.
 const MARKET_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
@@ -835,8 +834,7 @@ func _misnamed() -> String:
 			return "the map leaves out the goal %s: %s" % [goal, words]
 	return ""
 
-## Whether the frame shows the scene's rectangle at corner of size whole, inside
-## the play area.
+## Whether the projected rectangle lies inside the play area.
 func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
 
@@ -1438,7 +1436,8 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 ## layer's `throat_at` meta puts them read within TEETH_TOLERANCE of the
 ## picture's colour in each channel, so the fangs hang from the top of the
 ## screen. The control is that the fangs cover at least TEETH_COVER of the
-## pixels read, so the rows are the fangs'.
+## pixels read, so the rows are the fangs'. Native colour comparisons exclude
+## observed overlays, deck fragments and actors; source coverage includes hidden fangs.
 func _teeth_show(frame: Image, screen: String) -> bool:
 	frame = native_frame
 	var occluders: Array = scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", []) + scene.get_meta("map_plates", [])
@@ -1570,27 +1569,6 @@ func _acid_surface() -> float:
 	var acid: int = status["acid"]
 	var full: int = status["full_acid"]
 	return ACID_LOW - clampf(float(acid) / full, 0.0, 1.0) * (ACID_LOW - MAP_ORIGIN.y)
-
-## The mean luminance of a band along a line that falls one CELL from corner
-## across width scene pixels: in each of the columns from columns.x to
-## columns.y, the rows from rows.x to rows.y under the line, a negative row
-## above it. Each scene pixel is read where the camera puts it.
-func _band(frame: Image, view: Transform2D, corner: Vector2, width: int, columns: Vector2i, rows: Vector2i) -> float:
-	var total: float = 0.0
-	for x: int in range(columns.x, columns.y):
-		var line: int = floori(float(x * CELL) / width)
-		for row: int in range(rows.x, rows.y):
-			total += _pixel(frame, view, corner + Vector2(x, line + row))
-	return total / ((columns.y - columns.x) * (rows.y - rows.x))
-
-## The mean luminance of a cell-wide band of scene rows whose top-left is
-## corner.
-func _luminance(frame: Image, view: Transform2D, corner: Vector2, rows: int) -> float:
-	var total: float = 0.0
-	for y: int in range(rows):
-		for x: int in range(CELL):
-			total += _pixel(frame, view, corner + Vector2(x, y))
-	return total / (CELL * rows)
 
 ## The summed luminance, as x, and the count, as y, of the screen pixels of a
 ## cell-wide band of scene rows whose top-left is corner that lie clear of the
