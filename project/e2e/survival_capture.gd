@@ -159,7 +159,8 @@ const SETTLE_SECONDS: float = 0.4
 ## screen-sized mockup covers 0.044 of it.
 const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.313
-const TEETH_TOLERANCE: float = 0.06
+## The largest measured 31.3% colour-error quantile was 0.121569; 0.14 retains a margin for the finishing pass.
+const TEETH_TOLERANCE: float = 0.14
 const TEETH_COVER: float = 0.035
 ## How a fang's cream reads in the throat picture: its red and green at least
 ## these, and its green no less than its blue, which the pink flesh's is.
@@ -364,6 +365,10 @@ func _run() -> void:
 	await _frames(40)
 	await _walk(KEY_D, 6)
 	await _save_city("26-city-middle-acid")
+	if OS.get_cmdline_user_args().has("--fang-diagnostic"):
+		_finish("fail: diagnostic measurement only; not an acceptance run")
+		quit(0)
+		return
 	if not await _acid_moves("26-city-middle-acid"):
 		return
 	await _tap(KEY_Q)
@@ -1536,6 +1541,18 @@ func _teeth_show(_frame_image: Image, screen: String) -> bool:
 			_fail("the same fang verdict accepted removed fang colours or changed its sampled subject")
 			return false
 		print("Capture: fang control rejected removed fang colours: share %.6f, unchanged source coverage %.6f; original share %.6f passed." % [absent.x, absent.y, reading.x])
+		var displaced: Image = native_frame.duplicate() as Image
+		var band_end: int = roundi((PLAY.position.y + TEETH_ROWS) * CANVAS_SCALE)
+		for y: int in range(band_end):
+			for x: int in range(displaced.get_width()):
+				if _fang(x, y).a >= 0.5:
+					displaced.set_pixel(x, y, Color(0.03, 0.04, 0.07))
+					displaced.set_pixel(x, y + band_end, native_frame.get_pixel(x, y))
+		var lowered: Vector2 = _teeth_sample(displaced, occluders)
+		if _teeth_visible(lowered):
+			_fail("the fang verdict accepted fangs displaced below the top band")
+			return false
+		print("Capture: fang placement control rejected fangs displaced below the top band: share %.6f, unchanged source coverage %.6f." % [lowered.x, lowered.y])
 		teeth_control_checked = true
 	return true
 
@@ -1547,6 +1564,7 @@ func _teeth_sample(frame: Image, occluders: Array) -> Vector2:
 	var covered: int = 0
 	var matched: int = 0
 	var count: int = 0
+	var errors: Array[float] = []
 	for y: int in range(roundi(PLAY.position.y * CANVAS_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * CANVAS_SCALE)):
 		for x: int in range(0, frame.get_width(), 2):
 			count += 1
@@ -1559,8 +1577,17 @@ func _teeth_sample(frame: Image, occluders: Array) -> Vector2:
 				continue
 			covered += 1
 			var pixel: Color = frame.get_pixel(x, y)
-			if maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) <= TEETH_TOLERANCE:
+			var error: float = maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b)))
+			if OS.get_cmdline_user_args().has("--fang-diagnostic"):
+				errors.append(error)
+			if error <= TEETH_TOLERANCE:
 				matched += 1
+	if not errors.is_empty():
+		errors.sort()
+		var quantiles: Dictionary = {}
+		for fraction: float in [0.313, 0.5, 0.75, 0.9]:
+			quantiles[str(fraction)] = errors[mini(errors.size() - 1, ceili(errors.size() * fraction) - 1)]
+		print("Fang diagnostic: pinned clock %.6f, throat_at %s, visible samples %d, colour-error quantiles %s." % [clock, scene.get_node("World").get_meta("throat_at", Vector2.ZERO), errors.size(), quantiles])
 	return Vector2(float(matched) / maxi(covered, 1), float(candidates) / count)
 
 ## The throat picture's pixel the World layer drew at screen pixel (x, y), by

@@ -157,7 +157,7 @@ godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// The stairs' stringer, under their treads, faces away from the light.
 godot::Color stringer_tint() { return {0.7F, 0.7F, 0.75F}; }
 /// The walked-on top edge of the ground is lit warm and bright.
-godot::Color ground_edge_tint() { return {3.6F, 3.0F, 2.4F}; }
+godot::Color ground_edge_tint() { return {3.9F, 3.25F, 2.6F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -180,22 +180,25 @@ godot::String from(std::string_view text) {
 
 /// Draws `image` centred on `box` with its bottom edge on the box's floor.
 void stand(godot::Node2D &canvas, const Art &art, Image image,
-           const godot::Rect2 &box) {
+           const godot::Rect2 &box,
+           godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) {
   const Vector2 size = art.size(image);
   art.image(canvas, image,
             Vector2(box.position.x + (box.size.x - size.x) / 2.0F,
-                    box.position.y + box.size.y - size.y));
+                    box.position.y + box.size.y - size.y),
+            1.0F, false, tint);
 }
 
 /// Draws `image` like `stand`, over a contact shadow along the box's floor, so
 /// it sits on the floor rather than floating in front of it.
 void stand_on_floor(godot::Node2D &canvas, const Art &art, Image image,
-                    const godot::Rect2 &box) {
+                    const godot::Rect2 &box,
+                    godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) {
   const float width = art.size(image).x + 6.0F;
   canvas.draw_rect(rect(box.get_center().x - width / 2.0F,
                         box.position.y + box.size.y - 2.0F, width, 4.0F),
                    floor_shadow());
-  stand(canvas, art, image, box);
+  stand(canvas, art, image, box, tint);
 }
 
 void dashed_frame(godot::Node2D &canvas, const godot::Rect2 &box,
@@ -457,7 +460,7 @@ void paint_deck(godot::Node2D &canvas, const Art &art,
                 survival::GridPosition cell, bool corroded) {
   const godot::Rect2 source = deck_source(cell);
   const godot::Color tint = corroded ? corroded_tint() : untinted();
-  const godot::Color face = tint * godot::Color(0.75F, 0.75F, 0.75F);
+  const godot::Color face = tint * godot::Color(0.70F, 0.70F, 0.70F);
   const Vector2 at(cell_x(cell.x), floor_y(cell.y));
   const bool loft = cell.y == LOFT_ROW;
   const bool left = !has_ground(standing, {.x = cell.x - 1, .y = cell.y});
@@ -903,7 +906,10 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
   const auto box = cell.grow(-2.0F);
   const auto tones = palette();
   if (marker.stock.kind != SourceKind::Shop) {
-    stand_on_floor(canvas, art, source_image(marker.stock.kind), cell);
+    const godot::Color tint = marker.stock.kind == SourceKind::VendingMachine
+                                  ? godot::Color(1.16F, 1.04F, 0.90F)
+                                  : untinted();
+    stand_on_floor(canvas, art, source_image(marker.stock.kind), cell, tint);
   }
   if (marker.promised) {
     canvas.draw_rect(cell, tones.gold, false, 2.0F);

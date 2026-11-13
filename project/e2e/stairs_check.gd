@@ -82,11 +82,14 @@ func _map_art_tour() -> void:
 	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
 		if not await _tour_move(target):
 			return
-	var chef: Dictionary = scene.survival_status()["chef"]
-	if chef.get("interior", "") != "Kitchen Shop":
-		_tour_fail("the chef did not enter the kitchen interior")
-		return
 	if not await _tour_shot("230-interior-kitchen"):
+		return
+	var inside: bool = false
+	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):
+		var texture: Texture2D = layer["texture"]
+		inside = inside or texture.resource_path.ends_with("world/interior_kitchen.png")
+	if not inside:
+		_tour_fail("the occupied kitchen did not draw its interior background")
 		return
 	for target: Vector2i in [Vector2i(3, 8), Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(29, 9), Vector2i(31, 9), Vector2i(35, 9), Vector2i(36, 8), Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)]:
 		var body: Dictionary = scene.survival_status()["chef"]
