@@ -70,15 +70,71 @@ func _run() -> void:
 	print("Stairs: finished: %s; %d/4 direction/cell readings, %d failures." % ["pass" if enough and failures == 0 else "fail", measured.size(), failures])
 	quit(0 if enough and failures == 0 else 1)
 
-## Plays both actors through the fixed street into the aquarium and saves native evidence.
+## Plays two humans through both maps at every drawn damage stage.
 func _map_art_tour() -> void:
 	await _tap(KEY_1)
 	await _tap(KEY_3)
 	await _tap(KEY_E)
+	for day: int in [1, 5, 10]:
+		var current_day: int = scene.survival_status()["day"]
+		while current_day < day:
+			await _tap(KEY_G)
+			current_day = scene.survival_status()["day"]
+		var state: Dictionary = scene.survival_status()
+		if state["day"] != day or state["phase"] != "workshop" or state["chef"]["key_set"] != 0 or state["appraiser"]["key_set"] != 1:
+			_tour_fail("requested day/control not established: " + _tour_status(state))
+			return
+		await _tap(KEY_Q)
+		await _tap(KEY_U)
+		if not await _tour_shot("230-street-day-%d" % day):
+			return
+		var route: Array[Vector2i] = [Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(29, 9), Vector2i(31, 9)]
+		if day < 10:
+			route.append(Vector2i(35, 9))
+			route.append(Vector2i(36, 8))
+		else:
+			route.append(Vector2i(34, 13))
+			route.append(Vector2i(36, 12))
+			route.append(Vector2i(36, 8))
+		route.append_array([Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)])
+		for target: Vector2i in route:
+			if not await _tour_move(target):
+				return
+			if day == 1 and target == Vector2i(11, 9):
+				if not await _tour_collect():
+					return
+		if not await _tour_move(Vector2i(62, 11)):
+			return
+		state = scene.survival_status()
+		if state["map"] != "Aquarium" or state["chef"]["x"] != 4 or state["appraiser"]["x"] != 4 or state["chef"]["y"] != 10 or state["appraiser"]["y"] != 10:
+			_tour_fail("paired exit did not place both humans at aquarium arrival (4,10): " + _tour_status(state))
+			return
+		print("Stairs: paired travel day %d: Aquarium arrival (4,10), two human key sets 0/1." % day)
+		for target: Vector2i in [Vector2i(7, 10), Vector2i(11, 10), Vector2i(12, 9), Vector2i(13, 8), Vector2i(17, 8)]:
+			if not await _tour_move(target):
+				return
+			if day == 1 and target == Vector2i(7, 10):
+				if not await _tour_collect():
+					return
+		if not await _tour_shot("230-aquarium-day-%d" % day):
+			return
+		await _tap(KEY_Q)
+		await _tap(KEY_U)
+		if day == 1:
+			for attempt: int in range(8):
+				await _tap(KEY_O)
+				await _tap(KEY_E)
+				var foods: int = scene.survival_status()["foods"]
+				if foods > 0:
+					break
+			await _tap(KEY_F)
+			state = scene.survival_status()
+			print("Stairs: human meal: day=%s acid=%s reaction=%s score=%s." % [state["day"], state["acid"], state.get("reaction", ""), state.get("score", 0)])
+			if state["day"] != 2 or state["acid"] != 0:
+				_tour_fail("the human-cooked first meal did not preserve the day-ten run: " + _tour_status(state))
+				return
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
-	if not await _tour_shot("230-street-start"):
-		return
 	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
 		if not await _tour_move(target):
 			return
@@ -91,60 +147,76 @@ func _map_art_tour() -> void:
 	if not inside:
 		_tour_fail("the occupied kitchen did not draw its interior background")
 		return
-	for target: Vector2i in [Vector2i(3, 8), Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(29, 9), Vector2i(31, 9), Vector2i(35, 9), Vector2i(36, 8), Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)]:
-		var body: Dictionary = scene.survival_status()["chef"]
-		var row: int = body["y"]
-		var jump: bool = target.y < row or target.x in [13, 31]
-		if not await _tour_move(target, jump):
-			return
-	if not await _tour_shot("230-street-terminal"):
-		return
-	if not await _tour_move(Vector2i(62, 11)):
-		return
-	if scene.survival_status()["map"] != "Aquarium":
-		_tour_fail("the paired street exit did not enter the aquarium")
-		return
-	if not await _tour_shot("230-aquarium-lobby"):
-		return
-	print("Stairs: finished: pass; fixed street and aquarium floor lines, paired travel and native map evidence.")
+	print("Stairs: finished: pass; both maps on days 1,5,10, paired human travel, native evidence and floor lines.")
 	quit(0)
 
-func _tour_move(target: Vector2i, jump: bool = false) -> bool:
-	_key(KEY_SPACE, jump)
-	_key(KEY_SEMICOLON, jump)
+func _tour_move(target: Vector2i) -> bool:
+	var last: Dictionary[String, int] = {}
+	var stalled: Dictionary[String, int] = {}
 	for frame: int in range(600):
 		var state: Dictionary = scene.survival_status()
-		var body: Dictionary = state["chef"]
-		var column: int = body["x"]
-		var row: int = body["y"]
-		var at: Vector2i = Vector2i(column, row)
-		if state["map"] == "Aquarium" or (at == target and body["stance"] != "airborne"):
-			for code: Key in [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE, KEY_SHIFT, KEY_J, KEY_L, KEY_I, KEY_K, KEY_SEMICOLON, KEY_H]:
-				_key(code, false)
-			print("Stairs: tour reached %s on %s; chef %s, appraiser (%s,%s)." % [target, state["map"], at, state["appraiser"]["x"], state["appraiser"]["y"]])
+		var reached: bool = true
+		for role: String in ["chef", "appraiser"]:
+			var body: Dictionary = state[role]
+			var column: int = body["x"]
+			var row: int = body["y"]
+			var at: Vector2i = Vector2i(column, row)
+			var done: bool = state["map"] == "Aquarium" and target == Vector2i(62, 11) or at == target and body["stance"] != "airborne"
+			reached = reached and done
+			var left: Key = KEY_A if role == "chef" else KEY_J
+			var right: Key = KEY_D if role == "chef" else KEY_L
+			var up: Key = KEY_W if role == "chef" else KEY_I
+			var down: Key = KEY_S if role == "chef" else KEY_K
+			var jump: Key = KEY_SPACE if role == "chef" else KEY_SEMICOLON
+			var run: Key = KEY_SHIFT if role == "chef" else KEY_H
+			var sideways: bool = not done and target.x != at.x
+			_key(left, sideways and target.x < at.x)
+			_key(right, sideways and target.x > at.x)
+			_key(up, not done and not sideways and target.y < at.y)
+			_key(down, not done and not sideways and target.y > at.y)
+			_key(run, sideways and absi(target.x - at.x) > 3)
+			var sub_x: int = body["sub_x"]
+			stalled[role] = stalled.get(role, 0) + 1 if sideways and sub_x == last.get(role, -1) and body["stance"] == "standing" else 0
+			last[role] = sub_x
+			var climb_step: bool = target.y < at.y and absi(target.x - at.x) <= 1
+			var gap_takeoff: bool = target.y < row and target.x - column == 2 and sub_x % 32 >= 16
+			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or frame % 12 < 6 and (climb_step or stalled[role] > 6))
+			_key(jump, jump_pressed)
+		if reached:
+			_release_movement()
+			await process_frame
+			await process_frame
+			print("Stairs: tour day %s reached %s on %s; chef %s, appraiser %s." % [state["day"], target, state["map"], state["chef"], state["appraiser"]])
 			return true
-		if state["phase"] != "exploration":
-			_tour_fail("the day ended before reaching %s; last cell %s" % [target, at])
+		if state["phase"] != "exploration" or state["chef"]["location"] != "city" or state["appraiser"]["location"] != "city":
+			_tour_fail("both humans left the city before %s: %s" % [target, _tour_status(state)])
 			return false
-		var sideways: bool = target.x != at.x
-		_key(KEY_A, sideways and target.x < at.x)
-		_key(KEY_J, sideways and target.x < at.x)
-		_key(KEY_D, sideways and target.x > at.x)
-		_key(KEY_L, sideways and target.x > at.x)
-		_key(KEY_W, not sideways and target.y < at.y)
-		_key(KEY_I, not sideways and target.y < at.y)
-		_key(KEY_S, not sideways and target.y > at.y)
-		_key(KEY_K, not sideways and target.y > at.y)
-		_key(KEY_SHIFT, absi(target.x - at.x) > 3)
-		_key(KEY_H, absi(target.x - at.x) > 3)
-		if frame == 3:
-			_key(KEY_SPACE, false)
-			_key(KEY_SEMICOLON, false)
+		if target == Vector2i(62, 11) and frame % 12 == 0:
+			print("Stairs: exit zone x=62..63 y=10..11 after movement; chef %s; appraiser %s; map %s." % [state["chef"], state["appraiser"], state["map"]])
 		clock += 0.1
 		scene.pin_scene_clock(clock)
 		await process_frame
-	_tour_fail("did not reach %s; status %s" % [target, scene.survival_status()])
+	_tour_fail("did not reach %s; %s" % [target, _tour_status(scene.survival_status())])
 	return false
+
+func _tour_collect() -> bool:
+	var before: int = scene.survival_status()["chef"]["ingredients"]
+	await _tap(KEY_E)
+	for frame: int in range(180):
+		var body: Dictionary = scene.survival_status()["chef"]
+		var ingredients: int = body["ingredients"]
+		if ingredients > before:
+			return true
+		await process_frame
+	_tour_fail("human collection did not add an ingredient: " + _tour_status(scene.survival_status()))
+	return false
+
+func _tour_status(state: Dictionary) -> String:
+	return "day=%s phase=%s map=%s acid=%s remaining_ms=%s chef=%s appraiser=%s" % [state["day"], state["phase"], state["map"], state["acid"], state["remaining_ms"], state["chef"], state["appraiser"]]
+
+func _release_movement() -> void:
+	for code: Key in [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE, KEY_SHIFT, KEY_J, KEY_L, KEY_I, KEY_K, KEY_SEMICOLON, KEY_H]:
+		_key(code, false)
 
 func _tour_shot(name: String) -> bool:
 	var previous_scale: float = Engine.time_scale
