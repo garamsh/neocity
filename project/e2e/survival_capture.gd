@@ -22,7 +22,10 @@ extends SceneTree
 ## The scene's clock, which runs its ambient motion, its finishing pass and
 ## every eased value of the screen, is pinned and moves only when the capture
 ## moves it: by each frame's delta, and past the longest eased motion before
-## each saved frame, so every frame shows the same moment on every run.
+## each saved frame, so every frame shows the same moment on every run. The
+## game and the actors' steering run on frames, so pass --fixed-fps 60 to Godot:
+## on real frame times a loaded machine moves the actors, and the camera with
+## them, to places no other run reaches, and the run fails at once without it.
 ## Run it where the screen never locks, such as kwin_wayland --virtual
 ## --no-lockscreen: a locked screen stops the window drawing, and the capture
 ## then waits on a frame that never comes.
@@ -138,6 +141,11 @@ const PARTED_SETTLE: int = 60
 ## teeth 0.79 to 0.88, backdrop 0.45 to 0.61, acid 0.68 to 0.87.
 const DENSE_SHARE: Dictionary[String, float] = {"teeth": 0.4, "backdrop": 0.25, "acid": 0.5, "walkways": 0.5, "shops": 0.65}
 const DENSE_TOLERANCE: float = 0.01
+## The colour the acid tints a corroded deck with, and the depth of the deck's
+## picture below its floor line, as the renderer draws them: a deck whose top
+## DECK_DEPTH below the floor line the acid has risen above is stained.
+const DECK_STAIN: Color = Color(150.0 / 255.0, 200.0 / 255.0, 140.0 / 255.0)
+const DECK_DEPTH: int = 28
 ## The least edge pixels, along the rows and along the columns, a layer must
 ## show for its density to be read.
 const DENSE_EDGES: int = 400
@@ -243,11 +251,25 @@ func _drive() -> void:
 		_finish("fail: diagnostic run ended before all checks completed")
 		quit(1)
 
+## Whether Godot runs at --fixed-fps 60, which the engine keeps from the
+## command line the script reads: five frames in a row each last exactly a
+## sixtieth of a second, as no real clock keeps them.
+func _fixed_rate() -> bool:
+	for _frame: int in range(5):
+		await process_frame
+		if not is_equal_approx(root.get_process_delta_time(), 1.0 / 60.0):
+			return false
+	return true
+
 func _run() -> void:
 	if not _character_mask_control():
 		return
 	await _frames(2)
+	if not await _fixed_rate():
+		_fail("the run steers by frames and the game advances by each frame's delta, so run it with --fixed-fps 60: on real frame times a loaded machine moves the actors, and the camera, to other places than every other run")
+		return
 	scene = current_scene as MainScene
+	scene.get_node("World").set_meta("measure_art", true)
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
 	process_frame.connect(_tick)
@@ -1111,6 +1133,7 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 	if shown < 2:
 		return true
 	var control: Vector3 = _layer_values(_brightened_faces(frame, view), view, covered)
+	print("Capture: %s: control, the faces twice as bright, read %.6f under the backdrop's %.6f (must stay under %.6f)." % [screen, control.y - control.x, control.y, FACE_GAP])
 	if control.y - control.x >= FACE_GAP:
 		_fail("%s: faces twice as bright still read %.6f under the backdrop, the control did not fail" % [screen, control.y - control.x])
 		return false
@@ -1252,9 +1275,6 @@ func _draws_fast(screen: String) -> bool:
 	Engine.time_scale = previous_scale
 	Engine.max_fps = previous_rate
 	print("Capture: %s: the city drew %.1f frames a second over %d frames at %s (at least %.0f)." % [screen, rate, RATE_FRAMES, root.get_texture().get_size(), FRAME_RATE])
-	if rate < FRAME_RATE and OS.get_cmdline_user_args().has("--allow-software-fps"):
-		print("Capture: FPS verdict excepted by --allow-software-fps; measured %.1f, required %.0f." % [rate, FRAME_RATE])
-		return true
 	if rate < FRAME_RATE:
 		_fail("%s: the city draws fewer than %.0f frames a second" % [screen, FRAME_RATE])
 		return false
@@ -1330,8 +1350,10 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 	var top: int = int(PLAY.position.y)
 	acid_rows = Vector2i(clampi(acid_rows.x, top + TEETH_ROWS, int(PLAY.end.y) - 1), clampi(acid_rows.y, top + TEETH_ROWS, int(PLAY.end.y) - 1))
 	var walkways: Array[Rect2] = []
+	var stains: Array[Color] = []
 	for cell: Vector2i in LEAD_CELLS:
 		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
+		stains.append(DECK_STAIN if _acid_surface() < corner.y + CELL + DECK_DEPTH else Color.WHITE)
 		walkways.append(view * Rect2(corner + Vector2(0, CELL + FACE_ROWS.x), Vector2(CELL, FACE_ROWS.y - FACE_ROWS.x)))
 	var shops: Array[Rect2] = []
 	for area: Rect2 in LIT_AREAS:
@@ -1340,7 +1362,7 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		"teeth": _thin(frame, Vector2i(top, top + TEETH_ROWS), covered, "teeth"),
 		"backdrop": _thin(frame, Vector2i(top + TEETH_ROWS, acid_rows.x), covered, ""),
 		"acid": _thin(frame, acid_rows, covered, "acid"),
-		"walkways": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "walkways", walkways),
+		"walkways": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "walkways", walkways, stains),
 		"shops": _thin(frame, Vector2i(top, int(PLAY.end.y)), covered, "city", shops),
 	}
 	print("Capture: %s: the share of edge pixels one screen pixel wide or tall, and the edge pixels read, are %s (at least %s, read over %d)." % [screen, layers, DENSE_SHARE, DENSE_EDGES])
@@ -1457,21 +1479,26 @@ func _character_opaque(mask: Image, layer: Dictionary, point: Vector2) -> bool:
 
 
 ## Over the screen rows from rows.x to rows.y, every other row and column,
-## each pixel clear of the rectangles covered, inside an area for city
+## each pixel clear of the rectangles covered and of the pixel beside them,
+## inside an area for city
 ## layers and clear of opaque characters there, and, for the teeth, only where
 ## the frame shows the throat's fangs, within TEETH_TOLERANCE in
 ## each channel, and for the acid, only where its green leads by ACID_GREEN:
 ## of the pixels that differ from a neighbour along the row, the share that
 ## differ from both, and the same along the column; the smaller of the two
 ## shares, as x, and the fewer of the two counts of such pixels, as y.
-func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Array[Rect2] = []) -> Vector2:
+func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Array[Rect2] = [], stains: Array[Color] = []) -> Vector2:
 	var edges: Vector2i = Vector2i.ZERO
 	var thin: Vector2i = Vector2i.ZERO
 	frame = native_frame
 	var width: int = frame.get_width()
+	# A pixel beside a covered one would be compared with the cover's colour.
+	var shadowed: Array[Rect2] = []
+	for area: Rect2 in covered:
+		shadowed.append(area.grow(1.0 / CANVAS_SCALE))
 	for y: int in range(maxi(roundi(rows.x * CANVAS_SCALE), 1), mini(roundi(rows.y * CANVAS_SCALE), frame.get_height() - 1), 2):
 		for x: int in range(1, width - 1, 2):
-			if covered.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / CANVAS_SCALE)):
+			if shadowed.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / CANVAS_SCALE)):
 				continue
 			if only in ["city", "walkways"] and (_character_covers(Vector2(x + 0.5, y + 0.5) / CANVAS_SCALE) or not areas.any(func(area: Rect2) -> bool: return area.has_point(Vector2(x, y) / CANVAS_SCALE))):
 				continue
@@ -1484,10 +1511,15 @@ func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Ar
 				var tooth: Color = _fang(x, y)
 				if tooth.a < 0.5 or maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) > TEETH_TOLERANCE:
 					continue
-			var left: bool = _differ(pixel, frame.get_pixel(x - 1, y))
-			var right: bool = _differ(pixel, frame.get_pixel(x + 1, y))
-			var up: bool = _differ(pixel, frame.get_pixel(x, y - 1))
-			var down: bool = _differ(pixel, frame.get_pixel(x, y + 1))
+			var stain: Color = Color.WHITE
+			if only == "walkways":
+				for index: int in range(areas.size()):
+					if areas[index].has_point(Vector2(x, y) / CANVAS_SCALE):
+						stain = stains[index]
+			var left: bool = _differ(pixel, frame.get_pixel(x - 1, y), stain)
+			var right: bool = _differ(pixel, frame.get_pixel(x + 1, y), stain)
+			var up: bool = _differ(pixel, frame.get_pixel(x, y - 1), stain)
+			var down: bool = _differ(pixel, frame.get_pixel(x, y + 1), stain)
 			if left or right:
 				edges.x += 1
 				thin.x += 1 if left and right else 0
@@ -1498,9 +1530,11 @@ func _thin(frame: Image, rows: Vector2i, covered: Array, only: String, areas: Ar
 		return Vector2(0.0, 0.0)
 	return Vector2(minf(float(thin.x) / edges.x, float(thin.y) / edges.y), mini(edges.x, edges.y))
 
-## Whether two pixels differ by more than DENSE_TOLERANCE in a channel.
-func _differ(one: Color, other: Color) -> bool:
-	return maxf(absf(one.r - other.r), maxf(absf(one.g - other.g), absf(one.b - other.b))) > DENSE_TOLERANCE
+## Whether two pixels differ by more than DENSE_TOLERANCE in a channel, once
+## the stain the acid tints a deck with is taken off both: a stained deck shows
+## each channel's contrast at the stain's share of it.
+func _differ(one: Color, other: Color, stain: Color = Color.WHITE) -> bool:
+	return maxf(absf(one.r - other.r) / stain.r, maxf(absf(one.g - other.g) / stain.g, absf(one.b - other.b) / stain.b)) > DENSE_TOLERANCE
 
 ## Whether, over the columns where the acid shows under its surface, the band's
 ## where the sea does not cover it or stands below it and the sea's otherwise,

@@ -480,9 +480,11 @@ std::vector<int> Art::take_sizes() const { return std::exchange(sizes, {}); }
 void Art::note_foreground(godot::Node2D &canvas, Image image,
                           godot::Rect2 source, godot::Rect2 destination,
                           bool mirrored) const {
+  if (!canvas.has_meta("foreground_layers")) {
+    return;
+  }
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
-  if (!canvas.has_meta("foreground_layers") ||
-      (folder != "world" && folder != "ground" && folder != "walkway")) {
+  if (folder != "world" && folder != "ground" && folder != "walkway") {
     return;
   }
   godot::Array layers = canvas.get_meta("foreground_layers", godot::Array());

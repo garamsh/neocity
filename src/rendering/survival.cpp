@@ -1492,19 +1492,23 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const std::vector<survival::ObjectId> &out_of_reach) {
   const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
-  canvas.set_meta("foreground_layers", godot::Array());
   const auto &objects = view.world.objects;
-  godot::Array floors;
-  for (const auto &object : objects) {
-    if (object.kind == ObjectKind::Terrain) {
-      godot::Dictionary floor;
-      floor.set("name", from(survival::object_name(object.id)));
-      floor.set("area", area_rect(object.area));
-      floor.set("standing", object.state == ObjectState::Intact);
-      floors.push_back(floor);
+  // The measuring checks ask for what the drawing recorded by setting
+  // `measure_art` on the canvas; the game itself records none of it.
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("foreground_layers", godot::Array());
+    godot::Array floors;
+    for (const auto &object : objects) {
+      if (object.kind == ObjectKind::Terrain) {
+        godot::Dictionary floor;
+        floor.set("name", from(survival::object_name(object.id)));
+        floor.set("area", area_rect(object.area));
+        floor.set("standing", object.state == ObjectState::Intact);
+        floors.push_back(floor);
+      }
     }
+    canvas.set_meta("collision_floors", floors);
   }
-  canvas.set_meta("collision_floors", floors);
   canvas.set_meta("map_size",
                   Vector2(static_cast<float>(content.size.width) * CELL,
                           static_cast<float>(content.size.height) * CELL));

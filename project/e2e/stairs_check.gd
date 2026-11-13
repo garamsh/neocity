@@ -16,12 +16,26 @@ func _initialize() -> void:
 	Engine.max_fps = 60
 	_run.call_deferred()
 
+## Whether Godot runs at --fixed-fps 60, which the engine keeps from the
+## command line the script reads: five frames in a row each last exactly a
+## sixtieth of a second, as no real clock keeps them.
+func _fixed_rate() -> bool:
+	for _frame: int in range(5):
+		await process_frame
+		if not is_equal_approx(root.get_process_delta_time(), 1.0 / 60.0):
+			return false
+	return true
+
 func _run() -> void:
 	await process_frame
 	scene = current_scene as MainScene
+	scene.get_node("World").set_meta("measure_art", true)
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
 	if OS.get_cmdline_user_args().has("--map-art-tour"):
+		if not await _fixed_rate():
+			_tour_fail("the tour steers by frames and a day ends by the frame's delta, so run it with --fixed-fps 60: a loaded machine's longer frames make a day end before the humans arrive")
+			return
 		await _map_art_tour()
 		return
 	await _tap(KEY_1)
