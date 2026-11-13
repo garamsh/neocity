@@ -1328,14 +1328,17 @@ TEST(Exploration, AnAbsentActorGoesHomeWhenItsPartnerReturnsToBase) {
 }
 
 TEST(Exploration, AMutantThatWalksOntoAnActorWhoStandsStillSendsItAwayAtOnce) {
-  Danger danger({}, {{.from = {.x = 26, .y = 0}, .to = {.x = 34, .y = 0}}});
+  const Patrol patrol{.from = {.x = 26, .y = 0}, .to = {.x = 34, .y = 0}};
+  Danger danger({}, {patrol});
   danger.enter(Actor::Chef);
   const auto here = at(danger.explorer(Actor::Chef));
   for (int unit = 0; unit < 40; ++unit) {
+    // The unit that puts the mutant on the actor is the one that touches.
+    const auto next =
+        patrol_step(patrol, danger.exploring().snapshot().mutants.front());
+    const bool lands = cell_of(next.position) == here;
     ASSERT_EQ(danger.exploring().advance(100ms, IDLE), Result::Applied);
-    const auto mutant = danger.exploring().snapshot().mutants.front();
-    if (cell_of(mutant.position) == here) {
-      // The unit that put the mutant on the actor is the one that touches.
+    if (lands) {
       EXPECT_EQ(danger.sim().snapshot().chef.location, Location::Base);
       return;
     }

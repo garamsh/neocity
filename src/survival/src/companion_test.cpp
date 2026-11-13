@@ -329,6 +329,7 @@ ActorCommand command_at_a_ladder_with_a_mutant_behind(bool mutant) {
   high.traversable = true;
   auto ladder = object_of(ObjectId{3}, ObjectKind::Ladder, 8);
   ladder.area = {.x = 8, .y = 0, .height = 4};
+  ladder.traversable = true;
   view.world.objects = {low, high, ladder};
   add_source(view, SOURCE, 11);
   view.progression.phase = Phase::Exploration;
