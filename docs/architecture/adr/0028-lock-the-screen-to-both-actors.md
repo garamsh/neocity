@@ -27,10 +27,10 @@ The AI keeps within the lock. With a human partner the AI follows; with two AI t
 ## Consequences
 
 - One actor alone cannot reach an exit zone beyond the lock of the other; both must walk there, the one ahead waiting.
-- A human cannot walk away from the AI partner, and an AI partner cannot be left behind by a human running ahead; the AI catches up at its walking pace and the human waits at the lock.
+- A human cannot walk away from the AI partner, and an AI partner cannot be left behind by a human running ahead; the AI closes in at its walking pace and the human waits at the lock, unless the AI stands on a lower floor whose only climb lies beyond the lock, in which case it waits for the human to come back.
 - The camera's look-ahead applies only to a lone actor, so a pair in the city is centred and never looked ahead of.
 - An AI-only run stays on the street and finishes its days there, so the aquarium's sources are collected only with a human.
-- Two AI actors can stall against the lock; the leader's wait and the follower's leash exist for that, and the unit test of an AI-only run across days guards it.
+- Two AI actors could stall against the lock; the leash reaches as far as the follower already stands from its leader, and the leader walks to meet a follower whose only link lies beyond the leash. Unit tests guard both: a follower starting beyond the leash, and an AI pair on two levels linked beyond it.
 
 ## Signs the decision was wrong
 

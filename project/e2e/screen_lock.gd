@@ -215,15 +215,6 @@ func _str(field: String) -> String:
 	var value: String = scene.survival_status().get(field, "")
 	return value
 
-func _until(name: String, condition: Callable, limit: int) -> void:
-	for frame: int in range(limit):
-		var done: bool = condition.call()
-		if done:
-			checks += 1
-			return
-		await process_frame
-	_check(false, name)
-
 func _frames(count: int) -> void:
 	for frame: int in range(count):
 		await process_frame

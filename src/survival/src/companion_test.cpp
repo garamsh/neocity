@@ -1149,6 +1149,48 @@ TEST(Companion, TheLeaderOfAnAiPartyWaitsForAFollowerThatFellBehind) {
       Direction::Right);
 }
 
+TEST(Companion, AFollowerBeyondTheLeashClosesInOnAPartnerFarAlongTheStreet) {
+  auto view = wide_view(30, 5);
+  add_source(view, SOURCE, 3);
+  const auto command = companion_with().command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_EQ(command.movement.direction, Direction::Right);
+  EXPECT_FALSE(command.action.has_value());
+}
+
+/// A forty-cell street under a platform that only a ladder at x 30 reaches,
+/// the chef on the platform at x 9 and the appraiser on the street at x 1,
+/// with a source on the platform at x 20.
+GameView view_with_platform() {
+  auto view = wide_view(9, 1);
+  view.world.objects.front().area.y = 3;
+  auto platform = object_of(ObjectId{2}, ObjectKind::Terrain, 0);
+  platform.area.width = 32;
+  platform.traversable = true;
+  view.world.objects.push_back(platform);
+  auto ladder = object_of(ObjectId{3}, ObjectKind::Ladder, 30);
+  ladder.area.height = 4;
+  ladder.traversable = true;
+  view.world.objects.push_back(ladder);
+  add_source(view, SOURCE, 20);
+  view.exploration.chef.body.position = standing_in({.x = 9});
+  view.exploration.appraiser.body.position = standing_in({.x = 1, .y = 3});
+  return view;
+}
+
+TEST(Companion, AnAiPairOnTwoLevelsLinkedBeyondTheLeashStillMovesTowardsIt) {
+  const auto view = view_with_platform();
+  const auto companion = companion_with();
+  ASSERT_TRUE(companion.errand(Actor::Chef, view).has_value());
+  ASSERT_TRUE(companion.errand(Actor::Appraiser, view).has_value());
+  EXPECT_EQ(companion.command(Actor::Appraiser, ALL_AI, NO_INPUT, view)
+                .movement.direction,
+            Direction::Right);
+  EXPECT_EQ(
+      companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).movement.direction,
+      Direction::Right);
+}
+
 TEST(Companion, ASetOutWaitsWhileThePartnerIsOutOnAnotherMap) {
   auto view = base_view();
   view.progression.phase = Phase::Exploration;

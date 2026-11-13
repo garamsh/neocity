@@ -912,6 +912,7 @@ TEST(Exploration, OneActorWalkingToAnExitStopsAtTheScreenLock) {
   Travel travel;
   travel.both_enter();
   ASSERT_EQ(travel.exploring().snapshot().map, MapId::Street);
+  ASSERT_GT((EXIT_ZONE.x - ENTRY.x) * SUBCELLS, SCREEN_LOCK);
   travel.push_east(Actor::Chef, 400);
   const auto chef = travel.explorer(Actor::Chef).body.position.x;
   const auto appraiser = travel.explorer(Actor::Appraiser).body.position.x;

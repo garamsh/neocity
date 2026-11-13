@@ -59,8 +59,8 @@ const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 const SETTLE_POLL_MSEC: int = 20
 const SETTLE_LIMIT_MSEC: int = 3000
 ## How far, in screen pixels, a camera may still lag a walking AI partner's
-## heading and count as at rest: one movement unit of an actor at the close
-## camera.
+## heading and count as at rest. Only the rest test uses it; the checks that
+## read the settled camera stay exact.
 const SETTLE_SLACK: float = 24.0
 ## A note shows four seconds and fades over one, on the real clock; the wait
 ## for it to go allows that and more.
@@ -1738,8 +1738,7 @@ func _humans_out() -> Array[String]:
 			out.append(who)
 	return out
 
-## Once the camera has settled, to within SETTLE_SLACK of where it heads while
-## an AI partner walks: every actor in the city stands on the play
+## Once the camera has settled: every actor in the city stands on the play
 ## area; the view shows nothing past the map's sides or the scene's top and
 ## bottom, and centres on the map when wider than it; one human is drawn at
 ## twice the scene's size, and two at twice or once, never twice when they
@@ -1755,9 +1754,9 @@ func _camera_holds(where: String) -> bool:
 	var right: float = (view * (MAP_ORIGIN + MAP_SIZE)).x
 	var inside: bool = (view * Vector2.ZERO).y <= 0.0 and (view * Vector2(0, SCENE_HEIGHT)).y >= SCENE_HEIGHT
 	if right - left >= PLAY.size.x:
-		inside = inside and left <= SETTLE_SLACK and right >= PLAY.size.x - SETTLE_SLACK
+		inside = inside and left <= 0.0 and right >= PLAY.size.x
 	else:
-		inside = inside and absf((left + right) / 2.0 - PLAY.size.x / 2.0) <= SETTLE_SLACK
+		inside = inside and absf((left + right) / 2.0 - PLAY.size.x / 2.0) <= 1.0
 	var framed: bool = is_equal_approx(zoom, 2.0)
 	if humans.size() == 2:
 		var apart: Vector2 = (_feet("chef") - _feet("appraiser")).abs()
@@ -1780,8 +1779,10 @@ func _camera_settles(where: String) -> bool:
 		var heading: Transform2D = scene.get_meta("map_heading", Transform2D(0.0, Vector2(-1, -1)))
 		if view.is_equal_approx(heading):
 			return true
-		# An AI partner in the city keeps walking and the camera frames it too,
-		# so after a while a camera within an AI step of its heading is at rest.
+		# An AI partner in the city keeps walking and the camera frames it too, so
+		# after a while a camera within SETTLE_SLACK of its heading is at rest.
+		# Measured on the east walkway on day three: 12 px across, 18 px down
+		# (about 22 px) while the appraiser jumped.
 		if Time.get_ticks_msec() - started > SETTLE_LIMIT_MSEC / 2 and is_equal_approx(view.x.x, heading.x.x) and view.origin.distance_to(heading.origin) <= SETTLE_SLACK:
 			return true
 		OS.delay_msec(SETTLE_POLL_MSEC)
@@ -1795,7 +1796,7 @@ func _centres_pair(where: String) -> bool:
 		return false
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	var middle: float = (view * _feet("chef")).x / 2.0 + (view * _feet("appraiser")).x / 2.0
-	return _check(absf(middle - FOCUS.x) <= SETTLE_SLACK, "the camera centres the two actors %s: middle at x %.1f, expected %.1f" % [where, middle, FOCUS.x])
+	return _check(absf(middle - FOCUS.x) <= 1.0, "the camera centres the two actors %s: middle at x %.1f, expected %.1f" % [where, middle, FOCUS.x])
 
 ## The camera and where the backdrop's layers were drawn, back to front.
 func _backdrop() -> Dictionary:
@@ -2008,7 +2009,10 @@ func _walk_to(x: int, y: int) -> bool:
 		if at_x == x and at_y == y and _stance(walker) != "airborne":
 			_release()
 			return true
-		if _lock_gap(walker) >= LOCK_WAIT:
+		var heading: int = signi(x - at_x)
+		var other: String = "appraiser" if walker == "chef" else "chef"
+		var ahead: bool = at_x != x and signi(_actor(walker, "sub_x") - _actor(other, "sub_x")) == heading
+		if ahead and _lock_gap(walker) >= LOCK_WAIT:
 			_release()
 			await process_frame
 			continue

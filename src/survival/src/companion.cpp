@@ -136,19 +136,24 @@ struct Route {
 constexpr std::int32_t LEASH = SCREEN_LOCK / SUBCELLS - 1;
 
 /// Where an actor's partner stands while both are in the city, which a search
-/// keeps within `LEASH` of; none for an actor free to go anywhere.
+/// keeps within the leash of; none for an actor free to go anywhere.
 using Partner = std::optional<GridPosition>;
 
-bool leashed(const Partner &partner, GridPosition cell) {
-  return !partner || std::abs(cell.x - partner->x) <= LEASH;
+/// Whether `cell` lies within `reach` cells in x of the partner, if any.
+bool leashed(const Partner &partner, GridPosition cell,
+             std::int32_t reach = LEASH) {
+  return !partner || std::abs(cell.x - partner->x) <= reach;
 }
 
 /// Breadth-first over the links between held cells, so a route never falls.
 /// Finds the nearest cell `reached` accepts and the first move towards it,
-/// through no cell outside the leash.
+/// through no cell outside the leash, which reaches as far as the start lies
+/// from the partner, so an actor out of the leash can close the gap.
 template <typename Reached>
 std::optional<Frontier> search(const CellMap &map, GridPosition start,
                                const Partner &partner, Reached reached) {
+  const auto reach =
+      partner ? std::max(LEASH, std::abs(start.x - partner->x)) : LEASH;
   std::set<std::pair<std::int32_t, std::int32_t>> seen{{start.x, start.y}};
   std::deque<Frontier> frontier{{.position = start}};
   while (!frontier.empty()) {
@@ -158,7 +163,7 @@ std::optional<Frontier> search(const CellMap &map, GridPosition start,
       return cell;
     }
     for (const auto &link : links(map, cell.position)) {
-      if (leashed(partner, link.to) &&
+      if (leashed(partner, link.to, reach) &&
           seen.insert({link.to.x, link.to.y}).second) {
         frontier.push_back(
             {.position = link.to,
@@ -390,20 +395,33 @@ const WorldArea *exit_zone_at(const CompanionConfig &config,
   return found != config.exploration.exits.end() ? &found->zone : nullptr;
 }
 
-/// Where a follower waits: inside the exit zone its partner stands in, else
-/// within two cells across and one up or down of the partner.
-ActorCommand keep_company(const CompanionConfig &config, const GameView &view,
-                          const Body &body, GridPosition partner) {
+/// The route to where `partner` is kept company, within the leash of
+/// `leash`: inside the exit zone it stands in, else within two cells across
+/// and one up or down of it.
+std::optional<Frontier> company_route(const CompanionConfig &config,
+                                      const GameView &view, GridPosition from,
+                                      GridPosition partner,
+                                      const Partner &leash) {
   const CellMap map(view.world);
   const auto *zone = exit_zone_at(config, view, partner);
-  const auto found =
-      search(map, cell_of(body.position), partner, [&](GridPosition cell) {
-        if (zone != nullptr) {
-          return distance(cell, *zone) == 0;
-        }
-        return std::abs(cell.x - partner.x) <= 2 &&
-               std::abs(cell.y - partner.y) <= 1;
-      });
+  return search(map, from, leash, [&](GridPosition cell) {
+    if (zone != nullptr) {
+      return distance(cell, *zone) == 0;
+    }
+    return std::abs(cell.x - partner.x) <= 2 &&
+           std::abs(cell.y - partner.y) <= 1;
+  });
+}
+
+/// Where an actor waits for its partner: it walks to the company the leash
+/// allows, and when the leash holds no way, to the nearest way there is.
+ActorCommand keep_company(const CompanionConfig &config, const GameView &view,
+                          const Body &body, GridPosition partner) {
+  const auto from = cell_of(body.position);
+  auto found = company_route(config, view, from, partner, partner);
+  if (!found) {
+    found = company_route(config, view, from, partner, std::nullopt);
+  }
   if (!found || !found->first_move) {
     return {};
   }
@@ -485,9 +503,14 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return {.action = ReturnToBase{}};
   }
   const auto command = plan_alone(config, view, body, from);
-  // The leader waits for a follower that has fallen behind.
   if (!command.action && std::abs(beside.x - from.x) > TETHER) {
-    return {};
+    // The leader waits for a follower that can come back within the lock, and
+    // meets one whose only way lies beyond it.
+    const GridPosition follower = beside;
+    const GridPosition leader = from;
+    return company_route(config, view, follower, leader, leader)
+               ? ActorCommand{}
+               : keep_company(config, view, body, beside);
   }
   return command;
 }
