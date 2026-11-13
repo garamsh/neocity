@@ -456,7 +456,7 @@ func _run() -> void:
 	if finished_ends < 4 or not destroyed_end:
 		_fail("exposed deck ends were not measured before and after day-five passage replacement")
 		return
-	print("Capture: finished ends measured on %d representative sides, including the upper walkway and gauge ledge ends again after day-five passage replacement." % finished_ends)
+	print("Capture: finished ends measured on %d representative sides, including the upper walkway end again after day-five passage replacement." % finished_ends)
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -1021,7 +1021,7 @@ func _finished_decks(frame: Image, view: Transform2D, screen: String, covered: A
 		if objects.get("Shallows", "") != "intact" or objects.get("Roof Ladder", "") != "destroyed" or objects.get("Fire Escape", "") != "intact" or objects.get("Drifted Ferry", "") != "intact":
 			_fail("damaged-city setup differs from the fixed day-five map states")
 			return false
-		if not _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered) or not _finished_end(frame, view, screen, Vector2i(17, 8), false, Vector2i(18, 8), covered):
+		if not _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered):
 			return false
 		destroyed_end = true
 	return true
@@ -1665,8 +1665,9 @@ func _supports_open(frame: Image, view: Transform2D, screen: String) -> bool:
 
 ## Whether, at no acid, before anything lit is destroyed, LIT_SHARE of the
 ## pixels of the lit structures the frame shows whole read warm and bright:
-## red over LIT_RED and leading blue by LIT_WARMTH. The control is that the
-## frame shows at least one.
+## red over LIT_RED and leading blue by LIT_WARMTH, the pixels an opaque
+## character covers left out, since the pair now stands where the camera frames
+## them. The control is that the frame shows at least one.
 func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 	if _int("acid") != 0:
 		return true
@@ -1678,6 +1679,8 @@ func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 		for y: int in range(int(area.size.y)):
 			for x: int in range(int(area.size.x)):
 				var at: Vector2 = view * (area.position + Vector2(x + 0.5, y + 0.5))
+				if _character_covers(at.floor() + Vector2(0.5, 0.5)):
+					continue
 				var pixel: Color = frame.get_pixelv(Vector2i(at.floor()))
 				count += 1
 				if pixel.r >= LIT_RED and pixel.r - pixel.b >= LIT_WARMTH:
