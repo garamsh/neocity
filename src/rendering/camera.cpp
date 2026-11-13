@@ -58,10 +58,10 @@ struct Subject {
 };
 
 /// Where the camera may look: the map's width and the scene's height.
-godot::Rect2 bounds_of(const survival::Content &content) {
+godot::Rect2 bounds_of(const survival::MapContent &map) {
   const Vector2 corner = map_point({.x = 0, .y = 0});
   const Vector2 far_corner =
-      map_point({.x = content.map.width * survival::SUBCELLS, .y = 0});
+      map_point({.x = map.size.width * survival::SUBCELLS, .y = 0});
   return {corner.x, 0.0F, far_corner.x - corner.x, SCREEN_HEIGHT};
 }
 
@@ -127,10 +127,11 @@ View aim(const survival::Content &content, const survival::GameView &view,
     zoom = fit ? CLOSE : FAR;
     target = (first + second) / 2.0F - Vector2(0.0F, WAIST);
   }
-  return placed(target, zoom, bounds_of(content));
+  return placed(target, zoom,
+                bounds_of(survival::map_of(content, view.exploration.map)));
 }
 
-View follow(const Art &art, const survival::Content &content,
+View follow(const Art &art, const survival::MapContent &content,
             const View &heading) {
   // The zoom steps once the eased value passes halfway, so a step wanted for
   // only a moment is never drawn.

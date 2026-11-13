@@ -1,6 +1,6 @@
 # ADR 0019: Lay the city out as the first mockup, twice over
 
-> Status: accepted
+> Status: superseded by ADR-0027
 > Date: 2026-11-04
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

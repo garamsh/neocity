@@ -57,16 +57,16 @@ void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
 /// Draws the light of the city's lamps and acid drips as `camera` shows them,
 /// for a canvas that blends by adding.
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
-                     const survival::Content &content, const View &camera);
-/// Draws the city grid with its ground, scenery, objects, stock and actors,
-/// in the scene's own pixels. Destroyed, depleted and unavailable objects
-/// each have a mark; a dormant object, and a bag emptied or carried off, is
-/// not drawn. A source in `out_of_reach`
-/// has stock no player can walk to: it loses the gold frame. Each actor faces
-/// the way it last walked, alternates its walking frames while it moves, and
-/// climbs on a ladder.
+                     const survival::MapContent &content, const View &camera);
+/// Draws the grid of the map the party is on with its ground, scenery, objects,
+/// stock and actors, in the scene's own pixels. Destroyed, depleted and
+/// unavailable objects each have a mark; a dormant object, and a bag emptied or
+/// carried off, is not drawn. A source in `out_of_reach` has stock no player
+/// can walk to: it loses the gold frame. Each actor faces the way it last
+/// walked, alternates its walking frames while it moves, and climbs on a
+/// ladder.
 void paint_city(godot::Node2D &canvas, const Art &art,
-                const survival::Content &content,
+                const survival::Content &everything,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach);
 /// The icon of the ingredient or dish the `survival` library names

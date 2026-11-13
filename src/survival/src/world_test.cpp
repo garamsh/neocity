@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <stdexcept>
 
 namespace neocity::survival {
@@ -20,13 +21,14 @@ constexpr ObjectId BUILDING{41};
 constexpr ObjectId ARRIVING_BUILDING{42};
 constexpr ObjectId NEW_PATH{43};
 constexpr ObjectId NEW_SOURCE{44};
+constexpr ObjectId AQUARIUM_FLOOR{45};
 
 std::vector<ObjectDefinition> city() {
   return {
       {.id = NPC,
        .kind = ObjectKind::Npc,
        .area = {.x = 5, .y = 0, .width = 1, .height = 2},
-       .destroyed_after = WorldThreshold{.acid = AcidLevel{2}}},
+       .destroyed_from_day = 6},
       {.id = NPC_SOURCE,
        .kind = ObjectKind::MaterialSource,
        .ingredient = IngredientId{70},
@@ -34,30 +36,30 @@ std::vector<ObjectDefinition> city() {
       {.id = TERRAIN,
        .kind = ObjectKind::Terrain,
        .area = {.x = 0, .y = 0, .width = 10, .height = 1},
-       .destroyed_after = WorldThreshold{.elapsed = 4s}},
+       .destroyed_from_day = 5},
       {.id = LADDER,
        .kind = ObjectKind::Ladder,
        .area = {.x = 10, .y = 0, .width = 1, .height = 8},
-       .destroyed_after = WorldThreshold{.elapsed = 4s, .acid = AcidLevel{2}}},
-      {.id = ENTRANCE,
-       .kind = ObjectKind::Entrance,
-       .destroyed_after = WorldThreshold{.elapsed = 8s}},
-      {.id = BUILDING,
-       .kind = ObjectKind::Building,
-       .destroyed_after = WorldThreshold{.elapsed = 5s}},
+       .destroyed_from_day = 5},
+      {.id = ENTRANCE, .kind = ObjectKind::Entrance, .destroyed_from_day = 10},
+      {.id = BUILDING, .kind = ObjectKind::Building, .destroyed_from_day = 7},
       {.id = ARRIVING_BUILDING,
        .kind = ObjectKind::Building,
-       .exposed_at = WorldThreshold{.elapsed = 5s}},
+       .exposed_from_day = 7},
       {.id = NEW_PATH,
        .kind = ObjectKind::Entrance,
        .area = {.x = 20, .y = 0, .width = 2, .height = 3},
-       .exposed_at = WorldThreshold{.elapsed = 5s}},
+       .exposed_from_day = 7},
       {.id = NEW_SOURCE,
        .kind = ObjectKind::MaterialSource,
-       .exposed_at = WorldThreshold{.elapsed = 5s},
-       .destroyed_after = WorldThreshold{.elapsed = 8s},
+       .exposed_from_day = 7,
+       .destroyed_from_day = 10,
        .ingredient = IngredientId{80},
-       .supported_by = ARRIVING_BUILDING}};
+       .supported_by = ARRIVING_BUILDING},
+      {.id = AQUARIUM_FLOOR,
+       .kind = ObjectKind::Terrain,
+       .area = {.x = 0, .y = 0, .width = 6, .height = 1},
+       .map = MapId::Aquarium}};
 }
 
 ObjectSnapshot object(const WorldSnapshot &snapshot, ObjectId id) {
@@ -74,7 +76,7 @@ ObjectSnapshot object(const WorldSnapshot &snapshot, ObjectId id) {
 TEST(World, SnapshotsRetainStableIdentitiesAndAreasWithoutSharingMutableState) {
   const World world(city());
   auto snapshot = world.snapshot();
-  EXPECT_EQ(snapshot.objects.size(), 9U);
+  EXPECT_EQ(snapshot.objects.size(), 10U);
   EXPECT_EQ(object(snapshot, NPC).kind, ObjectKind::Npc);
   EXPECT_EQ(object(snapshot, NPC).area,
             (WorldArea{.x = 5, .y = 0, .width = 1, .height = 2}));
@@ -86,36 +88,38 @@ TEST(World, SnapshotsRetainStableIdentitiesAndAreasWithoutSharingMutableState) {
   EXPECT_EQ(object(snapshot, NEW_PATH).state, ObjectState::Dormant);
   EXPECT_FALSE(object(snapshot, NEW_PATH).traversable);
   EXPECT_FALSE(object(snapshot, NEW_SOURCE).material_available);
+  EXPECT_EQ(object(snapshot, AQUARIUM_FLOOR).map, MapId::Aquarium);
+  EXPECT_EQ(object(snapshot, TERRAIN).map, MapId::Street);
   snapshot.objects.clear();
-  EXPECT_EQ(world.snapshot().objects.size(), 9U);
+  EXPECT_EQ(world.snapshot().objects.size(), 10U);
 }
 
-TEST(World, AcidDestroysNpcSupplyWithoutRemovingItsStableSourceIdentity) {
+TEST(World, DamageStagesBeginOnTheirDaysAndDependOnTheDayAlone) {
+  EXPECT_EQ(damage_stage(0), DamageStage::Standing);
+  EXPECT_EQ(damage_stage(1), DamageStage::Standing);
+  EXPECT_EQ(damage_stage(4), DamageStage::Standing);
+  EXPECT_EQ(damage_stage(5), DamageStage::Cracked);
+  EXPECT_EQ(damage_stage(9), DamageStage::Cracked);
+  EXPECT_EQ(damage_stage(10), DamageStage::Ruined);
+  EXPECT_EQ(damage_stage(500), DamageStage::Ruined);
   World world(city());
-  ASSERT_TRUE(object(world.snapshot(), NPC_SOURCE).material_available);
-  ASSERT_EQ(world.update({.elapsed = 1s, .acid = {1}}),
-            WorldUpdateResult::Applied);
-  EXPECT_TRUE(object(world.snapshot(), NPC_SOURCE).material_available);
-  ASSERT_EQ(world.update({.elapsed = 1s, .acid = {2}}),
-            WorldUpdateResult::Applied);
-  const auto snapshot = world.snapshot();
-  EXPECT_EQ(object(snapshot, NPC).state, ObjectState::Destroyed);
-  EXPECT_EQ(object(snapshot, NPC_SOURCE).id, NPC_SOURCE);
-  EXPECT_FALSE(object(snapshot, NPC_SOURCE).material_available);
-  EXPECT_TRUE(object(snapshot, TERRAIN).traversable);
+  EXPECT_EQ(damage_stage(world.snapshot().day), DamageStage::Standing);
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
+  EXPECT_EQ(world.snapshot().day, 5U);
+  EXPECT_EQ(damage_stage(world.snapshot().day), DamageStage::Cracked);
 }
 
-TEST(World, TimeDamageRemovesTerrainAndPassageAccessAtTheirOwnThresholds) {
+TEST(World, DayDamageRemovesTerrainAndPassageAccessOnItsOwnDay) {
   World world(city());
-  ASSERT_EQ(world.update({.elapsed = 4s - 1us}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(4), WorldUpdateResult::Applied);
   EXPECT_TRUE(object(world.snapshot(), TERRAIN).traversable);
   EXPECT_TRUE(object(world.snapshot(), LADDER).traversable);
-  ASSERT_EQ(world.update({.elapsed = 4s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
   EXPECT_EQ(object(world.snapshot(), TERRAIN).state, ObjectState::Destroyed);
   EXPECT_FALSE(object(world.snapshot(), TERRAIN).traversable);
   EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
   EXPECT_TRUE(object(world.snapshot(), ENTRANCE).traversable);
-  ASSERT_EQ(world.update({.elapsed = 8s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(10), WorldUpdateResult::Applied);
   EXPECT_FALSE(object(world.snapshot(), ENTRANCE).traversable);
 }
 
@@ -124,91 +128,82 @@ TEST(World, DeteriorationAndArrivalExposeANewPathAndMaterialSource) {
   ASSERT_EQ(object(world.snapshot(), BUILDING).state, ObjectState::Intact);
   ASSERT_EQ(object(world.snapshot(), ARRIVING_BUILDING).state,
             ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = 5s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(7), WorldUpdateResult::Applied);
   const auto snapshot = world.snapshot();
   EXPECT_EQ(object(snapshot, BUILDING).state, ObjectState::Destroyed);
   EXPECT_EQ(object(snapshot, ARRIVING_BUILDING).state, ObjectState::Intact);
-  EXPECT_EQ(object(snapshot, NEW_PATH).id, NEW_PATH);
   EXPECT_TRUE(object(snapshot, NEW_PATH).traversable);
   EXPECT_EQ(object(snapshot, NEW_SOURCE).ingredient, IngredientId{80});
   EXPECT_TRUE(object(snapshot, NEW_SOURCE).material_available);
-  ASSERT_EQ(world.update({.elapsed = 8s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(10), WorldUpdateResult::Applied);
   EXPECT_EQ(object(world.snapshot(), NEW_SOURCE).state, ObjectState::Destroyed);
   EXPECT_FALSE(object(world.snapshot(), NEW_SOURCE).material_available);
   EXPECT_EQ(object(world.snapshot(), ARRIVING_BUILDING).state,
             ObjectState::Intact);
 }
 
+TEST(World, AnOwnerDestroyedLeavesItsSourceUnavailableButItsIdentityStays) {
+  World world(city());
+  ASSERT_TRUE(object(world.snapshot(), NPC_SOURCE).material_available);
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
+  EXPECT_TRUE(object(world.snapshot(), NPC_SOURCE).material_available);
+  ASSERT_EQ(world.update(6), WorldUpdateResult::Applied);
+  const auto snapshot = world.snapshot();
+  EXPECT_EQ(object(snapshot, NPC).state, ObjectState::Destroyed);
+  EXPECT_EQ(object(snapshot, NPC_SOURCE).id, NPC_SOURCE);
+  EXPECT_FALSE(object(snapshot, NPC_SOURCE).material_available);
+}
+
 TEST(World, ADestroyedPassageStaysDestroyedForTheRestOfTheRun) {
   World world(city());
-  ASSERT_EQ(world.update({.elapsed = 4s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
   const auto damaged = world.snapshot();
   ASSERT_EQ(object(damaged, LADDER).state, ObjectState::Destroyed);
   ASSERT_EQ(object(damaged, TERRAIN).state, ObjectState::Destroyed);
   ASSERT_EQ(object(damaged, ENTRANCE).state, ObjectState::Intact);
   EXPECT_FALSE(object(damaged, LADDER).traversable);
-  ASSERT_EQ(world.update({.elapsed = 4s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
   EXPECT_EQ(world.snapshot(), damaged);
-  ASSERT_EQ(world.update({.elapsed = 8s}), WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(10), WorldUpdateResult::Applied);
   EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
   EXPECT_FALSE(object(world.snapshot(), ENTRANCE).traversable);
 }
 
-TEST(World, DuplicateProgressAndAcidDecreaseDoNotUndoDamage) {
+TEST(World, EarlierDayIsRefusedWithoutChangingTheWorld) {
   World world(city());
-  ASSERT_EQ(world.update({.elapsed = 5s, .acid = {3}}),
-            WorldUpdateResult::Applied);
-  const auto damaged = world.snapshot();
-  ASSERT_FALSE(object(damaged, LADDER).traversable);
-  ASSERT_EQ(world.update(damaged.progression), WorldUpdateResult::Applied);
-  EXPECT_EQ(world.snapshot(), damaged);
-  ASSERT_EQ(world.update({.elapsed = 5s, .acid = {0}}),
-            WorldUpdateResult::Applied);
-  auto lowered = damaged;
-  lowered.progression.acid = {0};
-  EXPECT_EQ(world.snapshot(), lowered);
-  ASSERT_EQ(world.update({.elapsed = 5s, .acid = {4}}),
-            WorldUpdateResult::Applied);
-  EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
-  EXPECT_EQ(object(world.snapshot(), NPC).state, ObjectState::Destroyed);
-  EXPECT_TRUE(object(world.snapshot(), NEW_PATH).traversable);
-  ASSERT_EQ(world.update({.elapsed = 5s, .acid = {5}}),
-            WorldUpdateResult::Applied);
-  EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
-}
-
-TEST(World, DecreasingCumulativeTimeIsRefusedWithoutApplyingItsAcidInput) {
-  World world(city());
-  ASSERT_EQ(world.update({.elapsed = 3s, .acid = {1}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(6), WorldUpdateResult::Applied);
   const auto before = world.snapshot();
-  EXPECT_EQ(world.update({.elapsed = 2s, .acid = {9}}),
-            WorldUpdateResult::DecreasingTime);
+  EXPECT_EQ(world.update(5), WorldUpdateResult::DecreasingDay);
   EXPECT_EQ(world.snapshot(), before);
-  ASSERT_EQ(world.update({.elapsed = 4s, .acid = {1}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(7), WorldUpdateResult::Applied);
   EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
-  EXPECT_TRUE(object(world.snapshot(), NPC_SOURCE).material_available);
 }
 
-TEST(World, FramePartitionsProduceTheSameDamageExposureAndSupplySnapshot) {
+TEST(World, SteppingDayByDayAndJumpingStraightThereGiveTheSameWorld) {
   World whole(city());
-  World partitioned(city());
-  ASSERT_EQ(whole.update({.elapsed = 8s, .acid = {3}}),
-            WorldUpdateResult::Applied);
-  auto elapsed = 0us;
-  for (const auto delta : {1us, 8332us, 16667us, 75000us, 7900000us}) {
-    elapsed += delta;
-    ASSERT_EQ(partitioned.update({.elapsed = elapsed, .acid = {3}}),
-              WorldUpdateResult::Applied);
+  World stepped(city());
+  ASSERT_EQ(whole.update(10), WorldUpdateResult::Applied);
+  for (std::uint32_t day = 1; day <= 10; ++day) {
+    ASSERT_EQ(stepped.update(day), WorldUpdateResult::Applied);
   }
-  ASSERT_EQ(elapsed, 8s);
-  EXPECT_EQ(whole.snapshot(), partitioned.snapshot());
+  EXPECT_EQ(whole.snapshot(), stepped.snapshot());
+}
+
+TEST(World, OnMapKeepsOnlyThatMapsObjectsAndTheDay) {
+  World world(city());
+  ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
+  const auto aquarium = on_map(world.snapshot(), MapId::Aquarium);
+  ASSERT_EQ(aquarium.objects.size(), 1U);
+  EXPECT_EQ(aquarium.objects.at(0).id, AQUARIUM_FLOOR);
+  EXPECT_EQ(aquarium.day, 5U);
+  EXPECT_EQ(damage_stage(aquarium.day), DamageStage::Cracked);
+  const auto street = on_map(world.snapshot(), MapId::Street);
+  EXPECT_EQ(street.objects.size(), 9U);
 }
 
 TEST(World, InvalidDefinitionsAreRejectedBesideAValidControl) {
   const World valid(city());
-  ASSERT_EQ(valid.snapshot().objects.size(), 9U);
+  ASSERT_EQ(valid.snapshot().objects.size(), 10U);
   auto invalid = city();
   invalid.at(1).id = invalid.at(0).id;
   EXPECT_THROW((World(invalid)), std::invalid_argument);
@@ -216,11 +211,10 @@ TEST(World, InvalidDefinitionsAreRejectedBesideAValidControl) {
   invalid.at(0).area.width = 0;
   EXPECT_THROW((World(invalid)), std::invalid_argument);
   invalid = city();
-  invalid.at(0).destroyed_after = WorldThreshold{};
+  invalid.at(0).destroyed_from_day = 0;
   EXPECT_THROW((World(invalid)), std::invalid_argument);
-  invalid.at(0).destroyed_after = WorldThreshold{.elapsed = -1us};
-  EXPECT_THROW((World(invalid)), std::invalid_argument);
-  invalid.at(0).destroyed_after = WorldThreshold{.acid = AcidLevel{0}};
+  invalid = city();
+  invalid.at(0).exposed_from_day = 0;
   EXPECT_THROW((World(invalid)), std::invalid_argument);
   invalid = city();
   invalid.at(1).ingredient.reset();
@@ -236,29 +230,15 @@ TEST(World, InvalidDefinitionsAreRejectedBesideAValidControl) {
 TEST(WorldIntegration, ActorReturnPreservesDeterioration) {
   Simulation simulation({.exploration_budget = 10s, .seed = 123});
   World world(city());
+  ASSERT_EQ(world.update(6), WorldUpdateResult::Applied);
+  const auto damaged = world.snapshot();
+  ASSERT_EQ(object(damaged, NPC).state, ObjectState::Destroyed);
+  ASSERT_FALSE(object(damaged, LADDER).traversable);
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(simulation.advance(5s), Result::Applied);
-  const auto elapsed = 10s - simulation.snapshot().remaining_exploration;
-  ASSERT_EQ(elapsed, 5s);
-  ASSERT_EQ(world.update({.elapsed = elapsed, .acid = {3}}),
-            WorldUpdateResult::Applied);
-  const auto before_return = world.snapshot();
-  ASSERT_EQ(object(before_return, NPC).state, ObjectState::Destroyed);
-  ASSERT_FALSE(object(before_return, LADDER).traversable);
   ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
-  ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
-  ASSERT_EQ(simulation.snapshot().remaining_exploration, 5s);
-  ASSERT_EQ(world.update(
-                {.elapsed = 10s - simulation.snapshot().remaining_exploration,
-                 .acid = {3}}),
+  ASSERT_EQ(world.update(simulation.snapshot().day + 5),
             WorldUpdateResult::Applied);
-  EXPECT_EQ(world.snapshot(), before_return);
-  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(simulation.advance(1s), Result::Applied);
-  ASSERT_EQ(world.update(
-                {.elapsed = 10s - simulation.snapshot().remaining_exploration,
-                 .acid = {3}}),
-            WorldUpdateResult::Applied);
+  EXPECT_EQ(world.snapshot().objects, damaged.objects);
   EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
   EXPECT_FALSE(object(world.snapshot(), NPC_SOURCE).material_available);
 }

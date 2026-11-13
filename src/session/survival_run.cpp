@@ -277,9 +277,12 @@ float SurvivalRun::acid_fill() const {
 }
 
 GameView SurvivalRun::view() const {
+  const auto exploration = features.exploration.get().snapshot();
   return {.progression = features.simulation.get().snapshot(),
-          .world = features.world.get().snapshot(),
-          .exploration = features.exploration.get().snapshot(),
+          .world = survival::on_map(features.world.get().snapshot(),
+                                    exploration.map),
+          .city = features.world.get().snapshot(),
+          .exploration = exploration,
           .workshop = features.workshop.get().snapshot()};
 }
 
@@ -352,8 +355,7 @@ void SurvivalRun::step() {
       }
     }
   }
-  if (features.exploration.get().advance(STEP, movement,
-                                         simulation.snapshot().acid) !=
+  if (features.exploration.get().advance(STEP, movement) !=
       survival::Result::Applied) {
     // unreachable: no step runs once the run is over, and 100ms cannot overflow
     // time
@@ -495,8 +497,15 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
                  .count());
   status.set("elapsed_ms",
              std::chrono::duration_cast<std::chrono::milliseconds>(
-                 view.world.progression.elapsed)
+                 view.progression.world_time)
                  .count());
+  status.set("world_day", view.world.day);
+  status.set("damage_stage",
+             static_cast<std::int64_t>(survival::damage_stage(view.world.day)));
+  status.set(
+      "map",
+      from(
+          survival::map_of(features.content.get(), view.exploration.map).name));
   status.set("acid", view.progression.acid.value);
   status.set("full_acid", features.content.get().run.full_acid.value);
   status.set("chef", actor_status(view, controllers, Actor::Chef));
@@ -526,14 +535,15 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
     status.set("reaction", reaction_name(view.workshop.last_day->reaction));
     status.set("score", view.workshop.last_day->score);
   }
+  const auto city = features.world.get().snapshot();
   godot::Dictionary objects;
-  for (const auto &object : view.world.objects) {
+  for (const auto &object : city.objects) {
     objects.set(from(survival::object_name(object.id)),
                 state_name(object.state));
   }
   status.set("objects", objects);
   godot::Dictionary places;
-  for (const auto &object : view.world.objects) {
+  for (const auto &object : city.objects) {
     places.set(from(survival::object_name(object.id)),
                rendering::place_name(view, object.id));
   }

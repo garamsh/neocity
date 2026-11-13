@@ -51,6 +51,8 @@ ObjectDefinition ingredient_source(ObjectId id, std::int32_t x,
 ExplorationConfig tuning(std::vector<SourceStock> sources) {
   return {.base = BASE,
           .entry = ENTRY,
+          .exits = {},
+          .interiors = {},
           .collection_distance = 1,
           .sources = std::move(sources)};
 }
@@ -107,7 +109,8 @@ public:
 
   [[nodiscard]] GameView view() const {
     return {.progression = shared.snapshot(),
-            .world = map.snapshot(),
+            .world = on_map(map.snapshot(), explorers.snapshot().map),
+            .city = map.snapshot(),
             .exploration = explorers.snapshot(),
             .workshop = kitchen_work.snapshot()};
   }
@@ -126,8 +129,7 @@ public:
             refused(apply(explorers, kitchen_work, actor, *command.action)));
       }
     }
-    ASSERT_EQ(explorers.advance(elapsed, movement, shared.snapshot().acid),
-              Result::Applied);
+    ASSERT_EQ(explorers.advance(elapsed, movement), Result::Applied);
   }
 
 private:
@@ -336,17 +338,15 @@ TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
         {.id = DOOR,
          .kind = ObjectKind::Entrance,
          .area = {.x = 2, .y = 1},
-         .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
+         .destroyed_from_day = 1},
         ingredient_source(SOURCE, 5, 1)};
   };
   auto places = tuning({{.id = SOURCE}});
   places.entry = {.y = 1};
   Game sealed(broken(3), places, kitchen());
-  ASSERT_EQ(sealed.world().update({.acid = AcidLevel{1}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(sealed.world().update(1), WorldUpdateResult::Applied);
   Game hurdle(broken(1), places, kitchen());
-  ASSERT_EQ(hurdle.world().update({.acid = AcidLevel{1}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(hurdle.world().update(1), WorldUpdateResult::Applied);
   sealed.step(ALL_AI);
   hurdle.step(ALL_AI);
   EXPECT_EQ(sealed.simulation().snapshot().chef.location, Location::Base);
@@ -413,7 +413,7 @@ TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
              {.id = DOOR,
               .kind = ObjectKind::Entrance,
               .area = {.x = 2},
-              .exposed_at = WorldThreshold{.elapsed = 1h}},
+              .exposed_from_day = 99},
              ingredient_source(SOURCE, 4)},
             tuning({{.id = SOURCE}}), kitchen());
   ASSERT_EQ(game.view().world.objects.at(1).state, ObjectState::Dormant);
@@ -473,12 +473,11 @@ TEST(Companion, ABrokenPassageSendsAnAiPartyHomeAndIsNeverRepaired) {
       {.id = DOOR,
        .kind = ObjectKind::Entrance,
        .area = {.x = 3},
-       .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
+       .destroyed_from_day = 1},
       {.id = WALL, .kind = ObjectKind::Building, .area = {.x = 3, .y = -1}},
       ingredient_source(SOURCE, 5)};
   Game game(city, tuning({{.id = SOURCE}}), kitchen());
-  ASSERT_EQ(game.world().update({.acid = AcidLevel{1}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(game.world().update(1), WorldUpdateResult::Applied);
   game.step(ALL_AI);
   EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
@@ -933,7 +932,7 @@ TEST(CompanionRun, DaysPassWhenASourceIsFartherThanTheDayAllows) {
             tuning({{.id = SOURCE}}), kitchen(), 300ms);
   play_until_day(game, 4, ALL_AI);
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
-  EXPECT_GT(game.world().snapshot().progression.elapsed, 0us);
+  EXPECT_GT(game.simulation().snapshot().world_time, 0us);
   EXPECT_EQ(game.refusals(), 0U);
 }
 

@@ -513,19 +513,20 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
                 .kind = ObjectKind::MaterialSource,
                 .area = {.x = 1},
                 .ingredient = CHILI},
-               {.id = ACID_FLOOR,
-                .area = {.x = 9},
-                .destroyed_after = WorldThreshold{.acid = AcidLevel{7}}}});
-  Exploration exploration(
-      simulation, world,
-      {.base = {.x = -5}, .entry = {}, .sources = {{.id = SOURCE}}});
+               {.id = ACID_FLOOR, .area = {.x = 9}, .destroyed_from_day = 2}});
+  Exploration exploration(simulation, world,
+                          {.base = {.x = -5},
+                           .entry = {},
+                           .exits = {},
+                           .interiors = {},
+                           .sources = {{.id = SOURCE}}});
   Workshop workshop(simulation, balance());
   const std::array<ExplorationInput, 2> idle{};
 
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::Applied);
-  ASSERT_EQ(exploration.advance(1s, idle, {}), Result::Applied);
+  ASSERT_EQ(exploration.advance(1s, idle), Result::Applied);
   ASSERT_EQ(simulation.snapshot().phase, Phase::Workshop);
   ASSERT_EQ(simulation.snapshot().remaining_exploration, 0us);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::NoExplorationTime);
@@ -538,10 +539,10 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
   const auto after = simulation.snapshot();
   EXPECT_EQ(after.day, 2U);
   EXPECT_EQ(after.acid, AcidLevel{7});
+  ASSERT_EQ(world.update(after.day), WorldUpdateResult::Applied);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.advance(100ms, idle, after.acid), Result::Applied);
+  ASSERT_EQ(exploration.advance(100ms, idle), Result::Applied);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 900ms);
-  EXPECT_EQ(world.snapshot().progression.acid, AcidLevel{7});
   const auto city = world.snapshot();
   const auto floor =
       std::ranges::find(city.objects, ACID_FLOOR, &ObjectSnapshot::id);

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <iterator>
 #include <stdexcept>
 
 namespace neocity::survival {
@@ -21,21 +22,6 @@ bool is_passage(ObjectKind kind) {
   std::abort();
 }
 
-bool valid_threshold(const std::optional<WorldThreshold> &threshold) {
-  if (!threshold) {
-    return true;
-  }
-  return (threshold->elapsed || threshold->acid) &&
-         (!threshold->elapsed ||
-          *threshold->elapsed > std::chrono::microseconds::zero()) &&
-         (!threshold->acid || threshold->acid->value > 0);
-}
-
-bool reached(const WorldThreshold &threshold, WorldProgression progression) {
-  return (threshold.elapsed && progression.elapsed >= *threshold.elapsed) ||
-         (threshold.acid && progression.acid.value >= threshold.acid->value);
-}
-
 } // namespace
 
 World::World(const std::vector<ObjectDefinition> &definitions) {
@@ -43,8 +29,8 @@ World::World(const std::vector<ObjectDefinition> &definitions) {
   for (const auto &definition : definitions) {
     if (std::ranges::find(ids, definition.id) != ids.end() ||
         definition.area.width <= 0 || definition.area.height <= 0 ||
-        !valid_threshold(definition.exposed_at) ||
-        !valid_threshold(definition.destroyed_after) ||
+        definition.exposed_from_day == 0U ||
+        definition.destroyed_from_day == 0U ||
         (definition.ingredient.has_value() !=
          (definition.kind == ObjectKind::MaterialSource)) ||
         (definition.supported_by &&
@@ -63,28 +49,42 @@ World::World(const std::vector<ObjectDefinition> &definitions) {
     }
   }
   for (const auto &definition : definitions) {
-    const auto state =
-        definition.exposed_at ? ObjectState::Dormant : ObjectState::Intact;
+    const auto state = definition.exposed_from_day ? ObjectState::Dormant
+                                                   : ObjectState::Intact;
     objects.push_back({.definition = definition, .state = state});
   }
 }
 
-WorldUpdateResult World::update(WorldProgression progression) {
-  if (progression.elapsed < current.elapsed) {
-    return WorldUpdateResult::DecreasingTime;
+DamageStage damage_stage(std::uint32_t day) {
+  if (day >= STAGE_FIRST_DAY.at(2)) {
+    return DamageStage::Ruined;
   }
-  current = progression;
-  peak_acid.value = std::max(peak_acid.value, current.acid.value);
+  return day >= STAGE_FIRST_DAY.at(1) ? DamageStage::Cracked
+                                      : DamageStage::Standing;
+}
+
+WorldSnapshot on_map(const WorldSnapshot &snapshot, MapId map) {
+  WorldSnapshot result{.day = snapshot.day, .objects = {}};
+  std::ranges::copy_if(
+      snapshot.objects, std::back_inserter(result.objects),
+      [map](const ObjectSnapshot &object) { return object.map == map; });
+  return result;
+}
+
+WorldUpdateResult World::update(std::uint32_t next) {
+  if (next < day) {
+    return WorldUpdateResult::DecreasingDay;
+  }
+  day = next;
   for (auto &object : objects) {
-    if (object.state == ObjectState::Dormant && object.definition.exposed_at &&
-        reached(*object.definition.exposed_at,
-                {.elapsed = current.elapsed, .acid = peak_acid})) {
+    if (object.state == ObjectState::Dormant &&
+        object.definition.exposed_from_day &&
+        day >= *object.definition.exposed_from_day) {
       object.state = ObjectState::Intact;
     }
     if (object.state == ObjectState::Intact &&
-        object.definition.destroyed_after &&
-        reached(*object.definition.destroyed_after,
-                {.elapsed = current.elapsed, .acid = peak_acid})) {
+        object.definition.destroyed_from_day &&
+        day >= *object.definition.destroyed_from_day) {
       object.state = ObjectState::Destroyed;
     }
   }
@@ -92,8 +92,7 @@ WorldUpdateResult World::update(WorldProgression progression) {
 }
 
 WorldSnapshot World::snapshot() const {
-  WorldSnapshot result{
-      .progression = current, .peak_acid = peak_acid, .objects = {}};
+  WorldSnapshot result{.day = day, .objects = {}};
   for (const auto &object : objects) {
     const auto &definition = object.definition;
     const bool intact = object.state == ObjectState::Intact;
@@ -107,6 +106,7 @@ WorldSnapshot World::snapshot() const {
         {.id = definition.id,
          .kind = definition.kind,
          .area = definition.area,
+         .map = definition.map,
          .state = object.state,
          .traversable = intact && (is_passage(definition.kind) ||
                                    definition.kind == ObjectKind::Terrain),

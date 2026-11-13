@@ -41,8 +41,6 @@ const SHELF_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(4
 ## The drip stands on the upper walkway west of the kitchen ladder: six steps
 ## in and out of it are three entries into the drip, which burns no one.
 const DRIP_ROUTE: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
-## Time a walk from the entrance to the roof ladder's foot takes, with room.
-const LADDER_WALK_MS: int = 6000
 ## From the entrance up the kitchen ladder to the foot of the roof ladder on
 ## the loft.
 const LADDER_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
@@ -161,7 +159,7 @@ func _run() -> void:
 	if not failed:
 		await _third_day_falls()
 	if not failed:
-		await _acid_changes_the_city()
+		await _the_days_change_the_city()
 	if not failed:
 		await _crossing_the_drip_sends_no_one_home()
 	if not failed:
@@ -1137,18 +1135,20 @@ func _a_broken_passage_with_no_stock_behind_stops_setting_out() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef comes home from the roof", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
 		return
-	await _tap(KEY_G)
-	if not await _until("an unfed day breaks the ladder", func() -> bool: return _int("day") == 2 and _object("Roof Ladder") == "destroyed", 30):
+	# Four unfed days bring the cracked stage, which breaks the ladder.
+	for day: int in range(4):
+		await _tap(KEY_G)
+		if not await _until("an unfed day ends", func() -> bool: return _int("day") == day + 2 and _str("phase") == "workshop", 30):
+			return
+	if not await _until("the cracked stage breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
 		return
 	# The rest is one-player play, with the AI appraiser.
 	await _tap(KEY_N)
 	if not await _until("player two hands the appraiser to AI", func() -> bool: return _actor("appraiser", "key_set") == -1 and _actor("chef", "key_set") == 0, 30):
 		return
-	if not await _gather_unfed_until_nothing_is_left():
-		return
 	if not _check(_object("Roof Ladder") == "destroyed" and _stock("Roof Bag") == 0, "a broken passage is left, with no stock behind it"):
 		return
-	if not _check(_int("remaining_ms") > 0 and not _next().contains("Set out"), "a broken passage with nothing behind it does not set out"):
+	if not _check(_int("remaining_ms") > 0 and not _next().contains(_place("Roof Bag")), "a broken passage with nothing behind it is not an errand"):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the chef goes to the ladder anyway", func() -> bool: return _where("chef") == "city", 30):
@@ -1164,30 +1164,10 @@ func _a_broken_passage_with_no_stock_behind_stops_setting_out() -> void:
 		return
 	if not await _walk_route(LADDER_ROUTE):
 		return
-	if not _check(_next().contains("Nothing is within reach"), "beside the dead passage the line names nothing to do: %s" % _next()):
+	if not _check(not _next().contains(_place("Roof Bag")) and not _next().contains("Repair"), "beside the dead passage the line sends no one up it: %s" % _next()):
 		return
 	await _tap(KEY_E)
 	_check(_object("Roof Ladder") == "destroyed", "no key repairs the broken ladder")
-
-## Follows NEXT, but ends each day unfed where it names feeding, until it names
-## ending the day with LADDER_WALK_MS left: nothing in reach is left once the
-## rising acid has taken what the party did not empty. A line that sends the
-## player in circles spends the budget of steps a day takes.
-func _gather_unfed_until_nothing_is_left() -> bool:
-	var day: int = _int("day")
-	var steps: int = 0
-	while not ((_next().contains("End the day unfed") or _next().begins_with("Feed ")) and _int("remaining_ms") >= LADDER_WALK_MS):
-		if _str("phase") == "escaped" or _str("phase") == "lost" or _int("day") >= LONG_RUN_DAYS:
-			return _check(false, "the stock runs out before the run ends")
-		if _next().begins_with("Feed "):
-			await _tap(KEY_G)
-		else:
-			await _follow_next()
-		steps = 0 if _int("day") != day else steps + 1
-		day = _int("day")
-		if steps >= DAY_STEPS:
-			return _check(false, "following NEXT keeps the days moving")
-	return true
 
 ## Whether NEXT names what the interact key does: collect, appraise or cook, as the controls page lists for it.
 func _names_interact(line: String) -> bool:
@@ -1237,20 +1217,20 @@ func _walk_a_cell(line: String) -> void:
 	await _until("the move lands", func() -> bool: return _stance(walker) != "airborne", 120)
 	_key(code, false)
 
-func _acid_changes_the_city() -> void:
+func _the_days_change_the_city() -> void:
 	if not _check(_object("Noodle Vendor") == "intact" and _object("Drifted Ferry") == "dormant", "the vendor stands and the ferry is away"):
 		return
 	if not _check(_int("day") == 4 and _int("acid") == 12 and _str("reaction") == "unfed", "an unfed day raises acid by the penalty"):
 		return
 	if not _check(_result_says("Day 3: Unfed") and _result_says("Acid 0 to 12."), "the result of an unfed day shows the acid it cost"):
 		return
-	if not await _until("the unfed result counts the map changes", func() -> bool: return _result_says("Map changes: ") and not _result_says("Map changes: 0"), 30):
+	if not await _until("the unfed result counts no map change on the standing days", func() -> bool: return _result_says("Map changes: 0"), 30):
 		return
 	if not await _until("the screen reports the unfed day", func() -> bool: return _next_event_has("unfed"), 30):
 		return
-	if not await _until("acid breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
+	if not await _until("the standing stage keeps the ladder", func() -> bool: return _object("Roof Ladder") == "intact", 30):
 		return
-	if not _check(_object("Washed-up Bag 10") == "dormant", "acid brings no bag"):
+	if not _check(_object("Washed-up Bag 10") == "dormant", "a stage brings no bag before its day"):
 		return
 	if not _check(_int("elapsed_ms") == 54000 and _object("Washed-up Bag 7") == "intact", "every finished day passes its whole time and lands the bag"):
 		return
@@ -1259,12 +1239,12 @@ func _acid_changes_the_city() -> void:
 		return
 	await _tap(KEY_G)
 	await _until("the second unfed day ends", func() -> bool: return _int("day") == 5, 30)
-	if not await _until("acid reaches the city", func() -> bool: return _object("Noodle Vendor") == "destroyed", 30):
+	if not await _until("the cracked stage breaks the ladder and acid destroys nothing", func() -> bool: return _object("Roof Ladder") == "destroyed" and _object("Noodle Vendor") == "intact", 30):
 		return
 	await _tap(KEY_G)
 	await _until("the third unfed day ends", func() -> bool: return _int("day") == 6, 30)
-	await _until("acid brings the ferry", func() -> bool: return _object("Drifted Ferry") == "intact", 30)
-	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 36, "rising acid brings the ferry in")
+	await _until("the cracked stage brings the ferry", func() -> bool: return _object("Drifted Ferry") == "intact", 30)
+	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 36, "the cracked stage brings the ferry in while acid rises")
 
 func _collect_from_the_vendor_cart() -> void:
 	await _tap(KEY_Q)
@@ -1277,7 +1257,7 @@ func _collect_from_the_vendor_cart() -> void:
 	var pack: int = _actor("chef", "ingredients")
 	var left: int = _int("remaining_ms")
 	await _tap(KEY_E)
-	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source acid has not reached"):
+	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source acid never destroys"):
 		return
 	if not _check(_actor("chef", "collecting_ms") > 0 and left - _int("remaining_ms") < COLLECT_MS, "a collection holds the chef and leaves the shared clock running"):
 		return
@@ -1366,8 +1346,12 @@ func _a_broken_ladder_stays_broken() -> void:
 	await _tap(KEY_F)
 	if not await _until("the appraiser feeds day two's dish", func() -> bool: return _int("day") == 3, 30):
 		return
-	await _tap(KEY_G)
-	if not await _until("acid breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
+	# Two unfed days more bring the cracked stage, which breaks the ladder.
+	for day: int in range(2):
+		await _tap(KEY_G)
+		if not await _until("an unfed day ends", func() -> bool: return _int("day") == day + 4 and _str("phase") == "workshop", 30):
+			return
+	if not await _until("the cracked stage breaks the ladder", func() -> bool: return _object("Roof Ladder") == "destroyed", 30):
 		return
 	await _tap(KEY_Q)
 	if not await _walk_route(LADDER_ROUTE):
@@ -1698,9 +1682,9 @@ func _text_fits(where: String) -> bool:
 	var measured: bool = font.get_string_size(_next(), HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x > 0.0
 	return _check(measured and overflowing.is_empty(), "text fits on %s: %s" % [where, overflowing])
 
-## A washed-up bag the acid or the tide carried off, or one emptied, is not
-## drawn; the controls are a bag still holding stock, and the vendor's cart,
-## drawn although its vendor is gone.
+## A washed-up bag the tide carried off, or one emptied, is not drawn; the
+## controls are a bag still holding stock, and the vendor's cart, which the
+## day stages never take.
 func _gone_bags_leave_the_map() -> bool:
 	var drawn: Array = scene.get_meta("map_sources", [])
 	var objects: Dictionary = _status()["objects"]
@@ -1718,7 +1702,7 @@ func _gone_bags_leave_the_map() -> bool:
 			kept.append(source)
 	var hidden: bool = gone.all(func(bag: String) -> bool: return not drawn.has(bag))
 	var shown: bool = not kept.is_empty() and kept.all(func(bag: String) -> bool: return drawn.has(bag))
-	return _check(not gone.is_empty() and hidden and shown and drawn.has("Vendor Cart") and _object("Noodle Vendor") == "destroyed", "a bag carried off or emptied leaves the map while the rest stay: gone %s, drawn %s" % [gone, drawn])
+	return _check(not gone.is_empty() and hidden and shown and drawn.has("Vendor Cart") and _object("Noodle Vendor") == "intact", "a bag carried off or emptied leaves the map while the rest stay: gone %s, drawn %s" % [gone, drawn])
 
 ## No word plate on the map covers another; the control is that the plates
 ## read are the city's: more than a count for each source whose count is on
