@@ -13,6 +13,7 @@ var failures: int = 0
 var held_keys: Dictionary[Key, bool] = {}
 
 func _initialize() -> void:
+	Engine.max_fps = 60
 	_run.call_deferred()
 
 func _run() -> void:
@@ -155,6 +156,7 @@ func _tour_shot(name: String) -> bool:
 	DirAccess.make_dir_recursive_absolute(directory)
 	var valid: bool = frame.get_size() == Vector2i(1920, 1080) and check_floor_lines(scene, pixels)
 	var result: Error = frame.save_png(directory.path_join(name + ".png"))
+	await process_frame
 	Engine.time_scale = previous_scale
 	if not valid or result != OK:
 		_tour_fail("invalid native capture or floor line: " + name)

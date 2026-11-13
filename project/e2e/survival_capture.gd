@@ -232,6 +232,7 @@ var finished: bool = false
 var diagnostic_findings: Array[String] = []
 
 func _initialize() -> void:
+	Engine.max_fps = roundi(FRAME_RATE)
 	_drive.call_deferred()
 
 ## A diagnostic run records all reachable findings before emitting its failing verdict.
@@ -275,6 +276,8 @@ func _run() -> void:
 	await _save_city("28-city-falling")
 	await _until_stance("standing")
 	await _save_city("29-city-landing")
+	await _walk_to(9, 9)
+	await _walk_to(7, 8, "chef", true)
 	_key(KEY_SHIFT, true)
 	_key(KEY_A, true)
 	# The first unit after standing still reads as a walk; the second as a run.
@@ -291,8 +294,9 @@ func _run() -> void:
 	await _frames(4)
 	await _save_city("27-city-jumping-the-rubble")
 	await _walk(KEY_D, 13)
-	# Back over the rubble and up the stairs to the drip at the upper
-	# walkway's west end.
+	# The fixed map's one-row rise needs a jump from the lower walkway.
+	await _walk_to(9, 9)
+	await _walk_to(7, 8, "chef", true)
 	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
@@ -1205,13 +1209,16 @@ func _measure_acid_moves(screen: String) -> bool:
 ## the display's rate.
 func _draws_fast(screen: String) -> bool:
 	var previous_scale: float = Engine.time_scale
+	var previous_rate: int = Engine.max_fps
 	Engine.time_scale = 0.0
+	Engine.max_fps = 0
 	await _frames(2)
 	var start: int = Time.get_ticks_usec()
 	await _frames(RATE_FRAMES)
 	var rate: float = RATE_FRAMES / ((Time.get_ticks_usec() - start) / 1000000.0)
 	await process_frame
 	Engine.time_scale = previous_scale
+	Engine.max_fps = previous_rate
 	print("Capture: %s: the city drew %.1f frames a second over %d frames at %s (at least %.0f)." % [screen, rate, RATE_FRAMES, root.get_texture().get_size(), FRAME_RATE])
 	if rate < FRAME_RATE and OS.get_cmdline_user_args().has("--allow-software-fps"):
 		print("Capture: FPS verdict excepted by --allow-software-fps; measured %.1f, required %.0f." % [rate, FRAME_RATE])
