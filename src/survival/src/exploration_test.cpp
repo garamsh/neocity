@@ -39,6 +39,8 @@ std::vector<ObjectDefinition> city() {
 ExplorationConfig tuning() {
   return {.base = BASE,
           .entry = ENTRY,
+          .exits = {},
+          .interiors = {},
           .collection_distance = 1,
           .sources = {{.id = SOURCE}}};
 }
@@ -75,7 +77,11 @@ public:
          std::uint32_t day = 1)
       : simulation({.exploration_budget = 30s, .seed = 0}), world(objects),
         exploration(simulation, world,
-                    {.base = BASE, .entry = entry, .sources = {}}) {
+                    {.base = BASE,
+                     .entry = entry,
+                     .exits = {},
+                     .interiors = {},
+                     .sources = {}}) {
     skip_to_day(simulation, exploration, day);
     if (exploration.enter(Actor::Chef) != Result::Applied) {
       throw std::logic_error("course entry refused");
@@ -550,7 +556,7 @@ TEST(Exploration, AFloorGoneOnItsDayRefusesEntryAndAcidNeverMovesTheMap) {
   EXPECT_EQ(world.snapshot().objects.front().state, ObjectState::Destroyed);
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::NotExploring);
 
-  auto acid_only = city();
+  const auto acid_only = city();
   Simulation acid_simulation({.exploration_budget = 5s, .seed = 0});
   World acid_world(acid_only);
   Exploration acid_exploration(acid_simulation, acid_world, tuning());
@@ -872,6 +878,10 @@ public:
     return actor == Actor::Chef ? snapshot.chef : snapshot.appraiser;
   }
 
+  [[nodiscard]] Simulation &sim() { return simulation; }
+  [[nodiscard]] Exploration &exploring() { return exploration; }
+
+private:
   Simulation simulation;
   World world;
   Exploration exploration;
@@ -880,9 +890,9 @@ public:
 TEST(Exploration, OneActorInAnExitZoneChangesNoMap) {
   Travel travel;
   travel.both_enter();
-  ASSERT_EQ(travel.exploration.snapshot().map, MapId::Street);
+  ASSERT_EQ(travel.exploring().snapshot().map, MapId::Street);
   travel.walk_to(Actor::Chef, 16);
-  EXPECT_EQ(travel.exploration.snapshot().map, MapId::Street);
+  EXPECT_EQ(travel.exploring().snapshot().map, MapId::Street);
   EXPECT_EQ(at(travel.explorer(Actor::Appraiser)), ENTRY);
 }
 
@@ -891,23 +901,23 @@ TEST(Exploration, BothActorsInAnExitZoneChangeTheMapAndArriveTogether) {
   travel.both_enter();
   travel.walk_to(Actor::Chef, 16);
   travel.walk_to(Actor::Appraiser, 16);
-  const auto snapshot = travel.exploration.snapshot();
+  const auto snapshot = travel.exploring().snapshot();
   EXPECT_EQ(snapshot.map, MapId::Aquarium);
   EXPECT_EQ(at(snapshot.chef), HALL_ARRIVAL);
   EXPECT_EQ(at(snapshot.appraiser), HALL_ARRIVAL);
-  EXPECT_EQ(travel.simulation.snapshot().chef.location, Location::City);
-  EXPECT_EQ(travel.simulation.snapshot().appraiser.location, Location::City);
+  EXPECT_EQ(travel.sim().snapshot().chef.location, Location::City);
+  EXPECT_EQ(travel.sim().snapshot().appraiser.location, Location::City);
 }
 
 TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {
   Travel travel;
   travel.both_enter();
-  EXPECT_EQ(travel.exploration.collect(Actor::Chef, HALL_SOURCE),
+  EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
             CollectionResult::OutOfRange);
   travel.walk_to(Actor::Chef, 16);
   travel.walk_to(Actor::Appraiser, 16);
-  ASSERT_EQ(travel.exploration.snapshot().map, MapId::Aquarium);
-  EXPECT_EQ(travel.exploration.collect(Actor::Chef, HALL_SOURCE),
+  ASSERT_EQ(travel.exploring().snapshot().map, MapId::Aquarium);
+  EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
             CollectionResult::Applied);
 }
 
@@ -916,12 +926,12 @@ TEST(Exploration, AnActorCannotEnterTheStreetWhileTheOtherIsInTheHall) {
   travel.both_enter();
   travel.walk_to(Actor::Chef, 16);
   travel.walk_to(Actor::Appraiser, 16);
-  ASSERT_EQ(travel.exploration.return_to_base(Actor::Chef), Result::Applied);
-  EXPECT_EQ(travel.exploration.enter(Actor::Chef), Result::NotExploring);
-  ASSERT_EQ(travel.exploration.return_to_base(Actor::Appraiser),
+  ASSERT_EQ(travel.exploring().return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(travel.exploring().enter(Actor::Chef), Result::NotExploring);
+  ASSERT_EQ(travel.exploring().return_to_base(Actor::Appraiser),
             Result::Applied);
-  EXPECT_EQ(travel.exploration.snapshot().map, MapId::Street);
-  EXPECT_EQ(travel.exploration.enter(Actor::Chef), Result::Applied);
+  EXPECT_EQ(travel.exploring().snapshot().map, MapId::Street);
+  EXPECT_EQ(travel.exploring().enter(Actor::Chef), Result::Applied);
 }
 
 TEST(Exploration, TheSnapshotShowsWhichBuildingAnActorIsInside) {

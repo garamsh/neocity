@@ -514,9 +514,12 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
                 .area = {.x = 1},
                 .ingredient = CHILI},
                {.id = ACID_FLOOR, .area = {.x = 9}, .destroyed_from_day = 2}});
-  Exploration exploration(
-      simulation, world,
-      {.base = {.x = -5}, .entry = {}, .sources = {{.id = SOURCE}}});
+  Exploration exploration(simulation, world,
+                          {.base = {.x = -5},
+                           .entry = {},
+                           .exits = {},
+                           .interiors = {},
+                           .sources = {{.id = SOURCE}}});
   Workshop workshop(simulation, balance());
   const std::array<ExplorationInput, 2> idle{};
 

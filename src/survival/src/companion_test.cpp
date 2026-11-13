@@ -51,6 +51,8 @@ ObjectDefinition ingredient_source(ObjectId id, std::int32_t x,
 ExplorationConfig tuning(std::vector<SourceStock> sources) {
   return {.base = BASE,
           .entry = ENTRY,
+          .exits = {},
+          .interiors = {},
           .collection_distance = 1,
           .sources = std::move(sources)};
 }

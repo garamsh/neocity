@@ -211,6 +211,8 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
+                           .exits = {},
+                           .interiors = {},
                            .collection_distance = 2,
                            .sources = {{.id = SOURCE}}});
   // The control: entering and collecting apply before the escape.
@@ -284,6 +286,8 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
+                           .exits = {},
+                           .interiors = {},
                            .collection_distance = 2,
                            .sources = {{.id = SOURCE}}});
   // The control: entering and collecting apply before the loss.

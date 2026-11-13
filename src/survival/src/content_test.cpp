@@ -115,9 +115,10 @@ std::uint32_t unfed_days(Game &game, std::uint32_t last_day) {
   return unfed;
 }
 
-const std::set<Move> EVERY_MOVE{Move::Left,     Move::Right,
-                                Move::ClimbUp,  Move::ClimbDown,
-                                Move::JumpLeft, Move::JumpRight};
+std::set<Move> every_move() {
+  return {Move::Left,      Move::Right,    Move::ClimbUp,
+          Move::ClimbDown, Move::JumpLeft, Move::JumpRight};
+}
 
 const MapContent &street_of(const Content &content) {
   return map_of(content, MapId::Street);
@@ -141,7 +142,7 @@ GridPosition start_of(const Content &content, MapId map) {
 /// `allowed` moves.
 std::vector<GridPosition>
 cells_reached(const Content &content, const WorldSnapshot &world,
-              const std::set<Move> &allowed = EVERY_MOVE,
+              const std::set<Move> &allowed = every_move(),
               MapId on = MapId::Street) {
   const auto start = start_of(content, on);
   const CellMap map(on_map(world, on));
@@ -171,7 +172,7 @@ bool within_reach(const std::vector<GridPosition> &reached,
 
 bool reachable(const Content &content, const WorldSnapshot &world,
                const ObjectSnapshot &object) {
-  return within_reach(cells_reached(content, world, EVERY_MOVE, object.map),
+  return within_reach(cells_reached(content, world, every_move(), object.map),
                       object.area,
                       content.companion.exploration.collection_distance);
 }
@@ -197,7 +198,7 @@ std::vector<std::string> path_problems(const Content &content,
     if (!stands_on(CellMap(on_map(world, map.id)), start_of(content, map.id))) {
       problems.push_back(std::string(map.name) + ": no footing at the start");
     }
-    const auto reached = cells_reached(content, world, EVERY_MOVE, map.id);
+    const auto reached = cells_reached(content, world, every_move(), map.id);
     for (const auto &stock : config.sources) {
       const auto object = object_of(world, stock.id);
       if (object.map == map.id && object.material_available &&
@@ -984,7 +985,7 @@ TEST(TemporaryContent,
     bool stairs = false;
     bool ladder = false;
     const CellMap cells(on_map(world, map));
-    for (const auto cell : cells_reached(content, world, EVERY_MOVE, map)) {
+    for (const auto cell : cells_reached(content, world, every_move(), map)) {
       rows.insert(cell.y);
       for (const auto &link : links(cells, cell)) {
         stairs =
@@ -1047,17 +1048,24 @@ TEST(TemporaryContent, EveryMapReachesEverySourceExitAndInteriorAtEveryStage) {
 
 TEST(TemporaryContent, ThePathCheckNamesWhatACutPassageStrandsOnEachStage) {
   const auto content = temporary_content(1);
-  const struct {
+  struct Cut {
     std::uint32_t day;
     std::string_view cut;
     std::string_view stranded;
-  } cuts[] = {
-      {1, "Roof Ladder", "Street: Roof Bag is out of reach"},
-      {STAGE_FIRST_DAY.at(1), "Fire Escape",
-       "Street: Roof Bag is out of reach"},
-      {STAGE_FIRST_DAY.at(2), "West Skywalk Ladder",
-       "Aquarium: Gift Shelf is out of reach"},
-      {1, "Dock Ladder", "Street: the exit to Aquarium is out of reach"},
+  };
+  const std::array<Cut, 4> cuts{
+      Cut{.day = 1,
+          .cut = "Roof Ladder",
+          .stranded = "Street: Roof Bag is out of reach"},
+      Cut{.day = STAGE_FIRST_DAY.at(1),
+          .cut = "Fire Escape",
+          .stranded = "Street: Roof Bag is out of reach"},
+      Cut{.day = STAGE_FIRST_DAY.at(2),
+          .cut = "West Skywalk Ladder",
+          .stranded = "Aquarium: Gift Shelf is out of reach"},
+      Cut{.day = 1,
+          .cut = "Dock Ladder",
+          .stranded = "Street: the exit to Aquarium is out of reach"},
   };
   for (const auto &cut : cuts) {
     auto world = on_day(content, cut.day);

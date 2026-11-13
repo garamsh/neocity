@@ -187,8 +187,8 @@ struct Interior {
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
-  std::vector<MapExit> exits{};
-  std::vector<Interior> interiors{};
+  std::vector<MapExit> exits;
+  std::vector<Interior> interiors;
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
   std::chrono::microseconds collection_time{};

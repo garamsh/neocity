@@ -1562,12 +1562,13 @@ constexpr std::array<survival::ActionResult, 24> REFUSALS{
     survival::WorkshopResult::Applied,
     survival::WorkshopResult::Failed};
 
-/// One object for each place name; a line names the place, so objects that
-/// share a name print the same lines.
-std::vector<survival::ObjectId> named_once(const GameView &view) {
+/// One object for each place name, over every map; a line names the place, so
+/// objects that share a name print the same lines.
+std::vector<survival::ObjectId> named_once(const SurvivalFrame &frame) {
+  const auto &view = frame.view;
   std::vector<String> names;
   std::vector<survival::ObjectId> objects;
-  for (const auto &object : view.world.objects) {
+  for (const auto &object : frame.content.get().objects) {
     auto name = rendering::place_name(view, object.id);
     if (std::ranges::find(names, name) == names.end()) {
       names.push_back(std::move(name));
@@ -2315,7 +2316,7 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   // Words on a button stay inside its padding.
   const float padding = 2.0F * BUTTON_PAD;
   const float goal_inner = GOAL_WIDTH - 2.0F * GOAL_PAD;
-  const auto places = named_once(frame.view);
+  const auto places = named_once(frame);
   std::vector<FittedText> lines;
   lines.push_back(fitted(PAUSE_HINT, SMALL_SIZE, TIME_WIDTH - 40.0F));
   // The NEXT step is the goal line in the city and the task card at base.

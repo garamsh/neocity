@@ -102,7 +102,7 @@ public:
   explicit World(const std::vector<ObjectDefinition> &definitions);
   /// Moves the world to `day`; damage follows the day alone, so acid never
   /// changes the map.
-  [[nodiscard]] WorldUpdateResult update(std::uint32_t day);
+  [[nodiscard]] WorldUpdateResult update(std::uint32_t next);
   /// Returns stable identities, areas, visibility, access and material supply.
   [[nodiscard]] WorldSnapshot snapshot() const;
 

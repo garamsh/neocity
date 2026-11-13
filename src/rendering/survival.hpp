@@ -66,7 +66,7 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// walked, alternates its walking frames while it moves, and climbs on a
 /// ladder.
 void paint_city(godot::Node2D &canvas, const Art &art,
-                const survival::Content &content,
+                const survival::Content &everything,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach);
 /// The icon of the ingredient or dish the `survival` library names
