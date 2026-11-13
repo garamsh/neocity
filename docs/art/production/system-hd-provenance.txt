@@ -1,0 +1,42 @@
+HD system asset provenance for issue #222 and goal #218.
+
+Status: newly drawn production candidates; creative acceptance pending. No runtime binding is included.
+Decision record: https://github.com/garamsh/neocity/issues/222 and goal #218 section 결정.
+Generator: built-in image_gen.imagegen only. The tool did not expose a model identifier, seed, quality setting or fixed-size parameter. All five calls requested transparent_background=true.
+Prompts and reference roles: system-hd-prompts.json, verbatim prompts.
+References: search-mockup-v1.png from commit 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style/palette and top HUD/panel reference only; existing art_hd/characters/chef_idle.png, density and cartoon styling only. No reference pixels copied into new assets.
+Lore interpretation: a swallowed rat and a former city clerk affected by radiation, with tumor masses, torn clothing, bone growths and luminous eyes. Specific costume and mutation shapes are candidate visual choices, not new world canon.
+
+Original generated outputs, unchanged:
+- system-hd-rat-source.png: 2172x724, five columns, idle then four walk poses.
+- system-hd-human-source.png: 2172x724, five columns, idle then four walk poses.
+- system-hd-props-source.png: 1983x793, five columns and two rows.
+- system-hd-icons-source.png: 1774x887, six columns and three rows, ingredient order then legacy dish filename order as recorded per manifest entry.
+- system-hd-ui-source.png: 1448x1086, four columns and three rows, measured crops rather than equal cells because generation did not preserve cell widths.
+SHA-256 of each original is recorded in the provenance of its exported files in art_hd/manifest.json. The originals remain under docs/art/production; they are not runtime atlases.
+
+Image processing: ImageMagick 7.1.1-43; Python standard library orchestrated subprocess calls. No PIL, external image service, public upload, or execution of generated data.
+Each direct export uses its source_crop [x,y,width,height] from art_hd/manifest.json:
+  magick SOURCE -crop WIDTHxHEIGHT+X+Y +repage -channel A -threshold 50% +channel -trim +repage CROP
+After alpha threshold and trim, nearest sample to the entry's resize_pixels [rw,rh]. Actors use one common scale across all five frames of their species; no pose was resized independently. Each trimmed figure is centered horizontally on its canvas with its lowest opaque pixel immediately above baseline_y. The human fits within 150x170 and the rat within 184x96, beside the chef's 172px visible idle height.
+Bottom-anchored sprites:
+  magick -size CANVAS_WxCANVAS_H xc:none ( CROP -sample RWxRH! ) -geometry +LEFT+TOP -composite -depth 8 PNG32:OUTPUT
+  LEFT=(CANVAS_W-RW)//2; TOP=baseline_y-RH.
+Icons and direct UI exports:
+  magick CROP -sample RWxRH! -background none -gravity center -extent CANVAS_WxCANVAS_H -depth 8 PNG32:OUTPUT
+No palette quantization, blur, smooth scaling, hand-painted detail, or human retouch. The generated sheet pixels are the source of every exported picture.
+
+First export inspection found the raised crate lid clipped at the canvas top and an adjacent weight-frame sliver inside the clock crop. The final export gives both crate states a 256x288 canvas and a 196x252 fit, and crops the clock source at [765,525,295,150]. Other source drawings were not regenerated.
+
+UI slice and grid construction:
+- Direct frame exports list their left/top/right/bottom margins in slice_margins_ltrb.
+- panel.png is split into a 3x3 arrangement at x=16,112 and y=16,112. Corners remain 16x16; edge bands and center are nearest sampled to the target grid's intervening dimensions and composited on transparency.
+- inventory_grid.png: 632x560, 6 columns and 4 rows; search_grid.png: 432x460, 4 columns and 3 rows; fridge_grid.png: 632x660, 6 columns and 5 rows.
+- Each slot is slot.png, 96x96, composited at (18+100*column,80+100*row), column/row starting at zero.
+- Inventory additionally composites weight_bar.png at (18,506).
+- The precomposed grids are convenient art layouts, not a gameplay capacity decision. Code may assemble any capacity from the reusable panel and slot.
+- Text, quantities and progress values are drawn by code. The sun/clock/acid icon and gauge-fill resources are separate from the empty top plates.
+
+Contact sheet: system-hd-contact-sheet.png is an offline art comparison, not a game capture. All new resources are included at native resolution, with the chef idle frame as a reference. Its captions are evidence labels drawn by ImageMagick, not text in runtime assets. UI examples show the inventory, search and fridge grids at native size and the three top plates with separate icons placed inside for demonstration; code-drawn values are not simulated. The 512x144 slice enlargement example uses panel.png with fixed 16px corners; only the center and intervening edges are nearest sampled. No game behavior or performance is established by this sheet.
+
+Checks are reported in the PR, not inferred from the artwork. Runtime integration and runtime visual/interaction verification belong to the feature issues.
