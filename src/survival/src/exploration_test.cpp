@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -1349,6 +1350,48 @@ TEST(Exploration, AMutantThatWalksOntoAnActorWhoStandsStillSendsItAwayAtOnce) {
               (std::array<std::uint32_t, 2>{0, 0}));
   }
   FAIL() << "the mutant never reached the actor";
+}
+
+TEST(Exploration,
+     AnActorRunningThroughAnObstacleCellWithinOneMovementUnitIsTouched) {
+  // A run covers more than a cell in a 100 ms movement unit, so a cell can lie
+  // between two unit ends with none of them inside it while a physics tick
+  // does.
+  constexpr auto TICKS = 100ms / PHYSICS.tick;
+  constexpr auto UNIT = PHYSICS.run * TICKS;
+  static_assert(UNIT > SUBCELLS);
+  Danger scout({}, {});
+  scout.enter(Actor::Chef);
+  const auto start = scout.explorer(Actor::Chef).body.position.x;
+  GridPosition skipped{};
+  bool found = false;
+  for (std::int32_t x = start / SUBCELLS - 2; x > start / SUBCELLS - 8; --x) {
+    bool tick_inside = false;
+    bool unit_end_inside = false;
+    for (std::int32_t ticks = 1; ticks <= 8 * TICKS; ++ticks) {
+      const auto at_x = (start - ticks * PHYSICS.run) / SUBCELLS;
+      if (at_x == x) {
+        (ticks % TICKS == 0 ? unit_end_inside : tick_inside) = true;
+      }
+    }
+    if (tick_inside && !unit_end_inside) {
+      skipped = GridPosition{.x = x, .y = 0};
+      found = true;
+      break;
+    }
+  }
+  ASSERT_TRUE(found);
+  Danger danger({{.cell = skipped}}, {});
+  danger.both_enter();
+  ASSERT_EQ(danger.explorer(Actor::Chef).body.position.x, start);
+  for (int unit = 0; unit < 8 && !danger.explorer(Actor::Chef).absent; ++unit) {
+    std::array<ExplorationInput, 2> inputs{};
+    inputs.at(0) = {.direction = Direction::Left, .running = true};
+    ASSERT_EQ(danger.exploring().advance(100ms, inputs), Result::Applied);
+  }
+  EXPECT_TRUE(danger.explorer(Actor::Chef).absent);
+  EXPECT_EQ(danger.exploring().snapshot().touches,
+            (std::array<std::uint32_t, 2>{1, 0}));
 }
 
 } // namespace
