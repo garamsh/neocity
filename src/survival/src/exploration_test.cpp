@@ -818,7 +818,7 @@ constexpr ObjectId HALL_SOURCE{11};
 constexpr GridPosition HALL_ARRIVAL{.x = 2, .y = 0};
 constexpr WorldArea EXIT_ZONE{.x = 15, .y = 0, .width = 3, .height = 1};
 
-/// A street floor with an exit zone at its east end to a hall floor, and a
+/// A street floor with an exit zone at its east end to an aquarium floor, and a
 /// shop with an inside; both actors may be sent out together.
 class Travel {
 public:
@@ -921,7 +921,7 @@ TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {
             CollectionResult::Applied);
 }
 
-TEST(Exploration, AnActorCannotEnterTheStreetWhileTheOtherIsInTheHall) {
+TEST(Exploration, AnActorCannotEnterTheStreetWhileTheOtherIsInTheAquarium) {
   Travel travel;
   travel.both_enter();
   travel.walk_to(Actor::Chef, 16);

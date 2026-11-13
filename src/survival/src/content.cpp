@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -487,9 +488,10 @@ std::vector<ObjectDefinition> street() {
 
 /// The flooded aquarium, teal inside: a lobby by the way back to the street,
 /// stairs up to an upper catwalk and a ladder down to a lower gallery, and the
-/// two halves of the hall joined by one span on each level. Damage follows the
-/// day: from `CRACKED_DAY` the upper span is gone, and from `RUINED_DAY` the
-/// lower span is gone too and a skywalk with two ladders carries the way over.
+/// two halves of the aquarium joined by one span on each level. Damage follows
+/// the day: from `CRACKED_DAY` the upper span is gone, and from `RUINED_DAY`
+/// the lower span is gone too and a skywalk with two ladders carries the way
+/// over.
 std::vector<ObjectDefinition> aquarium() {
   std::vector<ObjectDefinition> objects{
       terrain(LOBBY_FLOOR, {.x = 0, .y = 10, .width = 12}),
@@ -526,8 +528,8 @@ std::vector<ObjectDefinition> aquarium() {
 
 std::vector<ObjectDefinition> city() {
   auto objects = street();
-  const auto hall = aquarium();
-  objects.insert(objects.end(), hall.begin(), hall.end());
+  const auto flooded = aquarium();
+  objects.insert(objects.end(), flooded.begin(), flooded.end());
   return objects;
 }
 
@@ -821,6 +823,25 @@ const MapContent &map_of(const Content &content, MapId id) {
   return *found;
 }
 
+namespace {
+
+/// What a source is, as its place name ends.
+const char *source_word(SourceKind kind) {
+  switch (kind) {
+  case SourceKind::VendingMachine:
+    return "machine";
+  case SourceKind::Npc:
+    return "cart";
+  case SourceKind::Shop:
+    return "shop";
+  case SourceKind::Bag:
+    return "bag";
+  }
+  std::abort();
+}
+
+} // namespace
+
 std::string_view ingredient_name(IngredientId ingredient) {
   return name_of(INGREDIENT_NAMES, ingredient);
 }
@@ -829,6 +850,21 @@ std::string_view food_name(FoodId food) { return name_of(FOOD_NAMES, food); }
 
 std::string_view object_name(ObjectId object) {
   return name_of(OBJECT_NAMES, object);
+}
+
+std::string place_display_name(const GameView &view, ObjectId object) {
+  const auto &objects = view.city.objects;
+  const auto &sources = view.exploration.sources;
+  const auto found = std::ranges::find(objects, object, &ObjectSnapshot::id);
+  const auto stock = std::ranges::find(sources, object, &SourceStock::id);
+  if (found == objects.end() || stock == sources.end()) {
+    return std::string(object_name(object));
+  }
+  if (const auto &ingredient = found->ingredient) {
+    return std::string(ingredient_name(*ingredient)) + " " +
+           source_word(stock->kind);
+  }
+  return std::string(object_name(object));
 }
 
 } // namespace neocity::survival

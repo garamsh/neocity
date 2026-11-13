@@ -64,8 +64,7 @@ DamageStage damage_stage(std::uint32_t day) {
 }
 
 WorldSnapshot on_map(const WorldSnapshot &snapshot, MapId map) {
-  WorldSnapshot result{
-      .day = snapshot.day, .stage = snapshot.stage, .objects = {}};
+  WorldSnapshot result{.day = snapshot.day, .objects = {}};
   std::ranges::copy_if(
       snapshot.objects, std::back_inserter(result.objects),
       [map](const ObjectSnapshot &object) { return object.map == map; });
@@ -93,7 +92,7 @@ WorldUpdateResult World::update(std::uint32_t next) {
 }
 
 WorldSnapshot World::snapshot() const {
-  WorldSnapshot result{.day = day, .stage = damage_stage(day), .objects = {}};
+  WorldSnapshot result{.day = day, .objects = {}};
   for (const auto &object : objects) {
     const auto &definition = object.definition;
     const bool intact = object.state == ObjectState::Intact;

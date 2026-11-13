@@ -281,6 +281,7 @@ GameView SurvivalRun::view() const {
   return {.progression = features.simulation.get().snapshot(),
           .world = survival::on_map(features.world.get().snapshot(),
                                     exploration.map),
+          .city = features.world.get().snapshot(),
           .exploration = exploration,
           .workshop = features.workshop.get().snapshot()};
 }
@@ -499,7 +500,8 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
                  view.progression.world_time)
                  .count());
   status.set("world_day", view.world.day);
-  status.set("damage_stage", static_cast<std::int64_t>(view.world.stage));
+  status.set("damage_stage",
+             static_cast<std::int64_t>(survival::damage_stage(view.world.day)));
   status.set(
       "map",
       from(

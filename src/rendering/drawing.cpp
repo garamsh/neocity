@@ -287,21 +287,6 @@ std::uint64_t now() {
           .count());
 }
 
-/// What a source is, as its name ends.
-const char *source_word(survival::SourceKind kind) {
-  switch (kind) {
-  case survival::SourceKind::VendingMachine:
-    return "machine";
-  case survival::SourceKind::Npc:
-    return "cart";
-  case survival::SourceKind::Shop:
-    return "shop";
-  case survival::SourceKind::Bag:
-    return "bag";
-  }
-  std::abort();
-}
-
 } // namespace
 
 godot::Color color(std::uint8_t r, std::uint8_t g, std::uint8_t b, float a) {
@@ -391,24 +376,8 @@ void inset(godot::Node2D &canvas, godot::Rect2 area) {
 
 godot::String place_name(const survival::GameView &view,
                          survival::ObjectId object) {
-  const auto &objects = view.world.objects;
-  const auto &sources = view.exploration.sources;
-  const auto found =
-      std::ranges::find(objects, object, &survival::ObjectSnapshot::id);
-  const auto stock =
-      std::ranges::find(sources, object, &survival::SourceStock::id);
-  const auto named = [](std::string_view text) {
-    return godot::String::utf8(text.data(),
-                               static_cast<std::int64_t>(text.size()));
-  };
-  if (found == objects.end() || stock == sources.end()) {
-    return named(survival::object_name(object));
-  }
-  if (const auto &ingredient = found->ingredient) {
-    return named(survival::ingredient_name(*ingredient)) + " " +
-           source_word(stock->kind);
-  }
-  return named(survival::object_name(object));
+  return godot::String::utf8(
+      survival::place_display_name(view, object).c_str());
 }
 
 Palette palette() {

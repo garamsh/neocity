@@ -3,6 +3,7 @@
 #include <survival/companion.hpp>
 
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -109,5 +110,12 @@ struct Content {
 [[nodiscard]] std::string_view ingredient_name(IngredientId ingredient);
 [[nodiscard]] std::string_view food_name(FoodId food);
 [[nodiscard]] std::string_view object_name(ObjectId object);
+
+/// The one name a city object has on every map, so the map, the goal line,
+/// the action button and the log agree: a source by what it holds and what it
+/// is, "Fish cart", anything else by `object_name`. It reads the objects of
+/// every map, never only the current one.
+[[nodiscard]] std::string place_display_name(const GameView &view,
+                                             ObjectId object);
 
 } // namespace neocity::survival

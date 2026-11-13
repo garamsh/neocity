@@ -56,6 +56,7 @@ public:
   [[nodiscard]] GameView view() const {
     return {.progression = shared.snapshot(),
             .world = on_map(map.snapshot(), explorers.snapshot().map),
+            .city = map.snapshot(),
             .exploration = explorers.snapshot(),
             .workshop = kitchen_work.snapshot()};
   }
@@ -320,6 +321,35 @@ ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
   return *found;
 }
 
+TEST(TemporaryContent, APlaceHasTheSameNameOnEveryMap) {
+  const Game game(temporary_content(7));
+  const auto street = game.view();
+  ASSERT_EQ(street.exploration.map, MapId::Street);
+  auto aquarium = street;
+  aquarium.exploration.map = MapId::Aquarium;
+  aquarium.world = on_map(street.city, MapId::Aquarium);
+  ASSERT_NE(aquarium.world.objects.size(), street.world.objects.size());
+  std::size_t named_by_ingredient = 0;
+  for (const auto &object : street.city.objects) {
+    const auto name = place_display_name(street, object.id);
+    EXPECT_EQ(name, place_display_name(aquarium, object.id))
+        << object_name(object.id);
+    if (name != object_name(object.id)) {
+      ++named_by_ingredient;
+    }
+  }
+  // Control: some places are named by what they hold, so the comparison
+  // could tell a short fallback name from the printed one.
+  EXPECT_GT(named_by_ingredient, 0U);
+  const auto on_aquarium = std::ranges::find_if(
+      street.city.objects, [](const ObjectSnapshot &object) {
+        return object.map == MapId::Aquarium && object.ingredient;
+      });
+  ASSERT_NE(on_aquarium, street.city.objects.end());
+  EXPECT_NE(place_display_name(street, on_aquarium->id),
+            object_name(on_aquarium->id));
+}
+
 TEST(TemporaryContent, ConstructsEveryFeatureWithinItsMap) {
   Game game(temporary_content(7));
   EXPECT_EQ(game.simulation().snapshot().seed, 7U);
@@ -453,11 +483,11 @@ TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
 }
 
 TEST(TemporaryContent,
-     NoStraightRunOfGroundIsLongerThanAThirdOfTheStreetOrHalfTheHall) {
+     NoStraightRunOfGroundIsLongerThanAThirdOfTheStreetOrHalfTheAquarium) {
   const auto content = temporary_content(1);
   for (const auto &map : content.maps) {
     const auto ground = ground_of(map);
-    // The aquarium is one hall, so its floors may run half its width.
+    // The aquarium is wider per floor, so its floors may run half its width.
     const auto longest = map.size.width / (map.id == MapId::Street ? 3 : 2);
     for (std::int32_t y = 0; y < map.size.height; ++y) {
       std::int32_t run = 0;
@@ -868,10 +898,10 @@ TEST(TemporaryContent, TheDayDamagesTheCityAndBringsTheFerryInThreeStages) {
             ObjectState::Dormant);
   ASSERT_EQ(object_named(standing, "Rotten Bridge").state, ObjectState::Intact);
   ASSERT_EQ(object_named(standing, "Old Kiosk").state, ObjectState::Intact);
-  EXPECT_EQ(standing.stage, DamageStage::Standing);
+  EXPECT_EQ(damage_stage(standing.day), DamageStage::Standing);
 
   const auto cracked = on_day(content, STAGE_FIRST_DAY.at(1));
-  EXPECT_EQ(cracked.stage, DamageStage::Cracked);
+  EXPECT_EQ(damage_stage(cracked.day), DamageStage::Cracked);
   EXPECT_EQ(object_named(cracked, "Roof Ladder").state, ObjectState::Destroyed);
   EXPECT_EQ(object_named(cracked, "Fire Escape").state, ObjectState::Intact);
   EXPECT_EQ(object_named(cracked, "Drifted Ferry").state, ObjectState::Intact);
@@ -879,7 +909,7 @@ TEST(TemporaryContent, TheDayDamagesTheCityAndBringsTheFerryInThreeStages) {
   EXPECT_EQ(object_named(cracked, "Noodle Vendor").state, ObjectState::Intact);
 
   const auto ruined = on_day(content, STAGE_FIRST_DAY.at(2));
-  EXPECT_EQ(ruined.stage, DamageStage::Ruined);
+  EXPECT_EQ(damage_stage(ruined.day), DamageStage::Ruined);
   EXPECT_EQ(object_named(ruined, "Rotten Bridge").state,
             ObjectState::Destroyed);
   EXPECT_EQ(object_named(ruined, "Old Kiosk").state, ObjectState::Destroyed);

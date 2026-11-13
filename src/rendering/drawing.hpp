@@ -40,7 +40,8 @@ void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
 void inset(godot::Node2D &canvas, godot::Rect2 area);
 /// The one name the screen gives a city object, so the map, the goal line,
 /// the action button and the log agree: a source by what it holds and what it
-/// is, "Fish cart", anything else by `survival::object_name`.
+/// is, "Fish cart", anything else by `survival::object_name`; see
+/// `survival::place_display_name`.
 [[nodiscard]] godot::String place_name(const survival::GameView &view,
                                        survival::ObjectId object);
 

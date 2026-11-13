@@ -110,6 +110,7 @@ public:
   [[nodiscard]] GameView view() const {
     return {.progression = shared.snapshot(),
             .world = on_map(map.snapshot(), explorers.snapshot().map),
+            .city = map.snapshot(),
             .exploration = explorers.snapshot(),
             .workshop = kitchen_work.snapshot()};
   }

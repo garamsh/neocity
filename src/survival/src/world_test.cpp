@@ -103,10 +103,10 @@ TEST(World, DamageStagesBeginOnTheirDaysAndDependOnTheDayAlone) {
   EXPECT_EQ(damage_stage(10), DamageStage::Ruined);
   EXPECT_EQ(damage_stage(500), DamageStage::Ruined);
   World world(city());
-  EXPECT_EQ(world.snapshot().stage, DamageStage::Standing);
+  EXPECT_EQ(damage_stage(world.snapshot().day), DamageStage::Standing);
   ASSERT_EQ(world.update(5), WorldUpdateResult::Applied);
   EXPECT_EQ(world.snapshot().day, 5U);
-  EXPECT_EQ(world.snapshot().stage, DamageStage::Cracked);
+  EXPECT_EQ(damage_stage(world.snapshot().day), DamageStage::Cracked);
 }
 
 TEST(World, DayDamageRemovesTerrainAndPassageAccessOnItsOwnDay) {
@@ -196,7 +196,7 @@ TEST(World, OnMapKeepsOnlyThatMapsObjectsAndTheDay) {
   ASSERT_EQ(aquarium.objects.size(), 1U);
   EXPECT_EQ(aquarium.objects.at(0).id, AQUARIUM_FLOOR);
   EXPECT_EQ(aquarium.day, 5U);
-  EXPECT_EQ(aquarium.stage, DamageStage::Cracked);
+  EXPECT_EQ(damage_stage(aquarium.day), DamageStage::Cracked);
   const auto street = on_map(world.snapshot(), MapId::Street);
   EXPECT_EQ(street.objects.size(), 9U);
 }

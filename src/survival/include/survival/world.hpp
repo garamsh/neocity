@@ -81,7 +81,6 @@ struct ObjectSnapshot {
 /// Value snapshot of every map's objects on the world's day.
 struct WorldSnapshot {
   std::uint32_t day = 1;
-  DamageStage stage = DamageStage::Standing;
   std::vector<ObjectSnapshot> objects;
   friend bool operator==(const WorldSnapshot &,
                          const WorldSnapshot &) = default;
