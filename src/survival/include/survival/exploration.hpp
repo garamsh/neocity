@@ -255,6 +255,15 @@ struct MutantSnapshot {
                          const MutantSnapshot &) = default;
 };
 
+/// Temporary: sub-cells a mutant walks in one movement unit, a third of a
+/// walking actor's.
+inline constexpr std::int32_t MUTANT_STEP = 8;
+
+/// The mutant one movement unit on: it walks `MUTANT_STEP` sub-cells along
+/// `patrol` and turns round on the centre of an end cell.
+[[nodiscard]] MutantSnapshot patrol_step(const Patrol &patrol,
+                                         MutantSnapshot mutant);
+
 /// Read-only values for a renderer or companion controller. `map` is the map
 /// both actors share; the street whenever nobody is out. `obstacles` and
 /// `mutants` are those of that map.

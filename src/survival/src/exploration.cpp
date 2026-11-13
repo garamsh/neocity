@@ -22,9 +22,6 @@ constexpr std::int32_t JUMP_ROOM =
     static_cast<std::int32_t>(TICKS_PER_UNIT) * PHYSICS.walk - 1;
 /// Ticks a link's simulated body may take before it counts as lost.
 constexpr int LINK_TICKS = 200;
-/// Temporary: sub-cells a mutant walks in one movement unit, a third of a
-/// walking actor's.
-constexpr std::int32_t MUTANT_STEP = 8;
 
 ActorSnapshot actor_state(const Snapshot &snapshot, Actor actor) {
   switch (actor) {
@@ -789,6 +786,21 @@ void Exploration::travel() {
   }
 }
 
+MutantSnapshot patrol_step(const Patrol &patrol, MutantSnapshot mutant) {
+  const auto left = standing_in(patrol.from).x;
+  const auto right = standing_in(patrol.to).x;
+  mutant.position.x +=
+      mutant.heading == Direction::Right ? MUTANT_STEP : -MUTANT_STEP;
+  if (mutant.position.x >= right) {
+    mutant.position.x = right;
+    mutant.heading = Direction::Left;
+  } else if (mutant.position.x <= left) {
+    mutant.position.x = left;
+    mutant.heading = Direction::Right;
+  }
+  return mutant;
+}
+
 bool Exploration::touched(const CellMap &map, const Body &body) const {
   const auto cell = cell_of(body.position);
   return map.obstructed(cell) ||
@@ -833,18 +845,7 @@ void Exploration::release_absent() {
 
 void Exploration::walk_mutants() {
   for (auto &mutant : mutants) {
-    const auto left = standing_in(mutant.patrol.from).x;
-    const auto right = standing_in(mutant.patrol.to).x;
-    auto &state = mutant.state;
-    state.position.x +=
-        state.heading == Direction::Right ? MUTANT_STEP : -MUTANT_STEP;
-    if (state.position.x >= right) {
-      state.position.x = right;
-      state.heading = Direction::Left;
-    } else if (state.position.x <= left) {
-      state.position.x = left;
-      state.heading = Direction::Right;
-    }
+    mutant.state = patrol_step(mutant.patrol, mutant.state);
   }
   const auto map = cells();
   for (const auto actor : ACTORS) {

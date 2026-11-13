@@ -1018,24 +1018,39 @@ TEST(Exploration, AnExitNeedsASafeArrivalOnADifferentMap) {
 }
 
 /// A walkway from x = 0 to 59 with the party entering at x = 30, an obstacle
-/// west of the entry, and whatever mutant patrols the test adds. Time spent
-/// away from the map is ten seconds.
+/// west of the entry, a source and an exit zone to an aquarium floor beside
+/// that obstacle, and whatever mutant patrols the test adds. Time spent away
+/// from the map is ten seconds.
 class Danger {
 public:
   static constexpr GridPosition WEST_ENTRY{.x = 30, .y = 0};
   static constexpr GridPosition OBSTACLE{.x = 20, .y = 0};
+  static constexpr WorldArea WEST_EXIT{
+      .x = 18, .y = 0, .width = 5, .height = 1};
+  static constexpr ObjectId NEAR_SOURCE{12};
+  static constexpr ObjectId AQUARIUM_FLOOR{13};
   static constexpr auto ABSENCE = 10s;
 
   explicit Danger(std::vector<Obstacle> obstacles = {{.cell = OBSTACLE}},
                   std::vector<Patrol> patrols = {})
       : simulation({.exploration_budget = 600s, .seed = 0}),
-        world({floor_at(FLOOR, 0, 0, 60)}),
+        world({floor_at(FLOOR, 0, 0, 60),
+               {.id = NEAR_SOURCE,
+                .kind = ObjectKind::MaterialSource,
+                .area = {.x = 21},
+                .ingredient = IngredientId{70}},
+               {.id = AQUARIUM_FLOOR,
+                .area = {.x = 0, .y = 0, .width = 10},
+                .map = MapId::Aquarium}}),
         exploration(simulation, world,
                     {.base = BASE,
                      .entry = WEST_ENTRY,
-                     .exits = {},
+                     .exits = {{.from = MapId::Street,
+                                .zone = WEST_EXIT,
+                                .to = MapId::Aquarium,
+                                .arrival = {.x = 2, .y = 0}}},
                      .interiors = {},
-                     .sources = {},
+                     .sources = {{.id = NEAR_SOURCE}},
                      .obstacles = std::move(obstacles),
                      .patrols = std::move(patrols),
                      .absence = ABSENCE}) {}
@@ -1254,6 +1269,79 @@ TEST(Exploration, ARouteNeverPassesThroughAnObstacleCell) {
   ASSERT_TRUE(walks_into(open));
   EXPECT_FALSE(walks_into(blocked));
   EXPECT_TRUE(blocked.obstructed(obstacle));
+}
+
+TEST(Exploration, AnAbsentActorCannotCollectFromASourceInRange) {
+  Danger danger;
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  ASSERT_LE(distance(at(danger.explorer(Actor::Chef)),
+                     {.x = 21, .y = 0, .width = 1, .height = 1}),
+            1);
+  EXPECT_EQ(danger.exploring().collect(Actor::Chef, Danger::NEAR_SOURCE),
+            CollectionResult::NotExploring);
+  // The control: the partner, on the map and in range, collects.
+  danger.press(Actor::Appraiser, Direction::Left);
+  for (int tick = 0; tick < 100 && at(danger.explorer(Actor::Appraiser)).x > 22;
+       ++tick) {
+    danger.press(Actor::Appraiser, Direction::Left);
+  }
+  EXPECT_EQ(danger.exploring().collect(Actor::Appraiser, Danger::NEAR_SOURCE),
+            CollectionResult::Applied);
+}
+
+TEST(Exploration, TheMapDoesNotChangeWhileAnActorOfThePairIsAbsent) {
+  Danger danger;
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  ASSERT_GE(at(danger.explorer(Actor::Chef)).x, Danger::WEST_EXIT.x);
+  ASSERT_LT(at(danger.explorer(Actor::Chef)).x,
+            Danger::WEST_EXIT.x + Danger::WEST_EXIT.width);
+  for (int tick = 0;
+       tick < 400 && at(danger.explorer(Actor::Appraiser)).x >
+                         Danger::WEST_EXIT.x + Danger::WEST_EXIT.width - 1;
+       ++tick) {
+    danger.press(Actor::Appraiser, Direction::Left);
+  }
+  ASSERT_LT(at(danger.explorer(Actor::Appraiser)).x,
+            Danger::WEST_EXIT.x + Danger::WEST_EXIT.width);
+  EXPECT_EQ(danger.exploring().snapshot().map, MapId::Street);
+  // The control: once the chef is back both stand in the zone and the party
+  // crosses at the next movement unit.
+  danger.idle(500);
+  ASSERT_FALSE(danger.explorer(Actor::Chef).absent);
+  danger.idle(5);
+  EXPECT_EQ(danger.exploring().snapshot().map, MapId::Aquarium);
+}
+
+TEST(Exploration, AnAbsentActorGoesHomeWhenItsPartnerReturnsToBase) {
+  Danger danger;
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  ASSERT_EQ(danger.exploring().return_to_base(Actor::Appraiser),
+            Result::Applied);
+  EXPECT_EQ(danger.sim().snapshot().chef.location, Location::Base);
+  EXPECT_FALSE(danger.explorer(Actor::Chef).absent);
+}
+
+TEST(Exploration, AMutantThatWalksOntoAnActorWhoStandsStillSendsItAwayAtOnce) {
+  Danger danger({}, {{.from = {.x = 26, .y = 0}, .to = {.x = 34, .y = 0}}});
+  danger.enter(Actor::Chef);
+  const auto here = at(danger.explorer(Actor::Chef));
+  for (int unit = 0; unit < 40; ++unit) {
+    ASSERT_EQ(danger.exploring().advance(100ms, IDLE), Result::Applied);
+    const auto mutant = danger.exploring().snapshot().mutants.front();
+    if (cell_of(mutant.position) == here) {
+      // The unit that put the mutant on the actor is the one that touches.
+      EXPECT_EQ(danger.sim().snapshot().chef.location, Location::Base);
+      return;
+    }
+    ASSERT_EQ(danger.sim().snapshot().chef.location, Location::City);
+  }
+  FAIL() << "the mutant never reached the actor";
 }
 
 } // namespace

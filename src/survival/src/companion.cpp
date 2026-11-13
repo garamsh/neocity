@@ -517,44 +517,24 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
 }
 
 /// Temporary policy: movement units ahead an AI actor looks for a mutant, and
-/// sub-cells it walks in that time at most, which mirror the walking and
-/// patrol speeds of `Exploration`.
+/// sub-cells it walks in that time at most. A walking actor covers 25
+/// sub-cells in a unit; the reach is rounded up to 30 for margin.
 constexpr int PATROL_LOOKAHEAD = 2;
 constexpr std::int32_t ACTOR_UNIT_REACH = 30;
-constexpr std::int32_t MUTANT_UNIT_REACH = 8;
 
-/// Where a mutant is after `units` movement units: it walks its patrol and
-/// turns round on the centre of an end cell.
-Position mutant_after(const MutantSnapshot &mutant, const Patrol &patrol,
-                      int units) {
-  const auto left = patrol.from.x * SUBCELLS + SUBCELLS / 2;
-  const auto right = patrol.to.x * SUBCELLS + SUBCELLS / 2;
-  auto position = mutant.position;
-  auto heading = mutant.heading;
-  for (int unit = 0; unit < units; ++unit) {
-    position.x +=
-        heading == Direction::Right ? MUTANT_UNIT_REACH : -MUTANT_UNIT_REACH;
-    if (position.x >= right) {
-      position.x = right;
-      heading = Direction::Left;
-    } else if (position.x <= left) {
-      position.x = left;
-      heading = Direction::Right;
-    }
-  }
-  return position;
-}
-
-/// Whether stepping the way `command` moves would put the actor in a cell a
-/// mutant stands in or reaches within the next movement units.
+/// Whether walking the way `command` moves would put the actor in a cell a
+/// mutant stands in or reaches within the next movement units. Only a walk
+/// along the ground is held: a body in the air keeps its way, because `decide`
+/// would drop its sideways move, and a climb moves no sideways.
 bool mutant_ahead(const CompanionConfig &config, Actor actor,
                   const ActorCommand &command, const GameView &view) {
   const auto direction = command.movement.direction;
-  if (direction == Direction::Idle || command.action ||
+  const auto &body = body_of(view, actor);
+  if ((direction != Direction::Left && direction != Direction::Right) ||
+      command.action || body.stance == Stance::Airborne ||
       state_of(view, actor).location != Location::City) {
     return false;
   }
-  const auto &body = body_of(view, actor);
   const auto sign = direction == Direction::Right ? 1 : -1;
   const auto row = cell_of(body.position).y;
   const auto reach = Position{.x = body.position.x +
@@ -572,11 +552,13 @@ bool mutant_ahead(const CompanionConfig &config, Actor actor,
     if (cell.y != row || patrol == config.exploration.patrols.end()) {
       continue;
     }
+    auto ahead = mutant;
     for (int unit = 0; unit <= PATROL_LOOKAHEAD; ++unit) {
-      const auto at = cell_of(mutant_after(mutant, *patrol, unit)).x;
+      const auto at = cell_of(ahead.position).x;
       if (near <= at && at <= far) {
         return true;
       }
+      ahead = patrol_step(*patrol, ahead);
     }
   }
   return false;
