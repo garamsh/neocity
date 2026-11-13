@@ -54,7 +54,7 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
 /// canvas that blends by adding.
 void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
                 const View &camera);
-/// Draws the light of the city's lamps and acid drips as `camera` shows them,
+/// Draws the halo of the map's obstacle cells as `camera` shows them,
 /// for a canvas that blends by adding.
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
                      const survival::MapContent &content, const View &camera);
