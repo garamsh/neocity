@@ -33,6 +33,8 @@ extends SceneTree
 
 ## One unfed day short of the acid that ends the run.
 const HIGH_ACID: int = 84
+## The acid at which the Shallows break, as `Content` declares it.
+const SHALLOWS_BREAKS: int = 45
 ## Half the acid that ends the run, to the nearest unfed day's rise.
 const MIDDLE_ACID: int = 48
 ## Following NEXT on this seed escapes; `G` alone only ever loses.
@@ -334,6 +336,10 @@ func _run() -> void:
 	await _frames(12)
 	await _tap(KEY_G)
 	await _frames(12)
+	# The Shallows break at 45; the unfed days so far may leave the acid short of it.
+	while _int("acid") < SHALLOWS_BREAKS:
+		await _tap(KEY_G)
+		await _frames(12)
 	await _save("10-workshop-acid-rose")
 	await _tap(KEY_Q)
 	await _frames(40)
