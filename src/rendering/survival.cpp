@@ -798,16 +798,21 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
 
 /// Darkens everything outside an occupied building's interior, easing in as
 /// an actor enters and out as the last one leaves; the interior stays lit.
-void paint_interior_veils(godot::Node2D &canvas, const Art &art,
-                          const survival::Content &content,
-                          const survival::GameView &view) {
+/// `present` holds the building each actor drawn in the city is inside, if
+/// any: the outside is only darkened while nobody is out in it.
+void paint_interior_veils(
+    godot::Node2D &canvas, const Art &art, const survival::Content &content,
+    const std::vector<std::optional<survival::ObjectId>> &present) {
   const auto &interiors = content.companion.exploration.interiors;
   float darkest = 0.0F;
   for (std::size_t index = 0; index < interiors.size(); ++index) {
     const auto &interior = interiors.at(index);
     const bool occupied =
-        view.exploration.chef.interior == interior.building ||
-        view.exploration.appraiser.interior == interior.building;
+        std::ranges::any_of(
+            present,
+            [&](const auto &inside) { return inside == interior.building; }) &&
+        std::ranges::none_of(
+            present, [](const auto &inside) { return !inside.has_value(); });
     const float level =
         art.glide("interior_veil_" +
                       godot::String::num_int64(static_cast<int64_t>(index)),
@@ -1657,7 +1662,14 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     paint_actor(canvas, art, view, Actor::Appraiser,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
   }
-  paint_interior_veils(canvas, art, everything, view);
+  std::vector<std::optional<survival::ObjectId>> present;
+  if (party.chef_out) {
+    present.push_back(view.exploration.chef.interior);
+  }
+  if (party.appraiser_out) {
+    present.push_back(view.exploration.appraiser.interior);
+  }
+  paint_interior_veils(canvas, art, everything, present);
 }
 
 std::optional<Image> item_icon(std::string_view name) {

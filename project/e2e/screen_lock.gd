@@ -35,6 +35,9 @@ const DARK_OUTSIDE: float = 0.5
 ## How long the drawn veil is awaited, in real milliseconds, since it eases on
 ## the real clock.
 const VEIL_LIMIT_MSEC: int = 3000
+## How many frames a veil that is not to appear is watched for; the day's
+## time is short, and the veil takes a fraction of a second to show.
+const VEIL_HOLD_FRAMES: int = 20
 ## The frames a map fade is watched for: it lasts 0.6 seconds of frame time.
 const FADE_FRAMES: int = 80
 
@@ -85,6 +88,11 @@ func _start() -> void:
 func _building_entry_darkens_the_outside() -> void:
 	await _frames(2)
 	_check(_veil() == 0.0, "the outside is not dark before any building is entered: %f" % _veil())
+	# One actor in the shop while the other stays out leaves the street lit.
+	if not await _drive([KITCHEN_FLOOR, []], 1200):
+		return
+	await _frames(VEIL_HOLD_FRAMES)
+	_check(_veil() < 0.01, "the street stays lit while one actor is in the shop and the other is out: %f" % _veil())
 	if not await _drive([KITCHEN_FLOOR, KITCHEN_FLOOR], 1200):
 		return
 	await _veil_settles(true)
