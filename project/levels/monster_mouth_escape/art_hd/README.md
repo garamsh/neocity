@@ -29,7 +29,7 @@ The native 1920×1080 environment assets and reference composite for [issue #210
 
 - The renderer converts backgrounds to layout units with `1 / ART_SCALE`, and cell art and city actors with `1 / (2 * ART_SCALE)`. The close camera and canvas restore one native picture pixel per 1080p pixel. Other output sizes follow Godot’s fractional canvas scale.
 - `python3 tools/art/pixelize.py check project/levels/monster_mouth_escape/art_hd` checks both manifests for dimensions, hashes and native fine-edge detail. The same check runs after the legacy set in `make test`. Generated HD art keeps its own colours and is not subject to the legacy palette or mockup-source requirements.
-- The existing twenty-column repeat, floor rows and exposed deck contours remain. Tilted cells now draw level surfaces at their collision floors.
+- Street bands retain their twenty-column repeat and exposed deck contours; the aquarium has its own four-cell band. Terrain decks draw level surfaces at their collision floors.
 
 ## Evidence
 
@@ -75,3 +75,6 @@ The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) ar
 - All nine images contain no text. The root manifest owns their dimensions, hashes, roles, source identities and crops.
 - `python3 tools/art/map_hd.py` regenerates them from [recorded sources](../../../../docs/art/production/map-hd-sources/) with ImageMagick. The [exact prompts](../../../../docs/art/production/map-hd-prompts.json) record built-in ImageGen use; no credit-charging service was used. Sources are resampled once with Lanczos to the runtime contract; sprite alpha is thresholded to remove translucent generation halos.
 - The rules supply all geometry, map selection and damage states. Interior art appears when either actor occupies the existing zone; #224 owns darkening and fades. Creative acceptance remains with the user.
+
+- #230 runtime evidence: [street](../../../../docs/architecture/evidence/survival/230-street-1080.png), [occupied kitchen](../../../../docs/architecture/evidence/survival/230-interior-1080.png), [day-seven damage](../../../../docs/architecture/evidence/survival/230-damage-day-7-1080.png), and [day-ten damage](../../../../docs/architecture/evidence/survival/230-damage-day-10-1080.png), each 1920×1080. The [comparison](../../../../docs/architecture/evidence/survival/230-mockup-beside-street.png) places the normalized mockup on the left and the native street capture on the right.
+- Aquarium runtime evidence remains missing: the map tour returned to base while targeting the terminal stair at (51, 6). The aquarium PNG is an asset preview, not a runtime capture; its runtime floor check was not reached.
