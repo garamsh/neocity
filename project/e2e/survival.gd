@@ -58,18 +58,23 @@ const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
 ## limit, well past the camera's eased motion.
 const SETTLE_POLL_MSEC: int = 20
 const SETTLE_LIMIT_MSEC: int = 3000
+## How far, in screen pixels, a camera may still lag a walking AI partner's
+## heading and count as at rest. Only the rest test uses it; the checks that
+## read the settled camera stay exact.
+const SETTLE_SLACK: float = 24.0
 ## A note shows four seconds and fades over one, on the real clock; the wait
 ## for it to go allows that and more.
 const NOTE_FADE_LIMIT_MSEC: int = 8000
 ## The middle of the play area on screen, where the camera draws what it
 ## heads for.
 const FOCUS: Vector2 = Vector2(640, 301)
-## How far ahead of the way a lone human faces the camera looks, in scene
-## pixels.
-const LOOK_AHEAD: float = 80.0
-## How far apart, in scene pixels, two humans stand when the camera must draw
+## How far apart, in scene pixels, two actors stand when the camera must draw
 ## them smaller than twice the scene's size to frame both.
 const APART: float = 480.0
+## The screen lock, in sub-cells, and how near it a walker stops pressing on
+## so its partner can come up and a jump is never mistaken for a snag.
+const SCREEN_LOCK: int = 384
+const LOCK_WAIT: int = 320
 ## Where the workshop draws the ingredients waiting for appraisal, over the
 ## appraiser's head.
 const APPRAISER_HEAD: Vector2 = Vector2(216, 166)
@@ -721,23 +726,24 @@ func _third_day_falls() -> void:
 		return
 	if not await _camera_settles("the drip"):
 		return
-	var drip: Dictionary = _backdrop()
 	if not await _walk_to(24, 8):
 		return
-	if not await _camera_ignores_partner("the east walkway on day three"):
+	if not await _camera_frames_partner("the east walkway on day three"):
 		return
-	if not _backdrop_slides(drip, _backdrop(), "from the drip to the east walkway"):
+	if not await _backdrop_slides_along("the east walkway"):
+		return
+	if not await _walk_to(24, 8):
 		return
 	if not _plates_clear_of_sources("the east walkway on day three"):
 		return
 	if not _points_to_goal("the east walkway on day three"):
 		return
-	if not _looks_ahead("chef", 1.0, "walking east onto the east walkway"):
+	if not await _centres_pair("walking east onto the east walkway"):
 		return
 	await _tap(KEY_A)
 	if not await _camera_settles("the east walkway facing west"):
 		return
-	if not _looks_ahead("chef", -1.0, "turning west on the east walkway"):
+	if not await _centres_pair("turning west on the east walkway"):
 		return
 	var remaining: int = _int("remaining_ms")
 	var pack: int = _actor("chef", "ingredients")
@@ -1724,15 +1730,15 @@ func _plates_apart(where: String) -> bool:
 func _feet(who: String) -> Vector2:
 	return MAP_ORIGIN + Vector2(_actor(who, "sub_x"), _actor(who, "sub_y"))
 
-## The humans out in the city.
+## The actors out in the city, human or AI.
 func _humans_out() -> Array[String]:
 	var out: Array[String] = []
 	for who: String in ["chef", "appraiser"]:
-		if _actor(who, "key_set") >= 0 and _where(who) == "city":
+		if _where(who) == "city":
 			out.append(who)
 	return out
 
-## Once the camera has settled: every human in the city stands on the play
+## Once the camera has settled: every actor in the city stands on the play
 ## area; the view shows nothing past the map's sides or the scene's top and
 ## bottom, and centres on the map when wider than it; one human is drawn at
 ## twice the scene's size, and two at twice or once, never twice when they
@@ -1757,12 +1763,10 @@ func _camera_holds(where: String) -> bool:
 		framed = zoom >= 1.0 and zoom <= 2.0 and (zoom < 2.0 or (apart.x < APART and apart.y < APART / 4.0))
 	return _check(not humans.is_empty() and shown and inside and framed, "the camera frames the humans on %s: zoom %.2f, humans %s at %s, map from x %.0f to %.0f" % [where, zoom, humans, humans.map(func(who: String) -> Vector2: return view * _feet(who)), left, right])
 
-## With one human, an AI partner far off does not pull the camera: it stays
-## at twice the scene's size on the human. The control is that the partner
-## stands where a camera framing both would have to draw them smaller.
-func _camera_ignores_partner(where: String) -> bool:
-	var apart: Vector2 = (_feet("chef") - _feet("appraiser")).abs()
-	if not _check(_where("appraiser") == "city" and _actor("appraiser", "key_set") == -1 and (apart.x >= APART or apart.y >= APART / 4.0), "the AI partner stands far off on %s: %s apart" % [where, apart]):
+## The camera frames an AI partner as it does a human: both stand on the play
+## area. The control is that the AI partner is out in the city.
+func _camera_frames_partner(where: String) -> bool:
+	if not _check(_where("appraiser") == "city" and _actor("appraiser", "key_set") == -1, "the AI partner is out on %s" % where):
 		return false
 	return await _camera_holds(where)
 
@@ -1775,21 +1779,24 @@ func _camera_settles(where: String) -> bool:
 		var heading: Transform2D = scene.get_meta("map_heading", Transform2D(0.0, Vector2(-1, -1)))
 		if view.is_equal_approx(heading):
 			return true
+		# An AI partner in the city keeps walking and the camera frames it too, so
+		# after a while a camera within SETTLE_SLACK of its heading is at rest.
+		# Measured on the east walkway on day three: 12 px across, 18 px down
+		# (about 22 px) while the appraiser jumped.
+		if Time.get_ticks_msec() - started > SETTLE_LIMIT_MSEC / 2 and is_equal_approx(view.x.x, heading.x.x) and view.origin.distance_to(heading.origin) <= SETTLE_SLACK:
+			return true
 		OS.delay_msec(SETTLE_POLL_MSEC)
 		await process_frame
 	return _check(false, "the camera comes to rest on %s: drawn %s, heading %s" % [where, scene.get_meta("map_view", null), scene.get_meta("map_heading", null)])
 
-## Once the camera has settled on a lone human facing `facing`, 1 east and -1
-## west, the human stands LOOK_AHEAD scene pixels behind the middle of the
-## play area. The control is that the camera there is not held by the map's
-## edge: the map runs past the screen on both sides.
-func _looks_ahead(who: String, facing: float, where: String) -> bool:
+## Once the camera has settled on two actors in the city, it centres on the
+## middle of the two rather than looking ahead of one.
+func _centres_pair(where: String) -> bool:
+	if not await _camera_settles(where):
+		return false
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
-	var feet: Vector2 = view * _feet(who)
-	var left: float = (view * MAP_ORIGIN).x
-	var right: float = (view * (MAP_ORIGIN + MAP_SIZE)).x
-	var expected: float = FOCUS.x - facing * LOOK_AHEAD * view.x.x
-	return _check(left < 0.0 and right > PLAY.size.x and absf(feet.x - expected) <= 1.0, "the camera looks ahead of a lone human %s: feet at x %.1f, expected %.1f, map from x %.0f to %.0f" % [where, feet.x, expected, left, right])
+	var middle: float = (view * _feet("chef")).x / 2.0 + (view * _feet("appraiser")).x / 2.0
+	return _check(absf(middle - FOCUS.x) <= 1.0, "the camera centres the two actors %s: middle at x %.1f, expected %.1f" % [where, middle, FOCUS.x])
 
 ## The camera and where the backdrop's layers were drawn, back to front.
 func _backdrop() -> Dictionary:
@@ -1814,6 +1821,23 @@ func _backdrop_slides(before: Dictionary, after: Dictionary, where: String) -> b
 			shares.append((to.x - from.x) / moved if moved != 0.0 else 0.0)
 	var ordered: bool = shares.size() == 3 and 0.0 < shares[0] and shares[0] < shares[1] and shares[1] < shares[2] and shares[2] < 1.0
 	return _check(is_equal_approx(first.x.x, second.x.x) and absf(moved) >= 100.0 and ordered, "the backdrop's layers slide less than the map the farther back they are %s: the map moved %.0f, the layers by shares %s" % [where, moved, shares])
+
+## The camera frames both actors, so an AI partner at another height changes
+## the zoom between two walks. This walks the chef along the walkway between
+## its two ends until two settled cameras share a zoom, then checks the slide.
+func _backdrop_slides_along(where: String) -> bool:
+	for attempt: int in range(4):
+		if not await _walk_to(20, 8) or not await _camera_settles(where):
+			return false
+		var west: Dictionary = _backdrop()
+		if not await _walk_to(28, 8) or not await _camera_settles(where):
+			return false
+		var east: Dictionary = _backdrop()
+		var west_view: Transform2D = west["view"]
+		var east_view: Transform2D = east["view"]
+		if is_equal_approx(west_view.x.x, east_view.x.x) and absf(east_view.origin.x - west_view.origin.x) >= 100.0:
+			return _backdrop_slides(west, east, "along " + where)
+	return _check(false, "two settled cameras share a zoom along %s" % where)
 
 ## No word plate on the screen but a source's count covers a source, and none
 ## lies under a HUD panel or note, now or on any frame walked since the last
@@ -1985,6 +2009,13 @@ func _walk_to(x: int, y: int) -> bool:
 		if at_x == x and at_y == y and _stance(walker) != "airborne":
 			_release()
 			return true
+		var heading: int = signi(x - at_x)
+		var other: String = "appraiser" if walker == "chef" else "chef"
+		var ahead: bool = at_x != x and signi(_actor(walker, "sub_x") - _actor(other, "sub_x")) == heading
+		if ahead and _lock_gap(walker) >= LOCK_WAIT:
+			_release()
+			await process_frame
+			continue
 		var sideways: bool = at_x != x
 		_key(WALK_KEYS[first], sideways and x < at_x)
 		_key(WALK_KEYS[first + 1], sideways and x > at_x)
@@ -2000,6 +2031,14 @@ func _walk_to(x: int, y: int) -> bool:
 		covered_on_the_way.append_array(over)
 	_release()
 	return _check(false, "%s walks to %d, %d" % [walker, x, y])
+
+## How far across, in sub-cells, `who` stands from its partner while both are
+## in the city; 0 otherwise.
+func _lock_gap(who: String) -> int:
+	var other: String = "appraiser" if who == "chef" else "chef"
+	if _where(who) != "city" or _where(other) != "city":
+		return 0
+	return absi(_actor(who, "sub_x") - _actor(other, "sub_x"))
 
 func _stance(who: String) -> String:
 	var actor: Dictionary = _status()[who]

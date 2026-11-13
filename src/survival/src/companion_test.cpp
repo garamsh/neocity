@@ -1080,5 +1080,129 @@ TEST(Companion, ALostPartyIsGivenNoCommand) {
   EXPECT_FALSE(ai_action(view, Actor::Appraiser).has_value());
 }
 
+/// A street floor of forty cells with the chef at `chef` and the appraiser at
+/// `appraiser`, both in the city.
+GameView wide_view(std::int32_t chef, std::int32_t appraiser) {
+  auto view = city_view({.x = chef});
+  view.world.objects.front().area.width = 40;
+  view.exploration.appraiser.body.position = standing_in({.x = appraiser});
+  return view;
+}
+
+Companion companion_with_exit() {
+  auto config = tuning({});
+  config.exits = {{.from = MapId::Street,
+                   .zone = {.x = 18, .y = 0, .width = 2, .height = 1},
+                   .to = MapId::Aquarium,
+                   .arrival = {.x = 2, .y = 0}}};
+  return Companion({.exploration = std::move(config),
+                    .workshop = kitchen(),
+                    .unfed_penalty = UNFED_PENALTY});
+}
+
+TEST(Companion, AFollowerLeavesASourceBeyondTheScreenLockAndKeepsCompany) {
+  auto view = wide_view(2, 10);
+  add_source(view, SOURCE, 30);
+  const auto companion = companion_with();
+  const auto toward = companion.command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_EQ(toward.movement.direction, Direction::Left);
+  EXPECT_FALSE(toward.action.has_value());
+  view.exploration.appraiser.body.position = standing_in({.x = 3});
+  const auto waiting = companion.command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_EQ(waiting.movement.direction, Direction::Idle);
+  EXPECT_FALSE(waiting.action.has_value());
+}
+
+TEST(Companion, AFollowerWorksASourceWithinTheScreenLockOfItsPartner) {
+  auto view = wide_view(10, 10);
+  add_source(view, SOURCE, 20);
+  const auto command = companion_with().command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_EQ(command.movement.direction, Direction::Right);
+}
+
+TEST(Companion, AFollowerGoesToTheExitZoneItsPartnerStandsIn) {
+  auto view = wide_view(18, 12);
+  add_source(view, SOURCE, 8);
+  const auto control = single_player(Actor::Chef);
+  EXPECT_EQ(companion_with()
+                .command(Actor::Appraiser, control, NO_INPUT, view)
+                .movement.direction,
+            Direction::Left);
+  EXPECT_EQ(companion_with_exit()
+                .command(Actor::Appraiser, control, NO_INPUT, view)
+                .movement.direction,
+            Direction::Right);
+}
+
+TEST(Companion, TheLeaderOfAnAiPartyWaitsForAFollowerThatFellBehind) {
+  auto view = wide_view(10, 2);
+  add_source(view, SOURCE, 30);
+  const auto companion = companion_with();
+  const auto waiting = companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
+  EXPECT_EQ(waiting.movement.direction, Direction::Idle);
+  view.exploration.appraiser.body.position = standing_in({.x = 9});
+  EXPECT_EQ(
+      companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).movement.direction,
+      Direction::Right);
+}
+
+TEST(Companion, AFollowerBeyondTheLeashClosesInOnAPartnerFarAlongTheStreet) {
+  auto view = wide_view(30, 5);
+  add_source(view, SOURCE, 3);
+  const auto command = companion_with().command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_EQ(command.movement.direction, Direction::Right);
+  EXPECT_FALSE(command.action.has_value());
+}
+
+/// A forty-cell street under a platform that only a ladder at x 30 reaches,
+/// the chef on the platform at x 9 and the appraiser on the street at x 1,
+/// with a source on the platform at x 20.
+GameView view_with_platform() {
+  auto view = wide_view(9, 1);
+  view.world.objects.front().area.y = 3;
+  auto platform = object_of(ObjectId{2}, ObjectKind::Terrain, 0);
+  platform.area.width = 32;
+  platform.traversable = true;
+  view.world.objects.push_back(platform);
+  auto ladder = object_of(ObjectId{3}, ObjectKind::Ladder, 30);
+  ladder.area.height = 4;
+  ladder.traversable = true;
+  view.world.objects.push_back(ladder);
+  add_source(view, SOURCE, 20);
+  view.exploration.chef.body.position = standing_in({.x = 9});
+  view.exploration.appraiser.body.position = standing_in({.x = 1, .y = 3});
+  return view;
+}
+
+TEST(Companion, AnAiPairOnTwoLevelsLinkedBeyondTheLeashStillMovesTowardsIt) {
+  const auto view = view_with_platform();
+  const auto companion = companion_with();
+  ASSERT_TRUE(companion.errand(Actor::Chef, view).has_value());
+  ASSERT_TRUE(companion.errand(Actor::Appraiser, view).has_value());
+  EXPECT_EQ(companion.command(Actor::Appraiser, ALL_AI, NO_INPUT, view)
+                .movement.direction,
+            Direction::Right);
+  EXPECT_EQ(
+      companion.command(Actor::Chef, ALL_AI, NO_INPUT, view).movement.direction,
+      Direction::Right);
+}
+
+TEST(Companion, ASetOutWaitsWhileThePartnerIsOutOnAnotherMap) {
+  auto view = base_view();
+  view.progression.phase = Phase::Exploration;
+  view.progression.chef.location = Location::City;
+  view.exploration.map = MapId::Aquarium;
+  add_source(view, SOURCE, 3);
+  EXPECT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
+            std::nullopt);
+  view.exploration.map = MapId::Street;
+  EXPECT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
+            Action{Enter{}});
+}
+
 } // namespace
 } // namespace neocity::survival

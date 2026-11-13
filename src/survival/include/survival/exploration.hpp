@@ -37,6 +37,13 @@ struct Position {
 /// How far from the origin, in cells, a city that actors move in may reach.
 inline constexpr std::int32_t MAP_LIMIT = 1024;
 
+/// The widest gap in x, in sub-cell units, between two actors that are both in
+/// the city. A movement that would widen the gap past it is stopped, so one
+/// screen at the close camera always holds both. A temporary value: twelve
+/// cells of the twenty the 1920x1080 canvas shows at that camera, leaving four
+/// cells at each side.
+inline constexpr std::int32_t SCREEN_LOCK = 12 * SUBCELLS;
+
 /// Grid steps from a cell to the nearest cell of an area; zero inside it.
 [[nodiscard]] std::int64_t distance(GridPosition position, WorldArea area);
 
@@ -248,7 +255,9 @@ public:
   /// refused with `Result::Busy` while the actor is collecting.
   [[nodiscard]] Result return_to_base(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
-  /// Each 100ms movement unit runs its physics ticks under one input.
+  /// Each 100ms movement unit runs its physics ticks under one input. While
+  /// both actors are in the city, a tick that would widen the gap in x between
+  /// them past `SCREEN_LOCK` leaves its actor's sideways position as it was.
   /// The world follows the run's day here only. When both actors stand in an
   /// exit zone of their map after a movement unit, both move to the other map.
   /// Answers `Result::RunOver` with no change once the run is over.

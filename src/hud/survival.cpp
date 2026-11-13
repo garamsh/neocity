@@ -1861,8 +1861,7 @@ rendering::Shot shot_of(const rendering::Art &drawing,
             .out_of_reach = {},
             .goals = {}};
   }
-  const auto heading =
-      rendering::aim(frame.content.get(), frame.view, frame.control);
+  const auto heading = rendering::aim(frame.content.get(), frame.view);
   return {.camera = rendering::follow(
               drawing,
               survival::map_of(frame.content.get(), frame.view.exploration.map),
