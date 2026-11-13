@@ -40,6 +40,24 @@ constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
 
 const char *path(Image image) {
   switch (image) {
+  case Image::AquariumBackdrop:
+    return "backgrounds/aquarium.png";
+  case Image::TerminalBackdrop:
+    return "world/terminal.png";
+  case Image::AquariumDeck:
+    return "walkway/aquarium_deck.png";
+  case Image::InteriorKitchen:
+    return "world/interior_kitchen.png";
+  case Image::InteriorNoodle:
+    return "world/interior_noodle.png";
+  case Image::InteriorColdStore:
+    return "world/interior_cold_store.png";
+  case Image::SpanWreck:
+    return "world/span_wreck.png";
+  case Image::KioskRuined:
+    return "world/kiosk_ruined.png";
+  case Image::FireEscape:
+    return "world/fire_escape.png";
   case Image::Throat:
     return "backgrounds/throat.png";
   case Image::City:
@@ -512,7 +530,8 @@ Look Art::looking() const {
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   const float scale = density(image);
-  if (image == Image::Deck && canvas.has_meta("deck_layers")) {
+  if ((image == Image::Deck || image == Image::AquariumDeck) &&
+      canvas.has_meta("deck_layers")) {
     godot::Array layers = canvas.get_meta("deck_layers", godot::Array());
     godot::Dictionary layer;
     layer.set("texture", images.at(slot(image)));

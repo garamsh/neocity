@@ -522,34 +522,31 @@ bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 /// cell, the band of the mockup's walkway at its row and column, stained once
 /// the acid at `surface` reaches the deck, under the kitchen loft's deck its
 /// underside down to the walkway below, and a rubble heap standing on it
-/// where the ground is rubble. The ferry's hull is drawn whole in place of
-/// every cell it covers.
+/// where the ground is rubble. The ferry hull hangs below its collision deck.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
                        std::span<const survival::GroundCell> standing,
-                       const survival::GroundCell &ground,
-                       std::optional<LandmarkKind> picture, float surface) {
-  if (picture == LandmarkKind::Ferry) {
-    return;
-  }
+                       const survival::GroundCell &ground, bool aquarium,
+                       float surface) {
   const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
   const bool eaten = corroded(at.y, surface);
-  paint_deck(canvas, art, standing, ground.cell, eaten);
+  if (aquarium) {
+    const Vector2 size = art.size(Image::AquariumDeck);
+    const float from = static_cast<float>(ground.cell.x % 4) * CELL;
+    art.image_part(canvas, Image::AquariumDeck, rect(from, 0.0F, CELL, size.y),
+                   rect(at.x, at.y, CELL, size.y));
+  } else {
+    paint_deck(canvas, art, standing, ground.cell, eaten);
+  }
   if (ground.kind == GroundKind::Rubble) {
     art.image(canvas, Image::Rubble,
               Vector2(at.x, at.y - art.size(Image::Rubble).y));
   }
 }
 
-/// The cells of standing terrain whose ground is drawn, with the landmark
-/// picture each shows.
-struct Standing {
-  survival::GroundCell ground;
-  std::optional<LandmarkKind> picture;
-};
-
-std::vector<Standing> standing_ground(const survival::MapContent &content,
-                                      std::span<const ObjectSnapshot> objects) {
-  std::vector<Standing> found;
+std::vector<survival::GroundCell>
+standing_ground(const survival::MapContent &content,
+                std::span<const ObjectSnapshot> objects) {
+  std::vector<survival::GroundCell> found;
   found.reserve(content.ground.size());
   for (const auto &ground : content.ground) {
     const auto standing =
@@ -559,8 +556,7 @@ std::vector<Standing> standing_ground(const survival::MapContent &content,
                  covers(object.area, ground.cell);
         });
     if (standing != objects.end()) {
-      found.push_back(
-          {.ground = ground, .picture = landmark(content, standing->id)});
+      found.push_back(ground);
     }
   }
   return found;
@@ -572,10 +568,19 @@ std::vector<Standing> standing_ground(const survival::MapContent &content,
 /// STRUCTURE_ROW.
 void paint_structure(godot::Node2D &canvas, const Art &art,
                      const survival::MapContent &content) {
-  for (std::int32_t x = 0; x < content.size.width; x += MOCKUP_COLUMNS) {
+  if (content.id == survival::MapId::Aquarium) {
+    const Look camera = art.looking();
+    art.look(canvas, Vector2(), 1.0F);
+    art.image(canvas, Image::AquariumBackdrop, Vector2());
+    art.look(canvas, camera.origin, camera.zoom);
+    return;
+  }
+  for (std::int32_t x = 0; x < std::min(content.size.width, 40);
+       x += MOCKUP_COLUMNS) {
     art.image(canvas, Image::Structure,
               Vector2(cell_x(x), floor_y(STRUCTURE_ROW) - STRUCTURE_RISE));
   }
+  art.image(canvas, Image::TerminalBackdrop, Vector2(cell_x(40), cell_y(1)));
 }
 
 /// `value` wrapped into [0, `period`).
@@ -658,7 +663,8 @@ void paint_steam(godot::Node2D &canvas, const Art &art, float surface,
 void paint_ground(godot::Node2D &canvas, const Art &art,
                   const survival::MapContent &content,
                   std::span<const ObjectSnapshot> objects,
-                  const std::vector<Standing> &ground, float surface) {
+                  const std::vector<survival::GroundCell> &ground,
+                  float surface) {
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
         object.state == ObjectState::Intact &&
@@ -669,19 +675,24 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
                          box.size.y + FERRY_SINK));
     }
   }
-  std::vector<survival::GroundCell> standing;
-  standing.reserve(ground.size());
   for (const auto &cell : ground) {
-    standing.push_back(cell.ground);
-  }
-  for (const auto &cell : ground) {
-    paint_ground_cell(canvas, art, standing, cell.ground, cell.picture,
-                      surface);
+    paint_ground_cell(canvas, art, ground, cell,
+                      content.id == survival::MapId::Aquarium, surface);
   }
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
         object.state == ObjectState::Destroyed) {
-      wreck_mark(canvas, area_rect(object.area));
+      const auto box = area_rect(object.area);
+      const float width = art.size(Image::SpanWreck).x;
+      art.image(
+          canvas, Image::SpanWreck,
+          Vector2(box.position.x, floor_y(object.area.y) + 2.0F * GROUND_EDGE));
+      art.image_part(canvas, Image::SpanWreck,
+                     rect(0.0F, 0.0F, width, art.size(Image::SpanWreck).y),
+                     rect(box.position.x + box.size.x,
+                          floor_y(object.area.y) + 2.0F * GROUND_EDGE, -width,
+                          art.size(Image::SpanWreck).y));
+      wreck_mark(canvas, box);
     }
   }
 }
@@ -715,6 +726,10 @@ void paint_building(godot::Node2D &canvas, const Art &art,
     return;
   }
   if (object.state == ObjectState::Destroyed) {
+    if (picture == LandmarkKind::Kiosk) {
+      stand(canvas, art, Image::KioskRuined, box);
+      return;
+    }
     for (std::int32_t x = area.x; x < area.x + area.width; ++x) {
       stand(canvas, art, Image::Rubble,
             rect(cell_x(x), box.position.y, CELL, box.size.y));
@@ -754,13 +769,37 @@ void paint_building(godot::Node2D &canvas, const Art &art,
   }
 }
 
+/// Replaces an occupied building's background without changing its floor or
+/// applying a veil.
+void paint_interiors(godot::Node2D &canvas, const Art &art,
+                     const survival::Content &content,
+                     const survival::GameView &view) {
+  constexpr std::array PICTURES{Image::InteriorKitchen, Image::InteriorNoodle,
+                                Image::InteriorColdStore};
+  const auto &interiors = content.companion.exploration.interiors;
+  for (std::size_t index = 0; index < interiors.size(); ++index) {
+    const auto &interior = interiors.at(index);
+    if (view.exploration.chef.interior == interior.building ||
+        view.exploration.appraiser.interior == interior.building) {
+      const Image image = PICTURES.at(index);
+      const auto box = area_rect(interior.area);
+      const Vector2 size = art.size(image);
+      art.image(canvas, image,
+                Vector2(box.position.x, box.position.y + box.size.y - size.y));
+    }
+  }
+}
+
 void paint_passage(godot::Node2D &canvas, const Art &art,
                    const ObjectSnapshot &object, bool ladder) {
   const auto box = area_rect(object.area);
   const bool broken = object.state == ObjectState::Destroyed;
   if (ladder && !broken) {
+    const Image image = survival::object_name(object.id) == "Fire Escape"
+                            ? Image::FireEscape
+                            : Image::Ladder;
     for (std::int32_t row = 0; row < object.area.height; ++row) {
-      art.image(canvas, Image::Ladder,
+      art.image(canvas, image,
                 Vector2(box.position.x, cell_y(object.area.y + row)));
     }
     return;
@@ -1451,6 +1490,17 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
   const auto &objects = view.world.objects;
+  godot::Array floors;
+  for (const auto &object : objects) {
+    if (object.kind == ObjectKind::Terrain &&
+        object.state == ObjectState::Intact) {
+      godot::Dictionary floor;
+      floor.set("name", from(survival::object_name(object.id)));
+      floor.set("area", area_rect(object.area));
+      floors.push_back(floor);
+    }
+  }
+  canvas.set_meta("collision_floors", floors);
   const auto paint_kind = [&](ObjectKind kind, const auto &paint) {
     for (const auto &object : objects) {
       if (object.kind == kind && visible(object)) {
@@ -1476,6 +1526,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   for (const auto &marker : markers) {
     paint_shop_front(canvas, art, objects, marker);
   }
+  paint_interiors(canvas, art, everything, view);
   paint_ground(canvas, art, content, objects, ground, surface);
   paint_buildings(true);
   paint_hazards(canvas, art, content);

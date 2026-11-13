@@ -182,6 +182,15 @@ enum class Image : std::uint8_t {
   HdAppraiserFall,
   HdAppraiserLand,
   HdAppraiserClimb,
+  AquariumBackdrop,
+  TerminalBackdrop,
+  AquariumDeck,
+  InteriorKitchen,
+  InteriorNoodle,
+  InteriorColdStore,
+  SpanWreck,
+  KioskRuined,
+  FireEscape,
   TitleKeyArt,
   TitleLogo
 };
