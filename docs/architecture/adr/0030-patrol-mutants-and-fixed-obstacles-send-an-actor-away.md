@@ -36,8 +36,7 @@ The AI never routes through an obstacle cell: `CellMap` takes the obstacle cells
 
 - A touch costs ten seconds of the day, the actor's and by the shared clock the party's, and costs nothing else; the run is lost only by the acid.
 - A lone actor and a pair that both touch are sent home, so the cost of a second touch is a finished trip, not ten seconds. A human can send an AI partner home by leading it into a mutant, and the AI's short wait cannot always avoid one.
-- Mutants are drawn by the renderer in a later change; until then the status and the snapshot carry them and nothing draws them, and an actor that is absent is still drawn at its body.
-- The HUD still names a return from a touch as a fall until the screen is changed to tell the two apart.
+- The renderer draws mutants and obstacles and does not draw an absent actor; `presentation.md` holds the rules. The status and the snapshot carry the same values, and the snapshot counts each actor's touches, from which the screen's log tells a touch from a fall.
 
 ## Signs the decision was wrong
 
