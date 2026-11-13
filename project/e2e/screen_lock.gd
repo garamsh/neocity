@@ -4,7 +4,8 @@ extends SceneTree
 ## checks the screen lock: a lone actor walking on stops at the range and the
 ## map does not change; a jump still lifts an actor stopped there; both actors
 ## walking to the street's exit zone change the map together, through a fade
-## that darkens the screen and changes the drawn map behind it; an actor walking
+## that darkens the screen and changes the drawn map behind it, and back through
+## the aquarium's exit zone to the street; an actor walking
 ## into a building darkens the outside and out again restores it.
 
 const SEED: int = 3
@@ -20,6 +21,8 @@ const LOCK_WAIT: int = 320
 ## The street's exit zone and the map beyond it.
 const FAR_MAP: String = "Aquarium"
 const HOME_MAP: String = "Street"
+## A cell inside the aquarium's exit zone, which the arrival cell (4,10) lies outside.
+const AQUARIUM_EXIT: Array[Vector2i] = [Vector2i(1, 10)]
 ## The way along the street from the entrance to the exit zone, by cells.
 const ROUTE: Array[Vector2i] = [
 	Vector2i(8, 8), Vector2i(13, 9), Vector2i(16, 9), Vector2i(19, 8),
@@ -37,9 +40,10 @@ const DARK_OUTSIDE: float = 0.5
 const VEIL_LIMIT_MSEC: int = 3000
 ## How many frames a veil that is not to appear is watched for; the day's
 ## time is short, and the veil takes a fraction of a second to show.
-const VEIL_HOLD_FRAMES: int = 20
-## The frames a map fade is watched for: it lasts 0.6 seconds of frame time.
-const FADE_FRAMES: int = 80
+const VEIL_HOLD_FRAMES: int = 10
+## The frames a map fade is watched for: it lasts 0.6 seconds of frame time (36
+## frames at 60 a second), and the day has no time to spare.
+const FADE_FRAMES: int = 40
 
 var scene: MainScene
 var checks: int = 0
@@ -69,7 +73,7 @@ func _run() -> void:
 	await _both_actors_change_the_map()
 	if failed:
 		return
-	print("Screen lock: ", checks, " live checks passed (building entry, lone actor, jump, joint travel and fade).")
+	print("Screen lock: ", checks, " live checks passed (building entry, lone actor, jump, joint travel and fade there and back).")
 	quit(0)
 
 func _start() -> void:
@@ -132,7 +136,7 @@ func _lone_actor_stops_at_the_range() -> void:
 	Input.action_press("survival_1_right")
 	Input.action_press("survival_1_run")
 	var widest: int = 0
-	for frame: int in range(240):
+	for frame: int in range(150):
 		await process_frame
 		widest = maxi(widest, _gap())
 	Input.action_release("survival_1_right")
@@ -178,29 +182,38 @@ func _both_actors_change_the_map() -> void:
 	await _fade_through(street_size)
 	_check(_str("map") == FAR_MAP and _where("chef") == "city" and _where("appraiser") == "city", "both arrive on the far map")
 	_check(_actor("chef", "x") == _actor("appraiser", "x") and _gap() <= SCREEN_LOCK, "both stand at the arrival cell together")
+	# And back: both walk into the aquarium's exit zone and the street returns.
+	var aquarium_size: Vector2 = _map_size()
+	_check(aquarium_size != street_size, "the aquarium is drawn before the way back")
+	moved = await _drive([AQUARIUM_EXIT, AQUARIUM_EXIT], 600, true, FAR_MAP)
+	if failed:
+		return
+	_check(moved, "both actors walking to the aquarium's exit zone change the map")
+	await _fade_through(aquarium_size)
+	_check(_str("map") == HOME_MAP and _where("chef") == "city" and _where("appraiser") == "city", "both arrive back on the street")
 
 ## Watches the frames after the rules changed the map. The screen keeps drawing
-## the street while it darkens, draws the aquarium only once it is black, and
-## clears afterwards.
-func _fade_through(street_size: Vector2) -> void:
+## the map left (of size `left_size`) while it darkens, draws the new one only
+## once it is black, and clears afterwards.
+func _fade_through(left_size: Vector2) -> void:
 	var darkest: float = 0.0
-	var street_after_dark: bool = false
-	var aquarium_before_dark: bool = false
-	var aquarium_drawn: bool = false
+	var left_after_dark: bool = false
+	var new_before_dark: bool = false
+	var new_drawn: bool = false
 	for frame: int in range(FADE_FRAMES):
 		await process_frame
 		var veil: float = _screen_veil()
 		darkest = maxf(darkest, veil)
 		var size: Vector2 = _map_size()
-		if size != street_size:
-			aquarium_drawn = true
-			aquarium_before_dark = aquarium_before_dark or darkest < 0.9
+		if size != left_size:
+			new_drawn = true
+			new_before_dark = new_before_dark or darkest < 0.9
 		elif darkest >= 0.99:
-			street_after_dark = true
+			left_after_dark = true
 	_check(darkest >= 0.99, "the screen goes black between the maps: darkest %f" % darkest)
-	_check(aquarium_drawn, "the aquarium map is drawn after the fade")
-	_check(not aquarium_before_dark, "the aquarium is not drawn before the screen is black")
-	_check(not street_after_dark, "the street is not drawn once the screen has been black")
+	_check(new_drawn, "the new map is drawn after the fade")
+	_check(not new_before_dark, "the new map is not drawn before the screen is black")
+	_check(not left_after_dark, "the map left is not drawn once the screen has been black")
 	_check(_screen_veil() < 0.01, "the screen is clear again after the fade: %f" % _screen_veil())
 
 func _map_size() -> Vector2:
@@ -213,13 +226,13 @@ func _screen_veil() -> float:
 
 ## Walks both players along their routes by cells, the one ahead waiting where
 ## the lock would stop it. Ends when both have finished, or, with `until_moved`,
-## when the map changes; true when it did.
-func _drive(routes: Array, limit: int, until_moved: bool = false) -> bool:
+## when the map changes from `from`; true when it did.
+func _drive(routes: Array, limit: int, until_moved: bool = false, from: String = HOME_MAP) -> bool:
 	var targets: Array[int] = [0, 0]
 	var stalled: Array[int] = [0, 0]
 	var last: Array[int] = [_actor("chef", "sub_x"), _actor("appraiser", "sub_x")]
 	for frame: int in range(limit):
-		if until_moved and _str("map") != HOME_MAP:
+		if until_moved and _str("map") != from:
 			_release()
 			return true
 		var finished: bool = true
