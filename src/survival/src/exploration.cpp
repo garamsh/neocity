@@ -677,7 +677,8 @@ ExplorationSnapshot Exploration::snapshot() const {
                              .appraiser = appraiser.state,
                              .sources = config.sources,
                              .obstacles = obstacles_on(current),
-                             .mutants = {}};
+                             .mutants = {},
+                             .touches = touch_counts};
   for (const auto &mutant : mutants) {
     if (mutant.patrol.map == current) {
       result.mutants.push_back(mutant.state);
@@ -811,6 +812,7 @@ bool Exploration::touched(const CellMap &map, const Body &body) const {
 }
 
 void Exploration::send_away(Actor actor) {
+  ++touch_counts.at(actor == Actor::Chef ? 0 : 1);
   const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
   const auto elsewhere =
       actor_state(simulation.get().snapshot(), partner).location !=

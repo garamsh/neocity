@@ -374,13 +374,14 @@ void SurvivalRun::step() {
       }
     }
   }
+  const auto touches = features.exploration.get().snapshot().touches;
   if (features.exploration.get().advance(STEP, movement) !=
       survival::Result::Applied) {
     // unreachable: no step runs once the run is over, and 100ms cannot overflow
     // time
     std::abort();
   }
-  report_returns(progression, walked_home);
+  report_returns(progression, touches, walked_home);
   report_world_changes(city);
   if (simulation.snapshot().day != progression.day) {
     last_day_map_changes = map_changes;
@@ -422,12 +423,25 @@ void SurvivalRun::run_action(Actor actor, const survival::Action &action,
 }
 
 void SurvivalRun::report_returns(const survival::Snapshot &before,
+                                 const std::array<std::uint32_t, 2> &touches,
                                  const std::array<bool, 2> &walked_home) {
   const auto now = features.simulation.get().snapshot();
   const bool time_up = before.remaining_exploration.count() > 0 &&
                        now.remaining_exploration.count() == 0;
   if (time_up) {
     record(hud::TimeUpEvent{});
+    return;
+  }
+  // A touch can carry both actors to base; the partner did not fall.
+  const auto touched_now = features.exploration.get().snapshot().touches;
+  bool touched = false;
+  for (std::size_t index = 0; index < ACTORS.size(); ++index) {
+    if (touched_now.at(index) != touches.at(index)) {
+      record(hud::TouchEvent{ACTORS.at(index)});
+      touched = true;
+    }
+  }
+  if (touched) {
     return;
   }
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {

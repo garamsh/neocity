@@ -103,11 +103,13 @@ View aim(const survival::Content &content, const survival::GameView &view) {
   for (const auto actor : ACTORS) {
     const auto &state = actor == Actor::Chef ? view.progression.chef
                                              : view.progression.appraiser;
-    if (state.location != survival::Location::City) {
+    const auto &explorer = actor == Actor::Chef ? view.exploration.chef
+                                                : view.exploration.appraiser;
+    // An absent actor is not drawn, so the camera does not frame it.
+    if (state.location != survival::Location::City || explorer.absent) {
       continue;
     }
-    const auto &body = actor == Actor::Chef ? view.exploration.chef.body
-                                            : view.exploration.appraiser.body;
+    const auto &body = explorer.body;
     subjects.push_back(
         {.feet = map_point(body.position),
          .facing = body.heading == survival::Direction::Left ? -1.0F : 1.0F});

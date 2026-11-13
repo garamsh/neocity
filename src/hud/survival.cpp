@@ -440,11 +440,13 @@ String offered_step(const GameView &view, const survival::Action &action) {
 
 using Cells = std::set<std::pair<std::int32_t, std::int32_t>>;
 
-/// Adds to `seen` every cell movement reaches from `from`.
+/// Adds to `seen` every cell movement reaches from `from`, never through
+/// `obstacles`.
 void add_walkable(Cells &seen, const survival::WorldSnapshot &world,
+                  const std::vector<GridPosition> &obstacles,
                   GridPosition from) {
   for (const auto cell :
-       survival::reachable_cells(survival::CellMap(world), from)) {
+       survival::reachable_cells(survival::CellMap(world, obstacles), from)) {
     seen.insert({cell.x, cell.y});
   }
 }
@@ -1594,6 +1596,7 @@ std::vector<String> every_note(const SurvivalFrame &frame,
   };
   for (const auto actor : ACTORS) {
     events.emplace_back(FallEvent{.actor = actor});
+    events.emplace_back(TouchEvent{.actor = actor});
     for (const auto result : REFUSALS) {
       acted(actor, survival::Enter{}, result);
       acted(actor, survival::ReturnToBase{}, result);
@@ -2284,7 +2287,7 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
   Cells cells;
   for (const auto actor : ACTORS) {
     if (survival::key_set(frame.control, actor)) {
-      add_walkable(cells, view.world,
+      add_walkable(cells, view.world, view.exploration.obstacles,
                    state_of(view, actor).location == Location::City
                        ? position_of(view, actor)
                        : exploration.entry);
@@ -2437,6 +2440,9 @@ String describe(const GameView &view, const Event &event) {
         } else if constexpr (std::is_same_v<Happened, FallEvent>) {
           return String(actor_name(happened.actor)) +
                  String(" fell and washed back to base.");
+        } else if constexpr (std::is_same_v<Happened, TouchEvent>) {
+          return String(actor_name(happened.actor)) +
+                 String(" touched danger and was sent away.");
         } else if constexpr (std::is_same_v<Happened, TimeUpEvent>) {
           return "Time is up: everyone is back at base.";
         } else if constexpr (std::is_same_v<Happened, EscapeMissEvent>) {

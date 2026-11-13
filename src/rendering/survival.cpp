@@ -921,14 +921,57 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
   }
 }
 
-void paint_hazards(godot::Node2D &canvas, const Art &art,
-                   const survival::MapContent &content) {
+/// Draws `image` upright, its bottom pivot `pivot` (layout units) on `feet`.
+void stand_at(godot::Node2D &canvas, const Art &art, Image image, Vector2 feet,
+              Vector2 pivot, bool mirrored) {
+  const float anchor = mirrored ? art.size(image).x - pivot.x : pivot.x;
+  art.image(canvas, image, Vector2(feet.x - anchor, feet.y - pivot.y), 1.0F,
+            mirrored);
+}
+
+/// Draws a fixed obstacle in the middle of each of the map's obstacle cells,
+/// standing on the floor under it: the acid vent on the street, the flesh
+/// spikes in the aquarium.
+void paint_obstacles(godot::Node2D &canvas, const Art &art, survival::MapId map,
+                     const survival::MapContent &content) {
+  const auto image = map == survival::MapId::Street ? Image::ObstacleVent
+                                                    : Image::ObstacleSpikes;
+  constexpr Vector2 pivot(112.0F / (2.0F * ART_SCALE),
+                          208.0F / (2.0F * ART_SCALE));
   for (const auto &area : content.hazards) {
-    const auto box = area_rect(area);
-    for (std::int32_t column = 0; column < area.width; ++column) {
-      stand(canvas, art, Image::AcidDrip,
-            rect(cell_x(area.x + column), box.position.y, CELL, box.size.y));
-    }
+    stand_at(canvas, art, image,
+             Vector2(cell_x(area.x) + CELL / 2.0F, floor_y(area.y)), pivot,
+             false);
+  }
+}
+
+/// The frames of a mutant's walk, on the ground.
+constexpr std::array RAT_WALK{Image::RatWalk1, Image::RatWalk2, Image::RatWalk3,
+                              Image::RatWalk4};
+constexpr std::array HUMAN_WALK{Image::HumanWalk1, Image::HumanWalk2,
+                                Image::HumanWalk3, Image::HumanWalk4};
+/// Sub-cells a mutant walks for each frame of its walk.
+constexpr std::int32_t MUTANT_FRAME = 12;
+
+/// Draws each mutant of the map walking, facing the way it heads. The first
+/// patrol's mutant is a rat, the next a former human, and so on in turn.
+void paint_mutants(godot::Node2D &canvas, const Art &art,
+                   const survival::GameView &view) {
+  const auto &mutants = view.exploration.mutants;
+  for (std::size_t index = 0; index < mutants.size(); ++index) {
+    const auto &mutant = mutants.at(index);
+    const auto name =
+        godot::String::num_int64(
+            static_cast<std::int64_t>(view.exploration.map)) +
+        "_" + godot::String::num_int64(static_cast<std::int64_t>(index));
+    const Vector2 point = map_point(mutant.position);
+    const Vector2 feet(art.glide("mutant_x_" + name, point.x),
+                       art.glide("mutant_y_" + name, point.y));
+    const auto &frames = index % 2 == 0 ? RAT_WALK : HUMAN_WALK;
+    const auto frame = static_cast<std::size_t>(std::abs(mutant.position.x)) /
+                       MUTANT_FRAME % frames.size();
+    stand_at(canvas, art, frames.at(frame), feet, ACTOR_PIVOT,
+             mutant.heading == survival::Direction::Left);
   }
 }
 
@@ -1047,7 +1090,8 @@ godot::String tag_of(survival::ControlMap control, Actor actor) {
   return "P" + godot::String::num_int64(static_cast<std::int64_t>(*keys) + 1);
 }
 
-/// Who is out in the city, and where each tag goes.
+/// Who is drawn in the city, and where each tag goes. An absent actor is
+/// not drawn until it returns.
 struct Party {
   bool chef_out = false;
   bool appraiser_out = false;
@@ -1057,9 +1101,11 @@ struct Party {
 
 Party party_of(const survival::GameView &view) {
   Party party{.chef_out =
-                  view.progression.chef.location == survival::Location::City,
+                  view.progression.chef.location == survival::Location::City &&
+                  !view.exploration.chef.absent,
               .appraiser_out = view.progression.appraiser.location ==
-                               survival::Location::City};
+                                   survival::Location::City &&
+                               !view.exploration.appraiser.absent};
   party.shared =
       party.chef_out && party.appraiser_out &&
       survival::cell_of(view.exploration.chef.body.position) ==
@@ -1540,7 +1586,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_interiors(canvas, art, everything, view);
   paint_ground(canvas, art, content, objects, ground, surface);
   paint_buildings(true);
-  paint_hazards(canvas, art, content);
+  paint_obstacles(canvas, art, view.exploration.map, content);
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {
     paint_passage(canvas, art, object, false);
   });
@@ -1553,6 +1599,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   for (const auto &marker : markers) {
     paint_source(canvas, art, marker);
   }
+  paint_mutants(canvas, art, view);
   canvas.set_meta("character_layers", godot::Array());
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,

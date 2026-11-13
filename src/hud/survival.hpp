@@ -34,6 +34,11 @@ struct FallEvent {
   survival::Actor actor = survival::Actor::Chef;
 };
 
+/// An actor stood in the cell of a mutant or an obstacle and was sent away.
+struct TouchEvent {
+  survival::Actor actor = survival::Actor::Chef;
+};
+
 /// The day's exploration time ran out.
 struct TimeUpEvent {};
 
@@ -49,8 +54,8 @@ struct EscapeMissEvent {
 };
 
 /// What the screen reports to the player.
-using Event = std::variant<ActionEvent, FallEvent, TimeUpEvent, WorldEvent,
-                           EscapeMissEvent>;
+using Event = std::variant<ActionEvent, FallEvent, TouchEvent, TimeUpEvent,
+                           WorldEvent, EscapeMissEvent>;
 
 /// What one human's interact and feed keys would do right now, and the errand
 /// AI would run in that human's place. The NEXT line names that errand, so the

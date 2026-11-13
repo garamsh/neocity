@@ -266,7 +266,8 @@ inline constexpr std::int32_t MUTANT_STEP = 8;
 
 /// Read-only values for a renderer or companion controller. `map` is the map
 /// both actors share; the street whenever nobody is out. `obstacles` and
-/// `mutants` are those of that map.
+/// `mutants` are those of that map. `touches` counts, from the start of the
+/// run, each actor's touches of a mutant or an obstacle, chef first.
 struct ExplorationSnapshot {
   MapId map = MapId::Street;
   ExplorerSnapshot chef;
@@ -274,6 +275,7 @@ struct ExplorationSnapshot {
   std::vector<SourceStock> sources;
   std::vector<GridPosition> obstacles;
   std::vector<MutantSnapshot> mutants;
+  std::array<std::uint32_t, 2> touches{};
   friend bool operator==(const ExplorationSnapshot &,
                          const ExplorationSnapshot &) = default;
 };
@@ -347,6 +349,7 @@ private:
   std::reference_wrapper<Simulation> simulation;
   std::reference_wrapper<World> world;
   ExplorationConfig config;
+  std::array<std::uint32_t, 2> touch_counts{};
   struct Mutant {
     Patrol patrol;
     MutantSnapshot state;

@@ -1340,9 +1340,13 @@ TEST(Exploration, AMutantThatWalksOntoAnActorWhoStandsStillSendsItAwayAtOnce) {
     ASSERT_EQ(danger.exploring().advance(100ms, IDLE), Result::Applied);
     if (lands) {
       EXPECT_EQ(danger.sim().snapshot().chef.location, Location::Base);
+      EXPECT_EQ(danger.exploring().snapshot().touches,
+                (std::array<std::uint32_t, 2>{1, 0}));
       return;
     }
     ASSERT_EQ(danger.sim().snapshot().chef.location, Location::City);
+    ASSERT_EQ(danger.exploring().snapshot().touches,
+              (std::array<std::uint32_t, 2>{0, 0}));
   }
   FAIL() << "the mutant never reached the actor";
 }
