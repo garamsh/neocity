@@ -775,8 +775,8 @@ std::vector<Patrol> patrols() {
            .to = {.x = 39, .y = 11}}};
 }
 
-/// The obstacle cells of `map`, which the screen still draws as acid drips.
-std::vector<WorldArea> hazard_areas(MapId map) {
+/// The obstacle cells of `map`.
+std::vector<WorldArea> obstacle_areas(MapId map) {
   std::vector<WorldArea> areas;
   for (const auto &obstacle : obstacles()) {
     if (obstacle.map == map) {
@@ -847,14 +847,14 @@ Content temporary_content(std::uint32_t seed) {
       .maps = {{.id = MapId::Street,
                 .name = "Street",
                 .size = {.width = 64, .height = 16},
-                .hazards = hazard_areas(MapId::Street),
+                .obstacles = obstacle_areas(MapId::Street),
                 .ground = std::move(street_cells),
                 .decorations = street_decorations(),
                 .landmarks = street_landmarks()},
                {.id = MapId::Aquarium,
                 .name = "Aquarium",
                 .size = {.width = 44, .height = 16},
-                .hazards = hazard_areas(MapId::Aquarium),
+                .obstacles = obstacle_areas(MapId::Aquarium),
                 .ground = std::move(aquarium_cells),
                 .decorations = aquarium_decorations(),
                 .landmarks = {}}},

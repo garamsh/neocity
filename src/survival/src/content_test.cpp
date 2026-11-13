@@ -704,13 +704,13 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
 
 TEST(TemporaryContent, TheOldAcidDripIsAnObstacleOnTheStreet) {
   const auto content = temporary_content(1);
-  const auto &hazards = street_of(content).hazards;
-  ASSERT_EQ(hazards.size(), 3U);
+  const auto &drawn = street_of(content).obstacles;
+  ASSERT_EQ(drawn.size(), 3U);
   const auto cells = obstacle_cells(content, MapId::Street);
   ASSERT_EQ(cells.size(), 3U);
-  for (const auto &hazard : hazards) {
-    EXPECT_EQ(std::ranges::count(cells, GridPosition{hazard.x, hazard.y}), 1)
-        << hazard.x << ", " << hazard.y;
+  for (const auto &cell : drawn) {
+    EXPECT_EQ(std::ranges::count(cells, GridPosition{cell.x, cell.y}), 1)
+        << cell.x << ", " << cell.y;
   }
 }
 

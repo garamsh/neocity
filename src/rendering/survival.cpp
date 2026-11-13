@@ -117,8 +117,8 @@ constexpr float BAND_LOW = 51.0F;
 constexpr float BAND_HIGH = 300.0F;
 /// A halo's rings, each adding the same light.
 constexpr int HALO_RINGS = 6;
-constexpr float DRIP_GLOW = 30.0F;
-constexpr float DRIP_LIGHT = 0.06F;
+constexpr float OBSTACLE_GLOW = 30.0F;
+constexpr float OBSTACLE_LIGHT = 0.06F;
 
 /// The throat breathes over this many seconds, lifting this many pixels and
 /// brightening by this share as it draws in.
@@ -938,7 +938,7 @@ void paint_obstacles(godot::Node2D &canvas, const Art &art, survival::MapId map,
                                                     : Image::ObstacleSpikes;
   constexpr Vector2 pivot(112.0F / (2.0F * ART_SCALE),
                           208.0F / (2.0F * ART_SCALE));
-  for (const auto &area : content.hazards) {
+  for (const auto &area : content.obstacles) {
     stand_at(canvas, art, image,
              Vector2(cell_x(area.x) + CELL / 2.0F, floor_y(area.y)), pivot,
              false);
@@ -1525,10 +1525,10 @@ void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
                      const survival::MapContent &content, const View &camera) {
   art.look(canvas, origin(camera), camera.zoom);
-  for (const auto &area : content.hazards) {
+  for (const auto &area : content.obstacles) {
     const auto box = area_rect(area);
-    halo(canvas, camera, box.get_center(), DRIP_GLOW,
-         color(110, 255, 90, DRIP_LIGHT));
+    halo(canvas, camera, box.get_center(), OBSTACLE_GLOW,
+         color(110, 255, 90, OBSTACLE_LIGHT));
   }
 }
 

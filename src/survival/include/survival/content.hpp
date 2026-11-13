@@ -70,7 +70,7 @@ struct Landmark {
   LandmarkKind kind = LandmarkKind::Kiosk;
 };
 
-/// One map's drawing data: its size, hazards, ground, scenery and landmark
+/// One map's drawing data: its size, obstacles, ground, scenery and landmark
 /// pictures. The objects of every map are in `Content::objects`, each tagged
 /// with its map.
 struct MapContent {
@@ -78,8 +78,8 @@ struct MapContent {
   std::string_view name;
   /// The playable grid's size in cells; every object of the map lies inside.
   MapSize size;
-  /// The obstacle cells, still drawn as acid drips.
-  std::vector<WorldArea> hazards;
+  /// The obstacle cells the screen draws an obstacle in.
+  std::vector<WorldArea> obstacles;
   /// One entry for each cell any terrain object of the map covers.
   std::vector<GroundCell> ground;
   /// Scenery placed on the map; no rule reads it.
