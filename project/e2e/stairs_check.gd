@@ -180,7 +180,7 @@ func _tour_move(target: Vector2i) -> bool:
 			last[role] = sub_x
 			var climb_step: bool = target.y < at.y and absi(target.x - at.x) <= 1
 			var gap_takeoff: bool = target.y < row and target.x - column == 2 and sub_x % 32 >= 16
-			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or frame % 12 < 6 and (climb_step or stalled[role] > 6))
+			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or climb_step or stalled[role] > 6)
 			_key(jump, jump_pressed)
 		if reached:
 			_release_movement()
