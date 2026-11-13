@@ -130,23 +130,41 @@ struct Route {
   std::optional<Move> step = std::nullopt;
 };
 
+/// The cells in x, either side of its partner, an actor may be searched
+/// through: one short of the screen lock, so every step of a route keeps the
+/// lock's room.
+constexpr std::int32_t LEASH = SCREEN_LOCK / SUBCELLS - 1;
+
+/// Where an actor's partner stands while both are in the city, which a search
+/// keeps within the leash of; none for an actor free to go anywhere.
+using Partner = std::optional<GridPosition>;
+
+/// Whether `cell` lies within `reach` cells in x of the partner, if any.
+bool leashed(const Partner &partner, GridPosition cell,
+             std::int32_t reach = LEASH) {
+  return !partner || std::abs(cell.x - partner->x) <= reach;
+}
+
 /// Breadth-first over the links between held cells, so a route never falls.
-std::optional<Route> route_to(const CellMap &map, GridPosition start,
-                              const std::vector<Goal> &goals,
-                              std::uint32_t range) {
-  if (goals.empty()) {
-    return std::nullopt;
-  }
+/// Finds the nearest cell `reached` accepts and the first move towards it,
+/// through no cell outside the leash, which reaches as far as the start lies
+/// from the partner, so an actor out of the leash can close the gap.
+template <typename Reached>
+std::optional<Frontier> search(const CellMap &map, GridPosition start,
+                               const Partner &partner, Reached reached) {
+  const auto reach =
+      partner ? std::max(LEASH, std::abs(start.x - partner->x)) : LEASH;
   std::set<std::pair<std::int32_t, std::int32_t>> seen{{start.x, start.y}};
   std::deque<Frontier> frontier{{.position = start}};
   while (!frontier.empty()) {
     const auto cell = frontier.front();
     frontier.pop_front();
-    if (const auto *goal = goal_in_range(goals, cell.position, range)) {
-      return Route{.goal = *goal, .step = cell.first_move};
+    if (reached(cell.position)) {
+      return cell;
     }
     for (const auto &link : links(map, cell.position)) {
-      if (seen.insert({link.to.x, link.to.y}).second) {
+      if (leashed(partner, link.to, reach) &&
+          seen.insert({link.to.x, link.to.y}).second) {
         frontier.push_back(
             {.position = link.to,
              .first_move = cell.first_move ? cell.first_move : link.move});
@@ -156,18 +174,42 @@ std::optional<Route> route_to(const CellMap &map, GridPosition start,
   return std::nullopt;
 }
 
-/// What the party lacks first, then any other stocked source.
+std::optional<Route> route_to(const CellMap &map, GridPosition start,
+                              const Partner &partner,
+                              const std::vector<Goal> &goals,
+                              std::uint32_t range) {
+  if (goals.empty()) {
+    return std::nullopt;
+  }
+  const auto found =
+      search(map, start, partner, [&goals, range](GridPosition cell) {
+        return goal_in_range(goals, cell, range) != nullptr;
+      });
+  if (!found) {
+    return std::nullopt;
+  }
+  return Route{.goal = *goal_in_range(goals, found->position, range),
+               .step = found->first_move};
+}
+
+/// What the party lacks first, then any other stocked source, among `goals`.
 std::optional<Route> next_errand(const CompanionConfig &config,
-                                 const GameView &view, GridPosition from) {
+                                 const GameView &view, GridPosition from,
+                                 const Partner &partner,
+                                 const std::vector<Goal> &goals) {
   const auto range = config.exploration.collection_distance;
   const CellMap map(view.world);
-  const auto goals = collection_goals(view);
   std::vector<Goal> lacking;
   std::ranges::copy_if(goals, std::back_inserter(lacking), &Goal::lacking);
-  if (auto errand = route_to(map, from, lacking, range)) {
+  if (auto errand = route_to(map, from, partner, lacking, range)) {
     return errand;
   }
-  return route_to(map, from, goals, range);
+  return route_to(map, from, partner, goals, range);
+}
+
+std::optional<Route> next_errand(const CompanionConfig &config,
+                                 const GameView &view, GridPosition from) {
+  return next_errand(config, view, from, std::nullopt, collection_goals(view));
 }
 
 std::optional<IngredientId> first_unidentified(const GameView &view) {
@@ -330,6 +372,85 @@ ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
   return {.action = EndDayUnfed{config.unfed_penalty}};
 }
 
+/// The goals an actor can work from within the lock of its partner, which
+/// stands at `partner`.
+std::vector<Goal> goals_near(const GameView &view, GridPosition partner) {
+  auto goals = collection_goals(view);
+  std::erase_if(goals, [partner](const Goal &goal) {
+    return !leashed(partner, {.x = goal.area.x, .y = goal.area.y}) &&
+           !leashed(partner,
+                    {.x = goal.area.x + goal.area.width - 1, .y = goal.area.y});
+  });
+  return goals;
+}
+
+/// The exit zone of this map that holds `cell`, if any.
+const WorldArea *exit_zone_at(const CompanionConfig &config,
+                              const GameView &view, GridPosition cell) {
+  const auto found =
+      std::ranges::find_if(config.exploration.exits, [&](const MapExit &exit) {
+        return exit.from == view.exploration.map &&
+               distance(cell, exit.zone) == 0;
+      });
+  return found != config.exploration.exits.end() ? &found->zone : nullptr;
+}
+
+/// The route to where `partner` is kept company, within the leash of
+/// `leash`: inside the exit zone it stands in, else within two cells across
+/// and one up or down of it.
+std::optional<Frontier> company_route(const CompanionConfig &config,
+                                      const GameView &view, GridPosition from,
+                                      GridPosition partner,
+                                      const Partner &leash) {
+  const CellMap map(view.world);
+  const auto *zone = exit_zone_at(config, view, partner);
+  return search(map, from, leash, [&](GridPosition cell) {
+    if (zone != nullptr) {
+      return distance(cell, *zone) == 0;
+    }
+    return std::abs(cell.x - partner.x) <= 2 &&
+           std::abs(cell.y - partner.y) <= 1;
+  });
+}
+
+/// Where an actor waits for its partner: it walks to the company the leash
+/// allows, and when the leash holds no way, to the nearest way there is.
+ActorCommand keep_company(const CompanionConfig &config, const GameView &view,
+                          const Body &body, GridPosition partner) {
+  const auto from = cell_of(body.position);
+  auto found = company_route(config, view, from, partner, partner);
+  if (!found) {
+    found = company_route(config, view, from, partner, std::nullopt);
+  }
+  if (!found || !found->first_move) {
+    return {};
+  }
+  return {.movement = steer(*found->first_move, body)};
+}
+
+/// Whether `actor` goes where its partner goes: always after a human, and the
+/// appraiser after the chef when both are AI.
+bool follows(ControlMap control, Actor actor) {
+  return controller_of(control, partner_of(actor)) == Controller::Human ||
+         actor == Actor::Appraiser;
+}
+
+/// How far across, in cells, the one that leads waits for the one that follows
+/// before it goes on, so a follower's detour never meets the screen lock.
+constexpr std::int32_t TETHER = 3;
+
+ActorCommand plan_alone(const CompanionConfig &config, const GameView &view,
+                        const Body &body, GridPosition from) {
+  const auto route = next_errand(config, view, from);
+  if (!route) {
+    return {.action = ReturnToBase{}};
+  }
+  if (!route->step) {
+    return {.action = route->goal.action};
+  }
+  return {.movement = steer(*route->step, body)};
+}
+
 ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
                                ControlMap control, const GameView &view) {
   const auto in_city = state_of(view, actor).location == Location::City;
@@ -344,6 +465,11 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return in_city ? ActorCommand{.action = ReturnToBase{}} : ActorCommand{};
   }
   if (!in_city) {
+    // Entering is refused while the partner is out on another map.
+    if (state_of(view, partner).location == Location::City &&
+        view.exploration.map != MapId::Street) {
+      return {};
+    }
     return worth_entering(config, view) ? ActorCommand{.action = Enter{}}
                                         : ActorCommand{};
   }
@@ -352,14 +478,41 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
   if (body.stance == Stance::Airborne) {
     return {.movement = {.direction = body.heading}};
   }
-  const auto route = next_errand(config, view, cell_of(body.position));
-  if (!route) {
+  const auto from = cell_of(body.position);
+  const auto together = state_of(view, partner).location == Location::City;
+  if (!together) {
+    return plan_alone(config, view, body, from);
+  }
+  const auto beside = landing_cell(view, partner);
+  if (follows(control, actor)) {
+    // A partner in an exit zone is going through it: no errand holds the party.
+    if (exit_zone_at(config, view, beside) != nullptr) {
+      return keep_company(config, view, body, beside);
+    }
+    const auto route =
+        next_errand(config, view, from, beside, goals_near(view, beside));
+    if (route) {
+      return route->step ? ActorCommand{.movement = steer(*route->step, body)}
+                         : ActorCommand{.action = route->goal.action};
+    }
+    // Errands out of the lock's reach keep it with its partner; with none left
+    // anywhere it goes home.
+    if (next_errand(config, view, from)) {
+      return keep_company(config, view, body, beside);
+    }
     return {.action = ReturnToBase{}};
   }
-  if (!route->step) {
-    return {.action = route->goal.action};
+  const auto command = plan_alone(config, view, body, from);
+  if (!command.action && std::abs(beside.x - from.x) > TETHER) {
+    // The leader waits for a follower that can come back within the lock, and
+    // meets one whose only way lies beyond it.
+    const GridPosition follower = beside;
+    const GridPosition leader = from;
+    return company_route(config, view, follower, leader, leader)
+               ? ActorCommand{}
+               : keep_company(config, view, body, beside);
   }
-  return {.movement = steer(*route->step, body)};
+  return command;
 }
 
 ActorCommand decide(const CompanionConfig &config, Actor actor,

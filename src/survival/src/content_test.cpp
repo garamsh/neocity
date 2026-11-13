@@ -61,11 +61,11 @@ public:
             .workshop = kitchen_work.snapshot()};
   }
 
-  void step(ControlMap control) {
+  void step(ControlMap control, const std::array<PlayerInput, 2> &inputs = {}) {
     std::array<ExplorationInput, 2> movement;
     for (std::size_t index = 0; index < ACTORS.size(); ++index) {
-      const auto command =
-          controllers.command(ACTORS.at(index), control, {}, view());
+      const auto command = controllers.command(ACTORS.at(index), control,
+                                               inputs.at(index), view());
       movement.at(index) = command.movement;
       if (command.action) {
         (void)apply(explorers, kitchen_work, ACTORS.at(index), *command.action);
@@ -954,6 +954,70 @@ TEST(TemporaryContent, TheFireEscapeCarriesTheRoofOnceTheLadderBreaks) {
   });
   EXPECT_FALSE(
       reachable(content, without_escape, object_named(after, "Roof Bag")));
+}
+
+/// The input of a human chef walking to `zone` along the links of the street,
+/// idle while the partner is `WAIT` or more cells behind, and falling straight
+/// down once above the zone.
+PlayerInput walk_to_zone(const Game &game, const WorldArea &zone) {
+  constexpr std::int32_t WAIT = 6;
+  const auto view = game.view();
+  const auto &body = view.exploration.chef.body;
+  const auto chef = cell_of(body.position);
+  const auto behind =
+      chef.x - cell_of(view.exploration.appraiser.body.position).x;
+  if (body.stance == Stance::Airborne) {
+    // Above the zone the chef lets itself fall straight in.
+    const bool above = chef.x >= zone.x && chef.x < zone.x + zone.width;
+    return {.movement = {.direction = above ? Direction::Idle : body.heading}};
+  }
+  if (behind >= WAIT) {
+    return {};
+  }
+  const CellMap cells(view.world);
+  std::map<std::pair<std::int32_t, std::int32_t>, std::optional<Move>> first;
+  std::deque<GridPosition> frontier{chef};
+  first[{chef.x, chef.y}] = std::nullopt;
+  while (!frontier.empty()) {
+    const auto at = frontier.front();
+    frontier.pop_front();
+    const auto step = first.at({at.x, at.y});
+    if (distance(at, zone) == 0) {
+      return step ? PlayerInput{.movement = steer(*step, body)} : PlayerInput{};
+    }
+    for (const auto &link : links(cells, at)) {
+      if (first.try_emplace({link.to.x, link.to.y}, step ? step : link.move)
+              .second) {
+        frontier.push_back(link.to);
+      }
+    }
+  }
+  return {};
+}
+
+TEST(TemporaryContent,
+     AnAiPartnerFollowsAHumanThroughTheStreetExitToTheAquarium) {
+  auto content = temporary_content(7);
+  // The walk waits for the AI's collections, which a day's budget may not.
+  content.run.exploration_budget = 120s;
+  const auto &exploration = content.companion.exploration;
+  const auto exit =
+      std::ranges::find(exploration.exits, MapId::Street, &MapExit::from);
+  ASSERT_NE(exit, exploration.exits.end());
+  ASSERT_GT((exit->zone.x - exploration.entry.x) * SUBCELLS, SCREEN_LOCK);
+  Game game(content);
+  const auto control = single_player(Actor::Chef);
+  game.step(control, {PlayerInput{.travel = true}, PlayerInput{}});
+  ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City);
+  for (std::uint32_t step = 0;
+       step < STEP_LIMIT &&
+       game.exploration().snapshot().map == MapId::Street &&
+       game.simulation().snapshot().phase == Phase::Exploration;
+       ++step) {
+    game.step(control, {walk_to_zone(game, exit->zone), PlayerInput{}});
+  }
+  EXPECT_EQ(game.exploration().snapshot().map, MapId::Aquarium);
+  EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::City);
 }
 
 TEST(TemporaryContent, TwoSeedsGiveTheSameMapsAndTheSameSupply) {
