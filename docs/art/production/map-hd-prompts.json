@@ -1,0 +1,50 @@
+{
+  "tool": "built-in ImageGen",
+  "model": "not reported by tool",
+  "date": "2026-11-13",
+  "references": {
+    "style": "docs/art/concept-art/monster-mouth-escape/search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5",
+    "environment": "docs/architecture/evidence/survival/212-mockup-beside-city.png"
+  },
+  "calls": [
+    {
+      "output": null,
+      "prompt": "Use case: stylized-concept. Asset type: native HD pixel-art side-scrolling game background, landscape 1920x1080. Draw the inside of a ruined flooded public aquarium swallowed inside a gigantic monster, following the supplied reference's dense hand-painted pixel art, dark violet stone, corroded iron, selective amber lights and organic intrusions, but strongly teal/cyan here. This is scenery behind a separately drawn collision map: no foreground floors, platforms, ladders or characters. Show three giant cracked glass display tanks, cyan water behind shattered panes, leaking pipes, tall art-deco aquarium columns, broken sea-life relief sculptures, cables sagging high up, submerged exhibit plinths at bottom, drifting aquatic debris. Side-on orthographic wall elevation with subtle depth only in background, full bleed, detailed single-pixel edge texture, dramatic teal caustics with a few amber lamps and purple flesh veins. Upper half dark enough for actors and platforms. No text, letters, numbers, HUD, labels, borders or watermarks. The two references are style references only, not edit targets. Save resulting original into the project scratch directory if supported.",
+      "result": "Output rejected by safety system; no image retained",
+      "reference_keys": [
+        "style",
+        "environment"
+      ]
+    },
+    {
+      "output": "map-hd-sources/aquarium.png",
+      "prompt": "Native HD pixel-art game background, landscape 1920x1080. A ruined flooded public aquarium interior. Three giant cracked glass display tanks with teal water behind shattered panes, leaking pipes, art-deco aquarium columns, sea-life relief sculptures, sagging cables, submerged exhibit plinths and aquatic debris. Side-on orthographic wall elevation with subtle depth in the background, full bleed, fine single-pixel edge texture. Deep teal, cyan, dark indigo, sparse amber lamps, dramatic caustics. Upper half dim enough to read independently drawn characters and walkways. Background scenery only: no foreground floors, no platforms, no ladders, no characters, no text, numbers, HUD or watermarks.",
+      "references": [],
+      "reference_keys": []
+    },
+    {
+      "output": "map-hd-sources/interiors.png",
+      "prompt": "Use case: stylized-concept. Asset type: game background sheet of three separate side-on room wall elevations, landscape 1920x1152, three full-width horizontal strips of equal height, no gutters. Upper third: abandoned kitchen with amber hanging bulbs, pots, stove, dark violet masonry, deep green jars and crates, corroded pipes. Middle third: derelict noodle shop, warm orange paper lamps, stacked bowls, counter, steam pipes, cabinets, dark violet stone. Lower third: cold storage room, frosty cyan metal panels, freezer cabinets, hanging pipes and condensed ice, dim cyan lamps. Match the reference's rich HD pixel art and material density, strong little light accents against dark base, crisp fine edges. Orthographic side elevation, back wall only, open foreground for independently drawn characters; perfectly horizontal lower boundary of each room, no floor slab protruding in front, no characters, no stairs, no platforms, no labels, letters, numbers or text anywhere. These are background art for three small enterable buildings inside a monster-swallowed neon city. Reference is style only.",
+      "reference_keys": [
+        "style"
+      ]
+    },
+    {
+      "output": "map-hd-sources/structures.png",
+      "prompt": "Use case: stylized-concept. Asset type: transparent game environment sprite sheet, 1536x1024 landscape, four isolated pieces arranged in a strict 2 by 2 grid of equal 768x512 quadrants with transparent empty margins. Top left: an absolutely horizontal teal and violet rusted steel grated catwalk, long and shallow, clean level bright cyan top rim across its entire width, detailed riveted dark face with braces and hanging seaweed underneath, no railing. Top right: collapsed catwalk wreckage, two jagged torn ends with twisted teal steel and cables, a large transparent hole in the middle with nothing bridging the gap. Bottom left: collapsed abandoned street kiosk, a heap of violet masonry, bent copper sheet roof and shattered orange glass, low broad silhouette. Bottom right: rusty orange metal fire escape ladder, two straight vertical rails with closely spaced rungs, tall and narrow silhouette, no landing platforms. Rich native fine detailed pixel art matching reference, violet dark base, teal aquarium highlights, amber street metal; each object fully inside its quadrant with visible transparent separation. No ground plane, no characters, no letters or numbers or text, no labels, no watermarks. Reference is style only.",
+      "transparent_background": true,
+      "reference_keys": [
+        "style"
+      ]
+    },
+    {
+      "output": "map-hd-sources/terminal.png",
+      "prompt": "Native HD pixel-art 2D side-scrolling game scenery, wide landscape 2304x1152, TRANSPARENT background. A ruined ferry terminal in a neon city: dark violet steel terminal facade and tall riveted pillars, two rusty industrial cranes, cyan glass entrance at the right, warm hanging lamps, sagging cables, a few small purple mushrooms, rust and water streaks, dense old city detail. Side-on orthographic view. Background set dressing to be placed behind independently drawn walkways at several heights: leave open space between posts, do not draw any walkable horizontal floors or platforms or stairs, do not imply traversable surfaces. Keep top half airy and silhouettes open. Match the supplied mockup's dark violet industrial metal, orange rim highlights, and very fine detailed pixel style. No characters, no text, no letters, no numbers, no HUD, no watermarks. Image input is style reference only.",
+      "transparent_background": true,
+      "reference_keys": [
+        "style"
+      ]
+    }
+  ],
+  "settings": "No seed, quality or dimensions argument was exposed by the built-in tool; requested dimensions are prompt text, actual source sizes are the PNG dimensions."
+}

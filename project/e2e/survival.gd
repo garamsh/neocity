@@ -57,7 +57,6 @@ const ROOF_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1,
 ## The map's top-left corner and size in the scene, as the city draws it; a
 ## sub-cell is one scene pixel, and the scene is 720 pixels tall.
 const MAP_ORIGIN: Vector2 = Vector2(64, 70)
-const MAP_SIZE: Vector2 = Vector2(40 * 32, 16 * 32)
 const SCENE_HEIGHT: float = 720.0
 ## The play area between the top bar and the cards, on screen.
 const PLAY: Rect2 = Rect2(0, 62, 1280, 478)
@@ -1820,7 +1819,8 @@ func _camera_holds(where: String) -> bool:
 	var humans: Array[String] = _humans_out()
 	var shown: bool = humans.all(func(who: String) -> bool: return PLAY.has_point(view * _feet(who)))
 	var left: float = (view * MAP_ORIGIN).x
-	var right: float = (view * (MAP_ORIGIN + MAP_SIZE)).x
+	var map_size: Vector2 = scene.get_node("World").get_meta("map_size")
+	var right: float = (view * (MAP_ORIGIN + map_size)).x
 	var inside: bool = (view * Vector2.ZERO).y <= 0.0 and (view * Vector2(0, SCENE_HEIGHT)).y >= SCENE_HEIGHT
 	if right - left >= PLAY.size.x:
 		inside = inside and left <= 0.0 and right >= PLAY.size.x
