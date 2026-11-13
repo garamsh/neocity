@@ -169,6 +169,8 @@ const TEETH_ROWS: int = 96
 const TEETH_SHARE: float = 0.313
 ## The largest measured 31.3% colour-error quantile was 0.121569; 0.14 retains a margin for the finishing pass.
 const TEETH_TOLERANCE: float = 0.14
+## How many canvas pixels the near-miss control moves the fangs sideways.
+const TEETH_NEAR_MISS: int = 6
 const TEETH_COVER: float = 0.035
 ## How a fang's cream reads in the throat picture: its red and green at least
 ## these, and its green no less than its blue, which the pink flesh's is.
@@ -270,6 +272,7 @@ func _run() -> void:
 		return
 	scene = current_scene as MainScene
 	scene.get_node("World").set_meta("measure_art", true)
+	scene.set_meta("measure_art", true)
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
 	process_frame.connect(_tick)
@@ -1610,6 +1613,21 @@ func _teeth_show(_frame_image: Image, screen: String) -> bool:
 			_fail("the fang verdict accepted fangs displaced below the top band")
 			return false
 		print("Capture: fang placement control rejected fangs displaced below the top band: share %.6f, unchanged source coverage %.6f." % [lowered.x, lowered.y])
+		var near: Image = native_frame.duplicate() as Image
+		var moved: Image = native_frame.duplicate() as Image
+		for y: int in range(band_end):
+			for x: int in range(near.get_width() - TEETH_NEAR_MISS):
+				if _fang(x, y).a >= 0.5:
+					near.set_pixel(x, y, Color(0.03, 0.04, 0.07))
+		for y: int in range(band_end):
+			for x: int in range(near.get_width() - TEETH_NEAR_MISS):
+				if _fang(x, y).a >= 0.5:
+					near.set_pixel(x + TEETH_NEAR_MISS, y, moved.get_pixel(x, y))
+		var missed: Vector2 = _teeth_sample(near, occluders)
+		if _teeth_visible(missed):
+			_fail("the fang verdict accepted fangs offset by %d pixels" % TEETH_NEAR_MISS)
+			return false
+		print("Capture: fang near-miss control rejected fangs offset by %d pixels: share %.6f, unchanged source coverage %.6f." % [TEETH_NEAR_MISS, missed.x, missed.y])
 		teeth_control_checked = true
 	return true
 
@@ -1622,6 +1640,8 @@ func _teeth_sample(frame: Image, occluders: Array) -> Vector2:
 	var matched: int = 0
 	var count: int = 0
 	var errors: Array[float] = []
+	# A new day's fade lies over the whole frame, fangs included.
+	var veil: Color = scene.get_meta("screen_veil", Color(0, 0, 0, 0))
 	for y: int in range(roundi(PLAY.position.y * CANVAS_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * CANVAS_SCALE)):
 		for x: int in range(0, frame.get_width(), 2):
 			count += 1
@@ -1633,6 +1653,7 @@ func _teeth_sample(frame: Image, occluders: Array) -> Vector2:
 			if occluders.any(func(area: Rect2) -> bool: return area.has_point(layout_point)) or _deck_opaque(foreground_footprint, Vector2(x + 0.5, y + 0.5)) or _character_covers(layout_point):
 				continue
 			covered += 1
+			tooth = tooth.lerp(Color(veil.r, veil.g, veil.b), veil.a)
 			var pixel: Color = frame.get_pixel(x, y)
 			var error: float = maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b)))
 			if OS.get_cmdline_user_args().has("--fang-diagnostic"):
