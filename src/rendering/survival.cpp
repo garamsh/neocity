@@ -1505,6 +1505,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     }
   }
   canvas.set_meta("collision_floors", floors);
+  canvas.set_meta("map_size",
+                  Vector2(static_cast<float>(content.size.width) * CELL,
+                          static_cast<float>(content.size.height) * CELL));
   const auto paint_kind = [&](ObjectKind kind, const auto &paint) {
     for (const auto &object : objects) {
       if (object.kind == kind && visible(object)) {

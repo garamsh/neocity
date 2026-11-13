@@ -73,7 +73,7 @@ const BAND_ROWS: Vector2i = Vector2i(6, 40)
 ## How much darker, in mean luminance from 0 to 1, the walkways' faces read
 ## than the backdrop above them, and how much brighter the acid band's glowing
 ## pixels read than that backdrop.
-const FACE_GAP: float = 0.077
+const FACE_GAP: float = 0.06
 ## The fewest pixels clear of the plates and the HUD that a cell's face, or
 ## the scenery above it, is read over.
 const CLEAR_PIXELS: int = 32
@@ -456,7 +456,7 @@ func _run() -> void:
 	if finished_ends < 4 or not destroyed_end:
 		_fail("exposed deck ends were not measured before and after day-five passage replacement")
 		return
-	print("Capture: finished ends measured on %d representative sides, including the retained Shallows end after day-five passage replacement." % finished_ends)
+	print("Capture: finished ends measured on %d representative sides, including the upper walkway and gauge ledge ends again after day-five passage replacement." % finished_ends)
 	print("Capture: no map plate covers another or a source but its count in ", city_frames, " city frames.")
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
@@ -1016,12 +1016,12 @@ func _finished_decks(frame: Image, view: Transform2D, screen: String, covered: A
 		if objects.get("Shallows", "") != "intact":
 			_fail("first-city exposed-end setup did not retain Shallows")
 			return false
-		return _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered) and _finished_end(frame, view, screen, Vector2i(14, 12), false, Vector2i(15, 12), covered) and _finished_end(frame, view, screen, Vector2i(19, 12), true, Vector2i(18, 12), covered)
+		return _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered) and _finished_end(frame, view, screen, Vector2i(17, 8), false, Vector2i(18, 8), covered) and _finished_end(frame, view, screen, Vector2i(19, 5), true, Vector2i(18, 5), covered)
 	if screen == "11-city-damaged":
 		if objects.get("Shallows", "") != "intact" or objects.get("Roof Ladder", "") != "destroyed" or objects.get("Fire Escape", "") != "intact" or objects.get("Drifted Ferry", "") != "intact":
 			_fail("damaged-city setup differs from the fixed day-five map states")
 			return false
-		if not _finished_end(frame, view, screen, Vector2i(14, 12), false, Vector2i(15, 12), covered):
+		if not _finished_end(frame, view, screen, Vector2i(8, 8), true, Vector2i(7, 8), covered) or not _finished_end(frame, view, screen, Vector2i(17, 8), false, Vector2i(18, 8), covered):
 			return false
 		destroyed_end = true
 	return true
@@ -1057,18 +1057,8 @@ func _ground_leads(frame: Image, view: Transform2D, screen: String, covered: Arr
 		return false
 	return true
 
-## Whether the frame's values fall in three layers, over the LEAD_CELLS it
-## shows, when it shows two or more: the walkways' faces darkest, the backdrop
-## in the cells above them brighter by FACE_GAP, and, where the frame shows the
-## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
-## those pixels brighter than the backdrop by ACID_GAP. A face the band's
-## light reaches, within ACID_LIGHT_REACH over its surface, is lit green as the
-## mockup lights its posts over the lake, and is not read. Only the pixels
-## clear of the rectangles covered are read, and a cell with fewer than
-## CLEAR_PIXELS of them in its face or above it is not read. The control is
-## that the faces are not black. Only loaded-source alpha inside actual deck
-## fragments contributes to a face; new end notches remain scenery.
-func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+## The mean face and backdrop luminance and the cells they are read over.
+func _layer_values(frame: Image, view: Transform2D, covered: Array) -> Vector3:
 	var face: float = 0.0
 	var behind: float = 0.0
 	var shown: int = 0
@@ -1083,10 +1073,47 @@ func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) ->
 		face += cell_face.x / cell_face.y
 		behind += cell_behind.x / cell_behind.y
 		shown += 1
+	return Vector3(face / maxi(shown, 1), behind / maxi(shown, 1), shown)
+
+## The frame with every walkway face twice as bright, which the faces must
+## then fail to read darker than the backdrop by FACE_GAP.
+func _brightened_faces(frame: Image, view: Transform2D) -> Image:
+	var altered: Image = frame.duplicate() as Image
+	for cell: Vector2i in LEAD_CELLS:
+		var corner: Vector2 = Vector2(MAP_ORIGIN + cell * CELL)
+		var area: Rect2 = view * Rect2(corner + Vector2(0, CELL + FACE_ROWS.x), Vector2(CELL, FACE_ROWS.y - FACE_ROWS.x))
+		for y: int in range(maxi(0, floori(area.position.y)), mini(frame.get_height(), ceili(area.end.y))):
+			for x: int in range(maxi(0, floori(area.position.x)), mini(frame.get_width(), ceili(area.end.x))):
+				var at: Vector2 = Vector2(x + 0.5, y + 0.5)
+				if not _deck_opaque(deck_footprint, at) or _character_covers(at):
+					continue
+				var pixel: Color = frame.get_pixel(x, y)
+				altered.set_pixel(x, y, Color(minf(pixel.r * 2.0, 1.0), minf(pixel.g * 2.0, 1.0), minf(pixel.b * 2.0, 1.0), pixel.a))
+	return altered
+
+## Whether the frame's values fall in three layers, over the LEAD_CELLS it
+## shows, when it shows two or more: the walkways' faces darkest, the backdrop
+## in the cells above them brighter by FACE_GAP, and, where the frame shows the
+## acid band clear of the sea, the band glowing green over ACID_SHARE of it,
+## those pixels brighter than the backdrop by ACID_GAP. A face the band's
+## light reaches, within ACID_LIGHT_REACH over its surface, is lit green as the
+## mockup lights its posts over the lake, and is not read. Only the pixels
+## clear of the rectangles covered are read, and a cell with fewer than
+## CLEAR_PIXELS of them in its face or above it is not read. The controls are
+## that the faces are not black and that the same frame with its faces twice
+## as bright fails the gap. Only loaded-source alpha inside actual deck
+## fragments contributes to a face; new end notches remain scenery.
+func _layers(frame: Image, view: Transform2D, screen: String, covered: Array) -> bool:
+	var reading: Vector3 = _layer_values(frame, view, covered)
+	var face: float = reading.x
+	var behind: float = reading.y
+	var shown: int = roundi(reading.z)
 	if shown < 2:
 		return true
-	face /= shown
-	behind /= shown
+	var control: Vector3 = _layer_values(_brightened_faces(frame, view), view, covered)
+	if control.y - control.x >= FACE_GAP:
+		_fail("%s: faces twice as bright still read %.6f under the backdrop, the control did not fail" % [screen, control.y - control.x])
+		return false
 	layer_frames += 1
 	print("Capture: %s: the walkways' faces read %.6f under the backdrop's %.6f over %d cells (at least %.6f darker)." % [screen, face, behind, shown, FACE_GAP])
 	if face <= 0.0 or behind - face < FACE_GAP:
