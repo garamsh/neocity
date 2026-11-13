@@ -154,6 +154,26 @@ const char *path(Image image) {
     return "characters/appraiser_land.png";
   case Image::HdAppraiserClimb:
     return "characters/appraiser_climb.png";
+  case Image::RatWalk1:
+    return "mutants/rat_walk_1.png";
+  case Image::RatWalk2:
+    return "mutants/rat_walk_2.png";
+  case Image::RatWalk3:
+    return "mutants/rat_walk_3.png";
+  case Image::RatWalk4:
+    return "mutants/rat_walk_4.png";
+  case Image::HumanWalk1:
+    return "mutants/human_walk_1.png";
+  case Image::HumanWalk2:
+    return "mutants/human_walk_2.png";
+  case Image::HumanWalk3:
+    return "mutants/human_walk_3.png";
+  case Image::HumanWalk4:
+    return "mutants/human_walk_4.png";
+  case Image::ObstacleVent:
+    return "obstacles/acid_vent.png";
+  case Image::ObstacleSpikes:
+    return "obstacles/flesh_spikes.png";
   case Image::Deck:
     return "walkway/deck.png";
   case Image::Structure:
@@ -180,8 +200,6 @@ const char *path(Image image) {
     return "world/door_cold_store.png";
   case Image::DoorBroken:
     return "world/door_broken.png";
-  case Image::AcidDrip:
-    return "world/acid_drip.png";
   case Image::Kiosk:
     return "world/kiosk.png";
   case Image::ColdStore:
@@ -255,7 +273,7 @@ std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
 bool hd(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
   return folder == "backgrounds" || folder == "walkway" || folder == "world" ||
-         folder == "ground" ||
+         folder == "ground" || folder == "mutants" || folder == "obstacles" ||
          (image >= Image::HdChefIdle && image <= Image::HdAppraiserClimb);
 }
 
@@ -264,7 +282,8 @@ bool hd(Image image) {
 float density(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
   const bool world = folder == "walkway" || folder == "world" ||
-                     folder == "ground" || folder == "characters";
+                     folder == "ground" || folder == "characters" ||
+                     folder == "mutants" || folder == "obstacles";
   const bool cell_dense = world && image != Image::NoodleVendor;
   return (cell_dense ? 2.0F : 1.0F) * (hd(image) ? ART_SCALE : 1.0F);
 }

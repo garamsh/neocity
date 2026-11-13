@@ -125,6 +125,17 @@ const MapContent &street_of(const Content &content) {
   return map_of(content, MapId::Street);
 }
 
+/// The obstacle cells of `map`.
+std::vector<GridPosition> obstacle_cells(const Content &content, MapId map) {
+  std::vector<GridPosition> cells;
+  for (const auto &obstacle : content.companion.exploration.obstacles) {
+    if (obstacle.map == map) {
+      cells.push_back(obstacle.cell);
+    }
+  }
+  return cells;
+}
+
 /// Where a party starts on `map`: the street entrance, or the cell the way in
 /// puts it on.
 GridPosition start_of(const Content &content, MapId map) {
@@ -146,7 +157,7 @@ cells_reached(const Content &content, const WorldSnapshot &world,
               const std::set<Move> &allowed = every_move(),
               MapId on = MapId::Street) {
   const auto start = start_of(content, on);
-  const CellMap map(on_map(world, on));
+  const CellMap map(on_map(world, on), obstacle_cells(content, on));
   std::vector<GridPosition> seen{start};
   std::deque<GridPosition> frontier{start};
   while (!frontier.empty()) {
@@ -196,7 +207,9 @@ std::vector<std::string> path_problems(const Content &content,
   std::vector<std::string> problems;
   const auto &config = content.companion.exploration;
   for (const auto &map : content.maps) {
-    if (!stands_on(CellMap(on_map(world, map.id)), start_of(content, map.id))) {
+    if (!stands_on(
+            CellMap(on_map(world, map.id), obstacle_cells(content, map.id)),
+            start_of(content, map.id))) {
       problems.push_back(std::string(map.name) + ": no footing at the start");
     }
     const auto reached = cells_reached(content, world, every_move(), map.id);
@@ -689,33 +702,51 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
   }
 }
 
-TEST(TemporaryContent, CrossingTheAcidDripAgainAndAgainSendsNoOneHome) {
-  Game game(temporary_content(1));
-  ASSERT_EQ(street_of(game.content()).hazards.size(), 1U);
-  const auto drip = street_of(game.content()).hazards.front();
-  ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
-  const auto in_drip = [&] {
-    const auto cell = cell_of(game.exploration().snapshot().chef.body.position);
-    return cell.x == drip.x && cell.y == drip.y;
-  };
-  int entries = 0;
-  auto heading = Direction::Left;
-  for (int tick = 0; tick < 600 && entries < 8; ++tick) {
-    const auto was_in = in_drip();
-    const auto cell = cell_of(game.exploration().snapshot().chef.body.position);
-    if (cell.x <= drip.x) {
-      heading = Direction::Right;
-    } else if (cell.x >= drip.x + 2) {
-      heading = Direction::Left;
-    }
-    ASSERT_EQ(game.exploration().advance(
-                  50ms, {ExplorationInput{.direction = heading}, {}}),
-              Result::Applied);
-    ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City)
-        << "tick " << tick;
-    entries += !was_in && in_drip() ? 1 : 0;
+TEST(TemporaryContent, TheOldAcidDripIsAnObstacleOnTheStreet) {
+  const auto content = temporary_content(1);
+  const auto &drawn = street_of(content).obstacles;
+  ASSERT_EQ(drawn.size(), 3U);
+  const auto cells = obstacle_cells(content, MapId::Street);
+  ASSERT_EQ(cells.size(), 3U);
+  for (const auto &cell : drawn) {
+    EXPECT_EQ(std::ranges::count(cells, GridPosition{cell.x, cell.y}), 1)
+        << cell.x << ", " << cell.y;
   }
-  EXPECT_GE(entries, 8);
+}
+
+TEST(TemporaryContent, EveryMapHasEnoughMutantsAndObstacles) {
+  const auto content = temporary_content(1);
+  const auto &config = content.companion.exploration;
+  const auto count = [](const auto &list, MapId map) {
+    return std::ranges::count(
+        list, map, &std::remove_cvref_t<decltype(list)>::value_type::map);
+  };
+  EXPECT_GE(count(config.patrols, MapId::Street), 3);
+  EXPECT_GE(count(config.obstacles, MapId::Street), 3);
+  EXPECT_GE(count(config.patrols, MapId::Aquarium), 2);
+  EXPECT_GE(count(config.obstacles, MapId::Aquarium), 2);
+}
+
+TEST(TemporaryContent, EveryPatrolAndObstacleStandsOnAFloorOnEveryDay) {
+  const auto content = temporary_content(1);
+  const auto &config = content.companion.exploration;
+  for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
+    const auto world = on_day(content, day);
+    for (const auto &obstacle : config.obstacles) {
+      EXPECT_TRUE(
+          stands_on(CellMap(on_map(world, obstacle.map)), obstacle.cell))
+          << "obstacle " << obstacle.cell.x << ", " << obstacle.cell.y
+          << " on day " << day;
+    }
+    for (const auto &patrol : config.patrols) {
+      const CellMap cells(on_map(world, patrol.map));
+      for (auto x = patrol.from.x; x <= patrol.to.x; ++x) {
+        EXPECT_TRUE(stands_on(cells, {.x = x, .y = patrol.from.y}))
+            << "patrol cell " << x << ", " << patrol.from.y << " on day "
+            << day;
+      }
+    }
+  }
 }
 
 TEST(TemporaryContent, TheAcidGaugeFillsAtAValueOfTheRules) {
@@ -974,7 +1005,7 @@ PlayerInput walk_to_zone(const Game &game, const WorldArea &zone) {
   if (behind >= WAIT) {
     return {};
   }
-  const CellMap cells(view.world);
+  const CellMap cells(view.world, view.exploration.obstacles);
   std::map<std::pair<std::int32_t, std::int32_t>, std::optional<Move>> first;
   std::deque<GridPosition> frontier{chef};
   first[{chef.x, chef.y}] = std::nullopt;
@@ -1000,6 +1031,8 @@ TEST(TemporaryContent,
   auto content = temporary_content(7);
   // The walk waits for the AI's collections, which a day's budget may not.
   content.run.exploration_budget = 120s;
+  // The walk steers around obstacles only, so no mutant is on its way.
+  content.companion.exploration.patrols.clear();
   const auto &exploration = content.companion.exploration;
   const auto exit =
       std::ranges::find(exploration.exits, MapId::Street, &MapExit::from);

@@ -519,7 +519,9 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
                            .entry = {},
                            .exits = {},
                            .interiors = {},
-                           .sources = {{.id = SOURCE}}});
+                           .sources = {{.id = SOURCE}},
+                           .obstacles = {},
+                           .patrols = {}});
   Workshop workshop(simulation, balance());
   const std::array<ExplorationInput, 2> idle{};
 

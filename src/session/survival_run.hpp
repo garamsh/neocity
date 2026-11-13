@@ -76,6 +76,7 @@ private:
   void run_action(survival::Actor actor, const survival::Action &action,
                   std::uint32_t day);
   void report_returns(const survival::Snapshot &before,
+                      const std::array<std::uint32_t, 2> &touches,
                       const std::array<bool, 2> &walked_home);
   void report_world_changes(const survival::WorldSnapshot &before);
   void record(const hud::Event &event);

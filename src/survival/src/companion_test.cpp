@@ -54,7 +54,9 @@ ExplorationConfig tuning(std::vector<SourceStock> sources) {
           .exits = {},
           .interiors = {},
           .collection_distance = 1,
-          .sources = std::move(sources)};
+          .sources = std::move(sources),
+          .obstacles = {},
+          .patrols = {}};
 }
 
 WorkshopConfig kitchen(std::vector<Recipe> recipes = {
@@ -276,6 +278,147 @@ TEST(Companion, WalksToASourceAndCollectsWithinRange) {
             std::vector<IngredientId>{CARROT});
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
   EXPECT_EQ(game.refusals(), 0U);
+}
+
+/// A chef standing at the entry with a source ahead on a floor of ten cells and
+/// one mutant patrolling cells 1 to 8 of that row, at `x` sub-cells going
+/// `heading`. The chef is in `stance`.
+ActorCommand command_beside_a_mutant(std::int32_t x, Direction heading,
+                                     Stance stance = Stance::Standing) {
+  auto view = city_view(ENTRY);
+  view.exploration.chef.body.stance = stance;
+  view.exploration.chef.body.heading = Direction::Right;
+  add_source(view, SOURCE, 7);
+  view.exploration.mutants.push_back(
+      {.position = {.x = x, .y = standing_in(ENTRY).y}, .heading = heading});
+  auto places = tuning({});
+  places.patrols = {{.from = {.x = 1, .y = 0}, .to = {.x = 8, .y = 0}}};
+  const Companion companion({.exploration = places,
+                             .workshop = kitchen(),
+                             .unfed_penalty = UNFED_PENALTY});
+  return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
+}
+
+TEST(Companion, WaitsBesideAMutantThatReachesItsNextCellAndWalksOnOnceItTurns) {
+  const auto waits = command_beside_a_mutant(96, Direction::Left);
+  EXPECT_EQ(waits.movement.direction, Direction::Idle);
+  EXPECT_FALSE(waits.action);
+  // The control: the same mutant walking away leaves the way open.
+  const auto walks = command_beside_a_mutant(96, Direction::Right);
+  EXPECT_EQ(walks.movement.direction, Direction::Right);
+}
+
+TEST(Companion, KeepsItsWayInTheAirBesideAMutantThatWouldHoldAWalker) {
+  const auto airborne =
+      command_beside_a_mutant(96, Direction::Left, Stance::Airborne);
+  EXPECT_EQ(airborne.movement.direction, Direction::Right);
+  // The control: the same mutant holds the same chef on the ground.
+  const auto walking = command_beside_a_mutant(96, Direction::Left);
+  EXPECT_EQ(walking.movement.direction, Direction::Idle);
+}
+
+/// A chef at the foot of a ladder at x 8 with a source on the walkway above and
+/// a mutant on the chef's row to its left, patrolling cells 4 to 7, at cell 7.
+ActorCommand command_at_a_ladder_with_a_mutant_behind(bool mutant) {
+  auto view = base_view();
+  auto low = object_of(FLOOR, ObjectKind::Terrain, 0);
+  low.area = {.x = 0, .y = 3, .width = 12};
+  low.traversable = true;
+  auto high = object_of(ObjectId{2}, ObjectKind::Terrain, 7);
+  high.area = {.x = 7, .y = 0, .width = 6};
+  high.traversable = true;
+  auto ladder = object_of(ObjectId{3}, ObjectKind::Ladder, 8);
+  ladder.area = {.x = 8, .y = 0, .height = 4};
+  ladder.traversable = true;
+  view.world.objects = {low, high, ladder};
+  add_source(view, SOURCE, 11);
+  view.progression.phase = Phase::Exploration;
+  view.progression.chef.location = Location::City;
+  view.progression.appraiser.location = Location::City;
+  const GridPosition foot{.x = 8, .y = 3};
+  view.exploration.chef.body.position = standing_in(foot);
+  view.exploration.appraiser.body.position = standing_in(foot);
+  auto places = tuning({});
+  if (mutant) {
+    view.exploration.mutants.push_back(
+        {.position = standing_in({.x = 7, .y = 3}),
+         .heading = Direction::Right});
+    places.patrols = {{.from = {.x = 4, .y = 3}, .to = {.x = 7, .y = 3}}};
+  }
+  const Companion companion({.exploration = places,
+                             .workshop = kitchen(),
+                             .unfed_penalty = UNFED_PENALTY});
+  return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
+}
+
+TEST(Companion, ClimbsALadderWithAMutantBehindItOnTheSameRow) {
+  const auto control = command_at_a_ladder_with_a_mutant_behind(false);
+  ASSERT_EQ(control.movement.direction, Direction::Up);
+  const auto climbs = command_at_a_ladder_with_a_mutant_behind(true);
+  EXPECT_EQ(climbs.movement.direction, Direction::Up);
+}
+
+/// A view with `chef` human and the appraiser AI, a source at x 30 on a floor
+/// of forty cells, the human at x 0 and the AI at x 20, `chef_absent` or not.
+ActorCommand command_with_a_partner_far_off(bool chef_absent) {
+  auto view = city_view({.x = 0, .y = 0});
+  view.world.objects.front().area.width = 40;
+  add_source(view, SOURCE, 30);
+  view.exploration.appraiser.body.position = standing_in({.x = 20, .y = 0});
+  if (chef_absent) {
+    view.exploration.chef.absent = 5s;
+  }
+  return companion_with().command(Actor::Appraiser, single_player(Actor::Chef),
+                                  NO_INPUT, view);
+}
+
+TEST(Companion,
+     TreatsAnAbsentPartnerAsAtBaseAndWalksToItsSourceBeyondTheLeash) {
+  const auto alone = command_with_a_partner_far_off(true);
+  EXPECT_EQ(alone.movement.direction, Direction::Right);
+  // The control: with its partner on the map the same AI keeps company
+  // instead.
+  const auto following = command_with_a_partner_far_off(false);
+  EXPECT_EQ(following.movement.direction, Direction::Left);
+}
+
+TEST(Companion, AnAbsentActorTakesNoCommandUnderEitherController) {
+  auto view = city_view(ENTRY);
+  add_source(view, SOURCE, 7);
+  const auto walking = [&](ControlMap control) {
+    return companion_with()
+        .command(Actor::Chef, control,
+                 PlayerInput{.movement = {.direction = Direction::Right}}, view)
+        .movement.direction;
+  };
+  ASSERT_EQ(walking(ALL_AI), Direction::Right);
+  ASSERT_EQ(walking(single_player(Actor::Chef)), Direction::Right);
+  view.exploration.chef.absent = 5s;
+  EXPECT_EQ(walking(ALL_AI), Direction::Idle);
+  EXPECT_EQ(walking(single_player(Actor::Chef)), Direction::Idle);
+}
+
+/// The chef at the entry with a source at x 7 and a wall of obstacle cells
+/// three high at x 3, which no jump clears, when `walled`.
+ActorCommand command_before_a_wall(bool walled) {
+  auto view = city_view(ENTRY);
+  add_source(view, SOURCE, 7);
+  if (walled) {
+    view.exploration.obstacles = {{.x = 3, .y = 0},
+                                  {.x = 3, .y = -1},
+                                  {.x = 3, .y = -2},
+                                  {.x = 3, .y = -3}};
+  }
+  return companion_with().command(Actor::Chef, ALL_AI, NO_INPUT, view);
+}
+
+TEST(Companion, RoutesAroundObstacleCellsAndNeverStepsIntoTheirWall) {
+  const auto blocked = command_before_a_wall(true);
+  EXPECT_NE(blocked.movement.direction, Direction::Right);
+  EXPECT_EQ(blocked.action, std::optional<Action>{ReturnToBase{}});
+  // The control: the same floor and source without the wall is walked.
+  const auto open = command_before_a_wall(false);
+  EXPECT_EQ(open.movement.direction, Direction::Right);
 }
 
 TEST(Companion, JumpsAGapAndClimbsALadderToAHighSourceWithoutFalling) {

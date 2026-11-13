@@ -743,6 +743,49 @@ std::vector<Interior> interiors() {
            .area = {.x = 37, .y = 6, .width = 3, .height = 3}}};
 }
 
+/// The fixed obstacles, each at the end of a spur no route needs: the old acid
+/// drip beside the base, a catwalk's end, a pier's end and the dead ends of
+/// two aquarium floors.
+std::vector<Obstacle> obstacles() {
+  return {{.map = MapId::Street, .cell = {.x = 1, .y = 8}},
+          {.map = MapId::Street, .cell = {.x = 54, .y = 2}},
+          {.map = MapId::Street, .cell = {.x = 39, .y = 12}},
+          {.map = MapId::Aquarium, .cell = {.x = 31, .y = 11}},
+          {.map = MapId::Aquarium, .cell = {.x = 43, .y = 11}}};
+}
+
+/// One mutant for each patrol, none on a source's cell or the exit's zone: the
+/// pier, the top catwalk and the east roof on the street, the east gallery
+/// and the tank floor in the aquarium.
+std::vector<Patrol> patrols() {
+  return {{.map = MapId::Street,
+           .from = {.x = 37, .y = 12},
+           .to = {.x = 38, .y = 12}},
+          {.map = MapId::Street,
+           .from = {.x = 57, .y = 2},
+           .to = {.x = 59, .y = 2}},
+          {.map = MapId::Street,
+           .from = {.x = 23, .y = 4},
+           .to = {.x = 26, .y = 4}},
+          {.map = MapId::Aquarium,
+           .from = {.x = 27, .y = 11},
+           .to = {.x = 29, .y = 11}},
+          {.map = MapId::Aquarium,
+           .from = {.x = 38, .y = 11},
+           .to = {.x = 39, .y = 11}}};
+}
+
+/// The obstacle cells of `map`.
+std::vector<WorldArea> obstacle_areas(MapId map) {
+  std::vector<WorldArea> areas;
+  for (const auto &obstacle : obstacles()) {
+    if (obstacle.map == map) {
+      areas.push_back({.x = obstacle.cell.x, .y = obstacle.cell.y});
+    }
+  }
+  return areas;
+}
+
 std::vector<Recipe> recipes() {
   return {
       {.food = MUSHROOM_SOUP, .ingredients = {MUSHROOM, TOMATO}},
@@ -788,7 +831,10 @@ Content temporary_content(std::uint32_t seed) {
                                     .interiors = interiors(),
                                     .collection_distance = 1,
                                     .sources = stock(),
-                                    .collection_time = 1500ms},
+                                    .collection_time = 1500ms,
+                                    .obstacles = obstacles(),
+                                    .patrols = patrols(),
+                                    .absence = 10s},
                     .workshop = {.recipes = recipes(),
                                  .new_food_score = 50,
                                  .new_ingredient_score = 5,
@@ -801,14 +847,14 @@ Content temporary_content(std::uint32_t seed) {
       .maps = {{.id = MapId::Street,
                 .name = "Street",
                 .size = {.width = 64, .height = 16},
-                .hazards = {{.x = 1, .y = 8}},
+                .obstacles = obstacle_areas(MapId::Street),
                 .ground = std::move(street_cells),
                 .decorations = street_decorations(),
                 .landmarks = street_landmarks()},
                {.id = MapId::Aquarium,
                 .name = "Aquarium",
                 .size = {.width = 44, .height = 16},
-                .hazards = {},
+                .obstacles = obstacle_areas(MapId::Aquarium),
                 .ground = std::move(aquarium_cells),
                 .decorations = aquarium_decorations(),
                 .landmarks = {}}},

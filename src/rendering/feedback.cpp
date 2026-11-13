@@ -215,13 +215,20 @@ void paint_workshop_bursts(godot::Node2D &canvas, const Art &art,
 void paint_screen_bursts(godot::Node2D &canvas,
                          const std::vector<Burst> &bursts) {
   const godot::Rect2 screen(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
+  // The fades laid over the screen, as one veil of the background colour.
+  float clear = 1.0F;
   for (const auto &burst : bursts) {
     const float done = progress(burst);
     if (burst.kind == Flourish::NewDay) {
       // Dark at the middle of the fade, clear at both ends.
       const float dark = 1.0F - std::abs(2.0F * done - 1.0F);
       canvas.draw_rect(screen, fade(palette().background, 0.9F * dark));
+      clear *= 1.0F - 0.9F * dark;
     }
+  }
+  // The measuring checks read what veil the frame drew over the picture.
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("screen_veil", fade(palette().background, 1.0F - clear));
   }
 }
 

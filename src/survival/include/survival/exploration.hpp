@@ -55,19 +55,24 @@ enum class Cell : std::uint8_t { Open, Floor, Ladder, LadderOnFloor, Blocked };
 /// floor and an intact ladder is climbed. An intact building blocks unless an
 /// intact entrance or ladder opens the cell, and a broken entrance blocks
 /// first, so the world's object order does not change the result. A broken
-/// ladder only stops being climbed.
+/// ladder only stops being climbed. Obstacles are cells a body must not enter:
+/// a route never passes through one.
 class CellMap {
 public:
   /// Throws std::invalid_argument for an object reaching past `MAP_LIMIT`
   /// cells from the origin, beyond which sub-cell positions cannot follow.
-  explicit CellMap(const WorldSnapshot &snapshot);
+  explicit CellMap(const WorldSnapshot &snapshot,
+                   std::vector<GridPosition> sites = {});
   /// Outside every object is open air.
   [[nodiscard]] Cell at(GridPosition cell) const;
   /// Whether `cell` lies below every object: a body there has fallen into
   /// the acid.
   [[nodiscard]] bool below(GridPosition cell) const;
+  /// Whether an obstacle stands in `cell`.
+  [[nodiscard]] bool obstructed(GridPosition cell) const;
 
 private:
+  std::vector<GridPosition> obstacles;
   GridPosition origin;
   std::int32_t width = 0;
   std::int32_t height = 0;
@@ -152,7 +157,7 @@ struct Link {
 
 /// Every way out of `from` that ends held, worked out by `physics_tick` for a
 /// body that follows `steer`. Walking that drops to a lower floor is a link;
-/// one that falls into the acid is not.
+/// one that falls into the acid or enters an obstacle's cell is not.
 [[nodiscard]] std::vector<Link> links(const CellMap &map, GridPosition from);
 
 /// Every held cell reachable from `from` by links, `from` included.
@@ -189,8 +194,25 @@ struct Interior {
   WorldArea area;
 };
 
+/// A fixed obstacle: the cell of a map whose touch sends an actor away.
+struct Obstacle {
+  MapId map = MapId::Street;
+  GridPosition cell;
+};
+
+/// A mutant's patrol: it walks one row of a map back and forth between the
+/// cells `from` and `to`, which share a row, `from` on the left.
+struct Patrol {
+  MapId map = MapId::Street;
+  GridPosition from;
+  GridPosition to;
+};
+
 /// Temporary tuning. `collection_time` is how long one collection holds the
 /// collecting actor. `entry` is the base entrance, a cell of the street.
+/// `absence` is how long an actor that touched a mutant or an obstacle is gone
+/// from the map before it returns beside its partner; it is positive whenever
+/// the config has patrols or obstacles.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
@@ -199,6 +221,9 @@ struct ExplorationConfig {
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
   std::chrono::microseconds collection_time{};
+  std::vector<Obstacle> obstacles;
+  std::vector<Patrol> patrols;
+  std::chrono::microseconds absence{};
 };
 
 /// A collection under way: the actor already holds the item and takes no
@@ -210,22 +235,47 @@ struct Collecting {
 };
 
 /// Detailed body and collection hold; base has no movement. `interior` is the
-/// building whose zone the body stands in, if any.
+/// building whose zone the body stands in, if any. `absent` is the exploration
+/// time left before an actor that touched a mutant or an obstacle returns: it
+/// is in the city but not on the map, and its body is where it was touched.
 struct ExplorerSnapshot {
   Body body;
   std::optional<Collecting> collecting = std::nullopt;
   std::optional<ObjectId> interior = std::nullopt;
+  std::optional<std::chrono::microseconds> absent = std::nullopt;
   friend bool operator==(const ExplorerSnapshot &,
                          const ExplorerSnapshot &) = default;
 };
 
+/// Where one mutant stands on its patrol and the way it walks.
+struct MutantSnapshot {
+  Position position;
+  Direction heading = Direction::Right;
+  friend bool operator==(const MutantSnapshot &,
+                         const MutantSnapshot &) = default;
+};
+
+/// Temporary: sub-cells a mutant walks in one movement unit, a third of a
+/// walking actor's.
+inline constexpr std::int32_t MUTANT_STEP = 8;
+
+/// The mutant one movement unit on: it walks `MUTANT_STEP` sub-cells along
+/// `patrol` and turns round on the centre of an end cell.
+[[nodiscard]] MutantSnapshot patrol_step(const Patrol &patrol,
+                                         MutantSnapshot mutant);
+
 /// Read-only values for a renderer or companion controller. `map` is the map
-/// both actors share; the street whenever nobody is out.
+/// both actors share; the street whenever nobody is out. `obstacles` and
+/// `mutants` are those of that map. `touches` counts, from the start of the
+/// run, each actor's touches of a mutant or an obstacle, chef first.
 struct ExplorationSnapshot {
   MapId map = MapId::Street;
   ExplorerSnapshot chef;
   ExplorerSnapshot appraiser;
   std::vector<SourceStock> sources;
+  std::vector<GridPosition> obstacles;
+  std::vector<MutantSnapshot> mutants;
+  std::array<std::uint32_t, 2> touches{};
   friend bool operator==(const ExplorationSnapshot &,
                          const ExplorationSnapshot &) = default;
 };
@@ -257,7 +307,13 @@ public:
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// Each 100ms movement unit runs its physics ticks under one input. While
   /// both actors are in the city, a tick that would widen the gap in x between
-  /// them past `SCREEN_LOCK` leaves its actor's sideways position as it was.
+  /// them past `SCREEN_LOCK` leaves its actor's sideways position as it was;
+  /// an absent actor holds nobody to the lock. Mutants walk their patrols one
+  /// step of each movement unit on the shared clock. An actor that then stands
+  /// in the cell of a mutant or an obstacle is absent for `absence`, and
+  /// returns to its partner's body, or to base if the partner is not in the
+  /// city. A touch while the partner is absent, or with the partner not in the
+  /// city, sends every actor in the city to base.
   /// The world follows the run's day here only. When both actors stand in an
   /// exit zone of their map after a movement unit, both move to the other map.
   /// Answers `Result::RunOver` with no change once the run is over.
@@ -281,6 +337,11 @@ private:
   [[nodiscard]] bool collecting(Actor actor);
   void synchronize();
   void tick(Actor actor, ExplorationInput input);
+  [[nodiscard]] bool touched(const CellMap &map, const Body &body) const;
+  void send_away(Actor actor);
+  void release_absent();
+  void walk_mutants();
+  [[nodiscard]] std::vector<GridPosition> obstacles_on(MapId map) const;
   void advance_world();
   [[nodiscard]] CellMap cells() const;
   void travel();
@@ -288,8 +349,16 @@ private:
   std::reference_wrapper<Simulation> simulation;
   std::reference_wrapper<World> world;
   ExplorationConfig config;
+  std::array<std::uint32_t, 2> touch_counts{};
+  struct Mutant {
+    Patrol patrol;
+    MutantSnapshot state;
+  };
+
   Explorer chef;
   Explorer appraiser;
+  std::vector<Mutant> mutants;
+  std::chrono::microseconds mutant_clock{};
   MapId current = MapId::Street;
 };
 

@@ -63,7 +63,7 @@ GridPosition cell_of_actor(const GameView &view, Actor actor) {
 /// Where an errand is planned from: the actor's cell, or in the air the cell a
 /// straight drop lands in, so the way holds through a jump or a fall.
 GridPosition landing_cell(const GameView &view, Actor actor) {
-  const CellMap map(view.world);
+  const CellMap map(view.world, view.exploration.obstacles);
   auto cell = cell_of_actor(view, actor);
   while (!holds(map, cell) && !map.below(cell)) {
     ++cell.y;
@@ -198,7 +198,7 @@ std::optional<Route> next_errand(const CompanionConfig &config,
                                  const Partner &partner,
                                  const std::vector<Goal> &goals) {
   const auto range = config.exploration.collection_distance;
-  const CellMap map(view.world);
+  const CellMap map(view.world, view.exploration.obstacles);
   std::vector<Goal> lacking;
   std::ranges::copy_if(goals, std::back_inserter(lacking), &Goal::lacking);
   if (auto errand = route_to(map, from, partner, lacking, range)) {
@@ -402,7 +402,7 @@ std::optional<Frontier> company_route(const CompanionConfig &config,
                                       const GameView &view, GridPosition from,
                                       GridPosition partner,
                                       const Partner &leash) {
-  const CellMap map(view.world);
+  const CellMap map(view.world, view.exploration.obstacles);
   const auto *zone = exit_zone_at(config, view, partner);
   return search(map, from, leash, [&](GridPosition cell) {
     if (zone != nullptr) {
@@ -479,7 +479,8 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return {.movement = {.direction = body.heading}};
   }
   const auto from = cell_of(body.position);
-  const auto together = state_of(view, partner).location == Location::City;
+  const auto together = state_of(view, partner).location == Location::City &&
+                        !explorer_of(view, partner).absent;
   if (!together) {
     return plan_alone(config, view, body, from);
   }
@@ -515,13 +516,64 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
   return command;
 }
 
+/// Temporary policy: movement units ahead an AI actor looks for a mutant, and
+/// sub-cells it walks in that time at most. A walking actor covers 25
+/// sub-cells in a unit; the reach is rounded up to 30 for margin.
+constexpr int PATROL_LOOKAHEAD = 2;
+constexpr std::int32_t ACTOR_UNIT_REACH = 30;
+
+/// Whether walking the way `command` moves would put the actor in a cell a
+/// mutant stands in or reaches within the next movement units. Only a walk
+/// along the ground is held: a body in the air keeps its way, because `decide`
+/// would drop its sideways move, and a climb moves no sideways.
+bool mutant_ahead(const CompanionConfig &config, Actor actor,
+                  const ActorCommand &command, const GameView &view) {
+  const auto direction = command.movement.direction;
+  const auto &body = body_of(view, actor);
+  if ((direction != Direction::Left && direction != Direction::Right) ||
+      command.action || body.stance == Stance::Airborne ||
+      state_of(view, actor).location != Location::City) {
+    return false;
+  }
+  const auto sign = direction == Direction::Right ? 1 : -1;
+  const auto row = cell_of(body.position).y;
+  const auto reach = Position{.x = body.position.x +
+                                   sign * PATROL_LOOKAHEAD * ACTOR_UNIT_REACH,
+                              .y = body.position.y};
+  const auto near = std::min(cell_of(body.position).x, cell_of(reach).x);
+  const auto far = std::max(cell_of(body.position).x, cell_of(reach).x);
+  for (const auto &mutant : view.exploration.mutants) {
+    const auto cell = cell_of(mutant.position);
+    const auto patrol = std::ranges::find_if(
+        config.exploration.patrols, [&](const Patrol &entry) {
+          return entry.map == view.exploration.map && entry.from.y == cell.y &&
+                 entry.from.x <= cell.x && cell.x <= entry.to.x;
+        });
+    if (cell.y != row || patrol == config.exploration.patrols.end()) {
+      continue;
+    }
+    auto ahead = mutant;
+    for (int unit = 0; unit <= PATROL_LOOKAHEAD; ++unit) {
+      const auto at = cell_of(ahead.position).x;
+      if (near <= at && at <= far) {
+        return true;
+      }
+      ahead = patrol_step(*patrol, ahead);
+    }
+  }
+  return false;
+}
+
 ActorCommand decide(const CompanionConfig &config, Actor actor,
                     ControlMap control, const GameView &view) {
   switch (view.progression.phase) {
   case Phase::Workshop:
     return ai_at_workshop(config, actor, control, view);
-  case Phase::Exploration:
-    return ai_in_exploration(config, actor, control, view);
+  case Phase::Exploration: {
+    const auto command = ai_in_exploration(config, actor, control, view);
+    return mutant_ahead(config, actor, command, view) ? ActorCommand{}
+                                                      : command;
+  }
   case Phase::Escaped:
   case Phase::Lost:
     return {};
@@ -615,7 +667,7 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
 bool worth_entering(const CompanionConfig &config, const GameView &view) {
   const auto entry = config.exploration.entry;
   return view.progression.remaining_exploration.count() > 0 &&
-         stands_on(CellMap(view.world), entry) &&
+         stands_on(CellMap(view.world, view.exploration.obstacles), entry) &&
          next_errand(config, view, entry).has_value();
 }
 
@@ -633,6 +685,10 @@ std::optional<Errand> Companion::errand(Actor actor,
 ActorCommand Companion::command(Actor actor, ControlMap control,
                                 const PlayerInput &input,
                                 const GameView &view) const {
+  // An absent actor is off the map and takes no command.
+  if (explorer_of(view, actor).absent) {
+    return {};
+  }
   switch (controller_of(control, actor)) {
   case Controller::Human:
     return translate(config, actor, input, view);
