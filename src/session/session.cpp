@@ -333,10 +333,26 @@ void Session::advance(double delta, Command command) {
     click_at(command, *command.pointer);
   }
   advance_screen(delta, command);
+  auto previous = std::move(framed);
   framed.reset();
   shot.reset();
   if (run) {
     framed = run->frame();
+  }
+  if (previous && framed && playing() &&
+      previous->view.exploration.map != framed->view.exploration.map) {
+    // The rules switch maps at once; the screen fades out of the old one.
+    bursts.push_back({.kind = rendering::Flourish::MapFade,
+                      .at = std::nullopt,
+                      .age = 0.0F});
+    if (!leaving) {
+      leaving = std::move(previous);
+    }
+  }
+  if (!std::ranges::any_of(bursts, [](const rendering::Burst &burst) {
+        return burst.kind == rendering::Flourish::MapFade;
+      })) {
+    leaving.reset();
   }
   if (framed && playing() && !interruption) {
     tips.advance(*framed, delta, acted(command));
@@ -344,8 +360,8 @@ void Session::advance(double delta, Command command) {
 }
 
 void Session::aim(const rendering::Art &drawing) {
-  if (framed) {
-    shot = hud::shot_of(drawing, *framed);
+  if (const auto *shown = seen()) {
+    shot = hud::shot_of(drawing, *shown);
   }
   targets = shown_targets(drawing);
 }
@@ -374,7 +390,7 @@ Session::shown_targets(const rendering::Art &drawing) const {
                                        volume_rows(volume),
                                        display_rows(pause_display_row()));
     }
-    return hud::survival_targets(drawing, *framed);
+    return hud::survival_targets(drawing, *seen());
   }
   std::abort();
 }
@@ -752,10 +768,10 @@ void Session::paint_screen(godot::Node2D &canvas,
     if (playback && framed) {
       hud::paint_cinematic(canvas, drawing, playback->cinematic,
                            playback->card_left.has_value(), *framed);
-    } else if (framed && shot) {
-      hud::paint_survival(canvas, drawing, *framed, *shot, bursts, tips.open());
+    } else if (const auto *shown = seen(); shown != nullptr && shot) {
+      hud::paint_survival(canvas, drawing, *shown, *shot, bursts, tips.open());
       if (interruption) {
-        hud::paint_interruption(canvas, drawing, *interruption, *framed,
+        hud::paint_interruption(canvas, drawing, *interruption, *shown,
                                 shown_volumes(),
                                 display_rows(pause_display_row()));
       }
@@ -765,21 +781,35 @@ void Session::paint_screen(godot::Node2D &canvas,
   std::abort();
 }
 
+const hud::SurvivalFrame *Session::seen() const {
+  if (leaving) {
+    const bool fading_out =
+        std::ranges::any_of(bursts, [](const rendering::Burst &burst) {
+          return burst.kind == rendering::Flourish::MapFade &&
+                 burst.age < rendering::lifetime(burst.kind) / 2.0F;
+        });
+    if (fading_out) {
+      return &*leaving;
+    }
+  }
+  return framed ? &*framed : nullptr;
+}
+
 bool Session::playing() const {
   return screen == Screen::Survival && !playback;
 }
 
 void Session::paint_world(godot::Node2D &canvas,
                           const rendering::Art &drawing) const {
-  if (playing() && framed && shot) {
-    hud::paint_survival_world(canvas, drawing, *framed, *shot, bursts);
+  if (const auto *shown = seen(); playing() && shown != nullptr && shot) {
+    hud::paint_survival_world(canvas, drawing, *shown, *shot, bursts);
   }
 }
 
 void Session::paint_glow(godot::Node2D &canvas,
                          const rendering::Art &drawing) const {
-  if (playing() && framed && shot) {
-    hud::paint_survival_glow(canvas, drawing, *framed, *shot);
+  if (const auto *shown = seen(); playing() && shown != nullptr && shot) {
+    hud::paint_survival_glow(canvas, drawing, *shown, *shot);
   }
 }
 

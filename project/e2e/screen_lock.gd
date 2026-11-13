@@ -3,7 +3,9 @@ extends SceneTree
 ## Plays two humans through the shipped composition with real input actions and
 ## checks the screen lock: a lone actor walking on stops at the range and the
 ## map does not change; a jump still lifts an actor stopped there; both actors
-## walking to the street's exit zone change the map together.
+## walking to the street's exit zone change the map together, through a fade
+## that darkens the screen and changes the drawn map behind it; an actor walking
+## into a building darkens the outside and out again restores it.
 
 const SEED: int = 3
 ## No AI acts in this party, so only these checks move the actors.
@@ -25,6 +27,16 @@ const ROUTE: Array[Vector2i] = [
 	Vector2i(60, 5), Vector2i(60, 8), Vector2i(63, 11),
 ]
 const NAMES: Array[String] = ["chef", "appraiser"]
+## The kitchen shop's floor in cells: its door, and a cell inside it.
+const KITCHEN_DOOR: Array[Vector2i] = [Vector2i(3, 8)]
+const KITCHEN_FLOOR: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6)]
+## The darkest the outside goes in a building, and the least counted as dark.
+const DARK_OUTSIDE: float = 0.5
+## How long the drawn veil is awaited, in real milliseconds, since it eases on
+## the real clock.
+const VEIL_LIMIT_MSEC: int = 3000
+## The frames a map fade is watched for: it lasts 0.6 seconds of frame time.
+const FADE_FRAMES: int = 80
 
 var scene: MainScene
 var checks: int = 0
@@ -40,6 +52,11 @@ func _run() -> void:
 	await _start()
 	if failed:
 		return
+	scene.get_node("World").set_meta("measure_art", true)
+	scene.set_meta("measure_art", true)
+	await _building_entry_darkens_the_outside()
+	if failed:
+		return
 	await _lone_actor_stops_at_the_range()
 	if failed:
 		return
@@ -49,7 +66,7 @@ func _run() -> void:
 	await _both_actors_change_the_map()
 	if failed:
 		return
-	print("Screen lock: ", checks, " live checks passed (lone actor, jump, joint travel).")
+	print("Screen lock: ", checks, " live checks passed (building entry, lone actor, jump, joint travel and fade).")
 	quit(0)
 
 func _start() -> void:
@@ -62,6 +79,41 @@ func _start() -> void:
 	await _tap("survival_2_travel")
 	await _frames(10)
 	_check(_where("chef") == "city" and _where("appraiser") == "city", "both players set out into the city")
+
+## Both walk up into the kitchen shop: the outside darkens while the interior
+## background is drawn; both walk out and it clears.
+func _building_entry_darkens_the_outside() -> void:
+	await _frames(2)
+	_check(_veil() == 0.0, "the outside is not dark before any building is entered: %f" % _veil())
+	if not await _drive([KITCHEN_FLOOR, KITCHEN_FLOOR], 1200):
+		return
+	await _veil_settles(true)
+	_check(_veil() >= DARK_OUTSIDE, "the outside is dark with both actors in the kitchen shop: %f" % _veil())
+	_check(_draws_interior("interior_kitchen.png"), "the occupied kitchen draws its interior background")
+	if not await _drive([KITCHEN_DOOR, KITCHEN_DOOR], 1200):
+		return
+	await _veil_settles(false)
+	_check(_veil() < 0.01, "the outside is clear again after both walk out: %f" % _veil())
+	_check(not _draws_interior("interior_kitchen.png"), "the kitchen's interior background is gone after both walk out")
+
+## Waits, in real time, for the veil to ease to dark or to clear.
+func _veil_settles(dark: bool) -> void:
+	var until: int = Time.get_ticks_msec() + VEIL_LIMIT_MSEC
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		if (_veil() >= DARK_OUTSIDE) == dark and (dark or _veil() < 0.01):
+			return
+
+func _veil() -> float:
+	var level: float = scene.get_node("World").get_meta("interior_veil", -1.0)
+	return level
+
+func _draws_interior(file: String) -> bool:
+	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):
+		var texture: Texture2D = layer["texture"]
+		if texture.resource_path.ends_with("world/" + file):
+			return true
+	return false
 
 ## The appraiser waits on the lower walkway while the chef goes on to the east
 ## walkway and runs east along it. The chef is stopped within one running unit
@@ -110,13 +162,46 @@ func _jump_lifts_a_stopped_actor() -> void:
 ## Both walk the street to its exit zone, the one ahead waiting at the lock, and
 ## the map changes once both stand in the zone.
 func _both_actors_change_the_map() -> void:
+	var street_size: Vector2 = _map_size()
 	var moved: bool = await _drive([ROUTE.slice(4), ROUTE.slice(2)], 2400, true)
 	if failed:
 		return
 	_check(moved, "both actors walking to the exit zone change the map")
-	await _frames(6)
+	await _fade_through(street_size)
 	_check(_str("map") == FAR_MAP and _where("chef") == "city" and _where("appraiser") == "city", "both arrive on the far map")
 	_check(_actor("chef", "x") == _actor("appraiser", "x") and _gap() <= SCREEN_LOCK, "both stand at the arrival cell together")
+
+## Watches the frames after the rules changed the map. The screen keeps drawing
+## the street while it darkens, draws the aquarium only once it is black, and
+## clears afterwards.
+func _fade_through(street_size: Vector2) -> void:
+	var darkest: float = 0.0
+	var street_after_dark: bool = false
+	var aquarium_before_dark: bool = false
+	var aquarium_drawn: bool = false
+	for frame: int in range(FADE_FRAMES):
+		await process_frame
+		var veil: float = _screen_veil()
+		darkest = maxf(darkest, veil)
+		var size: Vector2 = _map_size()
+		if size != street_size:
+			aquarium_drawn = true
+			aquarium_before_dark = aquarium_before_dark or darkest < 0.9
+		elif darkest >= 0.99:
+			street_after_dark = true
+	_check(darkest >= 0.99, "the screen goes black between the maps: darkest %f" % darkest)
+	_check(aquarium_drawn, "the aquarium map is drawn after the fade")
+	_check(not aquarium_before_dark, "the aquarium is not drawn before the screen is black")
+	_check(not street_after_dark, "the street is not drawn once the screen has been black")
+	_check(_screen_veil() < 0.01, "the screen is clear again after the fade: %f" % _screen_veil())
+
+func _map_size() -> Vector2:
+	var size: Vector2 = scene.get_node("World").get_meta("map_size", Vector2.ZERO)
+	return size
+
+func _screen_veil() -> float:
+	var veil: Color = scene.get_meta("screen_veil", Color(0, 0, 0, 0))
+	return veil.a
 
 ## Walks both players along their routes by cells, the one ahead waiting where
 ## the lock would stop it. Ends when both have finished, or, with `until_moved`,
