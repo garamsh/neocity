@@ -51,11 +51,6 @@ struct Collect {
   ObjectId source;
   friend bool operator==(const Collect &, const Collect &) = default;
 };
-struct Repair {
-  ObjectId target;
-  ToolId tool;
-  friend bool operator==(const Repair &, const Repair &) = default;
-};
 struct Appraise {
   IngredientId ingredient;
   friend bool operator==(const Appraise &, const Appraise &) = default;
@@ -63,10 +58,6 @@ struct Appraise {
 struct Cook {
   FoodId food;
   friend bool operator==(const Cook &, const Cook &) = default;
-};
-struct ReplaceTool {
-  WorkshopTool tool = WorkshopTool::Magnifier;
-  friend bool operator==(const ReplaceTool &, const ReplaceTool &) = default;
 };
 struct Feed {
   FoodId food;
@@ -78,12 +69,11 @@ struct EndDayUnfed {
 };
 
 /// One discrete feature command, the same for a human and for AI.
-using Action = std::variant<Enter, ReturnToBase, Collect, Repair, Appraise,
-                            Cook, ReplaceTool, Feed, EndDayUnfed>;
+using Action = std::variant<Enter, ReturnToBase, Collect, Appraise, Cook, Feed,
+                            EndDayUnfed>;
 
 /// The outcome the feature returned; a refusal changed nothing.
-using ActionResult =
-    std::variant<Result, CollectionResult, RepairResult, WorkshopResult>;
+using ActionResult = std::variant<Result, CollectionResult, WorkshopResult>;
 
 /// One actor's command for one step: `movement` goes to `Exploration::advance`
 /// and `action` to `apply`. An empty command waits.
@@ -105,7 +95,6 @@ struct PlayerInput {
   Direction tap = Direction::Idle;
   bool travel = false;
   bool interact = false;
-  bool replace_tool = false;
   bool feed = false;
   bool end_day = false;
   bool switch_actor = false;
@@ -127,16 +116,10 @@ struct Errand {
   std::optional<Move> step = std::nullopt;
 };
 
-/// Whether setting out now gives `actor` an errand, by the search `errand`
-/// runs, from the entrance.
-[[nodiscard]] bool worth_entering(const CompanionConfig &config, Actor actor,
+/// Whether setting out now gives an errand, by the search `errand` runs, from
+/// the entrance.
+[[nodiscard]] bool worth_entering(const CompanionConfig &config,
                                   const GameView &view);
-
-/// Whether repairing `passage` brings stock into `actor`'s reach that is out
-/// of reach without it, so a repair passed on the way is worth stopping for.
-[[nodiscard]] bool repair_opens_stock(const CompanionConfig &config,
-                                      Actor actor, const GameView &view,
-                                      ObjectId passage);
 
 /// Turns a view into the next command for either kind of controller. Holds no
 /// game state and no random state, so one input gives one command.

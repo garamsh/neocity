@@ -17,7 +17,6 @@ struct KeySet {
   const char *run;
   const char *travel;
   const char *interact;
-  const char *replace_tool;
   const char *feed;
   const char *end_day;
   const char *switch_actor;
@@ -32,7 +31,6 @@ constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
                                      .run = "survival_1_run",
                                      .travel = "survival_1_travel",
                                      .interact = "survival_1_interact",
-                                     .replace_tool = "survival_1_replace_tool",
                                      .feed = "survival_1_feed",
                                      .end_day = "survival_1_end_day",
                                      .switch_actor = "survival_1_switch",
@@ -45,7 +43,6 @@ constexpr std::array KEY_SETS{KeySet{.left = "survival_1_left",
                                      .run = "survival_2_run",
                                      .travel = "survival_2_travel",
                                      .interact = "survival_2_interact",
-                                     .replace_tool = "survival_2_replace_tool",
                                      .feed = "survival_2_feed",
                                      .end_day = "survival_2_end_day",
                                      .switch_actor = "survival_2_switch",
@@ -93,7 +90,6 @@ survival::PlayerInput sample_keys(const godot::Input &input,
       .tap = tapped_direction(input, keys),
       .travel = input.is_action_just_pressed(keys.travel),
       .interact = input.is_action_just_pressed(keys.interact),
-      .replace_tool = input.is_action_just_pressed(keys.replace_tool),
       .feed = input.is_action_just_pressed(keys.feed),
       .end_day = input.is_action_just_pressed(keys.end_day),
       .switch_actor = input.is_action_just_pressed(keys.switch_actor),
@@ -138,8 +134,8 @@ bool survival_controls_held() {
   return std::ranges::any_of(KEY_SETS, [input](const KeySet &keys) {
     return std::ranges::any_of(
         std::array{keys.left, keys.right, keys.up, keys.down, keys.run,
-                   keys.travel, keys.interact, keys.replace_tool, keys.feed,
-                   keys.end_day, keys.switch_actor, keys.leave, keys.jump},
+                   keys.travel, keys.interact, keys.feed, keys.end_day,
+                   keys.switch_actor, keys.leave, keys.jump},
         [input](const char *action) {
           return input->is_action_pressed(action);
         });

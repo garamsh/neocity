@@ -15,10 +15,6 @@ namespace {
 
 using godot::Vector2;
 
-constexpr float SHAKE_PIXELS = 6.0F;
-/// Shakes per second while a burn shakes the world.
-constexpr float SHAKE_RATE = 38.0F;
-constexpr float HIT_SECONDS = 0.35F;
 constexpr float POP_SECONDS = 0.6F;
 constexpr float SPLASH_SECONDS = 0.8F;
 constexpr float STEAM_SECONDS = 1.6F;
@@ -64,15 +60,6 @@ void paint_pop(godot::Node2D &canvas, Vector2 centre, float done) {
                   2.0F * std::numbers::pi_v<float>, 24,
                   fade(tones.gold, 1.0F - done), 3.0F);
   specks(canvas, centre, done, 8, 34.0F, 3.0F, tones.white);
-}
-
-void paint_spark(godot::Node2D &canvas, Vector2 centre, float done) {
-  specks(canvas, centre, done, 10, 30.0F, 2.5F, color(255, 220, 120, 1.0F));
-}
-
-void paint_hit(godot::Node2D &canvas, Vector2 centre, float done) {
-  canvas.draw_circle(centre, 22.0F * (1.0F - done) + 4.0F,
-                     fade(palette().danger, 0.55F * (1.0F - done)));
 }
 
 /// Drops of acid thrown up from `surface` at `x` and falling back into it.
@@ -135,10 +122,6 @@ const char *flourish_name(Flourish kind) {
   switch (kind) {
   case Flourish::Pop:
     return "pop";
-  case Flourish::Spark:
-    return "spark";
-  case Flourish::Hit:
-    return "hit";
   case Flourish::Splash:
     return "splash";
   case Flourish::Surge:
@@ -158,10 +141,7 @@ const char *flourish_name(Flourish kind) {
 float lifetime(Flourish kind) {
   switch (kind) {
   case Flourish::Pop:
-  case Flourish::Spark:
     return POP_SECONDS;
-  case Flourish::Hit:
-    return HIT_SECONDS;
   case Flourish::Splash:
   case Flourish::Surge:
     return SPLASH_SECONDS;
@@ -174,24 +154,6 @@ float lifetime(Flourish kind) {
     return NEW_DAY_SECONDS;
   }
   std::abort();
-}
-
-Vector2 shake(const std::vector<Burst> &bursts) {
-  float strength = 0.0F;
-  float age = 0.0F;
-  for (const auto &burst : bursts) {
-    if (burst.kind == Flourish::Hit && 1.0F - progress(burst) > strength) {
-      strength = 1.0F - progress(burst);
-      age = burst.age;
-    }
-  }
-  if (strength <= 0.0F) {
-    return {};
-  }
-  const float phase = age * SHAKE_RATE;
-  return Vector2(std::sin(phase * 2.0F * std::numbers::pi_v<float>),
-                 std::cos(phase * 1.3F * std::numbers::pi_v<float>)) *
-         SHAKE_PIXELS * strength;
 }
 
 void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
@@ -215,12 +177,6 @@ void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
     switch (burst.kind) {
     case Flourish::Pop:
       paint_pop(canvas, body, done);
-      break;
-    case Flourish::Spark:
-      paint_spark(canvas, body, done);
-      break;
-    case Flourish::Hit:
-      paint_hit(canvas, body, done);
       break;
     case Flourish::Splash:
       paint_splash(canvas, feet.x, surface, done, 60.0F);
@@ -248,8 +204,6 @@ void paint_workshop_bursts(godot::Node2D &canvas, const Art &art,
       paint_reaction(canvas, art, burst.kind == Flourish::Delight, done);
       break;
     case Flourish::Pop:
-    case Flourish::Spark:
-    case Flourish::Hit:
     case Flourish::Splash:
     case Flourish::Surge:
     case Flourish::NewDay:
@@ -263,9 +217,7 @@ void paint_screen_bursts(godot::Node2D &canvas,
   const godot::Rect2 screen(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
   for (const auto &burst : bursts) {
     const float done = progress(burst);
-    if (burst.kind == Flourish::Hit) {
-      canvas.draw_rect(screen, fade(palette().danger, 0.28F * (1.0F - done)));
-    } else if (burst.kind == Flourish::NewDay) {
+    if (burst.kind == Flourish::NewDay) {
       // Dark at the middle of the fade, clear at both ends.
       const float dark = 1.0F - std::abs(2.0F * done - 1.0F);
       canvas.draw_rect(screen, fade(palette().background, 0.9F * dark));

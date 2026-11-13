@@ -14,10 +14,6 @@ const char *cue_name(Cue cue) {
     return "land";
   case Cue::Collect:
     return "collect";
-  case Cue::Repair:
-    return "repair";
-  case Cue::Hurt:
-    return "hurt";
   case Cue::Fall:
     return "fall";
   case Cue::Travel:

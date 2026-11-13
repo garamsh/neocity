@@ -8,34 +8,13 @@
 namespace neocity::survival {
 namespace {
 
-constexpr std::uint32_t INTACT_SUCCESS_PERCENT = 90;
-constexpr std::uint32_t DAMAGED_SUCCESS_PERCENT = 40;
-
-std::uint32_t success_percent(ToolState tool) {
-  switch (tool) {
-  case ToolState::Intact:
-    return INTACT_SUCCESS_PERCENT;
-  case ToolState::Damaged:
-    return DAMAGED_SUCCESS_PERCENT;
-  }
-  std::abort();
-}
+constexpr std::uint32_t SUCCESS_PERCENT = 90;
 
 bool carried(const Snapshot &snapshot, IngredientId ingredient) {
   return std::ranges::find(snapshot.chef.inventory, ingredient) !=
              snapshot.chef.inventory.end() ||
          std::ranges::find(snapshot.appraiser.inventory, ingredient) !=
              snapshot.appraiser.inventory.end();
-}
-
-std::uint32_t owner_exhaustions(const Snapshot &snapshot, WorkshopTool tool) {
-  switch (tool) {
-  case WorkshopTool::Magnifier:
-    return snapshot.appraiser.exhaustions;
-  case WorkshopTool::Spatula:
-    return snapshot.chef.exhaustions;
-  }
-  std::abort();
 }
 
 MonsterReaction react(const Recipe &recipe, std::uint64_t score,
@@ -100,9 +79,6 @@ std::uint64_t taste_of(const Recipe &recipe, const WorkshopConfig &config) {
 Workshop::Workshop(Simulation &progression, WorkshopConfig settings)
     : simulation(progression), config(std::move(settings)),
       generator(progression.snapshot().seed) {
-  if (config.magnifier == config.spatula) {
-    throw std::invalid_argument("base tools require distinct identities");
-  }
   std::vector<FoodId> foods;
   for (const auto &recipe : config.recipes) {
     if (recipe.ingredients.empty() ||
@@ -128,7 +104,7 @@ WorkshopResult Workshop::appraise(Actor actor, IngredientId ingredient) {
   if (!carried(simulation.get().snapshot(), ingredient)) {
     return WorkshopResult::NotCarried;
   }
-  if (roll() >= success_percent(condition(WorkshopTool::Magnifier))) {
+  if (roll() >= SUCCESS_PERCENT) {
     return WorkshopResult::Failed;
   }
   state.identified.push_back(ingredient);
@@ -158,12 +134,11 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
     return WorkshopResult::NotCarried;
   }
   const auto result = roll();
-  const auto success = success_percent(condition(WorkshopTool::Spatula));
-  if (result >= success) {
+  if (result >= SUCCESS_PERCENT) {
     return WorkshopResult::Failed;
   }
   state.foods.push_back({.food = food,
-                         .quality = result * 2U < success
+                         .quality = result * 2U < SUCCESS_PERCENT
                                         ? DishQuality::Fine
                                         : DishQuality::Plain});
   return WorkshopResult::Applied;
@@ -241,68 +216,7 @@ WorkshopResult Workshop::end_day_unfed(AcidLevel acid_penalty) {
   return WorkshopResult::Applied;
 }
 
-void Workshop::damage_tool(WorkshopTool tool) {
-  if (run_over(simulation.get().snapshot().phase)) {
-    return;
-  }
-  tool_state(tool) = ToolState::Damaged;
-}
-
-WorkshopResult Workshop::replace_tool(WorkshopTool tool) {
-  if (!in_workshop()) {
-    return WorkshopResult::NotInWorkshop;
-  }
-  if (condition(tool) == ToolState::Intact) {
-    return WorkshopResult::ToolIntact;
-  }
-  const auto replacement =
-      tool == WorkshopTool::Magnifier ? config.magnifier : config.spatula;
-  if (simulation.get().consume_tool(replacement) != Result::Applied) {
-    return WorkshopResult::NotCarried;
-  }
-  tool_state(tool) = ToolState::Intact;
-  settled_exhaustions(tool) =
-      owner_exhaustions(simulation.get().snapshot(), tool);
-  return WorkshopResult::Applied;
-}
-
-WorkshopSnapshot Workshop::snapshot() const {
-  auto result = state;
-  result.magnifier = condition(WorkshopTool::Magnifier);
-  result.spatula = condition(WorkshopTool::Spatula);
-  return result;
-}
-
-ToolState &Workshop::tool_state(WorkshopTool tool) {
-  switch (tool) {
-  case WorkshopTool::Magnifier:
-    return state.magnifier;
-  case WorkshopTool::Spatula:
-    return state.spatula;
-  }
-  std::abort();
-}
-
-std::uint32_t &Workshop::settled_exhaustions(WorkshopTool tool) {
-  switch (tool) {
-  case WorkshopTool::Magnifier:
-    return magnifier_exhaustions;
-  case WorkshopTool::Spatula:
-    return spatula_exhaustions;
-  }
-  std::abort();
-}
-
-// Derived from the count so no exhaustion path can miss a tool.
-ToolState Workshop::condition(WorkshopTool tool) const {
-  const auto explicit_state =
-      tool == WorkshopTool::Magnifier ? state.magnifier : state.spatula;
-  const auto settled = tool == WorkshopTool::Magnifier ? magnifier_exhaustions
-                                                       : spatula_exhaustions;
-  return owner_exhaustions(simulation.get().snapshot(), tool) > settled
-             ? ToolState::Damaged
-             : explicit_state;
-}
+WorkshopSnapshot Workshop::snapshot() const { return state; }
 
 bool Workshop::in_workshop() const {
   return simulation.get().snapshot().phase == Phase::Workshop;

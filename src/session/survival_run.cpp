@@ -60,17 +60,6 @@ GridPosition position_of(const survival::ExplorationSnapshot &snapshot,
   return survival::cell_of(body_of(snapshot, actor).position);
 }
 
-std::uint32_t stamina_of(const survival::ExplorationSnapshot &snapshot,
-                         Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return snapshot.chef.stamina;
-  case Actor::Appraiser:
-    return snapshot.appraiser.stamina;
-  }
-  std::abort();
-}
-
 /// How long the collection under way still holds `actor`; zero with none.
 std::chrono::microseconds
 collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
@@ -84,13 +73,6 @@ collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
     std::abort();
   }();
   return held ? held->remaining : std::chrono::microseconds{};
-}
-
-bool in_hazard(const survival::Content &content, GridPosition position) {
-  return std::ranges::any_of(content.hazards,
-                             [position](const survival::WorldArea &area) {
-                               return survival::distance(position, area) == 0;
-                             });
 }
 
 /// Feeding and ending the day unfed each finish the day.
@@ -118,7 +100,6 @@ void retain_edges(PlayerInput &pending, const PlayerInput &input) {
   }
   pending.travel = pending.travel || input.travel;
   pending.interact = pending.interact || input.interact;
-  pending.replace_tool = pending.replace_tool || input.replace_tool;
   pending.feed = pending.feed || input.feed;
   pending.end_day = pending.end_day || input.end_day;
   pending.switch_actor = pending.switch_actor || input.switch_actor;
@@ -153,16 +134,6 @@ const char *state_name(survival::ObjectState state) {
     return "intact";
   case survival::ObjectState::Destroyed:
     return "destroyed";
-  }
-  std::abort();
-}
-
-const char *tool_state_name(survival::ToolState state) {
-  switch (state) {
-  case survival::ToolState::Intact:
-    return "intact";
-  case survival::ToolState::Damaged:
-    return "damaged";
   }
   std::abort();
 }
@@ -216,15 +187,11 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("sub_x", body.position.x);
   status.set("sub_y", body.position.y);
   status.set("stance", stance_name(body.stance));
-  status.set("health", state.health);
-  status.set("stamina", stamina_of(view.exploration, actor));
   status.set("collecting_ms",
              std::chrono::duration_cast<std::chrono::milliseconds>(
                  collecting_of(view.exploration, actor))
                  .count());
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
-  status.set("tools", static_cast<std::int64_t>(state.tools.size()));
-  status.set("exhaustions", state.exhaustions);
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
 }
@@ -350,7 +317,6 @@ void SurvivalRun::step() {
   const auto &simulation = features.simulation.get();
   const auto progression = simulation.snapshot();
   const auto city = features.world.get().snapshot();
-  const auto positions = features.exploration.get().snapshot();
   std::array<survival::ExplorationInput, 2> movement;
   std::array<bool, 2> walked_home{};
   if (dish_step != survival::Direction::Idle &&
@@ -393,7 +359,6 @@ void SurvivalRun::step() {
     // time
     std::abort();
   }
-  hurt_in_hazards(positions);
   report_returns(progression, walked_home);
   report_world_changes(city);
   if (simulation.snapshot().day != progression.day) {
@@ -427,32 +392,11 @@ void SurvivalRun::run_action(Actor actor, const survival::Action &action,
   if (features.simulation.get().snapshot().day != day) {
     chosen_dish.reset();
   }
-  // AI's collecting would crowd damage and map changes out of the log.
+  // AI's collecting would crowd map changes out of the log.
   if (survival::key_set(controllers, actor) ||
       !std::holds_alternative<survival::Collect>(action)) {
     record(
         hud::ActionEvent{.actor = actor, .action = action, .result = result});
-  }
-}
-
-void SurvivalRun::hurt_in_hazards(const survival::ExplorationSnapshot &before) {
-  const auto &content = features.content.get();
-  const auto snapshot = features.exploration.get().snapshot();
-  for (const auto actor : ACTORS) {
-    const auto state = state_of(features.simulation.get().snapshot(), actor);
-    if (state.location == survival::Location::City &&
-        in_hazard(content, position_of(snapshot, actor)) &&
-        !in_hazard(content, position_of(before, actor))) {
-      if (features.exploration.get().damage(actor) !=
-          survival::Result::Applied) {
-        std::abort(); // unreachable: the actor is in the city
-      }
-      record(hud::HazardEvent{
-          .actor = actor,
-          .exhausted =
-              state_of(features.simulation.get().snapshot(), actor).location ==
-              survival::Location::Base});
-    }
   }
 }
 
@@ -471,7 +415,7 @@ void SurvivalRun::report_returns(const survival::Snapshot &before,
     const auto &current = state_of(now, actor);
     if (then.location == survival::Location::City &&
         current.location == survival::Location::Base &&
-        current.exhaustions == then.exhaustions && !walked_home.at(index)) {
+        !walked_home.at(index)) {
       record(hud::FallEvent{actor});
     }
   }
@@ -483,15 +427,14 @@ void SurvivalRun::report_world_changes(const survival::WorldSnapshot &before) {
   for (std::size_t index = 0; index < now.objects.size(); ++index) {
     const auto &object = now.objects.at(index);
     const auto then = before.objects.at(index).state;
-    // A repair reports itself as an action, and a bag coming and going shows
-    // on the map alone, so the tide's daily bags leave the log to the rest.
+    // A bag coming and going shows on the map alone, so the tide's daily bags
+    // leave the log to the rest.
     const auto bag = std::ranges::any_of(
         sources, [&object](const survival::SourceStock &source) {
           return source.id == object.id &&
                  source.kind == survival::SourceKind::Bag;
         });
-    if (object.state != then && then != survival::ObjectState::Destroyed &&
-        !bag) {
+    if (object.state != then && !bag) {
       record(hud::WorldEvent{.object = object.id, .state = object.state});
       ++map_changes;
     }
@@ -518,10 +461,9 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .first_event = first_logged};
   const auto chef = features.companion.get().command(Actor::Chef, controllers,
                                                      {}, result.view);
-  result.ai_chef_working =
-      !survival::key_set(controllers, Actor::Chef) && chef.action &&
-      (std::holds_alternative<survival::Cook>(*chef.action) ||
-       std::holds_alternative<survival::ReplaceTool>(*chef.action));
+  result.ai_chef_working = !survival::key_set(controllers, Actor::Chef) &&
+                           chef.action &&
+                           std::holds_alternative<survival::Cook>(*chef.action);
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     const auto actor = ACTORS.at(index);
     if (survival::key_set(controllers, actor) && !over()) {
@@ -559,8 +501,6 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
   status.set("full_acid", features.content.get().run.full_acid.value);
   status.set("chef", actor_status(view, controllers, Actor::Chef));
   status.set("appraiser", actor_status(view, controllers, Actor::Appraiser));
-  status.set("magnifier", tool_state_name(view.workshop.magnifier));
-  status.set("spatula", tool_state_name(view.workshop.spatula));
   status.set("identified",
              static_cast<std::int64_t>(view.workshop.identified.size()));
   status.set("foods", static_cast<std::int64_t>(view.workshop.foods.size()));

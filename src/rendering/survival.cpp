@@ -803,9 +803,7 @@ Image source_image(SourceKind kind) {
 /// The icon of what `source` holds, if the art set has one.
 std::optional<Image> supply_icon(const ObjectSnapshot &source) {
   std::string_view name;
-  if (source.tool) {
-    name = survival::tool_name(*source.tool);
-  } else if (source.ingredient) {
+  if (source.ingredient) {
     name = survival::ingredient_name(*source.ingredient);
   }
   return item_icon(name);
@@ -1115,8 +1113,8 @@ struct Labels {
 /// which move. Only a goal is named. No word covers a pointer, a source or
 /// `covered`, and words for a spot off the play area, or with no free spot
 /// near it, are left out.
-Labels label_city(const Art &art, const survival::Content &content,
-                  const survival::GameView &view, survival::ControlMap control,
+Labels label_city(const Art &art, const survival::GameView &view,
+                  survival::ControlMap control,
                   const std::vector<Marker> &markers, const Shot &shot,
                   std::span<const godot::Rect2> covered) {
   const auto &camera = shot.camera;
@@ -1221,13 +1219,6 @@ Labels label_city(const Art &art, const survival::Content &content,
       plates.add(art, Vector2(box.position.x + 36.0F, box.position.y + 21.0F),
                  "BROKEN", 13, red);
     }
-  }
-  for (const auto &area : content.hazards) {
-    const auto box = on_screen(area);
-    plates.add(
-        art,
-        Vector2(box.position.x - 8.0F, box.position.y + box.size.y + 36.0F),
-        "-1", COUNT_SIZE, tones.danger, {.icon = Image::HeartFull});
   }
   const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
     const Vector2 feet = to_screen(camera, feet_of(art, actor, body));
@@ -1523,9 +1514,6 @@ std::optional<Image> item_icon(std::string_view name) {
       NamedIcon{.name = "Pickles", .image = Image::IngredientPickles},
       NamedIcon{.name = "Meat", .image = Image::IngredientMeat},
       NamedIcon{.name = "Truffle", .image = Image::IngredientTruffle},
-      NamedIcon{.name = "Magnifier", .image = Image::ToolMagnifier},
-      NamedIcon{.name = "Spatula", .image = Image::ToolSpatula},
-      NamedIcon{.name = "Wrench", .image = Image::ToolWrench},
       NamedIcon{.name = "Mushroom Soup", .image = Image::DishMushroomSoup},
       NamedIcon{.name = "Fish Stew", .image = Image::DishFishStew},
       NamedIcon{.name = "Kelp Wrap", .image = Image::DishKelpWrap},
@@ -1545,13 +1533,11 @@ std::optional<Image> item_icon(std::string_view name) {
 }
 
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
-                       const survival::Content &content,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered) {
   const auto markers = markers_of(view, shot.out_of_reach);
-  const auto labels =
-      label_city(art, content, view, control, markers, shot, covered);
+  const auto labels = label_city(art, view, control, markers, shot, covered);
   godot::Array pointed;
   for (const auto &pointer : labels.pointers) {
     paint_pointer(canvas, pointer);

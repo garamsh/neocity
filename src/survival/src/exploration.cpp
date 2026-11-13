@@ -203,7 +203,7 @@ Direction direction_of(Move move) {
 std::optional<GridPosition> follow(const CellMap &map, Body body, Move move) {
   const auto start = cell_of(body.position);
   for (int tick = 0; tick < LINK_TICKS; ++tick) {
-    const auto next = physics_tick(map, body, steer(move, body)).body;
+    const auto next = physics_tick(map, body, steer(move, body));
     if (next == body) {
       return std::nullopt;
     }
@@ -362,8 +362,7 @@ Cell CellMap::at(GridPosition cell) const {
   return cells.at(static_cast<std::size_t>(y * width + x));
 }
 
-PhysicsStep physics_tick(const CellMap &map, Body body,
-                         ExplorationInput input) {
+Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
   const auto direction = input.direction;
   if (body.stance == Stance::Climbing &&
       !ladder_at(map.at(cell_of(body.position)))) {
@@ -376,11 +375,11 @@ PhysicsStep physics_tick(const CellMap &map, Body body,
   } else if ((direction == Direction::Up || direction == Direction::Down) &&
              (body.stance == Stance::Climbing || grabs(map, body, direction))) {
     climb(map, body, direction);
-    return {.body = body};
+    return body;
   }
   if (body.stance == Stance::Climbing) {
     if (!sideways(direction)) {
-      return {.body = body};
+      return body;
     }
     // Stepping off a ladder puts the feet on the floor of its cell, if any.
     const auto cell = cell_of(body.position);
@@ -404,7 +403,7 @@ PhysicsStep physics_tick(const CellMap &map, Body body,
   if (body.stance == Stance::Airborne) {
     move_in_air(map, body);
   }
-  return {.body = body, .ran = ran};
+  return body;
 }
 
 ExplorationInput steer(Move move, const Body &body) {
@@ -484,9 +483,9 @@ Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
-  if (config.maximum_stamina == 0 || config.collection_time < 0us ||
+  if (config.collection_time < 0us ||
       !stands_on(CellMap(snapshot), config.entry)) {
-    throw std::invalid_argument("exploration requires stamina and safe entry");
+    throw std::invalid_argument("exploration requires a safe entry");
   }
   std::vector<ObjectId> ids;
   for (const auto &source : config.sources) {
@@ -516,8 +515,7 @@ Result Exploration::enter(Actor actor) {
   const auto result = simulation.get().enter(actor);
   if (result == Result::Applied) {
     explorer(actor) = {
-        .state = {.body = {.position = standing_in(config.entry)},
-                  .stamina = config.maximum_stamina}};
+        .state = {.body = {.position = standing_in(config.entry)}}};
   }
   return result;
 }
@@ -527,14 +525,6 @@ Result Exploration::return_to_base(Actor actor) {
     return Result::Busy;
   }
   const auto result = simulation.get().return_to_base(actor);
-  if (result == Result::Applied) {
-    synchronize();
-  }
-  return result;
-}
-
-Result Exploration::damage(Actor actor) {
-  const auto result = simulation.get().damage(actor);
   if (result == Result::Applied) {
     synchronize();
   }
@@ -628,42 +618,16 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (stock->remaining == 0) {
     return CollectionResult::Depleted;
   }
-  if (object->ingredient) {
-    require_applied(simulation.get().collect(actor, *object->ingredient));
-  } else if (object->tool) {
-    require_applied(simulation.get().collect_tool(actor, *object->tool));
+  if (!object->ingredient) {
+    return CollectionResult::UnknownSource;
   }
+  require_applied(simulation.get().collect(actor, *object->ingredient));
   --stock->remaining;
   if (config.collection_time > 0us) {
     explorer(actor).state.collecting =
         Collecting{.source = source, .remaining = config.collection_time};
   }
   return CollectionResult::Applied;
-}
-
-RepairResult Exploration::repair(Actor actor, ObjectId target, ToolId tool) {
-  const auto state = actor_state(simulation.get().snapshot(), actor);
-  if (state.location != Location::City) {
-    return RepairResult::NotExploring;
-  }
-  if (collecting(actor)) {
-    return RepairResult::Busy;
-  }
-  const auto snapshot = world.get().snapshot();
-  const auto object = std::ranges::find_if(
-      snapshot.objects,
-      [target](const ObjectSnapshot &entry) { return entry.id == target; });
-  if (object == snapshot.objects.end()) {
-    return RepairResult::UnknownObject;
-  }
-  if (distance(cell_of(explorer(actor).state.body.position), object->area) >
-      config.collection_distance) {
-    return RepairResult::OutOfRange;
-  }
-  if (std::ranges::find(state.tools, tool) == state.tools.end()) {
-    return RepairResult::ToolNotCarried;
-  }
-  return world.get().repair(target, tool);
 }
 
 ExplorationSnapshot Exploration::snapshot() const {
@@ -691,8 +655,7 @@ void Exploration::synchronize() {
   for (const auto actor : ACTORS) {
     if (actor_state(snapshot, actor).location == Location::Base) {
       explorer(actor) = {
-          .state = {.body = {.position = standing_in(config.base)},
-                    .stamina = config.maximum_stamina}};
+          .state = {.body = {.position = standing_in(config.base)}}};
     }
   }
 }
@@ -709,23 +672,14 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   if (state.collecting) {
     input = {};
   }
-  input.running = input.running && state.stamina > 0;
   const CellMap map(world.get().snapshot());
-  auto ran = false;
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
-    const auto step = physics_tick(map, state.body, input);
-    state.body = step.body;
-    ran = ran || step.ran;
+    state.body = physics_tick(map, state.body, input);
     if (map.below(cell_of(state.body.position))) {
       require_applied(simulation.get().return_to_base(actor));
       synchronize();
       return;
     }
-  }
-  if (ran) {
-    --state.stamina;
-  } else if (state.stamina < config.maximum_stamina) {
-    ++state.stamina;
   }
 }
 

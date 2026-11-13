@@ -22,14 +22,10 @@ using namespace std::chrono_literals;
 constexpr ObjectId FLOOR{1};
 constexpr ObjectId SOURCE{10};
 constexpr ObjectId FAR_SOURCE{11};
-constexpr ObjectId TOOL_SOURCE{12};
 constexpr ObjectId WALL{20};
 constexpr ObjectId DOOR{21};
 constexpr IngredientId CARROT{70};
 constexpr IngredientId ONION{71};
-constexpr ToolId MAGNIFIER{80};
-constexpr ToolId SPATULA{81};
-constexpr ToolId WRENCH{82};
 constexpr FoodId SOUP{90};
 constexpr FoodId STEW{91};
 constexpr GridPosition BASE{.x = -10, .y = -10};
@@ -55,7 +51,6 @@ ObjectDefinition ingredient_source(ObjectId id, std::int32_t x,
 ExplorationConfig tuning(std::vector<SourceStock> sources) {
   return {.base = BASE,
           .entry = ENTRY,
-          .maximum_stamina = 2,
           .collection_distance = 1,
           .sources = std::move(sources)};
 }
@@ -63,8 +58,6 @@ ExplorationConfig tuning(std::vector<SourceStock> sources) {
 WorkshopConfig kitchen(std::vector<Recipe> recipes = {
                            {.food = SOUP, .ingredients = {CARROT}}}) {
   return {.recipes = std::move(recipes),
-          .magnifier = MAGNIFIER,
-          .spatula = SPATULA,
           .new_food_score = 10,
           .new_ingredient_score = 5,
           .satisfying_score = 12,
@@ -185,18 +178,16 @@ void add_source(GameView &view, ObjectId id, std::int32_t x) {
   view.exploration.sources.push_back({.id = id});
 }
 
-/// The chef at `position`, carrying the wrench for a broken door at x 1 in a
-/// wall too tall to jump.
+/// The chef at `position`, with a broken door at x 1 in a wall too tall to
+/// jump.
 GameView view_with_broken_door(GridPosition position) {
   auto view = city_view(position);
   auto door = object_of(DOOR, ObjectKind::Entrance, 1);
   door.state = ObjectState::Destroyed;
-  door.repair_with = WRENCH;
   view.world.objects.push_back(door);
   auto wall = object_of(WALL, ObjectKind::Building, 1);
   wall.area.y = -1;
   view.world.objects.push_back(wall);
-  view.progression.chef.tools = {WRENCH};
   return view;
 }
 
@@ -345,8 +336,7 @@ TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
         {.id = DOOR,
          .kind = ObjectKind::Entrance,
          .area = {.x = 2, .y = 1},
-         .destroyed_after = WorldThreshold{.acid = AcidLevel{1}},
-         .repair_with = WRENCH},
+         .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
         ingredient_source(SOURCE, 5, 1)};
   };
   auto places = tuning({{.id = SOURCE}});
@@ -390,55 +380,15 @@ TEST(Companion, ADestroyedBuildingNoLongerBlocksItsCell) {
             Direction::Right);
 }
 
-TEST(Companion, ACollectableSourceComesBeforeANearerRepair) {
-  auto view = view_with_broken_door({.x = 3});
-  add_source(view, SOURCE, 9);
-  add_source(view, FAR_SOURCE, 0);
-  const auto heading = [&] {
-    return companion_with()
-        .command(Actor::Chef, ALL_AI, NO_INPUT, view)
-        .movement.direction;
-  };
-  EXPECT_EQ(heading(), Direction::Right);
-  view.exploration.sources.front().remaining = 0;
-  EXPECT_EQ(heading(), Direction::Left);
-}
-
-TEST(Companion, ARepairIsAnErrandOnlyWhileItOpensTheWayToStock) {
+TEST(Companion, ABrokenDoorIsNeverAnErrandAndNothingBehindItIsReached) {
   auto view = view_with_broken_door({.x = 3});
   add_source(view, FAR_SOURCE, 0);
   ASSERT_EQ(CellMap(view.world).at({.x = 1}), Cell::Blocked);
-  const auto errand = companion_with().errand(Actor::Chef, view);
-  ASSERT_TRUE(errand.has_value());
-  EXPECT_EQ(errand.value_or(Errand{}).target, DOOR);
-  view.exploration.sources.front().remaining = 0;
   EXPECT_FALSE(companion_with().errand(Actor::Chef, view).has_value());
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{ReturnToBase{}});
 }
 
-TEST(Companion, ARepairOpensStockOnlyWhereItBringsNewStockIntoReach) {
-  const CompanionConfig config{.exploration = tuning({}),
-                               .workshop = kitchen(),
-                               .unfed_penalty = UNFED_PENALTY};
-  auto view = view_with_broken_door({.x = 3});
-  add_source(view, SOURCE, 5);
-  EXPECT_FALSE(repair_opens_stock(config, Actor::Chef, view, DOOR));
-  add_source(view, FAR_SOURCE, 0);
-  EXPECT_TRUE(repair_opens_stock(config, Actor::Chef, view, DOOR));
-  view.exploration.sources.back().remaining = 0;
-  EXPECT_FALSE(repair_opens_stock(config, Actor::Chef, view, DOOR));
-}
-
-TEST(Companion, AHumanStillRepairsAPassageThatOpensNothing) {
-  const auto view = view_with_broken_door({.x = 2});
-  EXPECT_EQ(companion_with()
-                .command(Actor::Chef, single_player(Actor::Chef),
-                         {.interact = true}, view)
-                .action,
-            (Action{Repair{.target = DOOR, .tool = WRENCH}}));
-}
-
-TEST(Companion, SettingOutIsWorthItOnlyForStockARepairCanReach) {
+TEST(Companion, SettingOutIsWorthItOnlyForStockThatCanBeReached) {
   auto view = view_with_broken_door({.x = 3});
   view.progression.phase = Phase::Workshop;
   view.progression.chef.location = Location::Base;
@@ -450,10 +400,12 @@ TEST(Companion, SettingOutIsWorthItOnlyForStockARepairCanReach) {
                                .workshop = kitchen(),
                                .unfed_penalty = UNFED_PENALTY};
   ASSERT_EQ(CellMap(view.world).at({.x = 2}), Cell::Blocked);
-  EXPECT_TRUE(worth_entering(config, Actor::Chef, view));
-  EXPECT_FALSE(worth_entering(config, Actor::Appraiser, view));
+  EXPECT_FALSE(worth_entering(config, view));
+  view.world.objects.at(1).state = ObjectState::Intact;
+  view.world.objects.at(1).traversable = true;
+  EXPECT_TRUE(worth_entering(config, view));
   view.exploration.sources.front().remaining = 0;
-  EXPECT_FALSE(worth_entering(config, Actor::Chef, view));
+  EXPECT_FALSE(worth_entering(config, view));
 }
 
 TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
@@ -515,40 +467,22 @@ TEST(Companion, EntersOnlyWithTimeASafeEntryAndSomethingToDo) {
             Action{EndDayUnfed{UNFED_PENALTY}});
 }
 
-TEST(Companion, UsesACarriedToolOnABrokenPassageOnlyWhenNothingIsCollectable) {
-  const ObjectDefinition door{.id = DOOR,
-                              .kind = ObjectKind::Entrance,
-                              .area = {.x = 3},
-                              .destroyed_after =
-                                  WorldThreshold{.acid = AcidLevel{1}},
-                              .repair_with = WRENCH};
-  const ObjectDefinition wall{
-      .id = WALL, .kind = ObjectKind::Building, .area = {.x = 3, .y = -1}};
-  const std::vector<ObjectDefinition> city{floor_of(6),
-                                           door,
-                                           wall,
-                                           ingredient_source(SOURCE, 5),
-                                           {.id = TOOL_SOURCE,
-                                            .kind = ObjectKind::MaterialSource,
-                                            .area = {.x = 1},
-                                            .tool = WRENCH}};
-  Game equipped(city, tuning({{.id = SOURCE}, {.id = TOOL_SOURCE}}), kitchen());
-  ASSERT_EQ(equipped.world().update({.acid = AcidLevel{1}}),
+TEST(Companion, ABrokenPassageSendsAnAiPartyHomeAndIsNeverRepaired) {
+  const std::vector<ObjectDefinition> city{
+      floor_of(6),
+      {.id = DOOR,
+       .kind = ObjectKind::Entrance,
+       .area = {.x = 3},
+       .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
+      {.id = WALL, .kind = ObjectKind::Building, .area = {.x = 3, .y = -1}},
+      ingredient_source(SOURCE, 5)};
+  Game game(city, tuning({{.id = SOURCE}}), kitchen());
+  ASSERT_EQ(game.world().update({.acid = AcidLevel{1}}),
             WorldUpdateResult::Applied);
-  for (int tick = 0; tick < 12; ++tick) {
-    equipped.step(ALL_AI);
-  }
-  EXPECT_EQ(equipped.simulation().snapshot().chef.tools,
-            std::vector<ToolId>{WRENCH});
-  EXPECT_EQ(equipped.exploration().snapshot().sources.front().remaining, 0U);
-  EXPECT_EQ(equipped.refusals(), 0U);
-
-  Game unequipped(city, tuning({{.id = SOURCE}}), kitchen());
-  ASSERT_EQ(unequipped.world().update({.acid = AcidLevel{1}}),
-            WorldUpdateResult::Applied);
-  unequipped.step(ALL_AI);
-  EXPECT_EQ(unequipped.simulation().snapshot().chef.location, Location::Base);
-  EXPECT_EQ(unequipped.exploration().snapshot().sources.front().remaining, 1U);
+  game.step(ALL_AI);
+  EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
+  EXPECT_EQ(game.refusals(), 0U);
 }
 
 TEST(Companion, WaitsAtTheWorkshopForAHumanToSetOutOrEndTheDay) {
@@ -724,34 +658,6 @@ TEST(Companion, OneStoredDishStopsTheChefCookingAnother) {
   EXPECT_EQ(ai_action(view, Actor::Chef), Action{Feed{SOUP}});
 }
 
-TEST(Companion, ReplacesItsOwnDamagedToolWithOneEitherActorCarries) {
-  auto view = base_view();
-  view.workshop.magnifier = ToolState::Damaged;
-  view.progression.chef.tools = {MAGNIFIER};
-  EXPECT_EQ(ai_action(view, Actor::Appraiser),
-            Action{ReplaceTool{WorkshopTool::Magnifier}});
-  EXPECT_NE(ai_action(view, Actor::Chef),
-            Action{ReplaceTool{WorkshopTool::Magnifier}});
-  view.workshop.magnifier = ToolState::Intact;
-  view.workshop.spatula = ToolState::Damaged;
-  view.progression.chef.tools = {};
-  view.progression.appraiser.tools = {SPATULA};
-  EXPECT_EQ(ai_action(view, Actor::Chef),
-            Action{ReplaceTool{WorkshopTool::Spatula}});
-}
-
-TEST(Companion, ReplacesNothingIntactOrWithoutTheMatchingTool) {
-  auto view = base_view();
-  view.progression.chef.tools = {MAGNIFIER};
-  EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
-  view.workshop.magnifier = ToolState::Damaged;
-  view.progression.chef.tools = {SPATULA};
-  EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
-  view.progression.chef.tools = {MAGNIFIER};
-  EXPECT_EQ(ai_action(view, Actor::Appraiser),
-            Action{ReplaceTool{WorkshopTool::Magnifier}});
-}
-
 TEST(Companion, OnlyTheChefEndsAnAiDayAndFeedsAnUneatenDishFirst) {
   auto view = base_view();
   view.workshop.foods = {{.food = SOUP}, {.food = STEW}};
@@ -818,24 +724,6 @@ TEST(Companion, AHumanCollectsOnlyWithinRangeAndMovesAsPressed) {
             std::nullopt);
 }
 
-TEST(Companion, AHumanRepairsWithTheirOwnToolWhenNothingIsCollectableInRange) {
-  auto view = city_view({.x = 2});
-  auto door = object_of(DOOR, ObjectKind::Entrance, 3);
-  door.state = ObjectState::Destroyed;
-  door.repair_with = WRENCH;
-  view.world.objects.push_back(door);
-  const auto companion = companion_with();
-  const PlayerInput pressed{.interact = true};
-  EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
-            std::nullopt);
-  view.progression.chef.tools = {WRENCH};
-  EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
-            (Action{Repair{.target = DOOR, .tool = WRENCH}}));
-  EXPECT_EQ(
-      companion.command(Actor::Appraiser, two_players(), pressed, view).action,
-      std::nullopt);
-}
-
 TEST(Companion, TravelLeavesFromBaseAndReturnsFromTheCity) {
   const auto companion = companion_with();
   const PlayerInput pressed{.travel = true};
@@ -866,17 +754,13 @@ TEST(Companion, AHumanInteractsAtBaseThroughTheirRole) {
             Action{Cook{SOUP}});
 }
 
-TEST(Companion, AHumanReplacesTheirRoleToolFeedsAndEndsTheDayOnRequest) {
+TEST(Companion, AHumanFeedsAndEndsTheDayOnRequest) {
   auto view = base_view();
   view.workshop.foods = {{.food = SOUP}};
   const auto companion = companion_with();
   const auto press = [&](Actor actor, const PlayerInput &input) {
     return companion.command(actor, two_players(), input, view).action;
   };
-  EXPECT_EQ(press(Actor::Appraiser, {.replace_tool = true}),
-            Action{ReplaceTool{WorkshopTool::Magnifier}});
-  EXPECT_EQ(press(Actor::Chef, {.replace_tool = true}),
-            Action{ReplaceTool{WorkshopTool::Spatula}});
   EXPECT_EQ(press(Actor::Appraiser, {.feed = true}), Action{Feed{SOUP}});
   EXPECT_EQ(press(Actor::Appraiser, {.end_day = true}),
             Action{EndDayUnfed{UNFED_PENALTY}});
@@ -895,15 +779,9 @@ TEST(Companion, AnActionStillFacesTheRulesOfItsFeature) {
       ActionResult{WorkshopResult::WrongRole});
   EXPECT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef, Feed{SOUP}),
             ActionResult{WorkshopResult::NoFood});
-  EXPECT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef,
-                  ReplaceTool{WorkshopTool::Spatula}),
-            ActionResult{WorkshopResult::ToolIntact});
   EXPECT_EQ(
       apply(game.exploration(), game.workshop(), Actor::Chef, Collect{SOURCE}),
       ActionResult{CollectionResult::NotExploring});
-  EXPECT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef,
-                  Repair{.target = DOOR, .tool = WRENCH}),
-            ActionResult{RepairResult::NotExploring});
   EXPECT_EQ(
       apply(game.exploration(), game.workshop(), Actor::Chef, ReturnToBase{}),
       ActionResult{Result::NotExploring});
@@ -977,16 +855,8 @@ void play_until_day(Game &game, std::uint32_t day, ControlMap control) {
 
 TEST(CompanionRun, AnAiPartyFeedsTheMonsterAcrossDaysWithoutCreatingAnything) {
   const auto recipes = kitchen({{.food = SOUP, .ingredients = {CARROT}}});
-  Game game({floor_of(10),
-             ingredient_source(SOURCE, 3),
-             {.id = FAR_SOURCE,
-              .kind = ObjectKind::MaterialSource,
-              .area = {.x = 6},
-              .tool = SPATULA}},
-            tuning({{.id = SOURCE, .remaining = 20},
-                    {.id = FAR_SOURCE, .remaining = 2}}),
-            recipes);
-  game.workshop().damage_tool(WorkshopTool::Spatula);
+  Game game({floor_of(10), ingredient_source(SOURCE, 3)},
+            tuning({{.id = SOURCE, .remaining = 20}}), recipes);
   constexpr std::uint32_t LAST_DAY = 8;
   std::uint32_t day = 1;
   std::uint64_t expected_acid = 0;
@@ -1020,8 +890,6 @@ TEST(CompanionRun, AnAiPartyFeedsTheMonsterAcrossDaysWithoutCreatingAnything) {
                 view.workshop.foods.size() + view.workshop.eaten_foods.size(),
             taken);
   EXPECT_FALSE(view.workshop.eaten_foods.empty());
-  EXPECT_EQ(view.workshop.spatula, ToolState::Intact);
-  EXPECT_EQ(view.exploration.sources.back().remaining, 0U);
   EXPECT_EQ(game.refusals(), 0U);
 }
 
@@ -1082,10 +950,9 @@ TEST(CompanionRun, AnAiPartnerStaysAtBaseWhenTheCityHoldsNothingForIt) {
   EXPECT_EQ(game.refusals(), 0U);
 }
 
-TEST(CompanionRun, AnAiPartyAppraisesAgainAfterAFailedRoll) {
+TEST(CompanionRun, AnAiPartyAppraisesACarriedIngredient) {
   Game game({floor_of(10), ingredient_source(SOURCE, 1)},
             tuning({{.id = SOURCE}}), kitchen());
-  game.workshop().damage_tool(WorkshopTool::Magnifier);
   play_until_day(game, 2, ALL_AI);
   const auto workshop = game.workshop().snapshot();
   EXPECT_EQ(workshop.identified, std::vector<IngredientId>{CARROT});

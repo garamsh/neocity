@@ -9,9 +9,9 @@ extends SceneTree
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
 const ENTRANCE_MS: int = 300
 ## A word of each concept the How to play page explains, in its order: set
-## out, move, collect, appraise, cook, feed, tool damage, a hated dish, acid,
+## out, move, collect, appraise, cook, feed, a hated dish, acid,
 ## and the escape.
-const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Collect", "?", "cooks", "Feeding", "tool", "hated", "acid", "way out"]
+const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Collect", "?", "cooks", "Feeding", "hated", "acid", "way out"]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}

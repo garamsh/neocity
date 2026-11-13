@@ -20,8 +20,6 @@ constexpr ObjectId BUILDING{41};
 constexpr ObjectId ARRIVING_BUILDING{42};
 constexpr ObjectId NEW_PATH{43};
 constexpr ObjectId NEW_SOURCE{44};
-constexpr ToolId WRENCH{1};
-constexpr ToolId SPATULA{2};
 
 std::vector<ObjectDefinition> city() {
   return {
@@ -40,12 +38,10 @@ std::vector<ObjectDefinition> city() {
       {.id = LADDER,
        .kind = ObjectKind::Ladder,
        .area = {.x = 10, .y = 0, .width = 1, .height = 8},
-       .destroyed_after = WorldThreshold{.elapsed = 4s, .acid = AcidLevel{2}},
-       .repair_with = WRENCH},
+       .destroyed_after = WorldThreshold{.elapsed = 4s, .acid = AcidLevel{2}}},
       {.id = ENTRANCE,
        .kind = ObjectKind::Entrance,
-       .destroyed_after = WorldThreshold{.elapsed = 8s},
-       .repair_with = WRENCH},
+       .destroyed_after = WorldThreshold{.elapsed = 8s}},
       {.id = BUILDING,
        .kind = ObjectKind::Building,
        .destroyed_after = WorldThreshold{.elapsed = 5s}},
@@ -87,7 +83,6 @@ TEST(World, SnapshotsRetainStableIdentitiesAndAreasWithoutSharingMutableState) {
   EXPECT_TRUE(object(snapshot, ENTRANCE).traversable);
   EXPECT_TRUE(object(snapshot, NPC_SOURCE).material_available);
   EXPECT_EQ(object(snapshot, NPC_SOURCE).ingredient, IngredientId{70});
-  EXPECT_EQ(object(snapshot, LADDER).repair_with, WRENCH);
   EXPECT_EQ(object(snapshot, NEW_PATH).state, ObjectState::Dormant);
   EXPECT_FALSE(object(snapshot, NEW_PATH).traversable);
   EXPECT_FALSE(object(snapshot, NEW_SOURCE).material_available);
@@ -144,48 +139,37 @@ TEST(World, DeteriorationAndArrivalExposeANewPathAndMaterialSource) {
             ObjectState::Intact);
 }
 
-TEST(World, RepairRequiresADamagedRepairablePassageAndTheMatchingTool) {
+TEST(World, ADestroyedPassageStaysDestroyedForTheRestOfTheRun) {
   World world(city());
   ASSERT_EQ(world.update({.elapsed = 4s}), WorldUpdateResult::Applied);
   const auto damaged = world.snapshot();
   ASSERT_EQ(object(damaged, LADDER).state, ObjectState::Destroyed);
   ASSERT_EQ(object(damaged, TERRAIN).state, ObjectState::Destroyed);
   ASSERT_EQ(object(damaged, ENTRANCE).state, ObjectState::Intact);
-  EXPECT_EQ(world.repair(ObjectId{999}, WRENCH), RepairResult::UnknownObject);
-  EXPECT_EQ(world.repair(ENTRANCE, WRENCH), RepairResult::NotDamaged);
-  EXPECT_EQ(world.repair(TERRAIN, WRENCH), RepairResult::NotRepairable);
-  EXPECT_EQ(world.repair(LADDER, SPATULA), RepairResult::WrongTool);
-  EXPECT_EQ(world.snapshot(), damaged);
-  ASSERT_EQ(world.repair(LADDER, WRENCH), RepairResult::Applied);
-  const auto repaired = world.snapshot();
-  EXPECT_TRUE(object(repaired, LADDER).traversable);
-  EXPECT_FALSE(object(repaired, TERRAIN).traversable);
-  EXPECT_EQ(world.repair(LADDER, WRENCH), RepairResult::NotDamaged);
-  EXPECT_EQ(world.snapshot(), repaired);
+  EXPECT_FALSE(object(damaged, LADDER).traversable);
   ASSERT_EQ(world.update({.elapsed = 4s}), WorldUpdateResult::Applied);
-  EXPECT_EQ(world.snapshot(), repaired);
+  EXPECT_EQ(world.snapshot(), damaged);
   ASSERT_EQ(world.update({.elapsed = 8s}), WorldUpdateResult::Applied);
   EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
+  EXPECT_FALSE(object(world.snapshot(), ENTRANCE).traversable);
 }
 
-TEST(World,
-     DuplicateProgressAndAcidDecreaseDoNotUndoDamageOrRepeatRepairDamage) {
+TEST(World, DuplicateProgressAndAcidDecreaseDoNotUndoDamage) {
   World world(city());
   ASSERT_EQ(world.update({.elapsed = 5s, .acid = {3}}),
             WorldUpdateResult::Applied);
-  ASSERT_EQ(world.repair(LADDER, WRENCH), RepairResult::Applied);
-  const auto repaired = world.snapshot();
-  ASSERT_TRUE(object(repaired, LADDER).traversable);
-  ASSERT_EQ(world.update(repaired.progression), WorldUpdateResult::Applied);
-  EXPECT_EQ(world.snapshot(), repaired);
+  const auto damaged = world.snapshot();
+  ASSERT_FALSE(object(damaged, LADDER).traversable);
+  ASSERT_EQ(world.update(damaged.progression), WorldUpdateResult::Applied);
+  EXPECT_EQ(world.snapshot(), damaged);
   ASSERT_EQ(world.update({.elapsed = 5s, .acid = {0}}),
             WorldUpdateResult::Applied);
-  auto lowered = repaired;
+  auto lowered = damaged;
   lowered.progression.acid = {0};
   EXPECT_EQ(world.snapshot(), lowered);
   ASSERT_EQ(world.update({.elapsed = 5s, .acid = {4}}),
             WorldUpdateResult::Applied);
-  EXPECT_TRUE(object(world.snapshot(), LADDER).traversable);
+  EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
   EXPECT_EQ(object(world.snapshot(), NPC).state, ObjectState::Destroyed);
   EXPECT_TRUE(object(world.snapshot(), NEW_PATH).traversable);
   ASSERT_EQ(world.update({.elapsed = 5s, .acid = {5}}),
@@ -245,12 +229,11 @@ TEST(World, InvalidDefinitionsAreRejectedBesideAValidControl) {
   invalid.at(1).supported_by = NEW_SOURCE;
   EXPECT_THROW((World(invalid)), std::invalid_argument);
   invalid = city();
-  invalid.at(0).repair_with = WRENCH;
+  invalid.at(0).ingredient = IngredientId{1};
   EXPECT_THROW((World(invalid)), std::invalid_argument);
 }
 
-TEST(WorldIntegration,
-     ActorReturnAndHealthRecoveryPreserveDeteriorationAndRepair) {
+TEST(WorldIntegration, ActorReturnPreservesDeterioration) {
   Simulation simulation({.exploration_budget = 10s, .seed = 123});
   World world(city());
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
@@ -259,15 +242,11 @@ TEST(WorldIntegration,
   ASSERT_EQ(elapsed, 5s);
   ASSERT_EQ(world.update({.elapsed = elapsed, .acid = {3}}),
             WorldUpdateResult::Applied);
-  ASSERT_EQ(world.repair(LADDER, WRENCH), RepairResult::Applied);
   const auto before_return = world.snapshot();
   ASSERT_EQ(object(before_return, NPC).state, ObjectState::Destroyed);
-  ASSERT_TRUE(object(before_return, LADDER).traversable);
-  for (int hit = 0; hit < 3; ++hit) {
-    ASSERT_EQ(simulation.damage(Actor::Chef), Result::Applied);
-  }
+  ASSERT_FALSE(object(before_return, LADDER).traversable);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
   ASSERT_EQ(simulation.snapshot().chef.location, Location::Base);
-  ASSERT_EQ(simulation.snapshot().chef.health, 3);
   ASSERT_EQ(simulation.snapshot().remaining_exploration, 5s);
   ASSERT_EQ(world.update(
                 {.elapsed = 10s - simulation.snapshot().remaining_exploration,
@@ -280,37 +259,17 @@ TEST(WorldIntegration,
                 {.elapsed = 10s - simulation.snapshot().remaining_exploration,
                  .acid = {3}}),
             WorldUpdateResult::Applied);
-  EXPECT_TRUE(object(world.snapshot(), LADDER).traversable);
+  EXPECT_FALSE(object(world.snapshot(), LADDER).traversable);
   EXPECT_FALSE(object(world.snapshot(), NPC_SOURCE).material_available);
 }
 
-TEST(World, AMaterialSourceSuppliesAToolWithTheIngredientSupplyRules) {
-  constexpr ObjectId SHOP{1};
-  constexpr ObjectId CRATE{2};
-  World world({{.id = SHOP,
-                .kind = ObjectKind::Building,
-                .destroyed_after = WorldThreshold{.acid = AcidLevel{1}}},
-               {.id = CRATE,
-                .kind = ObjectKind::MaterialSource,
-                .tool = WRENCH,
-                .supported_by = SHOP}});
-  EXPECT_TRUE(object(world.snapshot(), CRATE).material_available);
-  EXPECT_EQ(object(world.snapshot(), CRATE).tool, WRENCH);
-  EXPECT_EQ(object(world.snapshot(), CRATE).ingredient, std::nullopt);
-  ASSERT_EQ(world.update({.elapsed = 1s, .acid = AcidLevel{1}}),
-            WorldUpdateResult::Applied);
-  EXPECT_FALSE(object(world.snapshot(), CRATE).material_available);
-}
-
-TEST(World, RejectsASourceWithBothOrNeitherItemAndAToolOutsideASource) {
-  const ObjectDefinition valid{
-      .id = ObjectId{1}, .kind = ObjectKind::MaterialSource, .tool = WRENCH};
+TEST(World, RejectsASourceWithNoIngredientAndAnIngredientOutsideASource) {
+  const ObjectDefinition valid{.id = ObjectId{1},
+                               .kind = ObjectKind::MaterialSource,
+                               .ingredient = IngredientId{1}};
   EXPECT_NO_THROW(World({valid}));
-  auto both = valid;
-  both.ingredient = IngredientId{1};
-  EXPECT_THROW(World({both}), std::invalid_argument);
   auto neither = valid;
-  neither.tool = std::nullopt;
+  neither.ingredient = std::nullopt;
   EXPECT_THROW(World({neither}), std::invalid_argument);
   auto terrain = valid;
   terrain.kind = ObjectKind::Terrain;

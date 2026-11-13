@@ -18,10 +18,6 @@ namespace neocity::rendering {
 enum class Flourish : std::uint8_t {
   /// Rings and specks bursting from a collection.
   Pop,
-  /// Sparks from a repair.
-  Spark,
-  /// A red flash and a short shake when acid burns an actor.
-  Hit,
   /// Acid thrown up where an actor fell in.
   Splash,
   /// Droplets thrown up all along the acid's surface as it rises.
@@ -48,8 +44,6 @@ struct Burst {
 [[nodiscard]] const char *flourish_name(Flourish kind);
 /// Seconds a flourish lasts on screen.
 [[nodiscard]] float lifetime(Flourish kind);
-/// How far the world is shaken this frame, in pixels.
-[[nodiscard]] godot::Vector2 shake(const std::vector<Burst> &bursts);
 /// Draws the flourishes that happen in the city, over the map, with the acid's
 /// surface at `acid_ratio` as `paint_mouth` puts it.
 void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
@@ -57,8 +51,7 @@ void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
 /// Draws the flourishes that happen at base, over the kitchen.
 void paint_workshop_bursts(godot::Node2D &canvas, const Art &art,
                            const std::vector<Burst> &bursts);
-/// Draws the flourishes over the whole screen: the flash of a burn and the
-/// fade between days.
+/// Draws the flourishes over the whole screen: the fade between days.
 void paint_screen_bursts(godot::Node2D &canvas,
                          const std::vector<Burst> &bursts);
 

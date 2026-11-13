@@ -29,12 +29,6 @@ struct ActionEvent {
   survival::ActionResult result;
 };
 
-/// An actor stepped into an acid drip; `exhausted` means it ran out of health.
-struct HazardEvent {
-  survival::Actor actor = survival::Actor::Chef;
-  bool exhausted = false;
-};
-
 /// An actor walked off the map and was carried back to base.
 struct FallEvent {
   survival::Actor actor = survival::Actor::Chef;
@@ -55,8 +49,8 @@ struct EscapeMissEvent {
 };
 
 /// What the screen reports to the player.
-using Event = std::variant<ActionEvent, HazardEvent, FallEvent, TimeUpEvent,
-                           WorldEvent, EscapeMissEvent>;
+using Event = std::variant<ActionEvent, FallEvent, TimeUpEvent, WorldEvent,
+                           EscapeMissEvent>;
 
 /// What one human's interact and feed keys would do right now, and the errand
 /// AI would run in that human's place. The NEXT line names that errand, so the
@@ -133,7 +127,6 @@ enum class Tip : std::uint8_t {
   Appraise,
   Cook,
   Feed,
-  ToolDamage,
   Rejected,
   Acid,
   Escape
@@ -141,9 +134,9 @@ enum class Tip : std::uint8_t {
 
 /// Every tip, in the order a run opens them when several are due at once and
 /// the How to play page lists them.
-inline constexpr std::array TIPS{
-    Tip::SetOut, Tip::Move,       Tip::Collect,  Tip::Appraise, Tip::Cook,
-    Tip::Feed,   Tip::ToolDamage, Tip::Rejected, Tip::Acid,     Tip::Escape};
+inline constexpr std::array TIPS{Tip::SetOut,   Tip::Move, Tip::Collect,
+                                 Tip::Appraise, Tip::Cook, Tip::Feed,
+                                 Tip::Rejected, Tip::Acid, Tip::Escape};
 
 /// Who plays which actor, as the choice of players offers it.
 enum class SetupEntry : std::uint8_t { Chef, Appraiser, TwoPlayers };
@@ -162,8 +155,7 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
 [[nodiscard]] rendering::Shot shot_of(const rendering::Art &drawing,
                                       const SurvivalFrame &frame);
 /// Draws the scene behind the survival screen: the backdrop, and in the city
-/// the map with its flourishes under way, as `shot` shows them. A burn shakes
-/// it.
+/// the map with its flourishes under way, as `shot` shows them..
 void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
                           const SurvivalFrame &frame,
                           const rendering::Shot &shot,
@@ -172,8 +164,7 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
 /// that blends by adding.
 void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const SurvivalFrame &frame,
-                         const rendering::Shot &shot,
-                         const std::vector<rendering::Burst> &bursts);
+                         const rendering::Shot &shot);
 /// Draws over the scene the city's words and its pointers to each human's
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
 /// phase opens, with the HUD, `tip` and the flourishes under way; the city's

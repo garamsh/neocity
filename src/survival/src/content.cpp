@@ -24,10 +24,6 @@ constexpr IngredientId PICKLES{5};
 constexpr IngredientId MEAT{6};
 constexpr IngredientId TRUFFLE{7};
 
-constexpr ToolId MAGNIFIER{1};
-constexpr ToolId SPATULA{2};
-constexpr ToolId WRENCH{3};
-
 constexpr FoodId MUSHROOM_SOUP{1};
 constexpr FoodId FISH_STEW{2};
 constexpr FoodId KELP_WRAP{3};
@@ -62,10 +58,7 @@ constexpr ObjectId TOMATO_MACHINE{21};
 constexpr ObjectId VENDOR_CART{22};
 constexpr ObjectId SHOP_SHELF{23};
 constexpr ObjectId LOST_BASKET{24};
-constexpr ObjectId TOOL_BAG{25};
 constexpr ObjectId PICKLE_MACHINE{26};
-constexpr ObjectId TERRACE_BAG{27};
-constexpr ObjectId SUPPLY_CRATE{28};
 constexpr ObjectId COLD_LOCKER{29};
 constexpr ObjectId ROOF_BAG{30};
 constexpr ObjectId FERRY_BAG{31};
@@ -211,12 +204,6 @@ constexpr std::array INGREDIENT_NAMES{
     Named<IngredientId>{.id = TRUFFLE, .name = "Truffle"},
 };
 
-constexpr std::array TOOL_NAMES{
-    Named<ToolId>{.id = MAGNIFIER, .name = "Magnifier"},
-    Named<ToolId>{.id = SPATULA, .name = "Spatula"},
-    Named<ToolId>{.id = WRENCH, .name = "Wrench"},
-};
-
 constexpr std::array FOOD_NAMES{
     Named<FoodId>{.id = MUSHROOM_SOUP, .name = "Mushroom Soup"},
     Named<FoodId>{.id = FISH_STEW, .name = "Fish Stew"},
@@ -269,10 +256,7 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = VENDOR_CART, .name = "Vendor Cart"},
     Named<ObjectId>{.id = SHOP_SHELF, .name = "Shop Shelf"},
     Named<ObjectId>{.id = LOST_BASKET, .name = "Lost Basket"},
-    Named<ObjectId>{.id = TOOL_BAG, .name = "Tool Bag"},
     Named<ObjectId>{.id = PICKLE_MACHINE, .name = "Pickle Machine"},
-    Named<ObjectId>{.id = TERRACE_BAG, .name = "Terrace Bag"},
-    Named<ObjectId>{.id = SUPPLY_CRATE, .name = "Supply Crate"},
     Named<ObjectId>{.id = COLD_LOCKER, .name = "Cold Locker"},
     Named<ObjectId>{.id = ROOF_BAG, .name = "Roof Bag"},
     Named<ObjectId>{.id = FERRY_BAG, .name = "Ferry Bag"},
@@ -303,13 +287,6 @@ ObjectDefinition ingredient_source(ObjectId id, GridPosition cell,
           .kind = ObjectKind::MaterialSource,
           .area = {.x = cell.x, .y = cell.y},
           .ingredient = ingredient};
-}
-
-ObjectDefinition tool_source(ObjectId id, GridPosition cell, ToolId tool) {
-  return {.id = id,
-          .kind = ObjectKind::MaterialSource,
-          .area = {.x = cell.x, .y = cell.y},
-          .tool = tool};
 }
 
 ObjectDefinition owned(ObjectDefinition source, ObjectId owner) {
@@ -370,17 +347,16 @@ ObjectDefinition washed_up(std::size_t index) {
       {.elapsed = landing + BAG_DAYS * DAY, .acid = bag_limit(bag.cell.y)});
 }
 
-ObjectDefinition passage(ObjectId id, ObjectKind kind, WorldArea area) {
-  return {.id = id, .kind = kind, .area = area, .repair_with = WRENCH};
-}
-
 ObjectDefinition building(ObjectId id, WorldArea area) {
   return {.id = id, .kind = ObjectKind::Building, .area = area};
 }
 
-/// A ladder nothing breaks.
 ObjectDefinition ladder(ObjectId id, WorldArea area) {
   return {.id = id, .kind = ObjectKind::Ladder, .area = area};
+}
+
+ObjectDefinition entrance(ObjectId id, WorldArea area) {
+  return {.id = id, .kind = ObjectKind::Entrance, .area = area};
 }
 
 /// The city of the first mockup, seen from the side, laid out twice: in each
@@ -406,8 +382,7 @@ std::vector<ObjectDefinition> city() {
       ladder(KITCHEN_LADDER, {.x = 3, .y = 6, .height = 3}),
       terrain(KITCHEN_LOFT, {.x = 0, .y = 6, .width = 8}),
       terrain(KITCHEN_ROOF, {.x = 0, .y = 4, .width = 8}),
-      destroyed(passage(ROOF_LADDER, ObjectKind::Ladder,
-                        {.x = 1, .y = 4, .height = 3}),
+      destroyed(ladder(ROOF_LADDER, {.x = 1, .y = 4, .height = 3}),
                 {.elapsed = DAY * 16 / 3, .acid = AcidLevel{10}}),
       destroyed(building(KITCHEN_SHOP, {.x = 0, .y = 5, .width = 6}),
                 {.elapsed = DAY * 40 / 3, .acid = AcidLevel{25}}),
@@ -427,8 +402,7 @@ std::vector<ObjectDefinition> city() {
                 {.elapsed = 24 * DAY, .acid = AcidLevel{40}}),
       terrain(COLD_STORE_FLOOR, {.x = 36, .y = 8, .width = 4}),
       building(COLD_STORE, {.x = 37, .y = 6, .width = 3, .height = 3}),
-      destroyed(passage(COLD_STORE_DOOR, ObjectKind::Entrance,
-                        {.x = 37, .y = 8, .width = 3}),
+      destroyed(entrance(COLD_STORE_DOOR, {.x = 37, .y = 8, .width = 3}),
                 {.elapsed = DAY * 80 / 9, .acid = AcidLevel{20}}),
       ladder(PIER_LADDER, {.x = 36, .y = 8, .height = 5}),
       terrain(PIER, {.x = 36, .y = 12, .width = 4}),
@@ -447,11 +421,8 @@ std::vector<ObjectDefinition> city() {
             KITCHEN_SHOP),
       destroyed(ingredient_source(LOST_BASKET, {.x = 23, .y = 13}, MUSHROOM),
                 {.acid = AcidLevel{40}}),
-      tool_source(TOOL_BAG, {.x = 13, .y = 9}, WRENCH),
       destroyed(ingredient_source(PICKLE_MACHINE, {.x = 21, .y = 13}, PICKLES),
                 {.acid = AcidLevel{35}}),
-      tool_source(TERRACE_BAG, {.x = 17, .y = 5}, MAGNIFIER),
-      tool_source(SUPPLY_CRATE, {.x = 19, .y = 8}, SPATULA),
       owned(ingredient_source(COLD_LOCKER, {.x = 39, .y = 8}, MEAT),
             COLD_STORE),
       ingredient_source(ROOF_BAG, {.x = 6, .y = 4}, TRUFFLE),
@@ -575,12 +546,9 @@ std::vector<SourceStock> stock() {
       {.id = VENDOR_CART, .kind = SourceKind::Npc, .remaining = 4},
       {.id = SHOP_SHELF, .kind = SourceKind::Shop, .remaining = 3},
       {.id = LOST_BASKET, .kind = SourceKind::Bag, .remaining = 4},
-      {.id = TOOL_BAG, .kind = SourceKind::Bag, .remaining = 1},
       {.id = PICKLE_MACHINE,
        .kind = SourceKind::VendingMachine,
        .remaining = 3},
-      {.id = TERRACE_BAG, .kind = SourceKind::Bag, .remaining = 2},
-      {.id = SUPPLY_CRATE, .kind = SourceKind::Shop, .remaining = 2},
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
@@ -631,13 +599,10 @@ Content temporary_content(std::uint32_t seed) {
       .objects = city(),
       .companion = {.exploration = {.base = {.x = 1, .y = 8},
                                     .entry = {.x = 5, .y = 8},
-                                    .maximum_stamina = 20,
                                     .collection_distance = 1,
                                     .sources = stock(),
                                     .collection_time = 1500ms},
                     .workshop = {.recipes = recipes(),
-                                 .magnifier = MAGNIFIER,
-                                 .spatula = SPATULA,
                                  .new_food_score = 50,
                                  .new_ingredient_score = 5,
                                  .satisfying_score = 100,
@@ -659,8 +624,6 @@ std::string_view ingredient_name(IngredientId ingredient) {
 }
 
 std::string_view food_name(FoodId food) { return name_of(FOOD_NAMES, food); }
-
-std::string_view tool_name(ToolId tool) { return name_of(TOOL_NAMES, tool); }
 
 std::string_view object_name(ObjectId object) {
   return name_of(OBJECT_NAMES, object);

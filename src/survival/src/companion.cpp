@@ -71,36 +71,6 @@ GridPosition landing_cell(const GameView &view, Actor actor) {
   return cell;
 }
 
-WorkshopTool role_tool(Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return WorkshopTool::Spatula;
-  case Actor::Appraiser:
-    return WorkshopTool::Magnifier;
-  }
-  std::abort();
-}
-
-ToolState tool_state(const WorkshopSnapshot &workshop, WorkshopTool tool) {
-  switch (tool) {
-  case WorkshopTool::Magnifier:
-    return workshop.magnifier;
-  case WorkshopTool::Spatula:
-    return workshop.spatula;
-  }
-  std::abort();
-}
-
-ToolId replacement_for(const WorkshopConfig &workshop, WorkshopTool tool) {
-  switch (tool) {
-  case WorkshopTool::Magnifier:
-    return workshop.magnifier;
-  case WorkshopTool::Spatula:
-    return workshop.spatula;
-  }
-  std::abort();
-}
-
 /// An object to stand near and the action that works there. `lacking` marks a
 /// source of what the party carries none of.
 struct Goal {
@@ -115,10 +85,7 @@ bool party_carries(const GameView &view, const ObjectSnapshot &source) {
     return std::ranges::find(state.inventory, source.ingredient,
                              [](IngredientId held) {
                                return std::optional{held};
-                             }) != state.inventory.end() ||
-           std::ranges::find(state.tools, source.tool, [](ToolId held) {
-             return std::optional{held};
-           }) != state.tools.end();
+                             }) != state.inventory.end();
   };
   return holds(view.progression.chef) || holds(view.progression.appraiser);
 }
@@ -138,23 +105,6 @@ std::vector<Goal> collection_goals(const GameView &view) {
     }
   }
   std::ranges::stable_partition(goals, &Goal::lacking);
-  return goals;
-}
-
-std::vector<Goal> repair_goals(const GameView &view, Actor actor) {
-  std::vector<Goal> goals;
-  const auto &tools = state_of(view, actor).tools;
-  for (const auto &object : view.world.objects) {
-    if (object.state != ObjectState::Destroyed || !object.repair_with) {
-      continue;
-    }
-    const auto tool = *object.repair_with;
-    if (std::ranges::find(tools, tool) != tools.end()) {
-      goals.push_back({.target = object.id,
-                       .area = object.area,
-                       .action = Repair{.target = object.id, .tool = tool}});
-    }
-  }
   return goals;
 }
 
@@ -206,25 +156,9 @@ std::optional<Route> route_to(const CellMap &map, GridPosition start,
   return std::nullopt;
 }
 
-/// Whether repairing `passage` alone brings a goal into reach from `from`.
-bool opens_a_way(const WorldSnapshot &world, const Goal &passage,
-                 const std::vector<Goal> &goals, GridPosition from,
-                 std::uint32_t range) {
-  auto repaired = world;
-  for (auto &object : repaired.objects) {
-    if (object.id == passage.target) {
-      object.traversable = true;
-    }
-  }
-  return route_to(CellMap(repaired), from, goals, range).has_value();
-}
-
-/// Collection comes first, what the party lacks before anything else; repair is
-/// the fallback when nothing is collectable, and only of a passage that opens
-/// the way to stock.
+/// What the party lacks first, then any other stocked source.
 std::optional<Route> next_errand(const CompanionConfig &config,
-                                 const GameView &view, Actor actor,
-                                 GridPosition from) {
+                                 const GameView &view, GridPosition from) {
   const auto range = config.exploration.collection_distance;
   const CellMap map(view.world);
   const auto goals = collection_goals(view);
@@ -233,16 +167,7 @@ std::optional<Route> next_errand(const CompanionConfig &config,
   if (auto errand = route_to(map, from, lacking, range)) {
     return errand;
   }
-  if (auto errand = route_to(map, from, goals, range)) {
-    return errand;
-  }
-  std::vector<Goal> repairs;
-  std::ranges::copy_if(repair_goals(view, actor), std::back_inserter(repairs),
-                       [&](const Goal &passage) {
-                         return opens_a_way(view.world, passage, goals, from,
-                                            range);
-                       });
-  return route_to(map, from, repairs, range);
+  return route_to(map, from, goals, range);
 }
 
 std::optional<IngredientId> first_unidentified(const GameView &view) {
@@ -341,15 +266,6 @@ std::optional<Action> role_craft(const WorkshopConfig &workshop, Actor actor,
 /// enough, so a chef spends no ingredients on a second.
 std::optional<Action> ai_role_work(const WorkshopConfig &workshop, Actor actor,
                                    const GameView &view) {
-  const auto tool = role_tool(actor);
-  const auto replacement = replacement_for(workshop, tool);
-  const auto carries = [replacement](const ActorSnapshot &state) {
-    return std::ranges::find(state.tools, replacement) != state.tools.end();
-  };
-  if (tool_state(view.workshop, tool) == ToolState::Damaged &&
-      (carries(view.progression.chef) || carries(view.progression.appraiser))) {
-    return ReplaceTool{tool};
-  }
   if (actor == Actor::Chef && food_to_feed(view)) {
     return std::nullopt;
   }
@@ -370,10 +286,7 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
       const auto position = cell_of_actor(view, actor);
       const auto range = config.exploration.collection_distance;
       const auto goals = collection_goals(view);
-      const auto repairs = repair_goals(view, actor);
-      const auto *goal = goal_in_range(goals, position, range);
-      goal = goal != nullptr ? goal : goal_in_range(repairs, position, range);
-      if (goal != nullptr) {
+      if (const auto *goal = goal_in_range(goals, position, range)) {
         command.action = goal->action;
       }
     }
@@ -383,8 +296,6 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
     command.action = Enter{};
   } else if (input.interact) {
     command.action = role_craft(config.workshop, actor, view);
-  } else if (input.replace_tool) {
-    command.action = ReplaceTool{role_tool(actor)};
   } else if (input.feed) {
     if (const auto food = food_to_feed(view)) {
       command.action = Feed{*food};
@@ -406,7 +317,7 @@ ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
       ai_role_work(config.workshop, partner, view)) {
     return {};
   }
-  if (worth_entering(config, actor, view)) {
+  if (worth_entering(config, view)) {
     return {.action = Enter{}};
   }
   // One actor ends the day, so a shared step cannot end two.
@@ -433,15 +344,15 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     return in_city ? ActorCommand{.action = ReturnToBase{}} : ActorCommand{};
   }
   if (!in_city) {
-    return worth_entering(config, actor, view) ? ActorCommand{.action = Enter{}}
-                                               : ActorCommand{};
+    return worth_entering(config, view) ? ActorCommand{.action = Enter{}}
+                                        : ActorCommand{};
   }
   const auto &body = body_of(view, actor);
   // In the air there is nothing to choose: keep the way the jump or drop went.
   if (body.stance == Stance::Airborne) {
     return {.movement = {.direction = body.heading}};
   }
-  const auto route = next_errand(config, view, actor, cell_of(body.position));
+  const auto route = next_errand(config, view, cell_of(body.position));
   if (!route) {
     return {.action = ReturnToBase{}};
   }
@@ -480,11 +391,6 @@ ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
   return exploration.collect(actor, command.source);
 }
 
-ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
-                 Repair command) {
-  return exploration.repair(actor, command.target, command.tool);
-}
-
 ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
                  Appraise command) {
   return workshop.appraise(actor, command.ingredient);
@@ -493,11 +399,6 @@ ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
 ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
                  Cook command) {
   return workshop.cook(actor, command.food);
-}
-
-ActionResult run(Exploration & /*exploration*/, Workshop &workshop,
-                 Actor /*actor*/, ReplaceTool command) {
-  return workshop.replace_tool(command.tool);
 }
 
 ActionResult run(Exploration & /*exploration*/, Workshop &workshop,
@@ -558,42 +459,18 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
       action);
 }
 
-bool repair_opens_stock(const CompanionConfig &config, Actor actor,
-                        const GameView &view, ObjectId passage) {
-  const auto from = landing_cell(view, actor);
-  const auto range = config.exploration.collection_distance;
-  const auto goals = collection_goals(view);
-  const auto in_reach = [&](const WorldSnapshot &world) {
-    const auto cells = reachable_cells(CellMap(world), from);
-    return std::ranges::count_if(goals, [&](const Goal &goal) {
-      return std::ranges::any_of(cells, [&](GridPosition cell) {
-        return distance(cell, goal.area) <= range;
-      });
-    });
-  };
-  auto repaired = view.world;
-  for (auto &object : repaired.objects) {
-    if (object.id == passage) {
-      object.traversable = true;
-    }
-  }
-  return in_reach(repaired) > in_reach(view.world);
-}
-
-bool worth_entering(const CompanionConfig &config, Actor actor,
-                    const GameView &view) {
+bool worth_entering(const CompanionConfig &config, const GameView &view) {
   const auto entry = config.exploration.entry;
   return view.progression.remaining_exploration.count() > 0 &&
          stands_on(CellMap(view.world), entry) &&
-         next_errand(config, view, actor, entry).has_value();
+         next_errand(config, view, entry).has_value();
 }
 
 Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}
 
 std::optional<Errand> Companion::errand(Actor actor,
                                         const GameView &view) const {
-  const auto route =
-      next_errand(config, view, actor, landing_cell(view, actor));
+  const auto route = next_errand(config, view, landing_cell(view, actor));
   if (!route) {
     return std::nullopt;
   }

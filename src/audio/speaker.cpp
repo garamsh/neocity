@@ -46,9 +46,6 @@ const char *effect_file(Cue cue) {
     return "effects/land.ogg";
   case Cue::Collect:
     return "effects/collect.ogg";
-  case Cue::Repair:
-    return "effects/repair.ogg";
-  case Cue::Hurt:
   case Cue::Fall:
     return "effects/hurt.ogg";
   case Cue::Travel:

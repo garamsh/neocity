@@ -126,7 +126,7 @@ test-title: build
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop KeyCoverageCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 22 live checks passed (survival player one, survival player two).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 18 live checks passed (survival player one, survival player two).' "$$log"
 
 test-timing: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
@@ -144,7 +144,7 @@ test-timing: build
 test-survival: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 259 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, tools, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 249 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, drip, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
 
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
@@ -171,7 +171,7 @@ test-loss: build
 test-audio: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AudioFeedbackCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 33 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, burn, repair, fall, flourishes, effects off, music off).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 30 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, drip, fall, flourishes, effects off, music off).' "$$log"
 
 ci: lint format test
 

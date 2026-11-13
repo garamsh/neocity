@@ -197,7 +197,7 @@ const RESIZE_FRAMES: int = 120
 ## The words of a source's kind the map once wrote beside its supply.
 const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## The map's words that are neither a place's name nor a number, such as a
-## count or the health an acid drip takes: a broken passage's mark and the
+## count: a broken passage's mark and the
 ## actors' tags.
 const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
 
@@ -498,10 +498,10 @@ func _shown_canvas(window: String) -> bool:
 		return false
 	return true
 
-## Whether NEXT names what the interact key does: collect, repair, appraise
+## Whether NEXT names what the interact key does: collect, appraise
 ## or cook, as the controls page lists for it.
 func _names_interact(line: String) -> bool:
-	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+	for verb: String in ["Collect from ", "Appraise ", "Cook "]:
 		if line.begins_with(verb):
 			return true
 	return false

@@ -61,7 +61,7 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// Draws the city grid with its ground, scenery, objects, stock and actors,
 /// in the scene's own pixels. Destroyed, depleted and unavailable objects
 /// each have a mark; a dormant object, and a bag emptied or carried off, is
-/// not drawn, and a repaired one looks intact. A source in `out_of_reach`
+/// not drawn. A source in `out_of_reach`
 /// has stock no player can walk to: it loses the gold frame. Each actor faces
 /// the way it last walked, alternates its walking frames while it moves, and
 /// climbs on a ladder.
@@ -69,7 +69,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &content,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach);
-/// The icon of the ingredient, tool or dish the `survival` library names
+/// The icon of the ingredient or dish the `survival` library names
 /// `name`, if the art set has one.
 [[nodiscard]] std::optional<Image> item_icon(std::string_view name);
 /// Draws the city's marks on the screen where the shot's camera shows what
@@ -88,7 +88,6 @@ void paint_city(godot::Node2D &canvas, const Art &art,
 /// camera as `map_view` and where it heads as `map_heading`, each a Transform2D
 /// from the scene's pixels to the screen's.
 void paint_city_labels(godot::Node2D &canvas, const Art &art,
-                       const survival::Content &content,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered);

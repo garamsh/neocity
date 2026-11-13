@@ -45,9 +45,7 @@ World::World(const std::vector<ObjectDefinition> &definitions) {
         definition.area.width <= 0 || definition.area.height <= 0 ||
         !valid_threshold(definition.exposed_at) ||
         !valid_threshold(definition.destroyed_after) ||
-        (definition.repair_with && !is_passage(definition.kind)) ||
-        (definition.ingredient && definition.tool) ||
-        ((definition.ingredient || definition.tool) !=
+        (definition.ingredient.has_value() !=
          (definition.kind == ObjectKind::MaterialSource)) ||
         (definition.supported_by &&
          definition.kind != ObjectKind::MaterialSource)) {
@@ -67,8 +65,7 @@ World::World(const std::vector<ObjectDefinition> &definitions) {
   for (const auto &definition : definitions) {
     const auto state =
         definition.exposed_at ? ObjectState::Dormant : ObjectState::Intact;
-    objects.push_back(
-        {.definition = definition, .state = state, .repaired_at = {}});
+    objects.push_back({.definition = definition, .state = state});
   }
 }
 
@@ -87,32 +84,11 @@ WorldUpdateResult World::update(WorldProgression progression) {
     if (object.state == ObjectState::Intact &&
         object.definition.destroyed_after &&
         reached(*object.definition.destroyed_after,
-                {.elapsed = current.elapsed - object.repaired_at.elapsed,
-                 .acid = {peak_acid.value - object.repaired_at.acid.value}})) {
+                {.elapsed = current.elapsed, .acid = peak_acid})) {
       object.state = ObjectState::Destroyed;
     }
   }
   return WorldUpdateResult::Applied;
-}
-
-RepairResult World::repair(ObjectId id, ToolId tool) {
-  const auto object = std::ranges::find_if(
-      objects, [id](const Object &entry) { return entry.definition.id == id; });
-  if (object == objects.end()) {
-    return RepairResult::UnknownObject;
-  }
-  if (object->state != ObjectState::Destroyed) {
-    return RepairResult::NotDamaged;
-  }
-  if (!object->definition.repair_with) {
-    return RepairResult::NotRepairable;
-  }
-  if (tool != *object->definition.repair_with) {
-    return RepairResult::WrongTool;
-  }
-  object->state = ObjectState::Intact;
-  object->repaired_at = {.elapsed = current.elapsed, .acid = peak_acid};
-  return RepairResult::Applied;
 }
 
 WorldSnapshot World::snapshot() const {
@@ -135,10 +111,8 @@ WorldSnapshot World::snapshot() const {
          .traversable = intact && (is_passage(definition.kind) ||
                                    definition.kind == ObjectKind::Terrain),
          .material_available =
-             intact && supported && (definition.ingredient || definition.tool),
-         .ingredient = definition.ingredient,
-         .tool = definition.tool,
-         .repair_with = definition.repair_with});
+             intact && supported && definition.ingredient.has_value(),
+         .ingredient = definition.ingredient});
   }
   return result;
 }

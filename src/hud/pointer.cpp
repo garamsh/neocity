@@ -36,8 +36,6 @@ const char *key_word(PlayerKey key) {
     return "feed";
   case PlayerKey::EndDay:
     return "end_day";
-  case PlayerKey::ReplaceTool:
-    return "replace_tool";
   case PlayerKey::Travel:
     return "travel";
   }

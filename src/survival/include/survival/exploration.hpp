@@ -114,26 +114,17 @@ struct Body {
 
 /// Current input only; no movement or collection requests are queued.
 /// `jump` is a press, tried on every physics tick of one movement unit until
-/// it takes.
+/// it takes. Running has no limit.
 struct ExplorationInput {
   Direction direction = Direction::Idle;
   bool running = false;
   bool jump = false;
 };
 
-/// Where one physics tick leaves a body.
-struct PhysicsStep {
-  Body body;
-  /// Whether it moved sideways at running speed, which only a standing body
-  /// does.
-  bool ran = false;
-};
-
 /// One physics tick of `body` under `input`, the rule behind both movement and
-/// route planning. `input.running` is taken as allowed: stamina is the
-/// caller's, spent by what `ran` reports.
-[[nodiscard]] PhysicsStep physics_tick(const CellMap &map, Body body,
-                                       ExplorationInput input);
+/// route planning.
+[[nodiscard]] Body physics_tick(const CellMap &map, Body body,
+                                ExplorationInput input);
 
 /// One way out of a cell an actor holds, and the move that takes it.
 enum class Move : std::uint8_t {
@@ -176,13 +167,11 @@ struct SourceStock {
   friend bool operator==(const SourceStock &, const SourceStock &) = default;
 };
 
-/// Temporary tuning: stamina is spent and recovered per 100ms movement unit.
-/// `collection_distance` also bounds repairs. `collection_time` is how long
-/// one collection, ingredient or tool, holds the collecting actor.
+/// Temporary tuning. `collection_time` is how long one collection holds the
+/// collecting actor.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
-  std::uint32_t maximum_stamina = 10;
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
   std::chrono::microseconds collection_time{};
@@ -196,10 +185,9 @@ struct Collecting {
   friend bool operator==(const Collecting &, const Collecting &) = default;
 };
 
-/// Detailed body and tick-based stamina; base has no movement or stamina use.
+/// Detailed body and collection hold; base has no movement.
 struct ExplorerSnapshot {
   Body body;
-  std::uint32_t stamina = 0;
   std::optional<Collecting> collecting = std::nullopt;
   friend bool operator==(const ExplorerSnapshot &,
                          const ExplorerSnapshot &) = default;
@@ -226,19 +214,16 @@ enum class CollectionResult : std::uint8_t {
 };
 
 /// Coordinates existing progression/world commands; owns neither dependency.
-/// Route actor entry, return, damage and time through this instance during
-/// play.
+/// Route actor entry, return and time through this instance during play.
 class Exploration {
 public:
   /// Throws std::invalid_argument for invalid stock, tuning or an unsafe entry.
   Exploration(Simulation &progression, World &city, ExplorationConfig settings);
-  /// Starts at the configured entry with fresh stamina and no partial movement.
+  /// Starts at the configured entry with no partial movement.
   [[nodiscard]] Result enter(Actor actor);
   /// Synchronizes the detailed base position while preserving run state;
   /// refused with `Result::Busy` while the actor is collecting.
   [[nodiscard]] Result return_to_base(Actor actor);
-  /// Applies one health-slot hit and synchronizes any exhaustion return.
-  [[nodiscard]] Result damage(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// Each 100ms movement unit runs its physics ticks under one input.
   /// The world follows the run's clock here only, at the acid the caller
@@ -248,13 +233,10 @@ public:
                                const std::array<ExplorationInput, 2> &inputs,
                                AcidLevel acid);
   /// Checks identity, supply, distance and shared stock before recording the
-  /// source's ingredient or tool, then holds the actor for `collection_time`
-  /// while the shared clock runs on. Expiry, a fall or exhaustion ends the
-  /// hold, and the item is kept.
+  /// source's ingredient, then holds the actor for `collection_time` while the
+  /// shared clock runs on. Expiry or a fall ends the hold, and the item is
+  /// kept.
   [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
-  /// Repairs from within interaction distance with a tool this actor carries;
-  /// the tool is kept. Refused while the actor is collecting.
-  [[nodiscard]] RepairResult repair(Actor actor, ObjectId target, ToolId tool);
   /// Returns independent values; requests are never retained in this snapshot.
   [[nodiscard]] ExplorationSnapshot snapshot() const;
 

@@ -288,10 +288,10 @@ func _follow_to_the_end() -> void:
 		rolls_seen = _int("escape_rolls")
 		await _follow_next()
 
-## Whether NEXT names what the interact key does: collect, repair, appraise
+## Whether NEXT names what the interact key does: collect, appraise
 ## or cook, as the controls page lists for it.
 func _names_interact(line: String) -> bool:
-	for verb: String in ["Collect from ", "Repair ", "Appraise ", "Cook "]:
+	for verb: String in ["Collect from ", "Appraise ", "Cook "]:
 		if line.begins_with(verb):
 			return true
 	return false

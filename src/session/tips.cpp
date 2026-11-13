@@ -67,9 +67,6 @@ bool due(hud::Tip tip, const hud::SurvivalFrame &frame) {
                                });
   case hud::Tip::Feed:
     return at_base && !view.workshop.foods.empty();
-  case hud::Tip::ToolDamage:
-    return view.workshop.magnifier == survival::ToolState::Damaged ||
-           view.workshop.spatula == survival::ToolState::Damaged;
   case hud::Tip::Rejected:
     return !view.workshop.rejected_foods.empty();
   case hud::Tip::Acid:

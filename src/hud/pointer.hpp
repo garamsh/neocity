@@ -22,13 +22,7 @@ namespace neocity::hud {
 enum class MenuKey : std::uint8_t { Confirm, Pause, Menu };
 
 /// One of a human's keys a click stands for.
-enum class PlayerKey : std::uint8_t {
-  Interact,
-  Feed,
-  EndDay,
-  ReplaceTool,
-  Travel
-};
+enum class PlayerKey : std::uint8_t { Interact, Feed, EndDay, Travel };
 
 /// The menu entry its number key chooses, numbered from 1.
 struct OptionPress {

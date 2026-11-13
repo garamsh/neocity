@@ -32,8 +32,6 @@ void finish_days(Simulation &simulation, std::uint32_t days) {
 
 WorkshopConfig balance() {
   return {.recipes = {{.food = PORRIDGE, .ingredients = {RICE}}},
-          .magnifier = ToolId{20},
-          .spatula = ToolId{21},
           .new_food_score = 10,
           .new_ingredient_score = 3,
           .satisfying_score = 12,
@@ -198,7 +196,7 @@ TEST(Escape, AStoredDishCannotBeFedAfterEscape) {
   ADD_FAILURE() << "no seed in range cooks a dish";
 }
 
-// World has no phase; its update and repair are reached only through these.
+// World has no phase; its update is reached only through these.
 TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   Simulation simulation({.exploration_budget = 10s, .seed = 2});
   World world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 8, .height = 1}},
@@ -213,7 +211,6 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
-                           .maximum_stamina = 2,
                            .collection_distance = 2,
                            .sources = {{.id = SOURCE}}});
   // The control: entering and collecting apply before the escape.
@@ -236,11 +233,8 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
-  EXPECT_EQ(exploration.damage(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
-  EXPECT_NE(exploration.repair(Actor::Chef, FLOOR, ToolId{20}),
-            RepairResult::Applied);
   EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
@@ -249,9 +243,6 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   EXPECT_EQ(workshop.feed(PORRIDGE), WorkshopResult::NoFood);
   EXPECT_EQ(workshop.end_day_unfed(AcidLevel{9}),
             WorkshopResult::NotInWorkshop);
-  EXPECT_EQ(workshop.replace_tool(WorkshopTool::Spatula),
-            WorkshopResult::NotInWorkshop);
-  workshop.damage_tool(WorkshopTool::Magnifier);
   EXPECT_EQ(escape.check(), EscapeResult::NotDue);
   EXPECT_EQ(simulation.snapshot(), progression);
   EXPECT_EQ(world.snapshot(), city);
@@ -294,7 +285,6 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
-                           .maximum_stamina = 2,
                            .collection_distance = 2,
                            .sources = {{.id = SOURCE}}});
   // The control: entering and collecting apply before the loss.
@@ -315,11 +305,8 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
-  EXPECT_EQ(exploration.damage(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
-  EXPECT_NE(exploration.repair(Actor::Chef, FLOOR, ToolId{20}),
-            RepairResult::Applied);
   EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
@@ -327,7 +314,6 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.end_day_unfed(AcidLevel{9}),
             WorkshopResult::NotInWorkshop);
-  workshop.damage_tool(WorkshopTool::Magnifier);
   EXPECT_EQ(escape.check(), EscapeResult::NotDue);
   EXPECT_EQ(simulation.snapshot(), progression);
   EXPECT_EQ(world.snapshot(), city);

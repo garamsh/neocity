@@ -75,7 +75,6 @@ private:
   void step();
   void run_action(survival::Actor actor, const survival::Action &action,
                   std::uint32_t day);
-  void hurt_in_hazards(const survival::ExplorationSnapshot &before);
   void report_returns(const survival::Snapshot &before,
                       const std::array<bool, 2> &walked_home);
   void report_world_changes(const survival::WorldSnapshot &before);

@@ -99,10 +99,6 @@ constexpr float APPRAISER_FACE_Y = 27.0F;
 constexpr float FACE = 32.0F;
 constexpr float ACTOR_COLUMN = MARGIN + PORTRAIT + 12.0F;
 constexpr float ACTOR_TEXT_WIDTH = ACTOR_WIDTH - ACTOR_COLUMN - FRAME;
-constexpr float HEART_PITCH = 26.0F;
-constexpr std::uint32_t STAMINA_SEGMENTS = 5;
-constexpr float SEGMENT_WIDTH = 19.0F;
-constexpr float SEGMENT_HEIGHT = 8.0F;
 constexpr float BAG_X = MARGIN + 2.0F * (ACTOR_WIDTH + GAP);
 constexpr std::size_t BAG_SLOTS = 7;
 constexpr float SLOT = 64.0F;
@@ -200,9 +196,6 @@ constexpr float ENTRANCE_LIFT = 18.0F;
 /// The pause chip under the time, where a first player looks for keys.
 constexpr const char *PAUSE_HINT = "Pause, keys";
 constexpr float CHIP_PAD = 8.0F;
-/// A damaged base tool, as its actor's block marks it; the workshop's
-/// tuning gives a damaged tool 40% success.
-constexpr const char *DAMAGED_TOOL = "tool 40%";
 constexpr const char *NO_DISH = "None stored yet";
 /// A first-play tip: one line on a panel, and its gold caption.
 constexpr float TIP_HEIGHT = 36.0F;
@@ -227,7 +220,6 @@ struct KeyLabels {
   const char *run;
   const char *travel;
   const char *interact;
-  const char *replace_tool;
   const char *feed;
   const char *end_day;
   const char *switch_actor;
@@ -240,7 +232,6 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .run = "Shift",
                                           .travel = "Q",
                                           .interact = "E",
-                                          .replace_tool = "R",
                                           .feed = "F",
                                           .end_day = "G",
                                           .switch_actor = "Tab",
@@ -251,7 +242,6 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .run = "H",
                                           .travel = "U",
                                           .interact = "O",
-                                          .replace_tool = "P",
                                           .feed = "[",
                                           .end_day = "]",
                                           .switch_actor = "B",
@@ -306,16 +296,6 @@ const survival::ActorSnapshot &state_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
-std::uint32_t stamina_of(const GameView &view, Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return view.exploration.chef.stamina;
-  case Actor::Appraiser:
-    return view.exploration.appraiser.stamina;
-  }
-  std::abort();
-}
-
 /// The collection holding this actor, if one is under way.
 const std::optional<survival::Collecting> &collecting_of(const GameView &view,
                                                          Actor actor) {
@@ -334,37 +314,6 @@ GridPosition position_of(const GameView &view, Actor actor) {
     return survival::cell_of(view.exploration.chef.body.position);
   case Actor::Appraiser:
     return survival::cell_of(view.exploration.appraiser.body.position);
-  }
-  std::abort();
-}
-
-survival::ToolState role_tool_state(const GameView &view, Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return view.workshop.spatula;
-  case Actor::Appraiser:
-    return view.workshop.magnifier;
-  }
-  std::abort();
-}
-
-const char *role_tool_name(Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return "Spatula";
-  case Actor::Appraiser:
-    return "Magnifier";
-  }
-  std::abort();
-}
-
-survival::ToolId role_replacement(const survival::WorkshopConfig &workshop,
-                                  Actor actor) {
-  switch (actor) {
-  case Actor::Chef:
-    return workshop.spatula;
-  case Actor::Appraiser:
-    return workshop.magnifier;
   }
   std::abort();
 }
@@ -388,13 +337,6 @@ String seconds(std::chrono::microseconds span) {
   const auto tenths =
       static_cast<std::uint64_t>(std::chrono::ceil<Tenths>(span).count());
   return number(tenths / 10) + "." + number(tenths % 10) + "s";
-}
-
-bool carried(const GameView &view, survival::ToolId tool) {
-  return std::ranges::any_of(ACTORS, [&](Actor actor) {
-    const auto &tools = state_of(view, actor).tools;
-    return std::ranges::find(tools, tool) != tools.end();
-  });
 }
 
 bool identified(const GameView &view, IngredientId ingredient) {
@@ -481,8 +423,6 @@ String offered_step(const GameView &view, const survival::Action &action) {
         using Offer = std::decay_t<decltype(offer)>;
         if constexpr (std::is_same_v<Offer, survival::Collect>) {
           return "Collect from " + rendering::place_name(view, offer.source);
-        } else if constexpr (std::is_same_v<Offer, survival::Repair>) {
-          return "Repair " + rendering::place_name(view, offer.target);
         } else if constexpr (std::is_same_v<Offer, survival::Appraise>) {
           return "Appraise " +
                  from(survival::ingredient_name(offer.ingredient));
@@ -532,8 +472,7 @@ String move_words(survival::Move move, const KeyLabels &keys) {
 /// errand does not count: the city line would send the human straight home.
 bool worth_setting_out(const SurvivalFrame &frame, Actor actor) {
   return survival::key_set(frame.control, actor).has_value() &&
-         survival::worth_entering(frame.content.get().companion, actor,
-                                  frame.view);
+         survival::worth_entering(frame.content.get().companion, frame.view);
 }
 
 /// Whether setting out today gives any human something to do.
@@ -554,22 +493,13 @@ String city_step(const SurvivalFrame &frame, Actor actor,
       offers.interact &&
       std::holds_alternative<survival::Collect>(*offers.interact);
   const bool walking = offers.errand && offers.errand->step.has_value();
-  const auto *repair = offers.interact
-                           ? std::get_if<survival::Repair>(&*offers.interact)
-                           : nullptr;
-  const bool opens =
-      repair != nullptr &&
-      survival::repair_opens_stock(frame.content.get().companion, actor,
-                                   frame.view, repair->target);
   if (const auto &held = collecting_of(frame.view, actor)) {
     return "Collecting from " +
            rendering::place_name(frame.view, held->source) + ": " +
            seconds(held->remaining) + " left.";
   }
-  // A source passed on the way to what the party lacks would hold the actor,
-  // a passage passed on the way is worth it only for stock out of reach
-  // without it, and a repair with no errand left opens no way to stock.
-  if (offers.interact && offers.errand && (!walking || opens)) {
+  // A source passed on the way to what the party lacks would hold the actor.
+  if (offers.interact && offers.errand && !walking) {
     return offered_step(frame.view, *offers.interact) +
            (collecting ? " (takes " + collection_clock(frame) + ")" : String());
   }
@@ -606,21 +536,6 @@ std::optional<Job> role_step(const SurvivalFrame &frame, Actor actor,
   return std::nullopt;
 }
 
-std::optional<Job> replacement_step(const SurvivalFrame &frame) {
-  const auto &workshop = frame.content.get().companion.workshop;
-  for (const auto actor : ACTORS) {
-    const auto keys = survival::key_set(frame.control, actor);
-    if (keys &&
-        role_tool_state(frame.view, actor) == survival::ToolState::Damaged &&
-        carried(frame.view, role_replacement(workshop, actor))) {
-      return Job{
-          .text = "Replace the damaged " + String(role_tool_name(actor)),
-          .press = PlayerPress{.actor = actor, .key = PlayerKey::ReplaceTool}};
-    }
-  }
-  return std::nullopt;
-}
-
 bool has_unidentified(const GameView &view) {
   const auto pack = pack_of(view);
   return std::ranges::any_of(pack, [&view](const auto &entry) {
@@ -641,9 +556,6 @@ std::optional<Job> workshop_craft_step(const SurvivalFrame &frame) {
                               "The appraiser is identifying your finds.")) {
       return step;
     }
-  }
-  if (const auto step = replacement_step(frame)) {
-    return step;
   }
   const auto chef_keys = survival::key_set(frame.control, Actor::Chef);
   if (chef_keys && !dish_to_feed(frame)) {
@@ -1032,16 +944,6 @@ godot::Rect2 card_button(const rendering::Art &drawing) {
               48.0F);
 }
 
-void paint_hearts(godot::Node2D &canvas, const rendering::Art &drawing, float x,
-                  float y, std::uint8_t health) {
-  for (std::uint8_t slot = 0; slot < 3; ++slot) {
-    drawing.image(canvas,
-                  slot < health ? rendering::Image::HeartFull
-                                : rendering::Image::HeartEmpty,
-                  Vector2(x + static_cast<float>(slot) * HEART_PITCH, y));
-  }
-}
-
 /// Who plays an actor: P1, P2 or AI.
 String player_tag(const SurvivalFrame &frame, Actor actor) {
   const auto keys = survival::key_set(frame.control, actor);
@@ -1056,11 +958,10 @@ String actor_status(const SurvivalFrame &frame, Actor actor) {
 }
 
 /// One actor at the bottom left: its face in a frame, who plays it and where
-/// it is, a damaged base tool, its hearts and its stamina in segments.
+/// it is.
 void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
                  const SurvivalFrame &frame, Actor actor, float x) {
   const auto tones = rendering::palette();
-  const auto &view = frame.view;
   const bool human = survival::key_set(frame.control, actor).has_value();
   canvas.draw_rect(rect(x, FOOT_Y + 8.0F, ACTOR_WIDTH, FOOT_HEIGHT - 8.0F),
                    tones.background);
@@ -1079,43 +980,16 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   const String status = actor_status(frame, actor);
   drawing.text(canvas, column, FOOT_Y + 22.0F, status, SMALL_SIZE,
                human ? tones.cyan : tones.muted, CHANGING);
-  if (role_tool_state(view, actor) == survival::ToolState::Damaged) {
-    drawing.text(canvas, column, FOOT_Y + 79.0F, DAMAGED_TOOL, SMALL_SIZE,
-                 tones.danger, CHANGING);
-  }
-  paint_hearts(canvas, drawing, column - 4.0F, FOOT_Y + 24.0F,
-               state_of(view, actor).health);
-  const float stamina = drawing.glide(
-      "stamina" + number(index_of(actor)),
-      static_cast<float>(stamina_of(view, actor)) /
-          static_cast<float>(
-              frame.content.get().companion.exploration.maximum_stamina));
-  for (std::uint32_t segment = 0; segment < STAMINA_SEGMENTS; ++segment) {
-    const auto area =
-        rect(column + static_cast<float>(segment) * (SEGMENT_WIDTH + 3.0F),
-             FOOT_Y + 62.0F, SEGMENT_WIDTH, SEGMENT_HEIGHT);
-    rendering::inset(canvas, area.grow(1.0F));
-    // A segment is lit while the stamina reaches into it.
-    if (stamina * static_cast<float>(STAMINA_SEGMENTS) >
-        static_cast<float>(segment) + 0.05F) {
-      canvas.draw_rect(area, tones.danger);
-      canvas.draw_rect(
-          rect(area.position.x, area.position.y, area.size.x, 2.0F),
-          tones.danger.lightened(0.4F));
-    }
-  }
 }
 
-/// One kind of thing in the bag; a spare tool names who carries it, since
-/// a repair or a replacement takes the acting actor's own.
+/// One kind of ingredient in the bag.
 struct BagItem {
   std::string_view name;
   std::uint32_t count = 0;
   bool known = true;
-  String owner;
 };
 
-/// The ingredients both actors carry, then each actor's spare tools.
+/// The ingredients both actors carry.
 std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   std::vector<BagItem> items;
@@ -1123,27 +997,14 @@ std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
     const auto ingredient = IngredientId{value};
     items.push_back({.name = survival::ingredient_name(ingredient),
                      .count = count,
-                     .known = identified(view, ingredient),
-                     .owner = {}});
-  }
-  for (const auto actor : ACTORS) {
-    std::map<std::uint32_t, std::uint32_t> tools;
-    for (const auto tool : state_of(view, actor).tools) {
-      ++tools[tool.value];
-    }
-    for (const auto &[value, count] : tools) {
-      items.push_back({.name = survival::tool_name(survival::ToolId{value}),
-                       .count = count,
-                       .known = true,
-                       .owner = player_tag(frame, actor)});
-    }
+                     .known = identified(view, ingredient)});
   }
   return items;
 }
 
 /// The bag at the bottom middle: numbered slots with each item's icon and
-/// count, a mark on an ingredient not yet identified and a spare tool's
-/// owner. Leaves on the canvas the drawn items as the `bag` meta.
+/// count and a mark on an ingredient not yet identified. Leaves on the canvas
+/// the drawn items as the `bag` meta.
 void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
                const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
@@ -1186,17 +1047,10 @@ void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
       chip(canvas, drawing, at.x + shown - 13.0F, at.y + 16.0F, "?", SMALL_SIZE,
            tones.gold);
     }
-    if (!item.owner.is_empty()) {
-      chip(canvas, drawing,
-           at.x + shown - drawing.text_width(item.owner, SMALL_SIZE, CHANGING) -
-               6.0F,
-           at.y + 16.0F, item.owner, SMALL_SIZE, tones.cyan);
-    }
     godot::Dictionary entry;
     entry.set("name", from(item.name));
     entry.set("count", item.count);
     entry.set("known", item.known);
-    entry.set("owner", item.owner);
     drawn.push_back(entry);
   }
   canvas.set_meta("bag", drawn);
@@ -1212,10 +1066,6 @@ String interact_label(const SurvivalFrame &frame, Actor actor) {
   if (const auto *collect =
           offer ? std::get_if<survival::Collect>(&*offer) : nullptr) {
     return "COLLECT " + rendering::place_name(frame.view, collect->source);
-  }
-  if (const auto *repair =
-          offer ? std::get_if<survival::Repair>(&*offer) : nullptr) {
-    return "REPAIR " + rendering::place_name(frame.view, repair->target);
   }
   return "USE";
 }
@@ -1565,7 +1415,6 @@ String refusal_text(survival::Result result) {
   case survival::Result::InvalidElapsed:
   case survival::Result::NotInWorkshop:
   case survival::Result::MissingIngredients:
-  case survival::Result::MissingTool:
   case survival::Result::RunOver:
     return "That cannot be done now.";
   }
@@ -1591,26 +1440,6 @@ String refusal_text(survival::CollectionResult result) {
   std::abort();
 }
 
-String refusal_text(survival::RepairResult result) {
-  switch (result) {
-  case survival::RepairResult::Applied:
-    return "";
-  case survival::RepairResult::OutOfRange:
-    return "Move closer.";
-  case survival::RepairResult::ToolNotCarried:
-  case survival::RepairResult::WrongTool:
-    return "That repair needs the right tool.";
-  case survival::RepairResult::Busy:
-    return "Finish collecting first.";
-  case survival::RepairResult::UnknownObject:
-  case survival::RepairResult::NotDamaged:
-  case survival::RepairResult::NotRepairable:
-  case survival::RepairResult::NotExploring:
-    return "That cannot be done now.";
-  }
-  std::abort();
-}
-
 String refusal_text(survival::WorkshopResult result) {
   switch (result) {
   case survival::WorkshopResult::Applied:
@@ -1618,10 +1447,8 @@ String refusal_text(survival::WorkshopResult result) {
     return "";
   case survival::WorkshopResult::NotInWorkshop:
     return "Both actors must be at base.";
-  case survival::WorkshopResult::ToolIntact:
-    return "That tool is not damaged.";
   case survival::WorkshopResult::NotCarried:
-    return "No replacement is carried.";
+    return "The ingredients are not carried.";
   case survival::WorkshopResult::NoFood:
     return "No dish is stored.";
   case survival::WorkshopResult::WrongRole:
@@ -1651,9 +1478,6 @@ String done_text(const GameView &view, const ActionEvent &event) {
         } else if constexpr (std::is_same_v<Done, survival::Collect>) {
           return who + String(" took from ") +
                  rendering::place_name(view, action.source) + ".";
-        } else if constexpr (std::is_same_v<Done, survival::Repair>) {
-          return who + String(" repaired ") +
-                 rendering::place_name(view, action.target) + ".";
         } else if constexpr (std::is_same_v<Done, survival::Appraise>) {
           return from(survival::ingredient_name(action.ingredient)) +
                  (failed ? String(" appraisal failed: try again.")
@@ -1662,8 +1486,6 @@ String done_text(const GameView &view, const ActionEvent &event) {
           return from(survival::food_name(action.food)) +
                  (failed ? String(" burned: ingredients lost.")
                          : String(" cooked."));
-        } else if constexpr (std::is_same_v<Done, survival::ReplaceTool>) {
-          return who + String(" replaced a tool.");
         } else if constexpr (std::is_same_v<Done, survival::Feed>) {
           return "Fed " + from(survival::food_name(action.food)) +
                  " to the monster.";
@@ -1697,12 +1519,10 @@ std::vector<KeyRow> rows_for(bool together) {
   rows.push_back(row("Run", one.run, two.run));
   rows.push_back(row("Jump", one.jump, two.jump));
   rows.push_back(row("Set out or return to base", one.travel, two.travel));
-  rows.push_back(row("Collect or repair; appraise or cook at base",
-                     one.interact, two.interact));
+  rows.push_back(
+      row("Collect; appraise or cook at base", one.interact, two.interact));
   rows.push_back(row("Choose the dish, as the chef at base",
                      EVERY_CHOOSE_DISH_KEY, "none"));
-  rows.push_back(
-      row("Replace a damaged base tool", one.replace_tool, two.replace_tool));
   rows.push_back(row("Feed a stored dish", one.feed, two.feed));
   rows.push_back(row("End the day unfed", one.end_day, two.end_day));
   if (together) {
@@ -1716,14 +1536,13 @@ std::vector<KeyRow> rows_for(bool together) {
 }
 
 /// Every refusal a feature can answer with.
-constexpr std::array<survival::ActionResult, 35> REFUSALS{
+constexpr std::array<survival::ActionResult, 24> REFUSALS{
     survival::Result::NotExploring,
     survival::Result::NoExplorationTime,
     survival::Result::Busy,
     survival::Result::InvalidElapsed,
     survival::Result::NotInWorkshop,
     survival::Result::MissingIngredients,
-    survival::Result::MissingTool,
     survival::Result::RunOver,
     survival::CollectionResult::Depleted,
     survival::CollectionResult::Unavailable,
@@ -1731,16 +1550,7 @@ constexpr std::array<survival::ActionResult, 35> REFUSALS{
     survival::CollectionResult::Busy,
     survival::CollectionResult::NotExploring,
     survival::CollectionResult::UnknownSource,
-    survival::RepairResult::OutOfRange,
-    survival::RepairResult::ToolNotCarried,
-    survival::RepairResult::WrongTool,
-    survival::RepairResult::Busy,
-    survival::RepairResult::UnknownObject,
-    survival::RepairResult::NotDamaged,
-    survival::RepairResult::NotRepairable,
-    survival::RepairResult::NotExploring,
     survival::WorkshopResult::NotInWorkshop,
-    survival::WorkshopResult::ToolIntact,
     survival::WorkshopResult::NotCarried,
     survival::WorkshopResult::NoFood,
     survival::WorkshopResult::WrongRole,
@@ -1749,7 +1559,6 @@ constexpr std::array<survival::ActionResult, 35> REFUSALS{
     survival::WorkshopResult::UnknownRecipe,
     survival::Result::Applied,
     survival::CollectionResult::Applied,
-    survival::RepairResult::Applied,
     survival::WorkshopResult::Applied,
     survival::WorkshopResult::Failed};
 
@@ -1783,19 +1592,14 @@ std::vector<String> every_note(const SurvivalFrame &frame,
         ActionEvent{.actor = actor, .action = action, .result = result});
   };
   for (const auto actor : ACTORS) {
-    events.emplace_back(HazardEvent{.actor = actor, .exhausted = false});
-    events.emplace_back(HazardEvent{.actor = actor, .exhausted = true});
     events.emplace_back(FallEvent{.actor = actor});
     for (const auto result : REFUSALS) {
       acted(actor, survival::Enter{}, result);
       acted(actor, survival::ReturnToBase{}, result);
-      acted(actor, survival::ReplaceTool{}, result);
     }
     for (const auto object : places) {
       acted(actor, survival::Collect{.source = object},
             survival::CollectionResult::Applied);
-      acted(actor, survival::Repair{.target = object, .tool = {}},
-            survival::RepairResult::Applied);
     }
   }
   for (const auto object : places) {
@@ -2068,7 +1872,7 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
                           const SurvivalFrame &frame,
                           const rendering::Shot &shot,
                           const std::vector<rendering::Burst> &bursts) {
-  drawing.shift(canvas, rendering::shake(bursts));
+  drawing.shift(canvas, {});
   rendering::paint_mouth(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
@@ -2080,9 +1884,8 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
 
 void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const SurvivalFrame &frame,
-                         const rendering::Shot &shot,
-                         const std::vector<rendering::Burst> &bursts) {
-  drawing.shift(canvas, rendering::shake(bursts));
+                         const rendering::Shot &shot) {
+  drawing.shift(canvas, {});
   rendering::paint_glow(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city_glow(canvas, drawing, frame.content.get(),
@@ -2118,16 +1921,12 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
   canvas.set_meta("hud_notes", note_areas);
   if (city) {
     // The map's words are placed once the HUD has taken its place, clear of
-    // it however far a burn shakes them with the map.
-    const Vector2 shaken = rendering::shake(bursts);
+    // it.
     std::vector<godot::Rect2> covered = notes;
     add_areas(covered, canvas, "hud_panels");
-    for (auto &area : covered) {
-      area = area.grow(shaken.length());
-    }
-    drawing.shift(canvas, shaken);
-    rendering::paint_city_labels(canvas, drawing, frame.content.get(),
-                                 frame.view, frame.control, shot, covered);
+    drawing.shift(canvas, {});
+    rendering::paint_city_labels(canvas, drawing, frame.view, frame.control,
+                                 shot, covered);
     drawing.shift(canvas, {});
   }
   if (tip) {
@@ -2256,9 +2055,6 @@ String tip_text(Tip tip) {
   case Tip::Feed:
     return "Feeding ends the day. New foods and new ingredients score the "
            "most.";
-  case Tip::ToolDamage:
-    return "A base tool is damaged and fails more often: replace it with a "
-           "spare.";
   case Tip::Rejected:
     return "The monster hated that dish, and refuses that food from now on.";
   case Tip::Acid:
@@ -2284,8 +2080,6 @@ String tip_name(Tip tip) {
     return "cook";
   case Tip::Feed:
     return "feed";
-  case Tip::ToolDamage:
-    return "tool_damage";
   case Tip::Rejected:
     return "rejected";
   case Tip::Acid:
@@ -2532,13 +2326,12 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   for (const auto &line : day_result(frame)) {
     lines.push_back(fitted(line, RESULT_SIZE, RESULT_WIDTH - 2.0F * INSET));
   }
-  // Status and damaged-tool words occupy separate lines.
+  // Status words occupy their own lines.
   for (const auto actor : ACTORS) {
     lines.push_back(
         fitted(actor_status(frame, actor), SMALL_SIZE, ACTOR_TEXT_WIDTH));
   }
   lines.push_back(fitted("AI  at base", SMALL_SIZE, ACTOR_TEXT_WIDTH));
-  lines.push_back(fitted(DAMAGED_TOOL, SMALL_SIZE, ACTOR_TEXT_WIDTH));
   // The city's action: a lone human's button and keys, or each of two
   // humans' rows, with every place its key can act on in the button, and
   // the hold's words in place of the verb.
@@ -2554,7 +2347,6 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
     for (const auto object : places) {
       const String place = rendering::place_name(frame.view, object);
       labels.push_back("COLLECT " + place);
-      labels.push_back("REPAIR " + place);
     }
   }
   for (const auto &label : labels) {
@@ -2637,11 +2429,6 @@ String describe(const GameView &view, const Event &event) {
               std::visit([](auto result) { return refusal_text(result); },
                          happened.result);
           return refusal.is_empty() ? done_text(view, happened) : refusal;
-        } else if constexpr (std::is_same_v<Happened, HazardEvent>) {
-          return String(actor_name(happened.actor)) +
-                 (happened.exhausted
-                      ? String(" collapsed and was carried to base.")
-                      : String(" was burned by an acid drip."));
         } else if constexpr (std::is_same_v<Happened, FallEvent>) {
           return String(actor_name(happened.actor)) +
                  String(" fell and washed back to base.");
@@ -2691,7 +2478,7 @@ void city_targets(std::vector<Target> &targets, const rendering::Art &drawing,
     if (collecting_of(frame.view, row.actor)) {
       refusal = "Collecting: wait until it is done.";
     } else if (!frame.offers.at(index_of(row.actor)).interact) {
-      refusal = "Nothing within reach to collect or repair.";
+      refusal = "Nothing within reach to collect.";
     }
     targets.push_back(
         {.area = row.button,
