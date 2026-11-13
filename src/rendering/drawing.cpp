@@ -170,10 +170,6 @@ const char *path(Image image) {
     return "world/cold_store.png";
   case Image::Ferry:
     return "world/ferry.png";
-  case Image::HeartFull:
-    return "ui/heart_full.png";
-  case Image::HeartEmpty:
-    return "ui/heart_empty.png";
   case Image::IconDay:
     return "ui/icon_day.png";
   case Image::IconClock:
@@ -192,12 +188,6 @@ const char *path(Image image) {
     return "icons/ingredient_meat.png";
   case Image::IngredientTruffle:
     return "icons/ingredient_truffle.png";
-  case Image::ToolMagnifier:
-    return "icons/tool_magnifier.png";
-  case Image::ToolSpatula:
-    return "icons/tool_spatula.png";
-  case Image::ToolWrench:
-    return "icons/tool_wrench.png";
   case Image::DishMushroomSoup:
     return "icons/dish_mushroom_soup.png";
   case Image::DishFishStew:
@@ -413,9 +403,6 @@ godot::String place_name(const survival::GameView &view,
   };
   if (found == objects.end() || stock == sources.end()) {
     return named(survival::object_name(object));
-  }
-  if (const auto &tool = found->tool) {
-    return named(survival::tool_name(*tool)) + " " + source_word(stock->kind);
   }
   if (const auto &ingredient = found->ingredient) {
     return named(survival::ingredient_name(*ingredient)) + " " +

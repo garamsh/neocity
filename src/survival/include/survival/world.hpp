@@ -43,17 +43,15 @@ struct WorldThreshold {
   std::optional<AcidLevel> acid = std::nullopt;
 };
 
-/// Concrete object configuration; destruction measures from run start or
-/// repair. A material source supplies exactly one ingredient or tool.
+/// Concrete object configuration; destruction measures from run start. A
+/// material source supplies exactly one ingredient.
 struct ObjectDefinition {
   ObjectId id{};
   ObjectKind kind = ObjectKind::Terrain;
   WorldArea area{};
   std::optional<WorldThreshold> exposed_at = std::nullopt;
   std::optional<WorldThreshold> destroyed_after = std::nullopt;
-  std::optional<ToolId> repair_with = std::nullopt;
   std::optional<IngredientId> ingredient = std::nullopt;
-  std::optional<ToolId> tool = std::nullopt;
   std::optional<ObjectId> supported_by = std::nullopt;
 };
 
@@ -74,8 +72,6 @@ struct ObjectSnapshot {
   bool traversable = false;
   bool material_available = false;
   std::optional<IngredientId> ingredient;
-  std::optional<ToolId> tool;
-  std::optional<ToolId> repair_with;
   friend bool operator==(const ObjectSnapshot &,
                          const ObjectSnapshot &) = default;
 };
@@ -92,22 +88,7 @@ struct WorldSnapshot {
 /// Decreasing cumulative time is refused without changing any world state.
 enum class WorldUpdateResult : std::uint8_t { Applied, DecreasingTime };
 
-/// Expected repair refusals never change the world. Exploration adds the last
-/// four, for what World cannot see.
-enum class RepairResult : std::uint8_t {
-  Applied,
-  UnknownObject,
-  NotDamaged,
-  NotRepairable,
-  WrongTool,
-  NotExploring,
-  OutOfRange,
-  ToolNotCarried,
-  Busy
-};
-
-/// Persistent city deterioration and repair, without exploration
-/// implementation.
+/// Persistent city deterioration, without exploration implementation.
 class World {
 public:
   /// Throws std::invalid_argument for invalid geometry, IDs or object
@@ -115,9 +96,6 @@ public:
   explicit World(const std::vector<ObjectDefinition> &definitions);
   /// Applies world time and peak-acid deterioration once.
   [[nodiscard]] WorldUpdateResult update(WorldProgression progression);
-  /// Repairs a destroyed passage and starts its next deterioration interval;
-  /// possession is checked by Exploration::repair.
-  [[nodiscard]] RepairResult repair(ObjectId id, ToolId tool);
   /// Returns stable identities, areas, visibility, access and material supply.
   [[nodiscard]] WorldSnapshot snapshot() const;
 
@@ -125,7 +103,6 @@ private:
   struct Object {
     ObjectDefinition definition;
     ObjectState state = ObjectState::Intact;
-    WorldProgression repaired_at;
   };
 
   std::vector<Object> objects;

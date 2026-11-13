@@ -8,7 +8,7 @@
 namespace neocity::survival {
 namespace {
 
-template <typename Item> bool take(std::vector<Item> &inventory, Item item) {
+bool take(std::vector<IngredientId> &inventory, IngredientId item) {
   const auto found = std::ranges::find(inventory, item);
   if (found == inventory.end()) {
     return false;
@@ -68,36 +68,12 @@ Result Simulation::advance(std::chrono::microseconds elapsed) {
   return Result::Applied;
 }
 
-Result Simulation::damage(Actor actor) {
-  auto &state = actor_state(actor);
-  if (state.location != Location::City) {
-    return Result::NotExploring;
-  }
-  if (state.health > 0) {
-    --state.health;
-  }
-  if (state.health == 0) {
-    ++state.exhaustions;
-    relocate(state);
-  }
-  return Result::Applied;
-}
-
 Result Simulation::collect(Actor actor, IngredientId ingredient) {
   auto &state = actor_state(actor);
   if (state.location != Location::City) {
     return Result::NotExploring;
   }
   state.inventory.push_back(ingredient);
-  return Result::Applied;
-}
-
-Result Simulation::collect_tool(Actor actor, ToolId tool) {
-  auto &state = actor_state(actor);
-  if (state.location != Location::City) {
-    return Result::NotExploring;
-  }
-  state.tools.push_back(tool);
   return Result::Applied;
 }
 
@@ -114,16 +90,6 @@ Result Simulation::consume(std::span<const IngredientId> ingredients) {
   }
   world.chef.inventory = std::move(chef);
   world.appraiser.inventory = std::move(appraiser);
-  return Result::Applied;
-}
-
-Result Simulation::consume_tool(ToolId tool) {
-  if (world.phase != Phase::Workshop) {
-    return Result::NotInWorkshop;
-  }
-  if (!take(world.chef.tools, tool) && !take(world.appraiser.tools, tool)) {
-    return Result::MissingTool;
-  }
   return Result::Applied;
 }
 
@@ -164,7 +130,6 @@ ActorSnapshot &Simulation::actor_state(Actor actor) {
 
 void Simulation::relocate(ActorSnapshot &actor) {
   actor.location = Location::Base;
-  actor.health = 3;
   if (world.chef.location == Location::Base &&
       world.appraiser.location == Location::Base) {
     world.phase = Phase::Workshop;

@@ -42,8 +42,6 @@ bool applied(const survival::ActionResult &result) {
         } else if constexpr (std::is_same_v<Answer,
                                             survival::CollectionResult>) {
           return answer == survival::CollectionResult::Applied;
-        } else if constexpr (std::is_same_v<Answer, survival::RepairResult>) {
-          return answer == survival::RepairResult::Applied;
         } else {
           return answer == survival::WorkshopResult::Applied ||
                  answer == survival::WorkshopResult::Failed;
@@ -72,9 +70,6 @@ std::optional<audio::Cue> action_cue(const hud::ActionEvent &event,
           return audio::Cue::Travel;
         } else if constexpr (std::is_same_v<Done, survival::Collect>) {
           return audio::Cue::Collect;
-        } else if constexpr (std::is_same_v<Done, survival::Repair> ||
-                             std::is_same_v<Done, survival::ReplaceTool>) {
-          return audio::Cue::Repair;
         } else if constexpr (std::is_same_v<Done, survival::Appraise>) {
           return missed ? audio::Cue::AppraisalFailed : audio::Cue::Identified;
         } else if constexpr (std::is_same_v<Done, survival::Cook>) {
@@ -136,9 +131,6 @@ std::vector<Moment> moments(const survival::GameView &before,
         found.push_back(
             {.cue = *cue, .at = explorer(after, action->actor).body.position});
       }
-    } else if (const auto *hazard = std::get_if<hud::HazardEvent>(&event)) {
-      found.push_back({.cue = audio::Cue::Hurt,
-                       .at = explorer(before, hazard->actor).body.position});
     } else if (const auto *fall = std::get_if<hud::FallEvent>(&event)) {
       found.push_back({.cue = audio::Cue::Fall,
                        .at = explorer(before, fall->actor).body.position});
@@ -157,10 +149,6 @@ std::optional<rendering::Flourish> flourish_of(audio::Cue cue) {
   switch (cue) {
   case audio::Cue::Collect:
     return rendering::Flourish::Pop;
-  case audio::Cue::Repair:
-    return rendering::Flourish::Spark;
-  case audio::Cue::Hurt:
-    return rendering::Flourish::Hit;
   case audio::Cue::Fall:
     return rendering::Flourish::Splash;
   case audio::Cue::AcidRise:

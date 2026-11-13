@@ -69,13 +69,13 @@ struct Landmark {
   LandmarkKind kind = LandmarkKind::Kiosk;
 };
 
-/// One run's temporary data: the map, ingredients, recipes, tools and tuning.
+/// One run's temporary data: the map, ingredients, recipes and tuning.
 /// Every value makes the prototype playable and none is final balance.
 struct Content {
   Config run;
   std::vector<ObjectDefinition> objects;
   CompanionConfig companion;
-  /// Cells that cost one health slot to step into.
+  /// Cells where acid drips are drawn; no rule reads them.
   std::vector<WorldArea> hazards;
   MapSize map;
   /// One entry for each cell any terrain object covers.
@@ -93,7 +93,6 @@ struct Content {
 /// std::out_of_range, since only this module issues them.
 [[nodiscard]] std::string_view ingredient_name(IngredientId ingredient);
 [[nodiscard]] std::string_view food_name(FoodId food);
-[[nodiscard]] std::string_view tool_name(ToolId tool);
 [[nodiscard]] std::string_view object_name(ObjectId object);
 
 } // namespace neocity::survival

@@ -35,8 +35,8 @@ constexpr auto ARRIVAL_SCAN_END = 1600s;
 constexpr auto SUPPLY_SCAN_STEP = 40s;
 constexpr std::uint32_t ACID_SCAN_STEP = 5;
 constexpr std::uint32_t ACID_SCAN_END = 100;
-/// The share of attempts an intact spatula turns into a dish.
-constexpr std::uint32_t INTACT_SPATULA_PERCENT = 90;
+/// The share of cooking attempts that turn into a dish.
+constexpr std::uint32_t SUCCESS_PERCENT = 90;
 
 /// The temporary game's features, advanced with a fresh view per actor.
 class Game {
@@ -188,7 +188,7 @@ std::vector<WorldProgression> acid_rising() {
 }
 
 /// The sources a party can stand in reach of while they supply along `moments`,
-/// with no repair.
+/// without any passage repaired.
 std::set<std::uint32_t>
 sources_reached_along(const Content &content,
                       const std::vector<WorldProgression> &moments) {
@@ -278,7 +278,7 @@ std::uint32_t supplied_stock(const Content &content,
   return total;
 }
 
-/// The sources a party can collect from now, with no repair.
+/// The sources a party can collect from now.
 std::set<std::uint32_t> collectable_sources(const Content &content,
                                             const WorldSnapshot &world) {
   std::set<std::uint32_t> found;
@@ -513,11 +513,10 @@ TEST(TemporaryContent, EveryNameLookupRefusesAnIdentityItNeverIssued) {
   EXPECT_EQ(ingredient_name(IngredientId{1}), "Tomato");
   EXPECT_THROW((void)ingredient_name(IngredientId{999}), std::out_of_range);
   EXPECT_THROW((void)food_name(FoodId{999}), std::out_of_range);
-  EXPECT_THROW((void)tool_name(ToolId{999}), std::out_of_range);
   EXPECT_THROW((void)object_name(ObjectId{999}), std::out_of_range);
 }
 
-TEST(TemporaryContent, EveryRecipeIngredientAndBaseToolHasASource) {
+TEST(TemporaryContent, EveryRecipeIngredientHasASource) {
   const auto content = temporary_content(1);
   const auto supplies = [&](auto member, auto id) {
     return std::ranges::any_of(content.objects, [&](const auto &object) {
@@ -530,10 +529,6 @@ TEST(TemporaryContent, EveryRecipeIngredientAndBaseToolHasASource) {
       EXPECT_TRUE(supplies(&ObjectDefinition::ingredient, ingredient));
     }
   }
-  EXPECT_TRUE(
-      supplies(&ObjectDefinition::tool, content.companion.workshop.magnifier));
-  EXPECT_TRUE(
-      supplies(&ObjectDefinition::tool, content.companion.workshop.spatula));
 }
 
 TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
@@ -631,23 +626,6 @@ TEST(TemporaryContent, AcidBringsTheFerryButNotItsStock) {
   EXPECT_TRUE(object_named(world.snapshot(), "Ferry Bag").material_available);
 }
 
-TEST(TemporaryContent, EveryBreakablePassageCanBeReachedForRepair) {
-  const auto content = temporary_content(1);
-  World world(content.objects);
-  ASSERT_EQ(world.update({.elapsed = ARRIVAL_SCAN_END}),
-            WorldUpdateResult::Applied);
-  const auto ruined = world.snapshot();
-  std::size_t broken = 0;
-  for (const auto &object : ruined.objects) {
-    if (object.repair_with && object.state == ObjectState::Destroyed) {
-      ++broken;
-      EXPECT_TRUE(reachable(content, ruined, object.area))
-          << object_name(object.id);
-    }
-  }
-  EXPECT_EQ(broken, 2U);
-}
-
 TEST(TemporaryContent, EveryRecipeCanBeCookedFromReachableStock) {
   const auto content = temporary_content(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
@@ -669,7 +647,7 @@ TEST(TemporaryContent,
   const auto content = temporary_content(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
   const auto dishes = wanted_dishes(content.companion.workshop.recipes, stock);
-  EXPECT_GE(dishes * INTACT_SPATULA_PERCENT, TEMPORARY_ESCAPE.first_day * 100U)
+  EXPECT_GE(dishes * SUCCESS_PERCENT, TEMPORARY_ESCAPE.first_day * 100U)
       << dishes << " dishes";
 }
 
@@ -714,6 +692,35 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
     };
     EXPECT_LT(total(after), total(before)) << "seed " << seed;
   }
+}
+
+TEST(TemporaryContent, CrossingTheAcidDripAgainAndAgainSendsNoOneHome) {
+  Game game(temporary_content(1));
+  ASSERT_EQ(game.content().hazards.size(), 1U);
+  const auto drip = game.content().hazards.front();
+  ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
+  const auto in_drip = [&] {
+    const auto cell = cell_of(game.exploration().snapshot().chef.body.position);
+    return cell.x == drip.x && cell.y == drip.y;
+  };
+  int entries = 0;
+  auto heading = Direction::Left;
+  for (int tick = 0; tick < 600 && entries < 8; ++tick) {
+    const auto was_in = in_drip();
+    const auto cell = cell_of(game.exploration().snapshot().chef.body.position);
+    if (cell.x <= drip.x) {
+      heading = Direction::Right;
+    } else if (cell.x >= drip.x + 2) {
+      heading = Direction::Left;
+    }
+    ASSERT_EQ(game.exploration().advance(
+                  50ms, {ExplorationInput{.direction = heading}, {}}, {}),
+              Result::Applied);
+    ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City)
+        << "tick " << tick;
+    entries += !was_in && in_drip() ? 1 : 0;
+  }
+  EXPECT_GE(entries, 8);
 }
 
 TEST(TemporaryContent, TheAcidGaugeFillsAtAValueOfTheRules) {
@@ -965,39 +972,36 @@ TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
   EXPECT_FALSE(reachable(game.content(), without_ferry, floor));
 }
 
-TEST(TemporaryContent, TheBrokenDoorBlocksTheColdLockerUntilRepaired) {
+TEST(TemporaryContent, TheBrokenDoorBlocksTheColdLockerForTheRestOfTheRun) {
   Game game(temporary_content(1));
   const auto locker = object_named(game.world().snapshot(), "Cold Locker").area;
   ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), locker));
 
   ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{20}}),
             WorldUpdateResult::Applied);
-  const auto door = object_named(game.world().snapshot(), "Cold Store Door");
-  ASSERT_EQ(door.state, ObjectState::Destroyed);
+  ASSERT_EQ(object_named(game.world().snapshot(), "Cold Store Door").state,
+            ObjectState::Destroyed);
   EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), locker));
-
-  ASSERT_TRUE(door.repair_with.has_value());
-  ASSERT_EQ(game.world().repair(door.id, door.repair_with.value_or(ToolId{})),
-            RepairResult::Applied);
-  EXPECT_TRUE(reachable(game.content(), game.world().snapshot(), locker));
+  ASSERT_EQ(
+      game.world().update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{20}}),
+      WorldUpdateResult::Applied);
+  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), locker));
 }
 
-TEST(TemporaryContent, TheBrokenLadderBlocksTheRooftopUntilRepaired) {
+TEST(TemporaryContent, TheBrokenLadderBlocksTheRooftopForTheRestOfTheRun) {
   Game game(temporary_content(1));
   const auto roof = object_named(game.world().snapshot(), "Roof Bag").area;
   ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), roof));
 
   ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{10}}),
             WorldUpdateResult::Applied);
-  const auto ladder = object_named(game.world().snapshot(), "Roof Ladder");
-  ASSERT_EQ(ladder.state, ObjectState::Destroyed);
+  ASSERT_EQ(object_named(game.world().snapshot(), "Roof Ladder").state,
+            ObjectState::Destroyed);
   EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), roof));
-
-  ASSERT_TRUE(ladder.repair_with.has_value());
   ASSERT_EQ(
-      game.world().repair(ladder.id, ladder.repair_with.value_or(ToolId{})),
-      RepairResult::Applied);
-  EXPECT_TRUE(reachable(game.content(), game.world().snapshot(), roof));
+      game.world().update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{10}}),
+      WorldUpdateResult::Applied);
+  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), roof));
 }
 
 } // namespace

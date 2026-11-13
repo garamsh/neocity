@@ -126,8 +126,6 @@ bool &key_of(survival::PlayerInput &input, hud::PlayerKey key) {
     return input.feed;
   case hud::PlayerKey::EndDay:
     return input.end_day;
-  case hud::PlayerKey::ReplaceTool:
-    return input.replace_tool;
   case hud::PlayerKey::Travel:
     return input.travel;
   }
@@ -154,8 +152,7 @@ bool acted(const Command &command) {
   return command.click || command.dish_step != survival::Direction::Idle ||
          std::ranges::any_of(
              command.survival, [](const survival::PlayerInput &keys) {
-               return keys.travel || keys.interact || keys.replace_tool ||
-                      keys.feed || keys.end_day;
+               return keys.travel || keys.interact || keys.feed || keys.end_day;
              });
 }
 
@@ -782,7 +779,7 @@ void Session::paint_world(godot::Node2D &canvas,
 void Session::paint_glow(godot::Node2D &canvas,
                          const rendering::Art &drawing) const {
   if (playing() && framed && shot) {
-    hud::paint_survival_glow(canvas, drawing, *framed, *shot, bursts);
+    hud::paint_survival_glow(canvas, drawing, *framed, *shot);
   }
 }
 

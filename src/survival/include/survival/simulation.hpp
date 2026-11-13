@@ -20,7 +20,7 @@ enum class Phase : std::uint8_t { Workshop, Exploration, Escaped, Lost };
   return phase == Phase::Escaped || phase == Phase::Lost;
 }
 
-/// Exhaustion relocates one actor without ending the other actor's exploration.
+/// An actor is at base or in the city; the other actor's location is separate.
 enum class Location : std::uint8_t { Base, City };
 
 /// Ingredient identity shared with the collection and workshop rules.
@@ -29,26 +29,16 @@ struct IngredientId {
   friend bool operator==(const IngredientId &, const IngredientId &) = default;
 };
 
-/// Tool identity, never an ingredient; what a tool does is set by its consumer.
-struct ToolId {
-  std::uint32_t value = 0;
-  friend bool operator==(const ToolId &, const ToolId &) = default;
-};
-
 /// Caller-defined acid units; no production rise or feeding formula is implied.
 struct AcidLevel {
   std::uint32_t value = 0;
   friend bool operator==(const AcidLevel &, const AcidLevel &) = default;
 };
 
-/// Exploration health and carried items; workshop has no separate health.
-/// `exhaustions` counts the times this actor's health ran out.
+/// One actor's place and carried ingredients.
 struct ActorSnapshot {
   Location location = Location::Base;
-  std::uint8_t health = 3;
   std::vector<IngredientId> inventory;
-  std::vector<ToolId> tools;
-  std::uint32_t exhaustions = 0;
   friend bool operator==(const ActorSnapshot &,
                          const ActorSnapshot &) = default;
 };
@@ -85,7 +75,6 @@ enum class Result : std::uint8_t {
   InvalidElapsed,
   NotInWorkshop,
   MissingIngredients,
-  MissingTool,
   RunOver,
   Busy
 };
@@ -96,26 +85,18 @@ public:
   /// Starts day one at base; throws std::invalid_argument for a nonpositive
   /// budget or full acid.
   explicit Simulation(Config config);
-  /// Enters or re-enters the city using the existing time, inventory and
-  /// health.
+  /// Enters or re-enters the city using the existing time and inventory.
   [[nodiscard]] Result enter(Actor actor);
-  /// Returns one actor at full health; the last return opens the untimed
-  /// workshop.
+  /// Returns one actor to base; the last return opens the untimed workshop.
   [[nodiscard]] Result return_to_base(Actor actor);
   /// Advances only exploration; expiry returns both actors to the workshop.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed);
-  /// Removes one health slot; exhaustion returns the actor at full health.
-  [[nodiscard]] Result damage(Actor actor);
   /// Records collection authorized by exploration rules; no world lookup occurs
   /// here.
   [[nodiscard]] Result collect(Actor actor, IngredientId ingredient);
-  /// Records a tool pickup authorized by exploration rules.
-  [[nodiscard]] Result collect_tool(Actor actor, ToolId tool);
   /// Removes every listed ingredient from the two inventories, the chef's
   /// first, or removes none.
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
-  /// Removes one tool from the two inventories, the chef's first.
-  [[nodiscard]] Result consume_tool(ToolId tool);
   /// Raises acid, stopping at full, passes the day's unspent time on the run's
   /// clock, and starts the next day with a full exploration budget. Full acid
   /// ends the run as lost, before anything can act on the new day.

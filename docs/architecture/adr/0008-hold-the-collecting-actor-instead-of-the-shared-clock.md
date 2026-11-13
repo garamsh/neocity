@@ -1,6 +1,6 @@
 # ADR 0008: Hold the collecting actor instead of the shared clock
 
-> Status: accepted
+> Status: accepted; its collection of tools superseded by ADR-0026
 > Date: 2026-11-03
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

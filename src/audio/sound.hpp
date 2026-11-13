@@ -11,8 +11,6 @@ enum class Cue : std::uint8_t {
   Jump,
   Land,
   Collect,
-  Repair,
-  Hurt,
   Fall,
   Travel,
   Identified,
@@ -29,16 +27,12 @@ enum class Cue : std::uint8_t {
 };
 
 /// Every cue, in declaration order.
-inline constexpr std::array CUES{Cue::Step,       Cue::Jump,
-                                 Cue::Land,       Cue::Collect,
-                                 Cue::Repair,     Cue::Hurt,
-                                 Cue::Fall,       Cue::Travel,
-                                 Cue::Identified, Cue::AppraisalFailed,
-                                 Cue::Cooked,     Cue::Burned,
-                                 Cue::Satisfied,  Cue::Refused,
-                                 Cue::AcidRise,   Cue::NewDay,
-                                 Cue::MenuMove,   Cue::MenuSelect,
-                                 Cue::MenuBack};
+inline constexpr std::array CUES{
+    Cue::Step,     Cue::Jump,   Cue::Land,       Cue::Collect,
+    Cue::Fall,     Cue::Travel, Cue::Identified, Cue::AppraisalFailed,
+    Cue::Cooked,   Cue::Burned, Cue::Satisfied,  Cue::Refused,
+    Cue::AcidRise, Cue::NewDay, Cue::MenuMove,   Cue::MenuSelect,
+    Cue::MenuBack};
 
 /// The background music of a screen; `Silence` plays none.
 enum class Track : std::uint8_t { Silence, Title, City, Workshop };

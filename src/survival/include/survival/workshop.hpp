@@ -16,12 +16,6 @@ struct FoodId {
   friend bool operator==(const FoodId &, const FoodId &) = default;
 };
 
-/// Base tools; exploration carries them as decoration only.
-enum class WorkshopTool : std::uint8_t { Magnifier, Spatula };
-
-/// A damaged tool succeeds 40% of the time instead of 90%.
-enum class ToolState : std::uint8_t { Intact, Damaged };
-
 /// How well a dish turned out; a failed cook makes no dish at all.
 enum class DishQuality : std::uint8_t { Plain, Fine };
 
@@ -46,13 +40,10 @@ struct Recipe {
 };
 
 /// Temporary caller-supplied balance values, with no production default.
-/// `magnifier` and `spatula` name the carried tools that replace each base
-/// tool. An ingredient with no `flavors` entry adds no taste, and
-/// `fine_dish_score` is what a fine dish adds over a plain one.
+/// An ingredient with no `flavors` entry adds no taste, and `fine_dish_score`
+/// is what a fine dish adds over a plain one.
 struct WorkshopConfig {
   std::vector<Recipe> recipes;
-  ToolId magnifier;
-  ToolId spatula;
   std::uint32_t new_food_score;
   std::uint32_t new_ingredient_score;
   std::uint32_t satisfying_score;
@@ -109,8 +100,6 @@ struct DayOutcome {
 /// are the fed foods the monster disliked, and `rolls` counts the random draws
 /// consumed so far.
 struct WorkshopSnapshot {
-  ToolState magnifier = ToolState::Intact;
-  ToolState spatula = ToolState::Intact;
   std::vector<IngredientId> identified;
   std::vector<Dish> foods;
   std::vector<FoodId> eaten_foods;
@@ -139,18 +128,16 @@ enum class WorkshopResult : std::uint8_t {
   NotCarried,
   NotIdentified,
   UnknownRecipe,
-  NoFood,
-  ToolIntact
+  NoFood
 };
 
-/// Untimed base roles; owns tools, appraisal facts, dishes, feeding history and
-/// its random state, seeded once from the run seed. Progression stays in the
-/// supplied Simulation, which must outlive this instance. An exhausted
-/// appraiser damages the magnifier and an exhausted chef the spatula.
+/// Untimed base roles; owns appraisal facts, dishes, feeding history and its
+/// random state, seeded once from the run seed. Appraisal and cooking succeed
+/// 90% of the time. Progression stays in the supplied Simulation, which must
+/// outlive this instance.
 class Workshop {
 public:
-  /// Throws std::invalid_argument for an empty recipe, a repeated food or one
-  /// tool identity shared by both base tools.
+  /// Throws std::invalid_argument for an empty recipe or a repeated food.
   Workshop(Simulation &progression, WorkshopConfig settings);
   /// The appraiser records a carried ingredient as identified on success.
   [[nodiscard]] WorkshopResult appraise(Actor actor, IngredientId ingredient);
@@ -163,19 +150,10 @@ public:
   [[nodiscard]] WorkshopResult feed(FoodId food);
   /// Starts the next day with no dish at the caller's acid penalty.
   [[nodiscard]] WorkshopResult end_day_unfed(AcidLevel acid_penalty);
-  /// Applies in any phase until the run is over: damage events can arrive
-  /// during exploration.
-  void damage_tool(WorkshopTool tool);
-  /// Spends one carried tool of the configured identity to restore a damaged
-  /// base tool, including exhaustion damage.
-  [[nodiscard]] WorkshopResult replace_tool(WorkshopTool tool);
   /// Returns independent values.
   [[nodiscard]] WorkshopSnapshot snapshot() const;
 
 private:
-  ToolState &tool_state(WorkshopTool tool);
-  std::uint32_t &settled_exhaustions(WorkshopTool tool);
-  [[nodiscard]] ToolState condition(WorkshopTool tool) const;
   [[nodiscard]] bool in_workshop() const;
   std::uint32_t roll();
 
@@ -183,8 +161,6 @@ private:
   WorkshopConfig config;
   WorkshopSnapshot state;
   std::mt19937 generator;
-  std::uint32_t magnifier_exhaustions = 0;
-  std::uint32_t spatula_exhaustions = 0;
 };
 
 } // namespace neocity::survival

@@ -5,21 +5,14 @@ extends SceneTree
 ## keys: a key change edits one row here and its binding in project.godot.
 
 const SEED: int = 11
-const DAY_FRAMES: int = 1200
 ## How long one collection holds the collecting actor.
 const COLLECT_MS: int = 1500
 ## Frames of a collection's hold, with a step to spare.
 const COLLECT_FRAMES: int = 102
-const KIOSK_DAYS: int = 10
+## Frames one of the run measurements holds a key down.
+const RUN_FRAMES: int = 20
 const APPRAISE_ATTEMPTS: int = 12
 const COOK_ATTEMPTS: int = 6
-## The acid drip stands on the upper walkway at 1, 8, west of the kitchen
-## ladder; in and back out through it burns the walker twice, and the third
-## burn is one step back in.
-const BURN_WAYPOINTS: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
-## East to the east loft and up to the east roof, through the fallen kiosk and
-## down to the terrace bag on the shop roof.
-const TERRACE_ROUTE: Array[Vector2i] = [Vector2i(23, 8), Vector2i(23, 6), Vector2i(21, 6), Vector2i(21, 4), Vector2i(17, 5)]
 ## The foot of the kitchen ladder on the upper walkway, beside the entrance.
 const LADDER_FOOT: Vector2i = Vector2i(3, 8)
 ## The tomato machine and the shop shelf: two sources whose finds make a dish.
@@ -36,7 +29,6 @@ const KEYS: Dictionary[String, Key] = {
 	"survival_2_down": KEY_K,
 	"survival_2_run": KEY_H,
 	"survival_2_interact": KEY_O,
-	"survival_2_replace_tool": KEY_P,
 	"survival_2_feed": KEY_BRACKETLEFT,
 	"survival_1_jump": KEY_SPACE,
 	"survival_2_jump": KEY_SEMICOLON,
@@ -122,12 +114,9 @@ func _two_players() -> bool:
 		return false
 	if not await _walk_to("appraiser", keys, 4, 8):
 		return false
-	var stamina: int = _actor("appraiser", "stamina")
-	_key(KEYS["survival_2_run"], true)
-	_key(keys["right"], true)
-	var ran: bool = await _until("%s runs player two" % _name("survival_2_run"), func() -> bool: return _actor("appraiser", "stamina") < stamina, 60)
-	_release()
-	if not ran:
+	var walked: float = await _travelled(keys, false)
+	var ran: float = await _travelled(keys, true)
+	if not _check(ran > walked * 1.2, "%s runs player two faster than walking" % _name("survival_2_run")):
 		return false
 	if not await _walk_to("appraiser", keys, FIRST_SOURCE.x, FIRST_SOURCE.y):
 		return false
@@ -162,58 +151,22 @@ func _two_players() -> bool:
 	await _tap(KEYS["survival_2_feed"])
 	if not _check(await _until("%s feeds the stored dish" % _name("survival_2_feed"), func() -> bool: return _int("day") == 2, 30) and _int("eaten") == 1, "%s feeds a dish to the monster" % _name("survival_2_feed")):
 		return false
-	return await _replace_the_magnifier(keys)
+	return true
 
-## Player two burns out on the acid drip, finds a magnifier on the shop roof,
-## and swaps it in. The terrace bag stands behind the kiosk wreck, which falls only
-## after the run has explored for KIOSK_SECONDS.
-func _replace_the_magnifier(keys: Dictionary[String, Key]) -> bool:
-	if not await _wait_for_the_kiosk_to_fall():
-		return false
-	await _tap(KEY_U)
-	if not await _until("player two sets out on day two", func() -> bool: return _where("appraiser") == "city", 30):
-		return false
-	if not _check(_str("magnifier") == "intact", "the magnifier starts intact"):
-		return false
-	if not await _walk_route("appraiser", keys, BURN_WAYPOINTS):
-		return false
+## How far player two's body moves right in RUN_FRAMES frames, walking or
+## holding the run key, and then walks back to the cell it started in.
+func _travelled(keys: Dictionary[String, Key], running: bool) -> float:
+	var start: float = _sub_x("appraiser")
+	if running:
+		_key(KEYS["survival_2_run"], true)
+	_key(keys["right"], true)
+	await _frames(RUN_FRAMES)
+	_release()
+	var distance: float = _sub_x("appraiser") - start
 	_key(keys["left"], true)
-	var exhausted: bool = await _until("the third drip", func() -> bool: return _actor("appraiser", "exhaustions") == 1, 60)
-	_key(keys["left"], false)
-	if not exhausted:
-		return false
-	if not _check(_where("appraiser") == "base" and _str("magnifier") == "damaged", "exhaustion sends player two home and damages the magnifier"):
-		return false
-	await _tap(KEY_U)
-	if not await _until("player two sets out again", func() -> bool: return _where("appraiser") == "city", 30):
-		return false
-	if not await _walk_route("appraiser", keys, TERRACE_ROUTE):
-		return false
-	await _tap(KEYS["survival_2_interact"])
-	if not _check(_actor("appraiser", "tools") == 1, "%s collects the magnifier from the shop roof" % _name("survival_2_interact")):
-		return false
-	if not await _until("player two's magnifier collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
-		return false
-	await _tap(KEY_U)
-	if not await _until("player two is home with the magnifier", func() -> bool: return _str("phase") == "workshop", 120):
-		return false
-	await _tap(KEYS["survival_2_replace_tool"])
-	return _check(_str("magnifier") == "intact" and _actor("appraiser", "tools") == 0, "%s spends the found tool on the damaged magnifier" % _name("survival_2_replace_tool"))
-
-## Lets whole days run out unfed, with player two out for each, until the kiosk
-## that blocks the shop roof has fallen.
-func _wait_for_the_kiosk_to_fall() -> bool:
-	var days: int = 0
-	while _object("Old Kiosk") != "destroyed" and days < KIOSK_DAYS:
-		days += 1
-		await _tap(KEY_U)
-		if not await _until("player two spends the day out", func() -> bool: return _str("phase") == "workshop" and _int("remaining_ms") == 0, DAY_FRAMES):
-			return false
-		var day: int = _int("day")
-		await _tap(KEY_G)
-		if not await _until("the day ends unfed", func() -> bool: return _int("day") == day + 1, 30):
-			return false
-	return _check(_object("Old Kiosk") == "destroyed" and _str("phase") == "workshop", "exploring time brings the kiosk down")
+	await _until("player two is back where it started", func() -> bool: return _sub_x("appraiser") <= start, 600)
+	_release()
+	return distance
 
 ## Names the action with its key, so a failure says which row broke.
 func _name(action: String) -> String:
@@ -236,17 +189,17 @@ func _stance(who: String) -> String:
 	var stance: String = actor["stance"]
 	return stance
 
-func _object(object: String) -> String:
-	var objects: Dictionary = scene.survival_status()["objects"]
-	var state: String = objects[object]
-	return state
-
 func _str(field: String) -> String:
 	var value: String = scene.survival_status().get(field, "")
 	return value
 
 func _int(field: String) -> int:
 	var value: int = scene.survival_status().get(field, 0)
+	return value
+
+func _sub_x(who: String) -> float:
+	var actor: Dictionary = scene.survival_status()[who]
+	var value: float = actor["sub_x"]
 	return value
 
 func _where(who: String) -> String:
