@@ -29,7 +29,7 @@ The native 1920×1080 environment assets and reference composite for [issue #210
 
 - The renderer converts backgrounds to layout units with `1 / ART_SCALE`, and cell art and city actors with `1 / (2 * ART_SCALE)`. The close camera and canvas restore one native picture pixel per 1080p pixel. Other output sizes follow Godot’s fractional canvas scale.
 - `python3 tools/art/pixelize.py check project/levels/monster_mouth_escape/art_hd` checks both manifests for dimensions, hashes and native fine-edge detail. The same check runs after the legacy set in `make test`. Generated HD art keeps its own colours and is not subject to the legacy palette or mockup-source requirements.
-- The existing twenty-column repeat, floor rows and exposed deck contours remain. Tilted cells now draw level surfaces at their collision floors.
+- Street bands retain their twenty-column repeat and exposed deck contours; the aquarium has its own four-cell band. Terrain decks draw level surfaces at their collision floors.
 
 ## Evidence
 
@@ -58,3 +58,23 @@ The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) ar
 - UI frames carry `slice_margins_ltrb` in the manifest. Keep the four corners at native size and repeat or nearest-stretch only the intervening edges and center. `panel.png`: 16px; `slot.png`: 14px; `selection.png`: 16px; `action_prompt.png`: 20px; HUD plates: 28px left/right and 12px top/bottom; `weight_bar.png`: 10px. These are margins on each side, not a resize factor.
 - The assembled grid images are optional fixed layouts: inventory 6×4, search 4×3, fridge 6×5. Slots are 96×96, start at (18, 80) and advance by 100px in either direction. Header and footer spaces are blank for code-drawn labels and values. Runtime inventory capacity is decided by the feature owner; reusable frames support other layouts.
 - [Contact sheet](../../../../docs/art/production/system-hd-contact-sheet.png): every new resource, all mutant frames and native chef reference. [Provenance](../../../../docs/art/production/system-hd-provenance.txt) and [exact prompts](../../../../docs/art/production/system-hd-prompts.json) retain the source and processing record.
+
+## Fixed-map art for #230
+
+| Resource | Contract |
+|---|---|
+| `backgrounds/aquarium.png` | 1920×1080 teal flooded-tank background, drawn in screen space behind the aquarium floors. |
+| `world/terminal.png` | 2304×1152 transparent terminal scenery behind street columns 40–63, beginning at row 1. |
+| `world/interior_{kitchen,noodle}.png` | 576×192 backgrounds for the two six-cell loft interiors, bottom edge at their collision floor. |
+| `world/interior_cold_store.png` | 288×288 cold-store background covering its existing three-cell interior. |
+| `walkway/aquarium_deck.png` | 384×84 band, four 96px cells, opaque level top at source row zero. |
+| `world/span_wreck.png` | 96×96 torn span end; reflected at the opposite end without bridging the gap. |
+| `world/kiosk_ruined.png` | 288×144 collapsed kiosk for the ruined stage. |
+| `world/fire_escape.png` | 96×96 repeating ladder segment for the replacement fire escape. |
+
+- All nine images contain no text. The root manifest owns their dimensions, hashes, roles, source identities and crops.
+- `python3 tools/art/map_hd.py` regenerates them from [recorded sources](../../../../docs/art/production/map-hd-sources/) with ImageMagick. The [exact prompts](../../../../docs/art/production/map-hd-prompts.json) record built-in ImageGen use; no credit-charging service was used. Sources are resampled once with Lanczos to the runtime contract; sprite alpha is thresholded to remove translucent generation halos.
+- The rules supply all geometry, map selection and damage states. Interior art appears when either actor occupies the existing zone; #224 owns darkening and fades. Creative acceptance remains with the user.
+
+- #230 runtime evidence: [street](../../../../docs/architecture/evidence/survival/230-street-1080.png), [occupied kitchen](../../../../docs/architecture/evidence/survival/230-interior-1080.png), [day-seven damage](../../../../docs/architecture/evidence/survival/230-damage-day-7-1080.png), and [day-ten damage](../../../../docs/architecture/evidence/survival/230-damage-day-10-1080.png), each 1920×1080. The [comparison](../../../../docs/architecture/evidence/survival/230-mockup-beside-street.png) places the normalized mockup on the left and the native street capture on the right.
+- Aquarium runtime evidence: [day one](../../../../docs/architecture/evidence/survival/230-aquarium-1080.png), [day five](../../../../docs/architecture/evidence/survival/230-aquarium-day-5-1080.png), and [day ten](../../../../docs/architecture/evidence/survival/230-aquarium-day-10-1080.png), each 1920×1080. Two human players reach the dock exit together through real input. `StairsCheck -- --map-art-tour` checks every drawn terrain floor on both maps on days 1, 5 and 10; the captures show the missing upper span, then the missing lower span and replacement skywalk.
