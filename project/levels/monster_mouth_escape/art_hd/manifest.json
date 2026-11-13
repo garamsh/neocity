@@ -420,6 +420,1907 @@
         0,
         292
       ]
+    },
+    {
+      "path": "mutants/rat_idle.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "d4f60bf80909ac01e061ef12f5d026d156dc962d7eb2cdee43e924444c077e66",
+      "issue": 222,
+      "role": "rat_idle",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-rat-source.png",
+        "source_sha256": "db0b2b3004ec28671ba2eedca7978483d4a16ff9096b86e9afa4de44c2b89221",
+        "source_crop": [
+          0,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          380,
+          200
+        ],
+        "resize_pixels": [
+          175,
+          92
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/rat_walk_1.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "b68312433b2516e8c072d1545a765a3264d50c7a5d94de86763c62d1661cc4f8",
+      "issue": 222,
+      "role": "rat_walk_1",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-rat-source.png",
+        "source_sha256": "db0b2b3004ec28671ba2eedca7978483d4a16ff9096b86e9afa4de44c2b89221",
+        "source_crop": [
+          434,
+          0,
+          435,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          398,
+          200
+        ],
+        "resize_pixels": [
+          184,
+          92
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/rat_walk_2.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "45504305de65ffc5410374dc56e94b8cd5a2fce55198c5bbdc37115d05b96389",
+      "issue": 222,
+      "role": "rat_walk_2",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-rat-source.png",
+        "source_sha256": "db0b2b3004ec28671ba2eedca7978483d4a16ff9096b86e9afa4de44c2b89221",
+        "source_crop": [
+          869,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          384,
+          199
+        ],
+        "resize_pixels": [
+          177,
+          92
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/rat_walk_3.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "3e09d6a6aba3eae23c26145ed21230d2aa81c1e682a13020956322e3d6de9349",
+      "issue": 222,
+      "role": "rat_walk_3",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-rat-source.png",
+        "source_sha256": "db0b2b3004ec28671ba2eedca7978483d4a16ff9096b86e9afa4de44c2b89221",
+        "source_crop": [
+          1303,
+          0,
+          435,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          399,
+          199
+        ],
+        "resize_pixels": [
+          184,
+          92
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/rat_walk_4.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "3d8c142c95b7ab3acfba10da5c4c0badfdcb6f2ca756d4af104a9b2fdd46a97a",
+      "issue": 222,
+      "role": "rat_walk_4",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-rat-source.png",
+        "source_sha256": "db0b2b3004ec28671ba2eedca7978483d4a16ff9096b86e9afa4de44c2b89221",
+        "source_crop": [
+          1738,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          391,
+          200
+        ],
+        "resize_pixels": [
+          180,
+          92
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/human_idle.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "8b7f733556542687b1910e347e905930072cfd380770cf1ea455c2c4af83f142",
+      "issue": 222,
+      "role": "human_idle",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-human-source.png",
+        "source_sha256": "52b799e088ef63d7cf4b8274b49cb88849f90d6bd0e0eb91b69e334f2fae0b61",
+        "source_crop": [
+          0,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          293,
+          448
+        ],
+        "resize_pixels": [
+          109,
+          166
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/human_walk_1.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "ad00906584d7b19324712fcd54df45abaa913d826fc70380126376f908b7ea33",
+      "issue": 222,
+      "role": "human_walk_1",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-human-source.png",
+        "source_sha256": "52b799e088ef63d7cf4b8274b49cb88849f90d6bd0e0eb91b69e334f2fae0b61",
+        "source_crop": [
+          434,
+          0,
+          435,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          320,
+          446
+        ],
+        "resize_pixels": [
+          119,
+          165
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/human_walk_2.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "f059374362b4057681587f1f7877e41c8b085ec65bf7df00a54b221cce906c1e",
+      "issue": 222,
+      "role": "human_walk_2",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-human-source.png",
+        "source_sha256": "52b799e088ef63d7cf4b8274b49cb88849f90d6bd0e0eb91b69e334f2fae0b61",
+        "source_crop": [
+          869,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          316,
+          459
+        ],
+        "resize_pixels": [
+          117,
+          170
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/human_walk_3.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "cb053baacb5ef9b1a631df4e4b21623eb44a830fb1a1a5741baff0e4f92449aa",
+      "issue": 222,
+      "role": "human_walk_3",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-human-source.png",
+        "source_sha256": "52b799e088ef63d7cf4b8274b49cb88849f90d6bd0e0eb91b69e334f2fae0b61",
+        "source_crop": [
+          1303,
+          0,
+          435,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          320,
+          447
+        ],
+        "resize_pixels": [
+          119,
+          166
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "mutants/human_walk_4.png",
+      "size": [
+        256,
+        224
+      ],
+      "sha256": "4da9669034a073c86e0825dd838709ba36e86e28666f3c3ee84d8591144d28d7",
+      "issue": 222,
+      "role": "human_walk_4",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-human-source.png",
+        "source_sha256": "52b799e088ef63d7cf4b8274b49cb88849f90d6bd0e0eb91b69e334f2fae0b61",
+        "source_crop": [
+          1738,
+          0,
+          434,
+          724
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          322,
+          449
+        ],
+        "resize_pixels": [
+          119,
+          166
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        204
+      ],
+      "baseline_y": 204,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "base/fridge_closed.png",
+      "size": [
+        288,
+        288
+      ],
+      "sha256": "d989e58808bab1bff4d9e1eaeea2e4a85cf0232e3767152e91f91eecfea18f2e",
+      "issue": 222,
+      "role": "fridge_closed",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          0,
+          0,
+          397,
+          396
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          207,
+          345
+        ],
+        "resize_pixels": [
+          151,
+          252
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        144,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "base/fridge_open.png",
+      "size": [
+        288,
+        288
+      ],
+      "sha256": "8757da11139c6af58cad36349ffd577cc43fdf3a9bb8091fed01d130ae483f54",
+      "issue": 222,
+      "role": "fridge_open",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          397,
+          0,
+          396,
+          396
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          301,
+          346
+        ],
+        "resize_pixels": [
+          219,
+          252
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        144,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/crates_closed.png",
+      "size": [
+        256,
+        288
+      ],
+      "sha256": "49de99b2745968dc867ff782dfc0c092396d1735d752af0edf291393519e3d23",
+      "issue": 222,
+      "role": "crates_closed",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          793,
+          0,
+          397,
+          396
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          259,
+          276
+        ],
+        "resize_pixels": [
+          196,
+          209
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/crates_open.png",
+      "size": [
+        256,
+        288
+      ],
+      "sha256": "b0e3af0f3e2b7e92ad188b8878ed9ab63146ee103432d6ff06438e7a2ad46fb4",
+      "issue": 222,
+      "role": "crates_open",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          1190,
+          0,
+          396,
+          396
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          261,
+          346
+        ],
+        "resize_pixels": [
+          190,
+          252
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/locker_closed.png",
+      "size": [
+        256,
+        288
+      ],
+      "sha256": "cccaa738a88f1fbe1981135fe0541b7aa337c916c5583195e5e3dc94236095df",
+      "issue": 222,
+      "role": "locker_closed",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          1586,
+          0,
+          397,
+          396
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          184,
+          350
+        ],
+        "resize_pixels": [
+          132,
+          252
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/locker_open.png",
+      "size": [
+        256,
+        288
+      ],
+      "sha256": "e9d3c344761ccd7c94e5ebb3aaf74301fc303f08ffaee09f741e67e7d66f5613",
+      "issue": 222,
+      "role": "locker_open",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          0,
+          396,
+          397,
+          397
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          240,
+          323
+        ],
+        "resize_pixels": [
+          187,
+          252
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        128,
+        272
+      ],
+      "baseline_y": 272,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/shelf_closed.png",
+      "size": [
+        288,
+        224
+      ],
+      "sha256": "fe4d65bc6f984f9d46067ac3a16fb9384ae4594faf7c82bd37afeddeeeb88dc0",
+      "issue": 222,
+      "role": "shelf_closed",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          397,
+          396,
+          396,
+          397
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          302,
+          284
+        ],
+        "resize_pixels": [
+          211,
+          198
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        144,
+        208
+      ],
+      "baseline_y": 208,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "containers/shelf_open.png",
+      "size": [
+        288,
+        224
+      ],
+      "sha256": "563cafa1afcb3edc1441347e2b53998e22acb9bfd6a9d5277f5b59c5182241d7",
+      "issue": 222,
+      "role": "shelf_open",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          793,
+          396,
+          397,
+          397
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          307,
+          286
+        ],
+        "resize_pixels": [
+          213,
+          198
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        144,
+        208
+      ],
+      "baseline_y": 208,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "obstacles/acid_vent.png",
+      "size": [
+        224,
+        224
+      ],
+      "sha256": "5ee632f8f6e32b06fe89335b05e9643125afb7859f9cdb0fdf8faa782bafda46",
+      "issue": 222,
+      "role": "acid_vent",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          1190,
+          396,
+          396,
+          397
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          279,
+          296
+        ],
+        "resize_pixels": [
+          172,
+          182
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        112,
+        208
+      ],
+      "baseline_y": 208,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "obstacles/flesh_spikes.png",
+      "size": [
+        224,
+        224
+      ],
+      "sha256": "84504a6bb579e3400ec593c1dd37e8f8dbaeaf3e1dde137879f04093ffcd4d45",
+      "issue": 222,
+      "role": "flesh_spikes",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-props-source.png",
+        "source_sha256": "f9e02c2f5d6f9df78ccad00f264b282b71fb4b3a57606904968fe73000e962cc",
+        "source_crop": [
+          1586,
+          396,
+          397,
+          397
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          322,
+          266
+        ],
+        "resize_pixels": [
+          190,
+          157
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "pivot": [
+        112,
+        208
+      ],
+      "baseline_y": 208,
+      "facing": "right",
+      "mirror_for_left": true
+    },
+    {
+      "path": "icons/ingredient_tomato.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "115ad97d91d014ac5a9d81513c622db1692c78b1fb1526d4aefc14426d8249f9",
+      "issue": 222,
+      "role": "ingredient_tomato",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          0,
+          0,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          181,
+          212
+        ],
+        "resize_pixels": [
+          65,
+          76
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_fish.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "27ecea55d882ad55914d0df8e3b0d3e6244f2705ef460a5c601c9850c7bdc220",
+      "issue": 222,
+      "role": "ingredient_fish",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          296,
+          0,
+          295,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          253,
+          154
+        ],
+        "resize_pixels": [
+          76,
+          46
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_kelp.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "b23d46e9eadd54a6d35591a2c98f417410cf25b224acf22d18fba24d87e47424",
+      "issue": 222,
+      "role": "ingredient_kelp",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          591,
+          0,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          282,
+          218
+        ],
+        "resize_pixels": [
+          76,
+          59
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_mushroom.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "69b77f72af16c3530d90197ffbbf7b91566a597e75d837106442e469e10cacfb",
+      "issue": 222,
+      "role": "ingredient_mushroom",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          887,
+          0,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          226,
+          222
+        ],
+        "resize_pixels": [
+          76,
+          75
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_pickles.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "50c11a87436c9ec1ecd366177c6de841b5902a9ca599155989a02c6c4f5701c2",
+      "issue": 222,
+      "role": "ingredient_pickles",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1183,
+          0,
+          295,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          190,
+          224
+        ],
+        "resize_pixels": [
+          64,
+          76
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_meat.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "df2e44eb1239493dcb79bb1b263fbca6ebc0841f9f47985b312976ddc86784f9",
+      "issue": 222,
+      "role": "ingredient_meat",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1478,
+          0,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          239,
+          219
+        ],
+        "resize_pixels": [
+          76,
+          70
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/ingredient_truffle.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "94689a0d457aecbf0d05f658278899f838093f5444584d6998259c26767a9798",
+      "issue": 222,
+      "role": "ingredient_truffle",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          0,
+          296,
+          296,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          240,
+          213
+        ],
+        "resize_pixels": [
+          76,
+          67
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_fish_pie.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "094a267117ec893a069e458f43cbb1b852afe56a89a61471a62de60ce5559ecf",
+      "issue": 222,
+      "role": "dish_fish_pie",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          296,
+          296,
+          295,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          265,
+          213
+        ],
+        "resize_pixels": [
+          76,
+          61
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_fish_stew.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "67293d1d4daf4cd20e8a1701a2fa9292b84b68b4acaa357cb525c895f0ed1a2e",
+      "issue": 222,
+      "role": "dish_fish_stew",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          591,
+          296,
+          296,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          285,
+          203
+        ],
+        "resize_pixels": [
+          76,
+          54
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_kelp_wrap.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "9fd05e97c6712c91a0ac73473dc5d51f157245318862528527329d4b39ab4499",
+      "issue": 222,
+      "role": "dish_kelp_wrap",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          887,
+          296,
+          296,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          270,
+          199
+        ],
+        "resize_pixels": [
+          76,
+          56
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_meat_skewer.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "5189f92a00531fbe9446a53e5574bdb222ba0f71c5e3cf0d0a2c9bf5bea2cadb",
+      "issue": 222,
+      "role": "dish_meat_skewer",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1183,
+          296,
+          295,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          290,
+          225
+        ],
+        "resize_pixels": [
+          76,
+          59
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_meat_stew.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "eb951289f824eef005dbafbbdc9227d1a2c579b24f6d62437a9611aa64f5d819",
+      "issue": 222,
+      "role": "dish_meat_stew",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1478,
+          296,
+          296,
+          295
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          255,
+          204
+        ],
+        "resize_pixels": [
+          76,
+          61
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_mushroom_soup.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "766fe92bc011e7cf00e71a62188c7fcc0812e3a349b673fbcfb99914a1944140",
+      "issue": 222,
+      "role": "dish_mushroom_soup",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          0,
+          591,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          257,
+          218
+        ],
+        "resize_pixels": [
+          76,
+          64
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_pickle_surprise.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "6a6d55cd792ea7dc72b43a8c686d738e9f37863b08fd426da582c7f8654fd094",
+      "issue": 222,
+      "role": "dish_pickle_surprise",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          296,
+          591,
+          295,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          295,
+          178
+        ],
+        "resize_pixels": [
+          76,
+          46
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_sea_salad.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "245a123e188958ccbc4dcbbe8728823c3c3d19cbec7fd842255627aafa3c13c6",
+      "issue": 222,
+      "role": "dish_sea_salad",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          591,
+          591,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          264,
+          224
+        ],
+        "resize_pixels": [
+          76,
+          64
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_surf_and_turf.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "1ad7b0b96fff56e345ed85f27e282dd4a683211adefb74f303f664ffb921350c",
+      "issue": 222,
+      "role": "dish_surf_and_turf",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          887,
+          591,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          273,
+          201
+        ],
+        "resize_pixels": [
+          76,
+          56
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_truffle_roast.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "d2e69f495c8ff9a9906a0c0c30e2fd4285d221c728fef78e02a46dec6b87ffa0",
+      "issue": 222,
+      "role": "dish_truffle_roast",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1183,
+          591,
+          295,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          295,
+          206
+        ],
+        "resize_pixels": [
+          76,
+          53
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "icons/dish_truffle_soup.png",
+      "size": [
+        84,
+        84
+      ],
+      "sha256": "bc0973ed98343d74891ab65d351e028458ffdd5b925a8452b929799f445f35f3",
+      "issue": 222,
+      "role": "dish_truffle_soup",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-icons-source.png",
+        "source_sha256": "cc78917a52ff362df7fa208293440223c128e91ac71c8b8f4ae9e27c343870b2",
+        "source_crop": [
+          1478,
+          591,
+          296,
+          296
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          262,
+          220
+        ],
+        "resize_pixels": [
+          76,
+          64
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "ui/panel.png",
+      "size": [
+        128,
+        128
+      ],
+      "sha256": "d8df614780bb4df1d64510a86fb34bd2fb0cb6dfec15820dd378275675cf0b5a",
+      "issue": 222,
+      "role": "panel",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          20,
+          80,
+          340,
+          340
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          318,
+          320
+        ],
+        "resize_pixels": [
+          128,
+          128
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        16,
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "path": "ui/slot.png",
+      "size": [
+        96,
+        96
+      ],
+      "sha256": "89b2eb71de76a9bfc1bacf0bcb38e0982c86dc1767f099d8d1206fc9197c6513",
+      "issue": 222,
+      "role": "slot",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          417,
+          138,
+          230,
+          232
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          204,
+          213
+        ],
+        "resize_pixels": [
+          96,
+          96
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        14,
+        14,
+        14,
+        14
+      ]
+    },
+    {
+      "path": "ui/selection.png",
+      "size": [
+        96,
+        96
+      ],
+      "sha256": "1f24ab6607007cbf2cae651d2271e8f4f09b8d1056bcfcfdf296eb846b4c2ea4",
+      "issue": 222,
+      "role": "selection",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          720,
+          138,
+          240,
+          240
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          214,
+          218
+        ],
+        "resize_pixels": [
+          96,
+          96
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        16,
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "path": "ui/action_prompt.png",
+      "size": [
+        256,
+        96
+      ],
+      "sha256": "728d79cd1c8c524fcf279cc5655d42f8c874d39e952e0792a77179a8c183c15f",
+      "issue": 222,
+      "role": "action_prompt",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          995,
+          160,
+          440,
+          200
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          416,
+          175
+        ],
+        "resize_pixels": [
+          256,
+          96
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        20,
+        20,
+        20,
+        20
+      ]
+    },
+    {
+      "path": "ui/hud_day.png",
+      "size": [
+        288,
+        72
+      ],
+      "sha256": "25e1155b877a97172641e8b5fa632ceddb821c28ed699fe7d6d46de0dd5e4e53",
+      "issue": 222,
+      "role": "hud_day",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          20,
+          520,
+          330,
+          160
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          303,
+          130
+        ],
+        "resize_pixels": [
+          288,
+          72
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        28,
+        12,
+        28,
+        12
+      ]
+    },
+    {
+      "path": "ui/hud_acid.png",
+      "size": [
+        384,
+        72
+      ],
+      "sha256": "7b8b42058de37e0d47f9c315db652acfb76d845611309e765fd5bfab22e3ce4a",
+      "issue": 222,
+      "role": "hud_acid",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          365,
+          520,
+          380,
+          160
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          354,
+          130
+        ],
+        "resize_pixels": [
+          384,
+          72
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        28,
+        12,
+        28,
+        12
+      ]
+    },
+    {
+      "path": "ui/hud_clock.png",
+      "size": [
+        240,
+        72
+      ],
+      "sha256": "86f7d7b59c18d1a8ea48b5121ee1acf49205be444b2d9a1f99ecf88db0065f83",
+      "issue": 222,
+      "role": "hud_clock",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          765,
+          525,
+          295,
+          150
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          273,
+          130
+        ],
+        "resize_pixels": [
+          240,
+          72
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        28,
+        12,
+        28,
+        12
+      ]
+    },
+    {
+      "path": "ui/weight_bar.png",
+      "size": [
+        288,
+        32
+      ],
+      "sha256": "0514566b37d591bc1a91696aa62076d3eeee2de014a3abcf963a3f8895cf54f8",
+      "issue": 222,
+      "role": "weight_bar",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          1065,
+          550,
+          375,
+          100
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          344,
+          70
+        ],
+        "resize_pixels": [
+          288,
+          32
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      },
+      "slice_margins_ltrb": [
+        10,
+        10,
+        10,
+        10
+      ]
+    },
+    {
+      "path": "ui/sun.png",
+      "size": [
+        40,
+        40
+      ],
+      "sha256": "4ed0a9ef5aa82d840221aaab4750b449b404c926fa3ba696d79b307ce109fd5c",
+      "issue": 222,
+      "role": "sun",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          85,
+          790,
+          215,
+          218
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          183,
+          183
+        ],
+        "resize_pixels": [
+          40,
+          40
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "ui/clock.png",
+      "size": [
+        40,
+        40
+      ],
+      "sha256": "ecdd9091032a1e22baf5da04100f839c7f0bdecc38e879fb0c1cf94c1eae8631",
+      "issue": 222,
+      "role": "clock",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          430,
+          804,
+          190,
+          185
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          152,
+          156
+        ],
+        "resize_pixels": [
+          40,
+          40
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "ui/acid_drop.png",
+      "size": [
+        40,
+        40
+      ],
+      "sha256": "d462b1aff7f6e1b579b699affc29bc19af8252e10c88c42ed8cfec0394e2c561",
+      "issue": 222,
+      "role": "acid_drop",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          785,
+          800,
+          160,
+          185
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          108,
+          152
+        ],
+        "resize_pixels": [
+          40,
+          40
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "ui/gauge_fill.png",
+      "size": [
+        256,
+        12
+      ],
+      "sha256": "d57fbc73d2e0dab4f1f13eefd546a3b6f02c7bd7a624488c8646b3e17d06fdb7",
+      "issue": 222,
+      "role": "gauge_fill",
+      "provenance": {
+        "tool": "image_gen.imagegen (built-in)",
+        "source": "docs/art/production/system-hd-ui-source.png",
+        "source_sha256": "55912ee6804eb5a1c7ee19fcbba830d48b64676bd8f0aadc41801c68db8a0584",
+        "source_crop": [
+          1080,
+          879,
+          300,
+          35
+        ],
+        "alpha_threshold": "50%",
+        "trimmed_size": [
+          299,
+          35
+        ],
+        "resize_pixels": [
+          256,
+          12
+        ],
+        "resampling": "nearest",
+        "human_retouch": false
+      }
+    },
+    {
+      "path": "ui/inventory_grid.png",
+      "size": [
+        632,
+        560
+      ],
+      "sha256": "351bd95dcab4dcb62b5aeb6a864de9c82d019e5b4f9f11df8377a51739629cf5",
+      "issue": 222,
+      "role": "empty inventory_grid",
+      "columns": 6,
+      "rows": 4,
+      "slot_size": [
+        96,
+        96
+      ],
+      "slot_origin": [
+        18,
+        80
+      ],
+      "slot_stride": [
+        100,
+        100
+      ],
+      "provenance": {
+        "composition": [
+          "ui/panel.png",
+          "ui/slot.png",
+          "ui/weight_bar.png"
+        ],
+        "processing_record": "docs/art/production/system-hd-provenance.txt"
+      }
+    },
+    {
+      "path": "ui/search_grid.png",
+      "size": [
+        432,
+        460
+      ],
+      "sha256": "691800d3472c437586b3c80ba483ed3b11ff1625803771f6c64919e7b6ea8bfe",
+      "issue": 222,
+      "role": "empty search_grid",
+      "columns": 4,
+      "rows": 3,
+      "slot_size": [
+        96,
+        96
+      ],
+      "slot_origin": [
+        18,
+        80
+      ],
+      "slot_stride": [
+        100,
+        100
+      ],
+      "provenance": {
+        "composition": [
+          "ui/panel.png",
+          "ui/slot.png"
+        ],
+        "processing_record": "docs/art/production/system-hd-provenance.txt"
+      }
+    },
+    {
+      "path": "ui/fridge_grid.png",
+      "size": [
+        632,
+        660
+      ],
+      "sha256": "3d128badad5548da5edc30593ab8cde6030d2910fbb4d38fa346cd676eff823a",
+      "issue": 222,
+      "role": "empty fridge_grid",
+      "columns": 6,
+      "rows": 5,
+      "slot_size": [
+        96,
+        96
+      ],
+      "slot_origin": [
+        18,
+        80
+      ],
+      "slot_stride": [
+        100,
+        100
+      ],
+      "provenance": {
+        "composition": [
+          "ui/panel.png",
+          "ui/slot.png"
+        ],
+        "processing_record": "docs/art/production/system-hd-provenance.txt"
+      }
     }
-  ]
+  ],
+  "system_assets": {
+    "issue": 222,
+    "status": "not connected; creative acceptance pending",
+    "provenance": "docs/art/production/system-hd-provenance.txt",
+    "frames_per_second": 6,
+    "mutant_canvas": [
+      256,
+      224
+    ],
+    "mutant_pivot": [
+      128,
+      204
+    ],
+    "icon_canvas": [
+      84,
+      84
+    ],
+    "sampling": "nearest"
+  }
 }

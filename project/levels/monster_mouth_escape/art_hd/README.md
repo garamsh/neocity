@@ -39,3 +39,22 @@ The native 1920×1080 environment assets and reference composite for [issue #210
 - [Comparison](../../../../docs/art/production/day-one-hd-beside-mockup.png): original mockup on the left, normalized to 1920×1080 for comparison only; new target on the right at native resolution.
 - [Join sheet](../../../../docs/art/production/day-one-hd-seams.png): rightmost 96 pixels followed by leftmost 96 pixels of each deck band, then each wall band, at native size. Shorter bands are centered on 108px rows.
 - Target placements and crops are recorded in the provenance, separately from the later runtime integration.
+
+## System assets for goal #218
+
+The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) are newly drawn with built-in ImageGen, using the mockup's palette and panel treatment and the HD chef's density. They are not connected to runtime drawing in this PR. Creative acceptance remains with the user.
+
+| Folder | Contract |
+|---|---|
+| `mutants/` | Mutated rat and former human citizen, each idle plus four walk frames. Right-facing, mirror for left. 256×224 transparent canvases, pivot (128, 204), foot baseline y=204; suggested walk playback 6 fps. Human fits 150×170; rat fits 184×96. |
+| `obstacles/` | Static acid vent and flesh spikes, each 224×224; bottom pivot (112, 208). |
+| `base/` | Refrigerator closed/open, 288×288; bottom pivot (144, 272). |
+| `containers/` | Crate stack, locker and shelf closed/open pairs. Both states share their canvas and bottom pivot. Individual sizes and pivots are in the manifest. |
+| `icons/` | Seven ingredients and eleven dishes matching the legacy filenames; 84×84 transparent canvases with visible art fitted within 76×76. |
+| `ui/` | Empty inventory/search/fridge grids, reusable panel and slot, gold selection outline, action prompt, weight trough, three top HUD plates, sun, clock, acid droplet and gauge fill. No raster words or numbers. |
+
+- The root [manifest](manifest.json) also owns these 53 PNGs; existing environment entries and the separate character manifest retain their ownership. Every new file records dimensions, hash and source crop or composition.
+- Draw at native pixels with nearest sampling. The mutants use the same pivot contract as the HD actors. World objects expose bottom pivots; their visible bounds are art, not collision rectangles.
+- UI frames carry `slice_margins_ltrb` in the manifest. Keep the four corners at native size and repeat or nearest-stretch only the intervening edges and center. `panel.png`: 16px; `slot.png`: 14px; `selection.png`: 16px; `action_prompt.png`: 20px; HUD plates: 28px left/right and 12px top/bottom; `weight_bar.png`: 10px. These are margins on each side, not a resize factor.
+- The assembled grid images are optional fixed layouts: inventory 6×4, search 4×3, fridge 6×5. Slots are 96×96, start at (18, 80) and advance by 100px in either direction. Header and footer spaces are blank for code-drawn labels and values. Runtime inventory capacity is decided by the feature owner; reusable frames support other layouts.
+- [Contact sheet](../../../../docs/art/production/system-hd-contact-sheet.png): every new resource, all mutant frames and native chef reference. [Provenance](../../../../docs/art/production/system-hd-provenance.txt) and [exact prompts](../../../../docs/art/production/system-hd-prompts.json) retain the source and processing record.
