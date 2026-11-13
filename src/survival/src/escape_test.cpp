@@ -207,7 +207,7 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
                {.id = WEAK,
                 .kind = ObjectKind::Npc,
                 .area = {.x = 6},
-                .destroyed_after = WorldThreshold{.acid = ACID}}});
+                .destroyed_from_day = 2}});
   Exploration exploration(simulation, world,
                           {.base = {.x = -5, .y = -5},
                            .entry = {},
@@ -229,13 +229,12 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   const auto base = workshop.snapshot();
   const auto rolls = escape.snapshot();
   ASSERT_EQ(progression.acid, ACID);
-  ASSERT_EQ(city.peak_acid, AcidLevel{});
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
-  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
+  EXPECT_EQ(exploration.advance(1s, IDLE), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),
@@ -307,7 +306,7 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
   EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
-  EXPECT_EQ(exploration.advance(1s, IDLE, progression.acid), Result::RunOver);
+  EXPECT_EQ(exploration.advance(1s, IDLE), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE),

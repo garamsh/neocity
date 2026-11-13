@@ -77,9 +77,46 @@ constexpr ObjectId WEST_RUBBLE{62};
 constexpr ObjectId EAST_RUBBLE{63};
 constexpr ObjectId EAST_ROOF_LADDER{64};
 constexpr ObjectId EAST_LOFT_LADDER{65};
+constexpr ObjectId FIRE_ESCAPE{66};
+constexpr ObjectId TERMINAL_ROAD{67};
+constexpr ObjectId TERMINAL_STAIR{68};
+constexpr ObjectId TERMINAL_STAIR_TOP{69};
+constexpr ObjectId UPPER_DECK{70};
+constexpr ObjectId DECK_LADDER{71};
+constexpr ObjectId TOP_CATWALK{72};
+constexpr ObjectId DOCK_LADDER{73};
+constexpr ObjectId DOCK{74};
+constexpr ObjectId TERMINAL_MACHINE{27};
+constexpr ObjectId DECK_BAG{28};
+constexpr ObjectId DOCK_CRATE{25};
+constexpr ObjectId LOBBY_FLOOR{80};
+constexpr ObjectId LOBBY_STAIR{81};
+constexpr ObjectId WEST_CATWALK{82};
+constexpr ObjectId UPPER_SPAN{83};
+constexpr ObjectId EAST_CATWALK{84};
+constexpr ObjectId WEST_LADDER{85};
+constexpr ObjectId WEST_GALLERY{86};
+constexpr ObjectId LOWER_SPAN{87};
+constexpr ObjectId EAST_GALLERY{88};
+constexpr ObjectId EAST_GALLERY_LADDER{89};
+constexpr ObjectId SKYWALK{90};
+constexpr ObjectId SKY_LADDER_WEST{91};
+constexpr ObjectId SKY_LADDER_EAST{92};
+constexpr ObjectId TANK_STAIR{93};
+constexpr ObjectId TANK_STAIR_LOW{94};
+constexpr ObjectId TANK_FLOOR{95};
+constexpr ObjectId KEEPER{96};
+constexpr ObjectId KEEPER_CART{97};
+constexpr ObjectId GIFT_SHELF{98};
+constexpr ObjectId JELLY_MACHINE{99};
+constexpr ObjectId TANK_LOCKER{100};
 
-/// One exploration day, which every world time threshold counts in.
+/// One exploration day's length.
 constexpr auto DAY = 18s;
+
+/// The days the damage stages after the first begin on.
+constexpr std::uint32_t CRACKED_DAY = STAGE_FIRST_DAY.at(1);
+constexpr std::uint32_t RUINED_DAY = STAGE_FIRST_DAY.at(2);
 constexpr std::uint32_t BAG_STOCK = 2;
 
 /// Landings on the shallows and the gauge pier at the foot of the gauge
@@ -260,6 +297,39 @@ constexpr std::array OBJECT_NAMES{
     Named<ObjectId>{.id = COLD_LOCKER, .name = "Cold Locker"},
     Named<ObjectId>{.id = ROOF_BAG, .name = "Roof Bag"},
     Named<ObjectId>{.id = FERRY_BAG, .name = "Ferry Bag"},
+    Named<ObjectId>{.id = FIRE_ESCAPE, .name = "Fire Escape"},
+    Named<ObjectId>{.id = TERMINAL_ROAD, .name = "Terminal Road"},
+    Named<ObjectId>{.id = TERMINAL_STAIR, .name = "Terminal Stair"},
+    Named<ObjectId>{.id = TERMINAL_STAIR_TOP, .name = "Terminal Stair Top"},
+    Named<ObjectId>{.id = UPPER_DECK, .name = "Upper Deck"},
+    Named<ObjectId>{.id = DECK_LADDER, .name = "Deck Ladder"},
+    Named<ObjectId>{.id = TOP_CATWALK, .name = "Top Catwalk"},
+    Named<ObjectId>{.id = DOCK_LADDER, .name = "Dock Ladder"},
+    Named<ObjectId>{.id = DOCK, .name = "Dock"},
+    Named<ObjectId>{.id = TERMINAL_MACHINE, .name = "Terminal Machine"},
+    Named<ObjectId>{.id = DECK_BAG, .name = "Deck Bag"},
+    Named<ObjectId>{.id = DOCK_CRATE, .name = "Dock Crate"},
+    Named<ObjectId>{.id = LOBBY_FLOOR, .name = "Lobby Floor"},
+    Named<ObjectId>{.id = LOBBY_STAIR, .name = "Lobby Stair"},
+    Named<ObjectId>{.id = WEST_CATWALK, .name = "West Catwalk"},
+    Named<ObjectId>{.id = UPPER_SPAN, .name = "Upper Span"},
+    Named<ObjectId>{.id = EAST_CATWALK, .name = "East Catwalk"},
+    Named<ObjectId>{.id = WEST_LADDER, .name = "West Ladder"},
+    Named<ObjectId>{.id = WEST_GALLERY, .name = "West Gallery"},
+    Named<ObjectId>{.id = LOWER_SPAN, .name = "Lower Span"},
+    Named<ObjectId>{.id = EAST_GALLERY, .name = "East Gallery"},
+    Named<ObjectId>{.id = EAST_GALLERY_LADDER, .name = "East Gallery Ladder"},
+    Named<ObjectId>{.id = SKYWALK, .name = "Skywalk"},
+    Named<ObjectId>{.id = SKY_LADDER_WEST, .name = "West Skywalk Ladder"},
+    Named<ObjectId>{.id = SKY_LADDER_EAST, .name = "East Skywalk Ladder"},
+    Named<ObjectId>{.id = TANK_STAIR, .name = "Tank Stair"},
+    Named<ObjectId>{.id = TANK_STAIR_LOW, .name = "Tank Stair Foot"},
+    Named<ObjectId>{.id = TANK_FLOOR, .name = "Tank Floor"},
+    Named<ObjectId>{.id = KEEPER, .name = "Tank Keeper"},
+    Named<ObjectId>{.id = KEEPER_CART, .name = "Keeper Cart"},
+    Named<ObjectId>{.id = GIFT_SHELF, .name = "Gift Shelf"},
+    Named<ObjectId>{.id = JELLY_MACHINE, .name = "Jelly Machine"},
+    Named<ObjectId>{.id = TANK_LOCKER, .name = "Tank Locker"},
 };
 
 template <typename Id, std::size_t Size>
@@ -294,57 +364,29 @@ ObjectDefinition owned(ObjectDefinition source, ObjectId owner) {
   return source;
 }
 
-ObjectDefinition exposed(ObjectDefinition object, WorldThreshold threshold) {
-  object.exposed_at = threshold;
+ObjectDefinition from_day(ObjectDefinition object, std::uint32_t day) {
+  object.exposed_from_day = day;
   return object;
 }
 
-ObjectDefinition destroyed(ObjectDefinition object, WorldThreshold threshold) {
-  object.destroyed_after = threshold;
+ObjectDefinition gone_from(ObjectDefinition object, std::uint32_t day) {
+  object.destroyed_from_day = day;
   return object;
 }
 
-/// The acid that carries off a bag on `row`: the lower the row, the sooner, so
-/// a bag's limit keeps the order every acid-only threshold keeps.
-AcidLevel bag_limit(std::int32_t row) {
-  if (row >= 13) {
-    return AcidLevel{35};
-  }
-  if (row >= 12) {
-    return AcidLevel{45};
-  }
-  if (row >= 11) {
-    return AcidLevel{50};
-  }
-  if (row >= 8) {
-    return AcidLevel{55};
-  }
-  if (row >= 7) {
-    return AcidLevel{65};
-  }
-  if (row >= 6) {
-    return AcidLevel{70};
-  }
-  if (row >= 5) {
-    return AcidLevel{75};
-  }
-  if (row >= 3) {
-    return AcidLevel{80};
-  }
-  return AcidLevel{85};
+ObjectDefinition aquatic(ObjectDefinition object) {
+  object.map = MapId::Aquarium;
+  return object;
 }
 
-/// A bag the tide brings in once world time reaches the start of its day and
-/// takes back `BAG_DAYS` days later. Acid never brings one: it carries the bag
-/// off at its row's limit, or sinks it before it lands, so rising acid only
-/// takes supply away.
+/// A bag the tide brings in at the start of its day and takes back `BAG_DAYS`
+/// days later. Acid neither brings nor takes one, and the day alone decides.
 ObjectDefinition washed_up(std::size_t index) {
   const auto bag = washed_bag_at(index);
-  const auto landing = (bag.day - 1) * DAY;
-  return destroyed(
-      exposed(ingredient_source(washed_bag(index), bag.cell, bag.ingredient),
-              {.elapsed = landing}),
-      {.elapsed = landing + BAG_DAYS * DAY, .acid = bag_limit(bag.cell.y)});
+  return gone_from(
+      from_day(ingredient_source(washed_bag(index), bag.cell, bag.ingredient),
+               bag.day),
+      bag.day + BAG_DAYS);
 }
 
 ObjectDefinition building(ObjectId id, WorldArea area) {
@@ -359,16 +401,20 @@ ObjectDefinition entrance(ObjectId id, WorldArea area) {
   return {.id = id, .kind = ObjectKind::Entrance, .area = area};
 }
 
-/// The city of the first mockup, seen from the side, laid out twice: in each
+/// The street of the first mockup, seen from the side, laid out twice: in each
 /// half a kitchen shop on stilts with a ladder to its loft and one to its roof,
 /// an upper walkway that steps down to a lower one, a rope bridge, and a ledge
 /// on a gauge pillar with a ladder down and a shop above. Every walkway is one
-/// row, and floors meet only by ladder, a one-row step, or a jump. Low ground
-/// drowns first, so every acid-only threshold rises with height.
-std::vector<ObjectDefinition> city() {
-  constexpr auto ferry_time = DAY * 160 / 9;
-  const WorldThreshold ferry_arrives{.elapsed = ferry_time,
-                                     .acid = AcidLevel{30}};
+/// row, and floors meet only by ladder, a one-row step, or a jump. East of the
+/// cold store a terminal climbs by stairs to a deck and by ladders to a top
+/// catwalk and down to a dock, where the way into the aquarium lies.
+///
+/// Damage follows the day alone, in three stages: from `CRACKED_DAY` the
+/// kitchen roof ladder is gone, a fire escape stands in its place and the
+/// drifted ferry arrives; from `RUINED_DAY` the rotten bridge and the kiosk are
+/// gone. Every stage leaves a way to every source, as the path check in the
+/// tests proves.
+std::vector<ObjectDefinition> street() {
   std::vector<ObjectDefinition> objects{
       terrain(UPPER_WALKWAY, {.x = 0, .y = 8, .width = 9}),
       terrain(LOWER_WALKWAY, {.x = 9, .y = 9, .width = 5}),
@@ -377,15 +423,14 @@ std::vector<ObjectDefinition> city() {
       terrain(SHOP_ROOF, {.x = 17, .y = 5, .width = 3}),
       ladder(GAUGE_LADDER, {.x = 18, .y = 8, .height = 5}),
       terrain(GAUGE_PIER, {.x = 17, .y = 12, .width = 3}),
-      destroyed(terrain(SHALLOWS, {.x = 14, .y = 12, .width = 3}),
-                {.acid = AcidLevel{45}}),
+      terrain(SHALLOWS, {.x = 14, .y = 12, .width = 3}),
       ladder(KITCHEN_LADDER, {.x = 3, .y = 6, .height = 3}),
       terrain(KITCHEN_LOFT, {.x = 0, .y = 6, .width = 8}),
       terrain(KITCHEN_ROOF, {.x = 0, .y = 4, .width = 8}),
-      destroyed(ladder(ROOF_LADDER, {.x = 1, .y = 4, .height = 3}),
-                {.elapsed = DAY * 16 / 3, .acid = AcidLevel{10}}),
-      destroyed(building(KITCHEN_SHOP, {.x = 0, .y = 5, .width = 6}),
-                {.elapsed = DAY * 40 / 3, .acid = AcidLevel{25}}),
+      gone_from(ladder(ROOF_LADDER, {.x = 1, .y = 4, .height = 3}),
+                CRACKED_DAY),
+      from_day(ladder(FIRE_ESCAPE, {.x = 7, .y = 4, .height = 3}), CRACKED_DAY),
+      building(KITCHEN_SHOP, {.x = 0, .y = 5, .width = 6}),
       building(TOWER_SHOP, {.x = 18, .y = 6, .width = 2, .height = 2}),
       building(WEST_RUBBLE, {.x = 12, .y = 9}),
       terrain(EAST_WALKWAY, {.x = 20, .y = 8, .width = 9}),
@@ -394,45 +439,95 @@ std::vector<ObjectDefinition> city() {
       ladder(EAST_ROOF_LADDER, {.x = 21, .y = 4, .height = 3}),
       terrain(EAST_ROOF, {.x = 21, .y = 4, .width = 7}),
       building(NOODLE_SHOP, {.x = 20, .y = 5, .width = 6}),
-      destroyed(building(KIOSK_WRECK, {.x = 20, .y = 3, .height = 2}),
-                {.elapsed = DAY * 8}),
+      gone_from(building(KIOSK_WRECK, {.x = 20, .y = 3, .height = 2}),
+                RUINED_DAY),
       terrain(EAST_LOWER_WALKWAY, {.x = 29, .y = 9, .width = 3}),
       building(EAST_RUBBLE, {.x = 30, .y = 9}),
-      destroyed(terrain(ROTTEN_BRIDGE, {.x = 32, .y = 9, .width = 4}),
-                {.elapsed = 24 * DAY, .acid = AcidLevel{40}}),
+      gone_from(terrain(ROTTEN_BRIDGE, {.x = 32, .y = 9, .width = 4}),
+                RUINED_DAY),
       terrain(COLD_STORE_FLOOR, {.x = 36, .y = 8, .width = 4}),
       building(COLD_STORE, {.x = 37, .y = 6, .width = 3, .height = 3}),
-      destroyed(entrance(COLD_STORE_DOOR, {.x = 37, .y = 8, .width = 3}),
-                {.elapsed = DAY * 80 / 9, .acid = AcidLevel{20}}),
+      entrance(COLD_STORE_DOOR, {.x = 37, .y = 8, .width = 3}),
       ladder(PIER_LADDER, {.x = 36, .y = 8, .height = 5}),
       terrain(PIER, {.x = 36, .y = 12, .width = 4}),
       terrain(SUNKEN_TRAIN, {.x = 20, .y = 13, .width = 5}),
-      exposed(terrain(DRIFTED_FERRY, {.x = 27, .y = 13, .width = 8}),
-              ferry_arrives),
-      destroyed({.id = NOODLE_VENDOR,
-                 .kind = ObjectKind::Npc,
-                 .area = {.x = 25, .y = 6}},
-                {.elapsed = DAY * 32 / 3, .acid = AcidLevel{20}}),
-      destroyed(ingredient_source(TOMATO_MACHINE, {.x = 11, .y = 9}, TOMATO),
-                {.acid = AcidLevel{50}}),
+      from_day(terrain(DRIFTED_FERRY, {.x = 27, .y = 13, .width = 8}),
+               CRACKED_DAY),
+      {.id = NOODLE_VENDOR, .kind = ObjectKind::Npc, .area = {.x = 25, .y = 6}},
+      ingredient_source(TOMATO_MACHINE, {.x = 11, .y = 9}, TOMATO),
       owned(ingredient_source(VENDOR_CART, {.x = 25, .y = 6}, FISH),
             NOODLE_VENDOR),
       owned(ingredient_source(SHOP_SHELF, {.x = 5, .y = 6}, KELP),
             KITCHEN_SHOP),
-      destroyed(ingredient_source(LOST_BASKET, {.x = 23, .y = 13}, MUSHROOM),
-                {.acid = AcidLevel{40}}),
-      destroyed(ingredient_source(PICKLE_MACHINE, {.x = 21, .y = 13}, PICKLES),
-                {.acid = AcidLevel{35}}),
+      ingredient_source(LOST_BASKET, {.x = 23, .y = 13}, MUSHROOM),
+      ingredient_source(PICKLE_MACHINE, {.x = 21, .y = 13}, PICKLES),
       owned(ingredient_source(COLD_LOCKER, {.x = 39, .y = 8}, MEAT),
             COLD_STORE),
       ingredient_source(ROOF_BAG, {.x = 6, .y = 4}, TRUFFLE),
-      exposed(owned(ingredient_source(FERRY_BAG, {.x = 30, .y = 13}, KELP),
-                    DRIFTED_FERRY),
-              {.elapsed = ferry_time}),
+      from_day(owned(ingredient_source(FERRY_BAG, {.x = 30, .y = 13}, KELP),
+                     DRIFTED_FERRY),
+               CRACKED_DAY),
+      terrain(TERMINAL_ROAD, {.x = 40, .y = 8, .width = 10}),
+      terrain(TERMINAL_STAIR, {.x = 50, .y = 7}),
+      terrain(TERMINAL_STAIR_TOP, {.x = 51, .y = 6}),
+      terrain(UPPER_DECK, {.x = 52, .y = 5, .width = 9}),
+      ladder(DECK_LADDER, {.x = 56, .y = 2, .height = 4}),
+      terrain(TOP_CATWALK, {.x = 53, .y = 2, .width = 8}),
+      ladder(DOCK_LADDER, {.x = 60, .y = 5, .height = 7}),
+      terrain(DOCK, {.x = 56, .y = 11, .width = 8}),
+      ingredient_source(TERMINAL_MACHINE, {.x = 44, .y = 8}, PICKLES),
+      ingredient_source(DECK_BAG, {.x = 58, .y = 5}, MUSHROOM),
+      ingredient_source(DOCK_CRATE, {.x = 57, .y = 11}, TOMATO),
   };
   for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
     objects.push_back(washed_up(index));
   }
+  return objects;
+}
+
+/// The flooded aquarium, teal inside: a lobby by the way back to the street,
+/// stairs up to an upper catwalk and a ladder down to a lower gallery, and the
+/// two halves of the hall joined by one span on each level. Damage follows the
+/// day: from `CRACKED_DAY` the upper span is gone, and from `RUINED_DAY` the
+/// lower span is gone too and a skywalk with two ladders carries the way over.
+std::vector<ObjectDefinition> aquarium() {
+  std::vector<ObjectDefinition> objects{
+      terrain(LOBBY_FLOOR, {.x = 0, .y = 10, .width = 12}),
+      terrain(LOBBY_STAIR, {.x = 12, .y = 9}),
+      terrain(WEST_CATWALK, {.x = 13, .y = 8, .width = 5}),
+      gone_from(terrain(UPPER_SPAN, {.x = 18, .y = 8, .width = 4}),
+                CRACKED_DAY),
+      terrain(EAST_CATWALK, {.x = 22, .y = 8, .width = 13}),
+      ladder(WEST_LADDER, {.x = 13, .y = 8, .height = 4}),
+      terrain(WEST_GALLERY, {.x = 13, .y = 11, .width = 9}),
+      gone_from(terrain(LOWER_SPAN, {.x = 22, .y = 11, .width = 4}),
+                RUINED_DAY),
+      terrain(EAST_GALLERY, {.x = 26, .y = 11, .width = 6}),
+      ladder(EAST_GALLERY_LADDER, {.x = 30, .y = 8, .height = 4}),
+      from_day(terrain(SKYWALK, {.x = 17, .y = 5, .width = 10}), RUINED_DAY),
+      from_day(ladder(SKY_LADDER_WEST, {.x = 17, .y = 5, .height = 4}),
+               RUINED_DAY),
+      from_day(ladder(SKY_LADDER_EAST, {.x = 26, .y = 5, .height = 4}),
+               RUINED_DAY),
+      terrain(TANK_STAIR, {.x = 35, .y = 9}),
+      terrain(TANK_STAIR_LOW, {.x = 36, .y = 10}),
+      terrain(TANK_FLOOR, {.x = 37, .y = 11, .width = 7}),
+      {.id = KEEPER, .kind = ObjectKind::Npc, .area = {.x = 7, .y = 10}},
+      owned(ingredient_source(KEEPER_CART, {.x = 7, .y = 10}, FISH), KEEPER),
+      owned(ingredient_source(GIFT_SHELF, {.x = 27, .y = 8}, KELP),
+            EAST_CATWALK),
+      ingredient_source(JELLY_MACHINE, {.x = 15, .y = 11}, MUSHROOM),
+      owned(ingredient_source(TANK_LOCKER, {.x = 41, .y = 11}, MEAT),
+            TANK_FLOOR),
+  };
+  std::ranges::transform(objects, objects.begin(), aquatic);
+  return objects;
+}
+
+std::vector<ObjectDefinition> city() {
+  auto objects = street();
+  const auto hall = aquarium();
+  objects.insert(objects.end(), hall.begin(), hall.end());
   return objects;
 }
 
@@ -485,7 +580,36 @@ std::optional<GroundKind> ground_kind(char mark) {
   }
 }
 
-std::vector<GroundCell> ground() {
+/// The ground cells of `objects`' terrain on `map`, one road cell for each
+/// cell a terrain object covers, so a map without a hand-drawn road shows its
+/// floors.
+std::vector<GroundCell>
+ground_of_terrain(const std::vector<ObjectDefinition> &objects, MapId map,
+                  std::int32_t from_column) {
+  std::vector<GroundCell> cells;
+  for (const auto &object : objects) {
+    if (object.kind != ObjectKind::Terrain || object.map != map) {
+      continue;
+    }
+    for (auto column = std::max(object.area.x, from_column);
+         column < object.area.x + object.area.width; ++column) {
+      for (auto row = object.area.y; row < object.area.y + object.area.height;
+           ++row) {
+        const bool plank = object.id == UPPER_SPAN || object.id == LOWER_SPAN ||
+                           object.id == SKYWALK;
+        cells.push_back(
+            {.cell = {.x = column, .y = row},
+             .kind = plank ? GroundKind::PlankBridge : GroundKind::Road});
+      }
+    }
+  }
+  return cells;
+}
+
+/// The street's hand-drawn road of the first columns, then a road under every
+/// floor of the terminal beyond it.
+std::vector<GroundCell>
+street_ground(const std::vector<ObjectDefinition> &objects) {
   std::vector<GroundCell> cells;
   for (std::size_t row = 0; row < GROUND_ROWS.size(); ++row) {
     const auto marks = GROUND_ROWS.at(row);
@@ -497,10 +621,14 @@ std::vector<GroundCell> ground() {
       }
     }
   }
+  const auto terminal =
+      ground_of_terrain(objects, MapId::Street,
+                        static_cast<std::int32_t>(GROUND_ROWS.front().size()));
+  cells.insert(cells.end(), terminal.begin(), terminal.end());
   return cells;
 }
 
-std::vector<Decoration> decorations() {
+std::vector<Decoration> street_decorations() {
   using enum DecorationKind;
   return {
       {.kind = TiltedTrain, .area = {.x = 1, .y = 11, .width = 4}},
@@ -524,10 +652,31 @@ std::vector<Decoration> decorations() {
       {.kind = BrokenPillar, .area = {.x = 28, .y = 9, .height = 3}},
       {.kind = StreetLamp, .area = {.x = 8, .y = 7}},
       {.kind = StreetLamp, .area = {.x = 28, .y = 7}},
+      {.kind = BuildingShell,
+       .area = {.x = 57, .y = 6, .width = 5, .height = 5}},
+      {.kind = HangingCables, .area = {.x = 42, .y = 9, .width = 4}},
+      {.kind = StreetLamp, .area = {.x = 48, .y = 7}},
+      {.kind = FleshGrowth,
+       .area = {.x = 44, .y = 13, .width = 4, .height = 2}},
   };
 }
 
-std::vector<Landmark> landmarks() {
+std::vector<Decoration> aquarium_decorations() {
+  using enum DecorationKind;
+  return {
+      {.kind = BuildingShell,
+       .area = {.x = 14, .y = 1, .width = 6, .height = 6}},
+      {.kind = HangingCables, .area = {.x = 3, .y = 6, .width = 5}},
+      {.kind = HangingCables, .area = {.x = 31, .y = 5, .width = 4}},
+      {.kind = FleshGrowth,
+       .area = {.x = 22, .y = 13, .width = 4, .height = 2}},
+      {.kind = FleshGrowth,
+       .area = {.x = 38, .y = 13, .width = 4, .height = 2}},
+      {.kind = DeadNeonSign, .area = {.x = 8, .y = 7, .width = 2}},
+  };
+}
+
+std::vector<Landmark> street_landmarks() {
   using enum LandmarkKind;
   return {
       {.object = KIOSK_WRECK, .kind = Kiosk},
@@ -552,6 +701,15 @@ std::vector<SourceStock> stock() {
       {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
       {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
       {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = TERMINAL_MACHINE,
+       .kind = SourceKind::VendingMachine,
+       .remaining = 4},
+      {.id = DECK_BAG, .kind = SourceKind::Bag, .remaining = 2},
+      {.id = DOCK_CRATE, .kind = SourceKind::Bag, .remaining = 3},
+      {.id = KEEPER_CART, .kind = SourceKind::Npc, .remaining = 4},
+      {.id = GIFT_SHELF, .kind = SourceKind::Shop, .remaining = 3},
+      {.id = JELLY_MACHINE, .kind = SourceKind::VendingMachine, .remaining = 3},
+      {.id = TANK_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
   };
   for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
     sources.push_back({.id = washed_bag(index),
@@ -559,6 +717,28 @@ std::vector<SourceStock> stock() {
                        .remaining = BAG_STOCK});
   }
   return sources;
+}
+
+/// The way to the aquarium at the end of the dock and the way back by its
+/// lobby. Each arrival lies outside the zone of the map it arrives on.
+std::vector<MapExit> exits() {
+  return {{.from = MapId::Street,
+           .zone = {.x = 62, .y = 10, .width = 2, .height = 2},
+           .to = MapId::Aquarium,
+           .arrival = {.x = 4, .y = 10}},
+          {.from = MapId::Aquarium,
+           .zone = {.x = 0, .y = 9, .width = 2, .height = 2},
+           .to = MapId::Street,
+           .arrival = {.x = 58, .y = 11}}};
+}
+
+/// The floors inside the street's three shops: the kitchen loft, the noodle
+/// loft and the cold store.
+std::vector<Interior> interiors() {
+  return {{.building = KITCHEN_SHOP, .area = {.x = 0, .y = 6, .width = 6}},
+          {.building = NOODLE_SHOP, .area = {.x = 20, .y = 6, .width = 6}},
+          {.building = COLD_STORE,
+           .area = {.x = 37, .y = 6, .width = 3, .height = 3}}};
 }
 
 std::vector<Recipe> recipes() {
@@ -592,13 +772,18 @@ std::vector<Flavor> flavors() {
 } // namespace
 
 Content temporary_content(std::uint32_t seed) {
+  auto objects = city();
+  auto street_cells = street_ground(objects);
+  auto aquarium_cells = ground_of_terrain(objects, MapId::Aquarium, 0);
   return {
       .run = {.exploration_budget = DAY,
               .seed = seed,
               .full_acid = AcidLevel{100}},
-      .objects = city(),
+      .objects = std::move(objects),
       .companion = {.exploration = {.base = {.x = 1, .y = 8},
                                     .entry = {.x = 5, .y = 8},
+                                    .exits = exits(),
+                                    .interiors = interiors(),
                                     .collection_distance = 1,
                                     .sources = stock(),
                                     .collection_time = 1500ms},
@@ -611,12 +796,29 @@ Content temporary_content(std::uint32_t seed) {
                                  .flavors = flavors(),
                                  .fine_dish_score = 30},
                     .unfed_penalty = AcidLevel{12}},
-      .hazards = {{.x = 1, .y = 8}},
-      .map = {.width = 40, .height = 16},
-      .ground = ground(),
-      .decorations = decorations(),
-      .landmarks = landmarks(),
+      .maps = {{.id = MapId::Street,
+                .name = "Street",
+                .size = {.width = 64, .height = 16},
+                .hazards = {{.x = 1, .y = 8}},
+                .ground = std::move(street_cells),
+                .decorations = street_decorations(),
+                .landmarks = street_landmarks()},
+               {.id = MapId::Aquarium,
+                .name = "Aquarium",
+                .size = {.width = 44, .height = 16},
+                .hazards = {},
+                .ground = std::move(aquarium_cells),
+                .decorations = aquarium_decorations(),
+                .landmarks = {}}},
   };
+}
+
+const MapContent &map_of(const Content &content, MapId id) {
+  const auto found = std::ranges::find(content.maps, id, &MapContent::id);
+  if (found == content.maps.end()) {
+    throw std::out_of_range("the content has no such map");
+  }
+  return *found;
 }
 
 std::string_view ingredient_name(IngredientId ingredient) {

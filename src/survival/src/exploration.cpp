@@ -484,8 +484,18 @@ Exploration::Exploration(Simulation &progression, World &city,
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
   if (config.collection_time < 0us ||
-      !stands_on(CellMap(snapshot), config.entry)) {
+      !stands_on(CellMap(on_map(snapshot, MapId::Street)), config.entry)) {
     throw std::invalid_argument("exploration requires a safe entry");
+  }
+  for (const auto &exit : config.exits) {
+    const auto arrival = CellMap(on_map(snapshot, exit.to));
+    if (exit.from == exit.to || !stands_on(arrival, exit.arrival) ||
+        std::ranges::any_of(config.exits, [&](const MapExit &other) {
+          return other.from == exit.to &&
+                 distance(exit.arrival, other.zone) == 0;
+        })) {
+      throw std::invalid_argument("a map exit requires a safe arrival");
+    }
   }
   std::vector<ObjectId> ids;
   for (const auto &source : config.sources) {
@@ -509,7 +519,14 @@ Result Exploration::enter(Actor actor) {
       Location::City) {
     return Result::Applied;
   }
-  if (!stands_on(CellMap(world.get().snapshot()), config.entry)) {
+  const auto other = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+  if (current != MapId::Street &&
+      actor_state(simulation.get().snapshot(), other).location ==
+          Location::City) {
+    return Result::NotExploring;
+  }
+  current = MapId::Street;
+  if (!stands_on(cells(), config.entry)) {
     return Result::NotExploring;
   }
   const auto result = simulation.get().enter(actor);
@@ -532,23 +549,17 @@ Result Exploration::return_to_base(Actor actor) {
 }
 
 Result Exploration::advance(std::chrono::microseconds elapsed,
-                            const std::array<ExplorationInput, 2> &inputs,
-                            AcidLevel acid) {
+                            const std::array<ExplorationInput, 2> &inputs) {
   if (run_over(simulation.get().snapshot().phase)) {
     return Result::RunOver;
   }
-  const auto progression = world.get().snapshot().progression;
-  const auto available = simulation.get().snapshot().remaining_exploration;
-  if (elapsed < 0us ||
-      std::min(elapsed, available) >
-          std::chrono::microseconds::max() - progression.elapsed) {
+  if (elapsed < 0us) {
     return Result::InvalidElapsed;
   }
   synchronize();
   auto remaining = elapsed;
-  // Apply acid and a finished day's time even with no elapsed time, including
-  // while at base.
-  advance_world(acid);
+  // Apply a finished day even with no elapsed time, including while at base.
+  advance_world();
   while (remaining > 0us &&
          simulation.get().snapshot().phase == Phase::Exploration) {
     const auto before = simulation.get().snapshot();
@@ -559,7 +570,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
       }
     }
     require_applied(simulation.get().advance(step));
-    advance_world(acid);
+    advance_world();
     remaining -= step;
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
@@ -584,6 +595,7 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
         tick(actor, inputs.at(index));
       }
     }
+    travel();
   }
   return Result::Applied;
 }
@@ -604,6 +616,9 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   const auto object = std::ranges::find_if(
       snapshot.objects,
       [source](const ObjectSnapshot &entry) { return entry.id == source; });
+  if (object != snapshot.objects.end() && object->map != current) {
+    return CollectionResult::OutOfRange;
+  }
   if (stock == config.sources.end() || object == snapshot.objects.end() ||
       object->kind != ObjectKind::MaterialSource) {
     return CollectionResult::UnknownSource;
@@ -631,9 +646,23 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
 }
 
 ExplorationSnapshot Exploration::snapshot() const {
-  return {.chef = chef.state,
-          .appraiser = appraiser.state,
-          .sources = config.sources};
+  ExplorationSnapshot result{.map = current,
+                             .chef = chef.state,
+                             .appraiser = appraiser.state,
+                             .sources = config.sources};
+  if (current == MapId::Street) {
+    for (auto *state : {&result.chef, &result.appraiser}) {
+      const auto cell = cell_of(state->body.position);
+      const auto inside = std::ranges::find_if(
+          config.interiors, [cell](const Interior &interior) {
+            return distance(cell, interior.area) == 0;
+          });
+      if (inside != config.interiors.end()) {
+        state->interior = inside->building;
+      }
+    }
+  }
+  return result;
 }
 
 Exploration::Explorer &Exploration::explorer(Actor actor) {
@@ -652,6 +681,10 @@ bool Exploration::collecting(Actor actor) {
 
 void Exploration::synchronize() {
   const auto snapshot = simulation.get().snapshot();
+  if (actor_state(snapshot, Actor::Chef).location == Location::Base &&
+      actor_state(snapshot, Actor::Appraiser).location == Location::Base) {
+    current = MapId::Street;
+  }
   for (const auto actor : ACTORS) {
     if (actor_state(snapshot, actor).location == Location::Base) {
       explorer(actor) = {
@@ -660,10 +693,35 @@ void Exploration::synchronize() {
   }
 }
 
-void Exploration::advance_world(AcidLevel acid) {
-  if (world.get().update({.elapsed = simulation.get().snapshot().world_time,
-                          .acid = acid}) != WorldUpdateResult::Applied) {
-    throw std::logic_error("exploration world time regressed");
+void Exploration::advance_world() {
+  if (world.get().update(simulation.get().snapshot().day) !=
+      WorldUpdateResult::Applied) {
+    throw std::logic_error("exploration day regressed");
+  }
+}
+
+CellMap Exploration::cells() const {
+  return CellMap(on_map(world.get().snapshot(), current));
+}
+
+void Exploration::travel() {
+  const auto snapshot = simulation.get().snapshot();
+  if (actor_state(snapshot, Actor::Chef).location != Location::City ||
+      actor_state(snapshot, Actor::Appraiser).location != Location::City) {
+    return;
+  }
+  const auto inside = [this](const MapExit &exit) {
+    return exit.from == current &&
+           distance(cell_of(chef.state.body.position), exit.zone) == 0 &&
+           distance(cell_of(appraiser.state.body.position), exit.zone) == 0;
+  };
+  const auto found = std::ranges::find_if(config.exits, inside);
+  if (found == config.exits.end()) {
+    return;
+  }
+  current = found->to;
+  for (auto *state : {&chef.state, &appraiser.state}) {
+    state->body = {.position = standing_in(found->arrival)};
   }
 }
 
@@ -672,7 +730,7 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   if (state.collecting) {
     input = {};
   }
-  const CellMap map(world.get().snapshot());
+  const auto map = cells();
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
     state.body = physics_tick(map, state.body, input);
     if (map.below(cell_of(state.body.position))) {

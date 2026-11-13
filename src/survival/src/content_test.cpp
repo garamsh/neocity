@@ -16,7 +16,9 @@
 #include <optional>
 #include <set>
 #include <stdexcept>
+#include <string>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -30,11 +32,9 @@ constexpr ControlMap ALL_AI{.chef = Controller::Ai,
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
 constexpr auto STEP = 100ms;
 constexpr std::uint32_t STEP_LIMIT = 400'000;
-constexpr auto ARRIVAL_SCAN_STEP = 5s;
-constexpr auto ARRIVAL_SCAN_END = 1600s;
-constexpr auto SUPPLY_SCAN_STEP = 40s;
-constexpr std::uint32_t ACID_SCAN_STEP = 5;
-constexpr std::uint32_t ACID_SCAN_END = 100;
+/// The last day the path check and the supply scans look at: past it every
+/// washed-up bag has gone and the stages no longer change.
+constexpr std::uint32_t LAST_SCANNED_DAY = 60;
 /// The share of cooking attempts that turn into a dish.
 constexpr std::uint32_t SUCCESS_PERCENT = 90;
 
@@ -55,7 +55,7 @@ public:
 
   [[nodiscard]] GameView view() const {
     return {.progression = shared.snapshot(),
-            .world = map.snapshot(),
+            .world = on_map(map.snapshot(), explorers.snapshot().map),
             .exploration = explorers.snapshot(),
             .workshop = kitchen_work.snapshot()};
   }
@@ -73,8 +73,7 @@ public:
         return;
       }
     }
-    ASSERT_EQ(explorers.advance(STEP, movement, shared.snapshot().acid),
-              Result::Applied);
+    ASSERT_EQ(explorers.advance(STEP, movement), Result::Applied);
   }
 
 private:
@@ -85,17 +84,6 @@ private:
   Workshop kitchen_work;
   Companion controllers;
 };
-
-ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
-  const auto found =
-      std::ranges::find_if(world.objects, [name](const ObjectSnapshot &object) {
-        return object_name(object.id) == name;
-      });
-  if (found == world.objects.end()) {
-    throw std::out_of_range("no such object");
-  }
-  return *found;
-}
 
 /// Runs AI-only days until `last_day` begins or the run ends, or gives up at
 /// the step limit.
@@ -127,16 +115,38 @@ std::uint32_t unfed_days(Game &game, std::uint32_t last_day) {
   return unfed;
 }
 
-/// The cells a party can reach from the entrance by `allowed` moves.
+const std::set<Move> EVERY_MOVE{Move::Left,     Move::Right,
+                                Move::ClimbUp,  Move::ClimbDown,
+                                Move::JumpLeft, Move::JumpRight};
+
+const MapContent &street_of(const Content &content) {
+  return map_of(content, MapId::Street);
+}
+
+/// Where a party starts on `map`: the street entrance, or the cell the way in
+/// puts it on.
+GridPosition start_of(const Content &content, MapId map) {
+  const auto &exploration = content.companion.exploration;
+  if (map == MapId::Street) {
+    return exploration.entry;
+  }
+  const auto way_in = std::ranges::find(exploration.exits, map, &MapExit::to);
+  if (way_in == exploration.exits.end()) {
+    throw std::out_of_range("no way into the map");
+  }
+  return way_in->arrival;
+}
+
+/// The cells a party can reach on `map` from where it starts there by
+/// `allowed` moves.
 std::vector<GridPosition>
 cells_reached(const Content &content, const WorldSnapshot &world,
-              const std::set<Move> &allowed = {
-                  Move::Left, Move::Right, Move::ClimbUp, Move::ClimbDown,
-                  Move::JumpLeft, Move::JumpRight}) {
-  const auto &exploration = content.companion.exploration;
-  const CellMap map(world);
-  std::vector<GridPosition> seen{exploration.entry};
-  std::deque<GridPosition> frontier{exploration.entry};
+              const std::set<Move> &allowed = EVERY_MOVE,
+              MapId on = MapId::Street) {
+  const auto start = start_of(content, on);
+  const CellMap map(on_map(world, on));
+  std::vector<GridPosition> seen{start};
+  std::deque<GridPosition> frontier{start};
   while (!frontier.empty()) {
     const auto cell = frontier.front();
     frontier.pop_front();
@@ -151,12 +161,19 @@ cells_reached(const Content &content, const WorldSnapshot &world,
   return seen;
 }
 
+/// Whether a party can stand within `range` of `area` on `map`.
+bool within_reach(const std::vector<GridPosition> &reached,
+                  const WorldArea &area, std::uint32_t range) {
+  return std::ranges::any_of(reached, [&](GridPosition cell) {
+    return distance(cell, area) <= static_cast<std::int32_t>(range);
+  });
+}
+
 bool reachable(const Content &content, const WorldSnapshot &world,
-               const WorldArea &area) {
-  const auto range = content.companion.exploration.collection_distance;
-  return std::ranges::any_of(
-      cells_reached(content, world),
-      [&](GridPosition cell) { return distance(cell, area) <= range; });
+               const ObjectSnapshot &object) {
+  return within_reach(cells_reached(content, world, EVERY_MOVE, object.map),
+                      object.area,
+                      content.companion.exploration.collection_distance);
 }
 
 /// The source's world object, as a snapshot.
@@ -168,52 +185,82 @@ ObjectSnapshot object_of(const WorldSnapshot &world, ObjectId id) {
   return *found;
 }
 
-/// A run in which only world time passes.
-std::vector<WorldProgression> time_passing() {
-  std::vector<WorldProgression> moments;
-  for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
-       elapsed += ARRIVAL_SCAN_STEP) {
-    moments.push_back({.elapsed = elapsed});
-  }
-  return moments;
-}
-
-/// A run in which only acid rises.
-std::vector<WorldProgression> acid_rising() {
-  std::vector<WorldProgression> moments;
-  for (std::uint32_t acid = 0; acid <= ACID_SCAN_END; acid += ACID_SCAN_STEP) {
-    moments.push_back({.acid = AcidLevel{acid}});
-  }
-  return moments;
-}
-
-/// The sources a party can stand in reach of while they supply along `moments`,
-/// without any passage repaired.
-std::set<std::uint32_t>
-sources_reached_along(const Content &content,
-                      const std::vector<WorldProgression> &moments) {
-  std::set<std::uint32_t> found;
-  World world(content.objects);
-  for (const auto &moment : moments) {
-    if (world.update(moment) != WorldUpdateResult::Applied) {
-      throw std::logic_error("time went backwards");
+/// What the path check finds wrong with `world`, in words: each map is walked
+/// from where a party starts on it with the moves the game allows, over the
+/// same cells and links movement uses, and every source on offer, every exit
+/// and every interior zone must be reached.
+std::vector<std::string> path_problems(const Content &content,
+                                       const WorldSnapshot &world) {
+  std::vector<std::string> problems;
+  const auto &config = content.companion.exploration;
+  for (const auto &map : content.maps) {
+    if (!stands_on(CellMap(on_map(world, map.id)), start_of(content, map.id))) {
+      problems.push_back(std::string(map.name) + ": no footing at the start");
     }
-    const auto now = world.snapshot();
-    for (const auto &stock : content.companion.exploration.sources) {
-      const auto object = object_of(now, stock.id);
-      if (object.material_available && reachable(content, now, object.area)) {
-        found.insert(stock.id.value);
+    const auto reached = cells_reached(content, world, EVERY_MOVE, map.id);
+    for (const auto &stock : config.sources) {
+      const auto object = object_of(world, stock.id);
+      if (object.map == map.id && object.material_available &&
+          !within_reach(reached, object.area, config.collection_distance)) {
+        problems.push_back(std::string(map.name) + ": " +
+                           std::string(object_name(stock.id)) +
+                           " is out of reach");
+      }
+    }
+    for (const auto &exit : config.exits) {
+      if (exit.from == map.id && !within_reach(reached, exit.zone, 0)) {
+        problems.push_back(std::string(map.name) + ": the exit to " +
+                           std::string(map_of(content, exit.to).name) +
+                           " is out of reach");
+      }
+    }
+    if (map.id == MapId::Street) {
+      for (const auto &interior : config.interiors) {
+        if (!within_reach(reached, interior.area, 0)) {
+          problems.push_back(std::string(map.name) + ": the inside of " +
+                             std::string(object_name(interior.building)) +
+                             " is out of reach");
+        }
       }
     }
   }
+  return problems;
+}
+
+/// The sources a party can stand in reach of on `day`, without any passage
+/// repaired.
+std::set<std::uint32_t> collectable_sources(const Content &content,
+                                            const WorldSnapshot &world) {
+  std::set<std::uint32_t> found;
+  for (const auto &stock : content.companion.exploration.sources) {
+    const auto object = object_of(world, stock.id);
+    if (object.material_available && reachable(content, world, object)) {
+      found.insert(stock.id.value);
+    }
+  }
   return found;
 }
 
-/// The sources reached by either way a run can go.
+/// The sources reached on any day of a run.
 std::set<std::uint32_t> sources_ever_reached(const Content &content) {
-  auto found = sources_reached_along(content, time_passing());
-  found.merge(sources_reached_along(content, acid_rising()));
+  std::set<std::uint32_t> found;
+  World world(content.objects);
+  for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
+    if (world.update(day) != WorldUpdateResult::Applied) {
+      throw std::logic_error("the day went backwards");
+    }
+    found.merge(collectable_sources(content, world.snapshot()));
+  }
   return found;
+}
+
+/// The world on `day`.
+WorldSnapshot on_day(const Content &content, std::uint32_t day) {
+  World world(content.objects);
+  if (world.update(day) != WorldUpdateResult::Applied) {
+    throw std::logic_error("the day went backwards");
+  }
+  return world.snapshot();
 }
 
 /// Ingredient stock held by the sources in `sources`, by identity value.
@@ -261,50 +308,26 @@ std::uint32_t wanted_dishes(const std::vector<Recipe> &recipes,
   }
 }
 
-/// The city as a run opens it.
-WorldSnapshot temporary_world(const Content &content) {
-  return World(content.objects).snapshot();
-}
-
-/// Ingredients still in sources that can hand them out.
-std::uint32_t supplied_stock(const Content &content,
-                             const WorldSnapshot &world) {
-  std::uint32_t total = 0;
-  for (const auto &stock : content.companion.exploration.sources) {
-    const auto object = object_of(world, stock.id);
-    total +=
-        object.material_available && object.ingredient ? stock.remaining : 0U;
+ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
+  const auto found =
+      std::ranges::find_if(world.objects, [name](const ObjectSnapshot &object) {
+        return object_name(object.id) == name;
+      });
+  if (found == world.objects.end()) {
+    throw std::out_of_range("no such object");
   }
-  return total;
+  return *found;
 }
 
-/// The sources a party can collect from now.
-std::set<std::uint32_t> collectable_sources(const Content &content,
-                                            const WorldSnapshot &world) {
-  std::set<std::uint32_t> found;
-  for (const auto &stock : content.companion.exploration.sources) {
-    const auto object = object_of(world, stock.id);
-    if (object.material_available && reachable(content, world, object.area)) {
-      found.insert(stock.id.value);
-    }
-  }
-  return found;
-}
-
-std::uint32_t total_of(const std::map<std::uint32_t, std::uint32_t> &stock) {
-  return std::accumulate(
-      stock.begin(), stock.end(), 0U,
-      [](std::uint32_t sum, const auto &entry) { return sum + entry.second; });
-}
-
-TEST(TemporaryContent, ConstructsEveryFeatureWithinTheMap) {
+TEST(TemporaryContent, ConstructsEveryFeatureWithinItsMap) {
   Game game(temporary_content(7));
   EXPECT_EQ(game.simulation().snapshot().seed, 7U);
   for (const auto &object : game.content().objects) {
+    const auto &map = map_of(game.content(), object.map);
     EXPECT_GE(object.area.x, 0);
     EXPECT_GE(object.area.y, 0);
-    EXPECT_LE(object.area.x + object.area.width, game.content().map.width);
-    EXPECT_LE(object.area.y + object.area.height, game.content().map.height);
+    EXPECT_LE(object.area.x + object.area.width, map.size.width);
+    EXPECT_LE(object.area.y + object.area.height, map.size.height);
     EXPECT_FALSE(object_name(object.id).empty());
   }
 }
@@ -322,9 +345,9 @@ cells_of(const WorldArea &area) {
 }
 
 std::map<std::pair<std::int32_t, std::int32_t>, GroundKind>
-ground_of(const Content &content) {
+ground_of(const MapContent &map) {
   std::map<std::pair<std::int32_t, std::int32_t>, GroundKind> ground;
-  for (const auto &cell : content.ground) {
+  for (const auto &cell : map.ground) {
     EXPECT_TRUE(ground.insert({{cell.cell.x, cell.cell.y}, cell.kind}).second)
         << cell.cell.x << ", " << cell.cell.y;
   }
@@ -333,44 +356,45 @@ ground_of(const Content &content) {
 
 TEST(TemporaryContent, GroundNamesTheSurfaceOfEveryTerrainCellAndNoOther) {
   const auto content = temporary_content(1);
-  std::set<std::pair<std::int32_t, std::int32_t>> terrain;
-  for (const auto &object : content.objects) {
-    if (object.kind == ObjectKind::Terrain) {
-      terrain.merge(cells_of(object.area));
+  for (const auto &map : content.maps) {
+    std::set<std::pair<std::int32_t, std::int32_t>> terrain;
+    for (const auto &object : content.objects) {
+      if (object.kind == ObjectKind::Terrain && object.map == map.id) {
+        terrain.merge(cells_of(object.area));
+      }
     }
+    std::set<std::pair<std::int32_t, std::int32_t>> ground;
+    for (const auto &[cell, kind] : ground_of(map)) {
+      ground.insert(cell);
+    }
+    EXPECT_EQ(ground, terrain) << map.name;
   }
-  std::set<std::pair<std::int32_t, std::int32_t>> ground;
-  for (const auto &[cell, kind] : ground_of(content)) {
-    ground.insert(cell);
-  }
-  EXPECT_EQ(ground, terrain);
 }
 
 TEST(TemporaryContent, RubbleBlocksItsCellForTheWholeRun) {
   const auto content = temporary_content(1);
-  const auto ground = ground_of(content);
+  const auto ground = ground_of(street_of(content));
   World world(content.objects);
   const auto rubble_blocks = [&] {
     std::size_t rubble = 0;
     for (const auto &[cell, kind] : ground) {
       if (kind == GroundKind::Rubble) {
         ++rubble;
-        EXPECT_EQ(
-            CellMap(world.snapshot()).at({.x = cell.first, .y = cell.second}),
-            Cell::Blocked)
+        EXPECT_EQ(CellMap(on_map(world.snapshot(), MapId::Street))
+                      .at({.x = cell.first, .y = cell.second}),
+                  Cell::Blocked)
             << cell.first << ", " << cell.second;
       }
     }
     return rubble;
   };
   EXPECT_GT(rubble_blocks(), 0U);
-  ASSERT_EQ(world.update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{100}}),
-            WorldUpdateResult::Applied);
+  ASSERT_EQ(world.update(LAST_SCANNED_DAY), WorldUpdateResult::Applied);
   EXPECT_GT(rubble_blocks(), 0U);
 }
 
 TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
-  const auto ground = ground_of(temporary_content(1));
+  const auto ground = ground_of(street_of(temporary_content(1)));
   std::size_t ends = 0;
   for (const auto &[cell, kind] : ground) {
     const auto [x, y] = cell;
@@ -388,7 +412,6 @@ TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
 
 TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
   const auto content = temporary_content(1);
-  const auto ground = ground_of(content);
   std::size_t walkways = 0;
   for (const auto &object : content.objects) {
     if (object.kind == ObjectKind::Terrain) {
@@ -397,9 +420,12 @@ TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
     }
   }
   EXPECT_GT(walkways, 0U);
-  for (const auto &[cell, kind] : ground) {
-    EXPECT_FALSE(ground.contains({cell.first, cell.second - 1}))
-        << cell.first << ", " << cell.second;
+  for (const auto &map : content.maps) {
+    const auto ground = ground_of(map);
+    for (const auto &[cell, kind] : ground) {
+      EXPECT_FALSE(ground.contains({cell.first, cell.second - 1}))
+          << map.name << " " << cell.first << ", " << cell.second;
+    }
   }
 }
 
@@ -425,63 +451,34 @@ TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
   EXPECT_GE(rows.size(), 6U);
 }
 
-TEST(TemporaryContent, NoStraightRunOfGroundIsLongerThanAThirdOfTheMap) {
+TEST(TemporaryContent,
+     NoStraightRunOfGroundIsLongerThanAThirdOfTheStreetOrHalfTheHall) {
   const auto content = temporary_content(1);
-  const auto ground = ground_of(content);
-  const auto longest = content.map.width / 3;
-  for (std::int32_t y = 0; y < content.map.height; ++y) {
-    std::int32_t run = 0;
-    for (std::int32_t x = 0; x < content.map.width; ++x) {
-      run = ground.contains({x, y}) ? run + 1 : 0;
-      EXPECT_LE(run, longest) << "row " << y << " at " << x;
-    }
-  }
-}
-
-TEST(TemporaryContent, AcidDrownsLowGroundAndWhatStandsOnItFirst) {
-  const auto content = temporary_content(1);
-  std::set<std::uint32_t> bags;
-  for (const auto &stock : content.companion.exploration.sources) {
-    if (stock.kind == SourceKind::Bag) {
-      bags.insert(stock.id.value);
-    }
-  }
-  std::vector<std::pair<std::int32_t, std::uint32_t>> drowning;
-  std::size_t terrain = 0;
-  std::size_t timed_bags = 0;
-  for (const auto &object : content.objects) {
-    const auto &threshold = object.destroyed_after;
-    // A bag's tide is a time threshold beside its acid limit, and the limit
-    // still keeps the row order.
-    const bool bag = bags.contains(object.id.value);
-    if (threshold && threshold->acid && (!threshold->elapsed || bag)) {
-      drowning.emplace_back(object.area.y + object.area.height - 1,
-                            threshold->acid->value);
-      terrain += object.kind == ObjectKind::Terrain ? 1U : 0U;
-      timed_bags += bag && threshold->elapsed ? 1U : 0U;
-    }
-  }
-  EXPECT_GT(terrain, 0U);
-  EXPECT_GT(timed_bags, 0U);
-  for (const auto &[low, low_acid] : drowning) {
-    for (const auto &[high, high_acid] : drowning) {
-      if (low > high) {
-        EXPECT_LE(low_acid, high_acid)
-            << "row " << low << " drowns after row " << high;
+  for (const auto &map : content.maps) {
+    const auto ground = ground_of(map);
+    // The aquarium is one hall, so its floors may run half its width.
+    const auto longest = map.size.width / (map.id == MapId::Street ? 3 : 2);
+    for (std::int32_t y = 0; y < map.size.height; ++y) {
+      std::int32_t run = 0;
+      for (std::int32_t x = 0; x < map.size.width; ++x) {
+        run = ground.contains({x, y}) ? run + 1 : 0;
+        EXPECT_LE(run, longest) << map.name << " row " << y << " at " << x;
       }
     }
   }
 }
 
-TEST(TemporaryContent, EveryDecorationKindStandsInsideTheMap) {
+TEST(TemporaryContent, EveryDecorationKindStandsInsideItsMap) {
   const auto content = temporary_content(1);
   std::set<DecorationKind> kinds;
-  for (const auto &decoration : content.decorations) {
-    kinds.insert(decoration.kind);
-    EXPECT_GE(decoration.area.x, 0);
-    EXPECT_GE(decoration.area.y, 0);
-    EXPECT_LE(decoration.area.x + decoration.area.width, content.map.width);
-    EXPECT_LE(decoration.area.y + decoration.area.height, content.map.height);
+  for (const auto &map : content.maps) {
+    for (const auto &decoration : map.decorations) {
+      kinds.insert(decoration.kind);
+      EXPECT_GE(decoration.area.x, 0);
+      EXPECT_GE(decoration.area.y, 0);
+      EXPECT_LE(decoration.area.x + decoration.area.width, map.size.width);
+      EXPECT_LE(decoration.area.y + decoration.area.height, map.size.height);
+    }
   }
   EXPECT_EQ(kinds.size(), 8U);
 }
@@ -490,18 +487,21 @@ TEST(TemporaryContent, EveryLandmarkPictureMarksOneObjectThatCanShowIt) {
   const auto content = temporary_content(1);
   std::map<LandmarkKind, std::uint32_t> pictures;
   std::set<std::uint32_t> marked;
-  for (const auto &landmark : content.landmarks) {
-    const auto object = std::ranges::find(content.objects, landmark.object,
-                                          &ObjectDefinition::id);
-    ASSERT_NE(object, content.objects.end());
-    const bool building = landmark.kind == LandmarkKind::Kiosk ||
-                          landmark.kind == LandmarkKind::ColdStore;
-    EXPECT_EQ(object->kind,
-              building ? ObjectKind::Building : ObjectKind::Terrain)
-        << object_name(landmark.object);
-    EXPECT_TRUE(marked.insert(landmark.object.value).second)
-        << object_name(landmark.object);
-    ++pictures[landmark.kind];
+  for (const auto &map : content.maps) {
+    for (const auto &landmark : map.landmarks) {
+      const auto object = std::ranges::find(content.objects, landmark.object,
+                                            &ObjectDefinition::id);
+      ASSERT_NE(object, content.objects.end());
+      EXPECT_EQ(object->map, map.id) << object_name(landmark.object);
+      const bool building = landmark.kind == LandmarkKind::Kiosk ||
+                            landmark.kind == LandmarkKind::ColdStore;
+      EXPECT_EQ(object->kind,
+                building ? ObjectKind::Building : ObjectKind::Terrain)
+          << object_name(landmark.object);
+      EXPECT_TRUE(marked.insert(landmark.object.value).second)
+          << object_name(landmark.object);
+      ++pictures[landmark.kind];
+    }
   }
   EXPECT_EQ(pictures.size(), 5U);
   for (const auto &[kind, count] : pictures) {
@@ -539,45 +539,12 @@ TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
   }
 }
 
-TEST(TemporaryContent, AtEveryWorldTimeRisingAcidLeavesNoKindMoreToCollect) {
-  const auto content = temporary_content(1);
-  for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
-       elapsed += SUPPLY_SCAN_STEP) {
-    World world(content.objects);
-    std::map<std::uint32_t, std::uint32_t> before;
-    std::uint32_t opening = 0;
-    for (std::uint32_t acid = 0; acid <= ACID_SCAN_END;
-         acid += ACID_SCAN_STEP) {
-      ASSERT_EQ(world.update({.elapsed = elapsed, .acid = AcidLevel{acid}}),
-                WorldUpdateResult::Applied);
-      auto now =
-          stock_in(content, collectable_sources(content, world.snapshot()));
-      if (acid == 0) {
-        opening = total_of(now);
-        ASSERT_GT(opening, 0U) << elapsed.count() << "s";
-      } else {
-        for (const auto &[ingredient, count] : now) {
-          EXPECT_LE(count, before[ingredient])
-              << ingredient_name(IngredientId{ingredient}) << " at acid "
-              << acid << ", " << elapsed.count() << "s";
-        }
-      }
-      if (acid == 60) {
-        EXPECT_LT(total_of(now), opening) << elapsed.count() << "s";
-      }
-      before = std::move(now);
-    }
-  }
-}
-
 TEST(TemporaryContent, EveryDayBagsLandOnBothSidesOfTheCity) {
   const auto content = temporary_content(1);
-  const auto budget = content.run.exploration_budget;
   World world(content.objects);
   std::set<std::uint32_t> seen;
   for (std::uint32_t day = 2; day <= 40; ++day) {
-    ASSERT_EQ(world.update({.elapsed = (day - 1) * budget}),
-              WorldUpdateResult::Applied);
+    ASSERT_EQ(world.update(day), WorldUpdateResult::Applied);
     std::vector<GridPosition> landed;
     for (const auto &object : world.snapshot().objects) {
       if (object_name(object.id).starts_with("Washed-up Bag") &&
@@ -593,37 +560,34 @@ TEST(TemporaryContent, EveryDayBagsLandOnBothSidesOfTheCity) {
   }
 }
 
-TEST(TemporaryContent, NoTwoSourcesShareACellWhileEitherIsOnTheMap) {
+TEST(TemporaryContent, NoTwoSourcesShareACellOfAMapWhileEitherIsOnIt) {
   const auto content = temporary_content(1);
   World world(content.objects);
-  for (auto elapsed = 0s; elapsed <= ARRIVAL_SCAN_END;
-       elapsed += ARRIVAL_SCAN_STEP) {
-    ASSERT_EQ(world.update({.elapsed = elapsed}), WorldUpdateResult::Applied);
-    std::set<std::pair<std::int32_t, std::int32_t>> cells;
+  for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
+    ASSERT_EQ(world.update(day), WorldUpdateResult::Applied);
+    std::set<std::tuple<MapId, std::int32_t, std::int32_t>> cells;
     std::size_t standing = 0;
     for (const auto &stock : content.companion.exploration.sources) {
       const auto object = object_of(world.snapshot(), stock.id);
       if (object.state == ObjectState::Intact) {
         ++standing;
-        EXPECT_TRUE(cells.insert({object.area.x, object.area.y}).second)
-            << object_name(object.id) << " at " << elapsed.count() << "s";
+        EXPECT_TRUE(
+            cells.insert({object.map, object.area.x, object.area.y}).second)
+            << object_name(object.id) << " on day " << day;
       }
     }
     EXPECT_GT(standing, 0U);
   }
 }
 
-TEST(TemporaryContent, AcidBringsTheFerryButNotItsStock) {
-  World world(temporary_content(1).objects);
-  ASSERT_EQ(object_named(world.snapshot(), "Drifted Ferry").state,
-            ObjectState::Dormant);
-  ASSERT_EQ(world.update({.acid = AcidLevel{30}}), WorldUpdateResult::Applied);
-  EXPECT_EQ(object_named(world.snapshot(), "Drifted Ferry").state,
-            ObjectState::Intact);
-  EXPECT_FALSE(object_named(world.snapshot(), "Ferry Bag").material_available);
-  ASSERT_EQ(world.update({.elapsed = 800s, .acid = AcidLevel{30}}),
-            WorldUpdateResult::Applied);
-  EXPECT_TRUE(object_named(world.snapshot(), "Ferry Bag").material_available);
+TEST(TemporaryContent, TheCrackedStageBringsTheFerryAndItsStock) {
+  const auto content = temporary_content(1);
+  const auto before = on_day(content, STAGE_FIRST_DAY.at(1) - 1);
+  EXPECT_EQ(object_named(before, "Drifted Ferry").state, ObjectState::Dormant);
+  EXPECT_FALSE(object_named(before, "Ferry Bag").material_available);
+  const auto after = on_day(content, STAGE_FIRST_DAY.at(1));
+  EXPECT_EQ(object_named(after, "Drifted Ferry").state, ObjectState::Intact);
+  EXPECT_TRUE(object_named(after, "Ferry Bag").material_available);
 }
 
 TEST(TemporaryContent, EveryRecipeCanBeCookedFromReachableStock) {
@@ -660,7 +624,7 @@ TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
         std::ranges::find(world.objects, stock.id, &ObjectSnapshot::id);
     ASSERT_NE(object, world.objects.end());
     if (object->material_available &&
-        reachable(game.content(), world, object->area)) {
+        reachable(game.content(), world, *object)) {
       kinds.insert(stock.kind);
     }
   }
@@ -696,8 +660,8 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
 
 TEST(TemporaryContent, CrossingTheAcidDripAgainAndAgainSendsNoOneHome) {
   Game game(temporary_content(1));
-  ASSERT_EQ(game.content().hazards.size(), 1U);
-  const auto drip = game.content().hazards.front();
+  ASSERT_EQ(street_of(game.content()).hazards.size(), 1U);
+  const auto drip = street_of(game.content()).hazards.front();
   ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
   const auto in_drip = [&] {
     const auto cell = cell_of(game.exploration().snapshot().chef.body.position);
@@ -714,7 +678,7 @@ TEST(TemporaryContent, CrossingTheAcidDripAgainAndAgainSendsNoOneHome) {
       heading = Direction::Left;
     }
     ASSERT_EQ(game.exploration().advance(
-                  50ms, {ExplorationInput{.direction = heading}, {}}, {}),
+                  50ms, {ExplorationInput{.direction = heading}, {}}),
               Result::Applied);
     ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City)
         << "tick " << tick;
@@ -791,55 +755,28 @@ TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
   EXPECT_LT(days, TEMPORARY_ESCAPE.first_day / 2);
 }
 
-TEST(TemporaryContent, TimeBringsAWashedUpBagAndAcidCarriesItAway) {
+TEST(TemporaryContent, TheDayBringsAWashedUpBagAndNothingElseTakesItAway) {
   const auto content = temporary_content(1);
-  const auto landing = content.run.exploration_budget;
-  World world(content.objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{44}}), WorldUpdateResult::Applied);
-  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
+  EXPECT_EQ(object_named(on_day(content, 1), "Washed-up Bag 1").state,
             ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{44}}),
-            WorldUpdateResult::Applied);
   EXPECT_TRUE(
-      object_named(world.snapshot(), "Washed-up Bag 1").material_available);
-  ASSERT_EQ(world.update({.elapsed = landing, .acid = AcidLevel{45}}),
-            WorldUpdateResult::Applied);
-  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
-            ObjectState::Destroyed);
+      object_named(on_day(content, 2), "Washed-up Bag 1").material_available);
+  EXPECT_TRUE(
+      object_named(on_day(content, 6), "Washed-up Bag 1").material_available);
 }
 
 TEST(TemporaryContent, TheTideTakesAnUncollectedBagBackAfterFiveDays) {
   const auto content = temporary_content(1);
-  const auto day = content.run.exploration_budget;
-  World world(content.objects);
-  ASSERT_EQ(world.update({.elapsed = 6 * day - 1s}),
-            WorldUpdateResult::Applied);
-  EXPECT_TRUE(
-      object_named(world.snapshot(), "Washed-up Bag 1").material_available);
-  ASSERT_EQ(world.update({.elapsed = 6 * day}), WorldUpdateResult::Applied);
-  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
+  const auto before = on_day(content, 6);
+  EXPECT_TRUE(object_named(before, "Washed-up Bag 1").material_available);
+  const auto after = on_day(content, 7);
+  EXPECT_EQ(object_named(after, "Washed-up Bag 1").state,
             ObjectState::Destroyed);
-  EXPECT_TRUE(
-      object_named(world.snapshot(), "Washed-up Bag 4").material_available);
-}
-
-TEST(TemporaryContent, AcidPastABagsLimitSinksItBeforeItLands) {
-  const auto content = temporary_content(1);
-  World world(content.objects);
-  ASSERT_EQ(world.update({.acid = AcidLevel{45}}), WorldUpdateResult::Applied);
-  ASSERT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
-            ObjectState::Dormant);
-  ASSERT_EQ(world.update({.elapsed = content.run.exploration_budget,
-                          .acid = AcidLevel{45}}),
-            WorldUpdateResult::Applied);
-  EXPECT_FALSE(
-      object_named(world.snapshot(), "Washed-up Bag 1").material_available);
-  EXPECT_EQ(object_named(world.snapshot(), "Washed-up Bag 1").state,
-            ObjectState::Destroyed);
+  EXPECT_TRUE(object_named(after, "Washed-up Bag 4").material_available);
 }
 
 TEST(TemporaryContent, ThreeBagsLandWithEachDayFromTheSecond) {
-  const auto budget = temporary_content(1).run.exploration_budget;
+  const auto content = temporary_content(1);
   const auto bags = [](const WorldSnapshot &world) {
     return std::ranges::count_if(
         world.objects, [](const ObjectSnapshot &object) {
@@ -847,59 +784,53 @@ TEST(TemporaryContent, ThreeBagsLandWithEachDayFromTheSecond) {
                  object_name(object.id).starts_with("Washed-up Bag");
         });
   };
-  World world(temporary_content(1).objects);
-  ASSERT_EQ(world.update({.elapsed = budget - 1s}), WorldUpdateResult::Applied);
-  EXPECT_EQ(bags(world.snapshot()), 0);
-  ASSERT_EQ(world.update({.elapsed = budget}), WorldUpdateResult::Applied);
-  EXPECT_EQ(bags(world.snapshot()), 3);
-  ASSERT_EQ(world.update({.elapsed = 29 * budget}), WorldUpdateResult::Applied);
-  EXPECT_EQ(bags(world.snapshot()), 87);
+  EXPECT_EQ(bags(on_day(content, 1)), 0);
+  EXPECT_EQ(bags(on_day(content, 2)), 3);
+  EXPECT_EQ(bags(on_day(content, 30)), 87);
 }
 
 TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
   Game game(temporary_content(1));
-  const auto budget = game.content().run.exploration_budget;
   const std::array<ExplorationInput, 2> idle{};
   const auto end_days = [&](std::uint32_t days) {
     for (std::uint32_t day = 0; day < days; ++day) {
       ASSERT_EQ(game.workshop().end_day_unfed(AcidLevel{}),
                 WorkshopResult::Applied);
     }
-    ASSERT_EQ(game.exploration().advance(0us, idle, AcidLevel{}),
-              Result::Applied);
+    ASSERT_EQ(game.exploration().advance(0us, idle), Result::Applied);
   };
   end_days(0);
   EXPECT_EQ(object_named(game.world().snapshot(), "Washed-up Bag 1").state,
             ObjectState::Dormant);
   end_days(1);
-  ASSERT_EQ(game.world().snapshot().progression.elapsed, budget);
+  ASSERT_EQ(game.world().snapshot().day, 2U);
   EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 1")
                   .material_available);
   end_days(28);
-  ASSERT_EQ(game.world().snapshot().progression.elapsed, 29 * budget);
+  ASSERT_EQ(game.world().snapshot().day, 30U);
   EXPECT_TRUE(object_named(game.world().snapshot(), "Washed-up Bag 87")
                   .material_available);
   EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
 }
 
-TEST(TemporaryContent, RisingAcidStrandsStockThatNoOneCollected) {
+TEST(TemporaryContent, TheSourcesAcidOnceDestroyedNowSupplyForTheWholeRun) {
   const auto content = temporary_content(1);
-  World world(content.objects);
-  const auto opening = supplied_stock(content, world.snapshot());
-  ASSERT_GT(opening, 0U);
-  ASSERT_EQ(world.update({.acid = AcidLevel{60}}), WorldUpdateResult::Applied);
-  const auto later = world.snapshot();
-  std::uint32_t stranded = 0;
-  for (const auto &stock : content.companion.exploration.sources) {
-    const auto start = object_of(temporary_world(content), stock.id);
-    const auto now = object_of(later, stock.id);
-    if (start.material_available && start.ingredient &&
-        !now.material_available) {
-      stranded += stock.remaining;
+  for (const auto *name :
+       {"Shallows", "Tomato Machine", "Lost Basket", "Pickle Machine",
+        "Noodle Vendor", "Kitchen Shop", "Cold Store Door"}) {
+    for (const auto day :
+         {1U, STAGE_FIRST_DAY.at(1), STAGE_FIRST_DAY.at(2), LAST_SCANNED_DAY}) {
+      EXPECT_EQ(object_named(on_day(content, day), name).state,
+                ObjectState::Intact)
+          << name << " on day " << day;
     }
   }
-  EXPECT_GE(stranded, opening / 2) << stranded << " of " << opening;
+  for (const auto *name : {"Vendor Cart", "Shop Shelf", "Cold Locker"}) {
+    const auto last = on_day(content, LAST_SCANNED_DAY);
+    EXPECT_TRUE(object_named(last, name).material_available) << name;
+    EXPECT_TRUE(reachable(content, last, object_named(last, name))) << name;
+  }
 }
 
 TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToTheFirstEscapeCheck) {
@@ -926,82 +857,220 @@ TEST(TemporaryContent, AnAiPartyFeedsTheMonsterAndSatisfiesIt) {
   EXPECT_GE(game.workshop().snapshot().eaten_foods.size(), 2U);
 }
 
-TEST(TemporaryContent, TimeDamagesTheCityAndBringsTheFerryAcrossDays) {
-  Game game(temporary_content(1));
-  const auto start = game.world().snapshot();
-  ASSERT_EQ(object_named(start, "Noodle Vendor").state, ObjectState::Intact);
-  ASSERT_EQ(object_named(start, "Roof Ladder").state, ObjectState::Intact);
-  ASSERT_EQ(object_named(start, "Drifted Ferry").state, ObjectState::Dormant);
-  ASSERT_TRUE(object_named(start, "Vendor Cart").material_available);
+TEST(TemporaryContent, TheDayDamagesTheCityAndBringsTheFerryInThreeStages) {
+  const auto content = temporary_content(1);
+  const auto standing = on_day(content, 1);
+  ASSERT_EQ(object_named(standing, "Noodle Vendor").state, ObjectState::Intact);
+  ASSERT_EQ(object_named(standing, "Roof Ladder").state, ObjectState::Intact);
+  ASSERT_EQ(object_named(standing, "Fire Escape").state, ObjectState::Dormant);
+  ASSERT_EQ(object_named(standing, "Drifted Ferry").state,
+            ObjectState::Dormant);
+  ASSERT_EQ(object_named(standing, "Rotten Bridge").state, ObjectState::Intact);
+  ASSERT_EQ(object_named(standing, "Old Kiosk").state, ObjectState::Intact);
+  EXPECT_EQ(standing.stage, DamageStage::Standing);
 
-  const std::array<ExplorationInput, 2> idle{};
-  ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
-  while (game.world().snapshot().progression.elapsed < 1120s) {
-    ASSERT_EQ(game.exploration().advance(STEP, idle, AcidLevel{}),
-              Result::Applied);
-    if (game.simulation().snapshot().phase == Phase::Workshop) {
-      ASSERT_EQ(game.simulation().finish_day(AcidLevel{}), Result::Applied);
-      ASSERT_EQ(game.exploration().enter(Actor::Chef), Result::Applied);
-    }
-  }
-  const auto later = game.world().snapshot();
-  EXPECT_EQ(object_named(later, "Noodle Vendor").state, ObjectState::Destroyed);
-  EXPECT_FALSE(object_named(later, "Vendor Cart").material_available);
-  EXPECT_EQ(object_named(later, "Roof Ladder").state, ObjectState::Destroyed);
-  EXPECT_EQ(object_named(later, "Rotten Bridge").state, ObjectState::Destroyed);
-  EXPECT_EQ(object_named(later, "Drifted Ferry").state, ObjectState::Intact);
-  EXPECT_TRUE(object_named(later, "Ferry Bag").material_available);
+  const auto cracked = on_day(content, STAGE_FIRST_DAY.at(1));
+  EXPECT_EQ(cracked.stage, DamageStage::Cracked);
+  EXPECT_EQ(object_named(cracked, "Roof Ladder").state, ObjectState::Destroyed);
+  EXPECT_EQ(object_named(cracked, "Fire Escape").state, ObjectState::Intact);
+  EXPECT_EQ(object_named(cracked, "Drifted Ferry").state, ObjectState::Intact);
+  EXPECT_EQ(object_named(cracked, "Rotten Bridge").state, ObjectState::Intact);
+  EXPECT_EQ(object_named(cracked, "Noodle Vendor").state, ObjectState::Intact);
+
+  const auto ruined = on_day(content, STAGE_FIRST_DAY.at(2));
+  EXPECT_EQ(ruined.stage, DamageStage::Ruined);
+  EXPECT_EQ(object_named(ruined, "Rotten Bridge").state,
+            ObjectState::Destroyed);
+  EXPECT_EQ(object_named(ruined, "Old Kiosk").state, ObjectState::Destroyed);
+  EXPECT_EQ(object_named(ruined, "Drifted Ferry").state, ObjectState::Intact);
+}
+
+TEST(TemporaryContent, AnAiRunsWorldFollowsItsDays) {
+  Game game(temporary_content(1));
+  ASSERT_EQ(play_days(game, STAGE_FIRST_DAY.at(1)), STAGE_FIRST_DAY.at(1));
+  ASSERT_EQ(game.exploration().advance(0us, {}), Result::Applied);
+  EXPECT_EQ(game.world().snapshot().day, STAGE_FIRST_DAY.at(1));
+  EXPECT_EQ(object_named(game.world().snapshot(), "Roof Ladder").state,
+            ObjectState::Destroyed);
 }
 
 TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
-  Game game(temporary_content(1));
-  const auto floor =
-      object_named(game.world().snapshot(), "Cold Store Floor").area;
-  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), floor));
-
-  ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{40}}),
-            WorldUpdateResult::Applied);
-  const auto after = game.world().snapshot();
+  const auto content = temporary_content(1);
+  const auto after = on_day(content, STAGE_FIRST_DAY.at(2));
   ASSERT_EQ(object_named(after, "Rotten Bridge").state, ObjectState::Destroyed);
-  EXPECT_TRUE(reachable(game.content(), after, floor));
+  const auto floor = object_named(after, "Cold Store Floor");
+  EXPECT_TRUE(reachable(content, after, floor));
 
   auto without_ferry = after;
   std::erase_if(without_ferry.objects, [](const ObjectSnapshot &object) {
     return object_name(object.id) == "Drifted Ferry";
   });
-  EXPECT_FALSE(reachable(game.content(), without_ferry, floor));
+  EXPECT_FALSE(reachable(content, without_ferry, floor));
 }
 
-TEST(TemporaryContent, TheBrokenDoorBlocksTheColdLockerForTheRestOfTheRun) {
-  Game game(temporary_content(1));
-  const auto locker = object_named(game.world().snapshot(), "Cold Locker").area;
-  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), locker));
+TEST(TemporaryContent, TheFireEscapeCarriesTheRoofOnceTheLadderBreaks) {
+  const auto content = temporary_content(1);
+  const auto before = on_day(content, 1);
+  ASSERT_TRUE(reachable(content, before, object_named(before, "Roof Bag")));
 
-  ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{20}}),
-            WorldUpdateResult::Applied);
-  ASSERT_EQ(object_named(game.world().snapshot(), "Cold Store Door").state,
-            ObjectState::Destroyed);
-  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), locker));
-  ASSERT_EQ(
-      game.world().update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{20}}),
-      WorldUpdateResult::Applied);
-  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), locker));
+  const auto after = on_day(content, STAGE_FIRST_DAY.at(1));
+  ASSERT_EQ(object_named(after, "Roof Ladder").state, ObjectState::Destroyed);
+  EXPECT_TRUE(reachable(content, after, object_named(after, "Roof Bag")));
+
+  auto without_escape = after;
+  std::erase_if(without_escape.objects, [](const ObjectSnapshot &object) {
+    return object_name(object.id) == "Fire Escape";
+  });
+  EXPECT_FALSE(
+      reachable(content, without_escape, object_named(after, "Roof Bag")));
 }
 
-TEST(TemporaryContent, TheBrokenLadderBlocksTheRooftopForTheRestOfTheRun) {
-  Game game(temporary_content(1));
-  const auto roof = object_named(game.world().snapshot(), "Roof Bag").area;
-  ASSERT_TRUE(reachable(game.content(), game.world().snapshot(), roof));
+TEST(TemporaryContent, TwoSeedsGiveTheSameMapsAndTheSameSupply) {
+  const auto first = temporary_content(1);
+  const auto second = temporary_content(98765);
+  ASSERT_NE(first.run.seed, second.run.seed);
+  EXPECT_EQ(World(first.objects).snapshot(), World(second.objects).snapshot());
+  EXPECT_EQ(on_day(first, 20), on_day(second, 20));
+  EXPECT_EQ(first.companion.exploration.sources,
+            second.companion.exploration.sources);
+  ASSERT_EQ(first.maps.size(), second.maps.size());
+  for (std::size_t index = 0; index < first.maps.size(); ++index) {
+    const auto &one = first.maps.at(index);
+    const auto &other = second.maps.at(index);
+    EXPECT_EQ(one.size.width, other.size.width);
+    EXPECT_EQ(one.size.height, other.size.height);
+    ASSERT_EQ(one.ground.size(), other.ground.size());
+    for (std::size_t cell = 0; cell < one.ground.size(); ++cell) {
+      EXPECT_EQ(one.ground.at(cell).cell, other.ground.at(cell).cell);
+      EXPECT_EQ(one.ground.at(cell).kind, other.ground.at(cell).kind);
+    }
+    EXPECT_EQ(one.decorations.size(), other.decorations.size());
+    EXPECT_EQ(one.landmarks.size(), other.landmarks.size());
+  }
+}
 
-  ASSERT_EQ(game.world().update({.elapsed = 0s, .acid = AcidLevel{10}}),
-            WorldUpdateResult::Applied);
-  ASSERT_EQ(object_named(game.world().snapshot(), "Roof Ladder").state,
-            ObjectState::Destroyed);
-  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), roof));
-  ASSERT_EQ(
-      game.world().update({.elapsed = ARRIVAL_SCAN_END, .acid = AcidLevel{10}}),
-      WorldUpdateResult::Applied);
-  EXPECT_FALSE(reachable(game.content(), game.world().snapshot(), roof));
+TEST(TemporaryContent, TheStreetIsThreeScreensWideAndTheAquariumTwo) {
+  const auto content = temporary_content(1);
+  constexpr std::int32_t SCREEN = 20;
+  ASSERT_EQ(content.maps.size(), 2U);
+  EXPECT_GE(street_of(content).size.width, 3 * SCREEN);
+  EXPECT_GE(map_of(content, MapId::Aquarium).size.width, 2 * SCREEN);
+}
+
+TEST(TemporaryContent,
+     TheStreetHasTwoEntrancesTwoShopsWithAnInsideAndThreeFloors) {
+  const auto content = temporary_content(1);
+  const auto &config = content.companion.exploration;
+  const auto world = World(content.objects).snapshot();
+  // The base entrance is the street entry; the aquarium entrance is the exit
+  // out of the street, and the aquarium has its own way back.
+  EXPECT_TRUE(stands_on(CellMap(on_map(world, MapId::Street)), config.entry));
+  const auto way_in =
+      std::ranges::find(config.exits, MapId::Aquarium, &MapExit::to);
+  const auto way_out =
+      std::ranges::find(config.exits, MapId::Street, &MapExit::to);
+  ASSERT_NE(way_in, config.exits.end());
+  ASSERT_NE(way_out, config.exits.end());
+  EXPECT_EQ(way_in->from, MapId::Street);
+  EXPECT_EQ(way_out->from, MapId::Aquarium);
+  EXPECT_GE(config.interiors.size(), 2U);
+  for (const auto &interior : config.interiors) {
+    const auto building = object_of(world, interior.building);
+    EXPECT_EQ(building.kind, ObjectKind::Building);
+    EXPECT_EQ(building.map, MapId::Street);
+  }
+  for (const auto map : {MapId::Street, MapId::Aquarium}) {
+    std::set<std::int32_t> rows;
+    bool stairs = false;
+    bool ladder = false;
+    const CellMap cells(on_map(world, map));
+    for (const auto cell : cells_reached(content, world, EVERY_MOVE, map)) {
+      rows.insert(cell.y);
+      for (const auto &link : links(cells, cell)) {
+        stairs =
+            stairs || ((link.move == Move::Left || link.move == Move::Right) &&
+                       link.to.y != cell.y);
+        ladder = ladder || link.move == Move::ClimbUp;
+      }
+    }
+    EXPECT_GE(rows.size(), 3U) << static_cast<int>(map);
+    EXPECT_TRUE(stairs) << static_cast<int>(map);
+    EXPECT_TRUE(ladder) << static_cast<int>(map);
+  }
+}
+
+/// Every cell of `map` on `day`, row by row.
+std::vector<Cell> cells_on(const Content &content, MapId map,
+                           std::uint32_t day) {
+  const CellMap cells(on_map(on_day(content, day), map));
+  const auto &size = map_of(content, map).size;
+  std::vector<Cell> found;
+  for (std::int32_t y = 0; y < size.height; ++y) {
+    for (std::int32_t x = 0; x < size.width; ++x) {
+      found.push_back(cells.at({.x = x, .y = y}));
+    }
+  }
+  return found;
+}
+
+TEST(TemporaryContent, EachDamageStageChangesCellsOnEveryMapAndOnlyAtItsDay) {
+  const auto content = temporary_content(1);
+  for (const auto map : {MapId::Street, MapId::Aquarium}) {
+    const auto standing = cells_on(content, map, 1);
+    const auto cracked = cells_on(content, map, STAGE_FIRST_DAY.at(1));
+    const auto ruined = cells_on(content, map, STAGE_FIRST_DAY.at(2));
+    EXPECT_NE(standing, cracked) << static_cast<int>(map);
+    EXPECT_NE(cracked, ruined) << static_cast<int>(map);
+    EXPECT_NE(standing, ruined) << static_cast<int>(map);
+    for (std::uint32_t day = 1; day < STAGE_FIRST_DAY.at(1); ++day) {
+      EXPECT_EQ(cells_on(content, map, day), standing) << "day " << day;
+    }
+    for (auto day = STAGE_FIRST_DAY.at(1); day < STAGE_FIRST_DAY.at(2); ++day) {
+      EXPECT_EQ(cells_on(content, map, day), cracked) << "day " << day;
+    }
+    for (auto day = STAGE_FIRST_DAY.at(2); day <= LAST_SCANNED_DAY; ++day) {
+      EXPECT_EQ(cells_on(content, map, day), ruined) << "day " << day;
+    }
+  }
+}
+
+TEST(TemporaryContent, EveryMapReachesEverySourceExitAndInteriorAtEveryStage) {
+  const auto content = temporary_content(1);
+  World world(content.objects);
+  for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
+    ASSERT_EQ(world.update(day), WorldUpdateResult::Applied);
+    EXPECT_EQ(path_problems(content, world.snapshot()),
+              std::vector<std::string>{})
+        << "day " << day;
+  }
+}
+
+TEST(TemporaryContent, ThePathCheckNamesWhatACutPassageStrandsOnEachStage) {
+  const auto content = temporary_content(1);
+  const struct {
+    std::uint32_t day;
+    std::string_view cut;
+    std::string_view stranded;
+  } cuts[] = {
+      {1, "Roof Ladder", "Street: Roof Bag is out of reach"},
+      {STAGE_FIRST_DAY.at(1), "Fire Escape",
+       "Street: Roof Bag is out of reach"},
+      {STAGE_FIRST_DAY.at(2), "West Skywalk Ladder",
+       "Aquarium: Gift Shelf is out of reach"},
+      {1, "Dock Ladder", "Street: the exit to Aquarium is out of reach"},
+  };
+  for (const auto &cut : cuts) {
+    auto world = on_day(content, cut.day);
+    ASSERT_EQ(path_problems(content, world), std::vector<std::string>{})
+        << "day " << cut.day;
+    std::erase_if(world.objects, [&](const ObjectSnapshot &object) {
+      return object_name(object.id) == cut.cut;
+    });
+    const auto problems = path_problems(content, world);
+    EXPECT_NE(std::ranges::find(problems, std::string(cut.stranded)),
+              problems.end())
+        << cut.cut << " on day " << cut.day << " found " << problems.size();
+  }
 }
 
 } // namespace

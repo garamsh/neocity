@@ -1862,7 +1862,10 @@ rendering::Shot shot_of(const rendering::Art &drawing,
   }
   const auto heading =
       rendering::aim(frame.content.get(), frame.view, frame.control);
-  return {.camera = rendering::follow(drawing, frame.content.get(), heading),
+  return {.camera = rendering::follow(
+              drawing,
+              survival::map_of(frame.content.get(), frame.view.exploration.map),
+              heading),
           .heading = heading,
           .out_of_reach = out_of_reach(frame),
           .goals = goals(frame)};
@@ -1888,8 +1891,10 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.shift(canvas, {});
   rendering::paint_glow(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
-    rendering::paint_city_glow(canvas, drawing, frame.content.get(),
-                               shot.camera);
+    rendering::paint_city_glow(
+        canvas, drawing,
+        survival::map_of(frame.content.get(), frame.view.exploration.map),
+        shot.camera);
   }
   drawing.shift(canvas, {});
 }

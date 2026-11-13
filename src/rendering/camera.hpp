@@ -46,7 +46,7 @@ struct View {
 /// The camera easing from where it last was toward `heading` on the real
 /// clock, inside the same bounds as `aim`; its zoom steps between the two
 /// once the eased zoom passes halfway, and is never between them.
-[[nodiscard]] View follow(const Art &art, const survival::Content &content,
+[[nodiscard]] View follow(const Art &art, const survival::MapContent &content,
                           const View &heading);
 
 /// How far, in screen pixels, a backdrop layer `depth` of the way from the

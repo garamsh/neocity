@@ -33,7 +33,9 @@ struct ControlMap {
 [[nodiscard]] std::optional<std::size_t> key_set(ControlMap control,
                                                  Actor actor);
 
-/// Everything a controller may read; holds no game object.
+/// Everything a controller may read; holds no game object. `world` holds the
+/// objects of the map the party is on (`exploration.map`), so a `CellMap` built
+/// from it never mixes the cells of two maps.
 struct GameView {
   Snapshot progression;
   WorldSnapshot world;

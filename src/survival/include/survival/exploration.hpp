@@ -167,11 +167,28 @@ struct SourceStock {
   friend bool operator==(const SourceStock &, const SourceStock &) = default;
 };
 
+/// A zone on one map where both actors together move to another map. The two
+/// stand at `arrival` of the other map, which lies outside every zone there.
+struct MapExit {
+  MapId from = MapId::Street;
+  WorldArea zone;
+  MapId to = MapId::Aquarium;
+  GridPosition arrival;
+};
+
+/// The zone of a building an actor can be inside, on the street map.
+struct Interior {
+  ObjectId building;
+  WorldArea area;
+};
+
 /// Temporary tuning. `collection_time` is how long one collection holds the
-/// collecting actor.
+/// collecting actor. `entry` is the base entrance, a cell of the street.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
+  std::vector<MapExit> exits{};
+  std::vector<Interior> interiors{};
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
   std::chrono::microseconds collection_time{};
@@ -185,16 +202,20 @@ struct Collecting {
   friend bool operator==(const Collecting &, const Collecting &) = default;
 };
 
-/// Detailed body and collection hold; base has no movement.
+/// Detailed body and collection hold; base has no movement. `interior` is the
+/// building whose zone the body stands in, if any.
 struct ExplorerSnapshot {
   Body body;
   std::optional<Collecting> collecting = std::nullopt;
+  std::optional<ObjectId> interior = std::nullopt;
   friend bool operator==(const ExplorerSnapshot &,
                          const ExplorerSnapshot &) = default;
 };
 
-/// Read-only values for a renderer or companion controller.
+/// Read-only values for a renderer or companion controller. `map` is the map
+/// both actors share; the street whenever nobody is out.
 struct ExplorationSnapshot {
+  MapId map = MapId::Street;
   ExplorerSnapshot chef;
   ExplorerSnapshot appraiser;
   std::vector<SourceStock> sources;
@@ -219,22 +240,23 @@ class Exploration {
 public:
   /// Throws std::invalid_argument for invalid stock, tuning or an unsafe entry.
   Exploration(Simulation &progression, World &city, ExplorationConfig settings);
-  /// Starts at the configured entry with no partial movement.
+  /// Starts at the configured entry with no partial movement. Refused with
+  /// `Result::NotExploring` while the other actor is out on another map, so
+  /// the two are never on different maps.
   [[nodiscard]] Result enter(Actor actor);
   /// Synchronizes the detailed base position while preserving run state;
   /// refused with `Result::Busy` while the actor is collecting.
   [[nodiscard]] Result return_to_base(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// Each 100ms movement unit runs its physics ticks under one input.
-  /// The world follows the run's clock here only, at the acid the caller
-  /// passes.
+  /// The world follows the run's day here only. When both actors stand in an
+  /// exit zone of their map after a movement unit, both move to the other map.
   /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
-                               const std::array<ExplorationInput, 2> &inputs,
-                               AcidLevel acid);
-  /// Checks identity, supply, distance and shared stock before recording the
-  /// source's ingredient, then holds the actor for `collection_time` while the
-  /// shared clock runs on. Expiry or a fall ends the hold, and the item is
+                               const std::array<ExplorationInput, 2> &inputs);
+  /// Checks identity, map, supply, distance and shared stock before recording
+  /// the source's ingredient, then holds the actor for `collection_time` while
+  /// the shared clock runs on. Expiry or a fall ends the hold, and the item is
   /// kept.
   [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
   /// Returns independent values; requests are never retained in this snapshot.
@@ -250,13 +272,16 @@ private:
   [[nodiscard]] bool collecting(Actor actor);
   void synchronize();
   void tick(Actor actor, ExplorationInput input);
-  void advance_world(AcidLevel acid);
+  void advance_world();
+  [[nodiscard]] CellMap cells() const;
+  void travel();
 
   std::reference_wrapper<Simulation> simulation;
   std::reference_wrapper<World> world;
   ExplorationConfig config;
   Explorer chef;
   Explorer appraiser;
+  MapId current = MapId::Street;
 };
 
 } // namespace neocity::survival

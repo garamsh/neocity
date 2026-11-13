@@ -380,7 +380,7 @@ bool gone(const survival::SourceStock &stock, const ObjectSnapshot &object) {
 }
 
 /// The landmark picture `object` shows, if it has one.
-std::optional<LandmarkKind> landmark(const survival::Content &content,
+std::optional<LandmarkKind> landmark(const survival::MapContent &content,
                                      survival::ObjectId object) {
   const auto found =
       std::ranges::find(content.landmarks, object, &survival::Landmark::object);
@@ -547,7 +547,7 @@ struct Standing {
   std::optional<LandmarkKind> picture;
 };
 
-std::vector<Standing> standing_ground(const survival::Content &content,
+std::vector<Standing> standing_ground(const survival::MapContent &content,
                                       std::span<const ObjectSnapshot> objects) {
   std::vector<Standing> found;
   found.reserve(content.ground.size());
@@ -571,8 +571,8 @@ std::vector<Standing> standing_ground(const survival::Content &content,
 /// once for each MOCKUP_COLUMNS of the map, on the floor line of
 /// STRUCTURE_ROW.
 void paint_structure(godot::Node2D &canvas, const Art &art,
-                     const survival::Content &content) {
-  for (std::int32_t x = 0; x < content.map.width; x += MOCKUP_COLUMNS) {
+                     const survival::MapContent &content) {
+  for (std::int32_t x = 0; x < content.size.width; x += MOCKUP_COLUMNS) {
     art.image(canvas, Image::Structure,
               Vector2(cell_x(x), floor_y(STRUCTURE_ROW) - STRUCTURE_RISE));
   }
@@ -656,7 +656,7 @@ void paint_steam(godot::Node2D &canvas, const Art &art, float surface,
 /// The ferry's hull, then each walkway of standing terrain on its floor line,
 /// eaten where the acid at `surface` has reached it.
 void paint_ground(godot::Node2D &canvas, const Art &art,
-                  const survival::Content &content,
+                  const survival::MapContent &content,
                   std::span<const ObjectSnapshot> objects,
                   const std::vector<Standing> &ground, float surface) {
   for (const auto &object : objects) {
@@ -705,7 +705,7 @@ bool stands_in_front(LandmarkKind kind) {
 /// stands in front of the ground is drawn when `front`, and only the rest
 /// otherwise.
 void paint_building(godot::Node2D &canvas, const Art &art,
-                    const survival::Content &content,
+                    const survival::MapContent &content,
                     const ObjectSnapshot &object, bool front) {
   const auto box = area_rect(object.area);
   const auto &area = object.area;
@@ -880,7 +880,7 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
 }
 
 void paint_hazards(godot::Node2D &canvas, const Art &art,
-                   const survival::Content &content) {
+                   const survival::MapContent &content) {
   for (const auto &area : content.hazards) {
     const auto box = area_rect(area);
     for (std::int32_t column = 0; column < area.width; ++column) {
@@ -1435,7 +1435,7 @@ void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
 }
 
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
-                     const survival::Content &content, const View &camera) {
+                     const survival::MapContent &content, const View &camera) {
   art.look(canvas, origin(camera), camera.zoom);
   for (const auto &area : content.hazards) {
     const auto box = area_rect(area);
@@ -1445,9 +1445,10 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 }
 
 void paint_city(godot::Node2D &canvas, const Art &art,
-                const survival::Content &content,
+                const survival::Content &everything,
                 const survival::GameView &view,
                 const std::vector<survival::ObjectId> &out_of_reach) {
+  const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
   const auto &objects = view.world.objects;
   const auto paint_kind = [&](ObjectKind kind, const auto &paint) {
@@ -1462,7 +1463,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   const auto ground = standing_ground(content, objects);
   const float surface =
       acid_surface(static_cast<float>(view.progression.acid.value) /
-                   static_cast<float>(content.run.full_acid.value));
+                   static_cast<float>(everything.run.full_acid.value));
   canvas.set_texture_filter(
       godot::CanvasItem::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
   paint_structure(canvas, art, content);

@@ -69,22 +69,37 @@ struct Landmark {
   LandmarkKind kind = LandmarkKind::Kiosk;
 };
 
-/// One run's temporary data: the map, ingredients, recipes and tuning.
-/// Every value makes the prototype playable and none is final balance.
-struct Content {
-  Config run;
-  std::vector<ObjectDefinition> objects;
-  CompanionConfig companion;
+/// One map's drawing data: its size, hazards, ground, scenery and landmark
+/// pictures. The objects of every map are in `Content::objects`, each tagged
+/// with its map.
+struct MapContent {
+  MapId id = MapId::Street;
+  std::string_view name;
+  /// The playable grid's size in cells; every object of the map lies inside.
+  MapSize size;
   /// Cells where acid drips are drawn; no rule reads them.
   std::vector<WorldArea> hazards;
-  MapSize map;
-  /// One entry for each cell any terrain object covers.
+  /// One entry for each cell any terrain object of the map covers.
   std::vector<GroundCell> ground;
   /// Scenery placed on the map; no rule reads it.
   std::vector<Decoration> decorations;
   /// Objects drawn with a picture of their own; no rule reads it.
   std::vector<Landmark> landmarks;
 };
+
+/// One run's temporary data: the maps, ingredients, recipes and tuning.
+/// Every value makes the prototype playable and none is final balance. The
+/// maps are fixed: the seed moves neither a cell nor a supply.
+struct Content {
+  Config run;
+  std::vector<ObjectDefinition> objects;
+  CompanionConfig companion;
+  /// The street first, then the aquarium.
+  std::vector<MapContent> maps;
+};
+
+/// The data of `id`; throws std::out_of_range for a map the content lacks.
+[[nodiscard]] const MapContent &map_of(const Content &content, MapId id);
 
 /// Builds the temporary game for one run seed.
 [[nodiscard]] Content temporary_content(std::uint32_t seed);

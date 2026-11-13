@@ -2,7 +2,7 @@
 
 #include <survival/simulation.hpp>
 
-#include <chrono>
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <vector>
@@ -37,30 +37,31 @@ enum class ObjectKind : std::uint8_t {
 /// Dormant objects retain their IDs before becoming visible.
 enum class ObjectState : std::uint8_t { Dormant, Intact, Destroyed };
 
-/// Either enabled threshold triggers; supplied thresholds must be positive.
-struct WorldThreshold {
-  std::optional<std::chrono::microseconds> elapsed = std::nullopt;
-  std::optional<AcidLevel> acid = std::nullopt;
-};
+/// The two playable maps. Each has its own cell grid, with its origin at its
+/// own top left corner.
+enum class MapId : std::uint8_t { Street, Aquarium };
 
-/// Concrete object configuration; destruction measures from run start. A
-/// material source supplies exactly one ingredient.
+/// How far a map has fallen apart. The stage depends on the day alone.
+enum class DamageStage : std::uint8_t { Standing, Cracked, Ruined };
+
+/// The first day of each damage stage, in stage order.
+inline constexpr std::array<std::uint32_t, 3> STAGE_FIRST_DAY{1, 5, 10};
+
+/// The stage `day` falls in; day 0 counts as the first.
+[[nodiscard]] DamageStage damage_stage(std::uint32_t day);
+
+/// Concrete object configuration. From `exposed_from_day` on, a dormant object
+/// is intact; from `destroyed_from_day` on, it is destroyed. A material source
+/// supplies exactly one ingredient.
 struct ObjectDefinition {
   ObjectId id{};
   ObjectKind kind = ObjectKind::Terrain;
   WorldArea area{};
-  std::optional<WorldThreshold> exposed_at = std::nullopt;
-  std::optional<WorldThreshold> destroyed_after = std::nullopt;
+  MapId map = MapId::Street;
+  std::optional<std::uint32_t> exposed_from_day = std::nullopt;
+  std::optional<std::uint32_t> destroyed_from_day = std::nullopt;
   std::optional<IngredientId> ingredient = std::nullopt;
   std::optional<ObjectId> supported_by = std::nullopt;
-};
-
-/// The run's world time and current acid, supplied explicitly by the host.
-struct WorldProgression {
-  std::chrono::microseconds elapsed{};
-  AcidLevel acid{};
-  friend bool operator==(const WorldProgression &,
-                         const WorldProgression &) = default;
 };
 
 /// Derived access and supply values prevent consumers from duplicating rules.
@@ -68,6 +69,7 @@ struct ObjectSnapshot {
   ObjectId id;
   ObjectKind kind = ObjectKind::Terrain;
   WorldArea area;
+  MapId map = MapId::Street;
   ObjectState state = ObjectState::Intact;
   bool traversable = false;
   bool material_available = false;
@@ -76,17 +78,21 @@ struct ObjectSnapshot {
                          const ObjectSnapshot &) = default;
 };
 
-/// Value snapshot; cumulative time and historical peak acid never rewind.
+/// Value snapshot of every map's objects on the world's day.
 struct WorldSnapshot {
-  WorldProgression progression;
-  AcidLevel peak_acid;
+  std::uint32_t day = 1;
+  DamageStage stage = DamageStage::Standing;
   std::vector<ObjectSnapshot> objects;
   friend bool operator==(const WorldSnapshot &,
                          const WorldSnapshot &) = default;
 };
 
-/// Decreasing cumulative time is refused without changing any world state.
-enum class WorldUpdateResult : std::uint8_t { Applied, DecreasingTime };
+/// The snapshot with only the objects of `map`, so a `CellMap` built from it
+/// holds that map alone.
+[[nodiscard]] WorldSnapshot on_map(const WorldSnapshot &snapshot, MapId map);
+
+/// A day before the current one is refused without changing any world state.
+enum class WorldUpdateResult : std::uint8_t { Applied, DecreasingDay };
 
 /// Persistent city deterioration, without exploration implementation.
 class World {
@@ -94,8 +100,9 @@ public:
   /// Throws std::invalid_argument for invalid geometry, IDs or object
   /// contracts.
   explicit World(const std::vector<ObjectDefinition> &definitions);
-  /// Applies world time and peak-acid deterioration once.
-  [[nodiscard]] WorldUpdateResult update(WorldProgression progression);
+  /// Moves the world to `day`; damage follows the day alone, so acid never
+  /// changes the map.
+  [[nodiscard]] WorldUpdateResult update(std::uint32_t day);
   /// Returns stable identities, areas, visibility, access and material supply.
   [[nodiscard]] WorldSnapshot snapshot() const;
 
@@ -106,8 +113,7 @@ private:
   };
 
   std::vector<Object> objects;
-  WorldProgression current;
-  AcidLevel peak_acid;
+  std::uint32_t day = 1;
 };
 
 } // namespace neocity::survival
