@@ -2302,6 +2302,132 @@
         ],
         "processing_record": "docs/art/production/system-hd-provenance.txt"
       }
+    },
+    {
+      "path": "backgrounds/aquarium.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "role": "Aquarium wall and flooded tanks",
+      "sha256": "04bd87333cc56f5c32779e200bde2bf593d5ad9956de92b99f5173232e812c57",
+      "source": "docs/art/production/map-hd-sources/aquarium.png",
+      "source_sha256": "29ecc3ca29bf42622596f2bb66a9f8925104b7dec0b7658de1f695422000bfe8",
+      "crop": null,
+      "resize": "1920x1080!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/terminal.png",
+      "size": [
+        2304,
+        1152
+      ],
+      "role": "Street terminal scenery behind the fixed floors",
+      "sha256": "9b7598c0779b9e1bb2a23bd8aa5704824071a612335dfc10d8d538b2d52cd321",
+      "source": "docs/art/production/map-hd-sources/terminal.png",
+      "source_sha256": "b112b570f23e7f2e371fe4ec93a399a8a14c48e825b6db9ff51c6ffb4af7dca4",
+      "crop": null,
+      "resize": "2304x1152!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/interior_kitchen.png",
+      "size": [
+        576,
+        192
+      ],
+      "role": "Occupied kitchen loft background",
+      "sha256": "025eb215358cd85600330e4590657cc278c2d8a0474588a8a355224a76a42286",
+      "source": "docs/art/production/map-hd-sources/interiors.png",
+      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
+      "crop": "1717x295+0+0",
+      "resize": "576x192!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/interior_noodle.png",
+      "size": [
+        576,
+        192
+      ],
+      "role": "Occupied noodle loft background",
+      "sha256": "8fa807a9156e71a8ba91c793e191336f6c8a77ab94b01f3c12a6faac0b9cdbd7",
+      "source": "docs/art/production/map-hd-sources/interiors.png",
+      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
+      "crop": "1717x300+0+306",
+      "resize": "576x192!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/interior_cold_store.png",
+      "size": [
+        288,
+        288
+      ],
+      "role": "Occupied cold store background",
+      "sha256": "1d0ef3e40b6e5f36221456019c809137f94448e4a0b3455ee6f77803371d0c93",
+      "source": "docs/art/production/map-hd-sources/interiors.png",
+      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
+      "crop": "576x288+550+615",
+      "resize": "288x288!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "walkway/aquarium_deck.png",
+      "size": [
+        384,
+        84
+      ],
+      "role": "Four-cell teal deck band; level top at source row zero",
+      "sha256": "debb1c2e872094cd7408cbe5fae35581bc091e3bcad7661be5600f015abf2faf",
+      "source": "docs/art/production/map-hd-sources/structures.png",
+      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
+      "crop": "660x145+50+214",
+      "resize": "384x84!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/span_wreck.png",
+      "size": [
+        96,
+        96
+      ],
+      "role": "Collapsed span end; reflect for the other end",
+      "sha256": "ebd0407af3e6f6b097743a7b952f346cad6224023f73e371ea4f1922e1c52052",
+      "source": "docs/art/production/map-hd-sources/structures.png",
+      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
+      "crop": "290x210+785+192",
+      "resize": "96x96!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/kiosk_ruined.png",
+      "size": [
+        288,
+        144
+      ],
+      "role": "Day-ten collapsed kiosk",
+      "sha256": "3a0b7129699234ec66416f86f90cac67b1152bb8b466bd8937b713171e29c978",
+      "source": "docs/art/production/map-hd-sources/structures.png",
+      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
+      "crop": "750x335+10+620",
+      "resize": "288x144!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "world/fire_escape.png",
+      "size": [
+        96,
+        96
+      ],
+      "role": "Day-five fire escape repeating ladder segment",
+      "sha256": "961e06bf9935add15aac3a0a72e663a3a261bfdc65bd8633fb8604b34d5e4834",
+      "source": "docs/art/production/map-hd-sources/structures.png",
+      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
+      "crop": "92x96+1106+572",
+      "resize": "96x96!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
     }
   ],
   "system_assets": {
