@@ -214,7 +214,9 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
                            .exits = {},
                            .interiors = {},
                            .collection_distance = 2,
-                           .sources = {{.id = SOURCE}}});
+                           .sources = {{.id = SOURCE}},
+                           .obstacles = {},
+                           .patrols = {}});
   // The control: entering and collecting apply before the escape.
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
@@ -289,7 +291,9 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
                            .exits = {},
                            .interiors = {},
                            .collection_distance = 2,
-                           .sources = {{.id = SOURCE}}});
+                           .sources = {{.id = SOURCE}},
+                           .obstacles = {},
+                           .patrols = {}});
   // The control: entering and collecting apply before the loss.
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),

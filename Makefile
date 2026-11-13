@@ -144,7 +144,7 @@ test-timing: build
 test-survival: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 249 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, drip, roles, pause, leaving, hand-off, mouse, quit).' "$$log" || exit 1; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 252 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, obstacle, roles, pause, leaving, hand-off, mouse, quit).' "$$log" || exit 1; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalScreenLockCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Screen lock: 12 live checks passed (lone actor, jump, joint travel).' "$$log"
 
@@ -173,7 +173,7 @@ test-loss: build
 test-audio: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AudioFeedbackCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 30 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, drip, fall, flourishes, effects off, music off).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 29 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, fall, flourishes, effects off, music off).' "$$log"
 
 ci: lint format test
 

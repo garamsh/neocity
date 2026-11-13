@@ -78,7 +78,7 @@ struct MapContent {
   std::string_view name;
   /// The playable grid's size in cells; every object of the map lies inside.
   MapSize size;
-  /// Cells where acid drips are drawn; no rule reads them.
+  /// The obstacle cells, still drawn as acid drips.
   std::vector<WorldArea> hazards;
   /// One entry for each cell any terrain object of the map covers.
   std::vector<GroundCell> ground;

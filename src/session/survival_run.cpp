@@ -60,6 +60,24 @@ GridPosition position_of(const survival::ExplorationSnapshot &snapshot,
   return survival::cell_of(body_of(snapshot, actor).position);
 }
 
+/// Exploration time left before `actor` returns from a touch; -1 when it is
+/// on the map.
+std::int64_t absent_ms(const survival::ExplorationSnapshot &snapshot,
+                       Actor actor) {
+  const auto &away = [&]() -> const auto & {
+    switch (actor) {
+    case Actor::Chef:
+      return snapshot.chef.absent;
+    case Actor::Appraiser:
+      return snapshot.appraiser.absent;
+    }
+    std::abort();
+  }();
+  return away ? std::chrono::duration_cast<std::chrono::milliseconds>(*away)
+                    .count()
+              : -1;
+}
+
 /// How long the collection under way still holds `actor`; zero with none.
 std::chrono::microseconds
 collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
@@ -191,6 +209,7 @@ godot::Dictionary actor_status(const GameView &view,
              std::chrono::duration_cast<std::chrono::milliseconds>(
                  collecting_of(view.exploration, actor))
                  .count());
+  status.set("absent_ms", absent_ms(view.exploration, actor));
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
@@ -508,6 +527,14 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
           survival::map_of(features.content.get(), view.exploration.map).name));
   status.set("acid", view.progression.acid.value);
   status.set("full_acid", features.content.get().run.full_acid.value);
+  godot::Array mutants;
+  for (const auto &mutant : view.exploration.mutants) {
+    godot::Dictionary one;
+    one.set("sub_x", mutant.position.x);
+    one.set("sub_y", mutant.position.y);
+    mutants.push_back(one);
+  }
+  status.set("mutants", mutants);
   status.set("chef", actor_status(view, controllers, Actor::Chef));
   status.set("appraiser", actor_status(view, controllers, Actor::Appraiser));
   status.set("identified",

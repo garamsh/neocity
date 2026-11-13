@@ -54,7 +54,9 @@ ExplorationConfig tuning(std::vector<SourceStock> sources) {
           .exits = {},
           .interiors = {},
           .collection_distance = 1,
-          .sources = std::move(sources)};
+          .sources = std::move(sources),
+          .obstacles = {},
+          .patrols = {}};
 }
 
 WorkshopConfig kitchen(std::vector<Recipe> recipes = {
@@ -276,6 +278,54 @@ TEST(Companion, WalksToASourceAndCollectsWithinRange) {
             std::vector<IngredientId>{CARROT});
   EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
   EXPECT_EQ(game.refusals(), 0U);
+}
+
+/// A chef standing at the entry with a source ahead on a floor of ten cells and
+/// one mutant patrolling cells 1 to 8 of that row, at `x` sub-cells going
+/// `heading`.
+ActorCommand command_beside_a_mutant(std::int32_t x, Direction heading) {
+  auto view = city_view(ENTRY);
+  add_source(view, SOURCE, 7);
+  view.exploration.mutants.push_back(
+      {.position = {.x = x, .y = standing_in(ENTRY).y}, .heading = heading});
+  auto places = tuning({});
+  places.patrols = {{.from = {.x = 1, .y = 0}, .to = {.x = 8, .y = 0}}};
+  const Companion companion({.exploration = places,
+                             .workshop = kitchen(),
+                             .unfed_penalty = UNFED_PENALTY});
+  return companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
+}
+
+TEST(Companion, WaitsBesideAMutantThatReachesItsNextCellAndWalksOnOnceItTurns) {
+  const auto waits = command_beside_a_mutant(96, Direction::Left);
+  EXPECT_EQ(waits.movement.direction, Direction::Idle);
+  EXPECT_FALSE(waits.action);
+  // The control: the same mutant walking away leaves the way open.
+  const auto walks = command_beside_a_mutant(96, Direction::Right);
+  EXPECT_EQ(walks.movement.direction, Direction::Right);
+}
+
+/// The chef at the entry with a source at x 7 and a wall of obstacle cells
+/// three high at x 3, which no jump clears, when `walled`.
+ActorCommand command_before_a_wall(bool walled) {
+  auto view = city_view(ENTRY);
+  add_source(view, SOURCE, 7);
+  if (walled) {
+    view.exploration.obstacles = {{.x = 3, .y = 0},
+                                  {.x = 3, .y = -1},
+                                  {.x = 3, .y = -2},
+                                  {.x = 3, .y = -3}};
+  }
+  return companion_with().command(Actor::Chef, ALL_AI, NO_INPUT, view);
+}
+
+TEST(Companion, RoutesAroundObstacleCellsAndNeverStepsIntoTheirWall) {
+  const auto blocked = command_before_a_wall(true);
+  EXPECT_NE(blocked.movement.direction, Direction::Right);
+  EXPECT_EQ(blocked.action, std::optional<Action>{ReturnToBase{}});
+  // The control: the same floor and source without the wall is walked.
+  const auto open = command_before_a_wall(false);
+  EXPECT_EQ(open.movement.direction, Direction::Right);
 }
 
 TEST(Companion, JumpsAGapAndClimbsALadderToAHighSourceWithoutFalling) {

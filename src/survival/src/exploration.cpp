@@ -22,6 +22,9 @@ constexpr std::int32_t JUMP_ROOM =
     static_cast<std::int32_t>(TICKS_PER_UNIT) * PHYSICS.walk - 1;
 /// Ticks a link's simulated body may take before it counts as lost.
 constexpr int LINK_TICKS = 200;
+/// Temporary: sub-cells a mutant walks in one movement unit, a third of a
+/// walking actor's.
+constexpr std::int32_t MUTANT_STEP = 8;
 
 ActorSnapshot actor_state(const Snapshot &snapshot, Actor actor) {
   switch (actor) {
@@ -209,7 +212,7 @@ std::optional<GridPosition> follow(const CellMap &map, Body body, Move move) {
     }
     body = next;
     const auto cell = cell_of(body.position);
-    if (map.below(cell)) {
+    if (map.below(cell) || map.obstructed(cell)) {
       return std::nullopt;
     }
     if (body.stance == Stance::Standing && cell != start) {
@@ -273,7 +276,8 @@ bool holds(const CellMap &map, GridPosition cell) {
   return stands_on(map, cell) || ladder_at(map.at(cell));
 }
 
-CellMap::CellMap(const WorldSnapshot &snapshot) {
+CellMap::CellMap(const WorldSnapshot &snapshot, std::vector<GridPosition> sites)
+    : obstacles(std::move(sites)) {
   if (snapshot.objects.empty()) {
     return;
   }
@@ -351,6 +355,10 @@ CellMap::CellMap(const WorldSnapshot &snapshot) {
 
 bool CellMap::below(GridPosition cell) const {
   return std::int64_t{cell.y} >= std::int64_t{origin.y} + height;
+}
+
+bool CellMap::obstructed(GridPosition cell) const {
+  return std::ranges::find(obstacles, cell) != obstacles.end();
 }
 
 Cell CellMap::at(GridPosition cell) const {
@@ -497,6 +505,16 @@ Exploration::Exploration(Simulation &progression, World &city,
       throw std::invalid_argument("a map exit requires a safe arrival");
     }
   }
+  if ((!config.obstacles.empty() || !config.patrols.empty()) &&
+      config.absence <= 0us) {
+    throw std::invalid_argument(
+        "obstacles and patrols need a positive absence");
+  }
+  for (const auto &patrol : config.patrols) {
+    if (patrol.from.y != patrol.to.y || patrol.from.x >= patrol.to.x) {
+      throw std::invalid_argument("a patrol runs left to right along one row");
+    }
+  }
   std::vector<ObjectId> ids;
   for (const auto &source : config.sources) {
     const auto object = std::ranges::find_if(
@@ -569,9 +587,11 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
         step = std::min(step, MOVEMENT_TICK - explorer(actor).remainder);
       }
     }
+    step = std::min(step, MOVEMENT_TICK - mutant_clock);
     require_applied(simulation.get().advance(step));
     advance_world();
     remaining -= step;
+    mutant_clock += step;
     for (const auto actor : ACTORS) {
       if (actor_state(before, actor).location == Location::City) {
         auto &state = explorer(actor);
@@ -582,9 +602,13 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
             held.reset();
           }
         }
+        if (auto &gone = state.state.absent) {
+          *gone -= std::min(step, *gone);
+        }
       }
     }
     synchronize();
+    release_absent();
     for (std::size_t index = 0; index < ACTORS.size(); ++index) {
       const auto actor = ACTORS.at(index);
       auto &state = explorer(actor);
@@ -595,6 +619,10 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
         tick(actor, inputs.at(index));
       }
     }
+    if (mutant_clock == MOVEMENT_TICK) {
+      mutant_clock = 0us;
+      walk_mutants();
+    }
     travel();
   }
   return Result::Applied;
@@ -602,7 +630,8 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
 
 CollectionResult Exploration::collect(Actor actor, ObjectId source) {
   if (actor_state(simulation.get().snapshot(), actor).location !=
-      Location::City) {
+          Location::City ||
+      explorer(actor).state.absent) {
     return CollectionResult::NotExploring;
   }
   if (collecting(actor)) {
@@ -649,7 +678,14 @@ ExplorationSnapshot Exploration::snapshot() const {
   ExplorationSnapshot result{.map = current,
                              .chef = chef.state,
                              .appraiser = appraiser.state,
-                             .sources = config.sources};
+                             .sources = config.sources,
+                             .obstacles = obstacles_on(current),
+                             .mutants = {}};
+  for (const auto &mutant : mutants) {
+    if (mutant.patrol.map == current) {
+      result.mutants.push_back(mutant.state);
+    }
+  }
   if (current == MapId::Street) {
     for (auto *state : {&result.chef, &result.appraiser}) {
       const auto cell = cell_of(state->body.position);
@@ -680,10 +716,26 @@ bool Exploration::collecting(Actor actor) {
 }
 
 void Exploration::synchronize() {
+  // An actor left absent with its partner at base has no one to return to.
+  for (const auto actor : ACTORS) {
+    const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+    const auto snapshot = simulation.get().snapshot();
+    if (explorer(actor).state.absent &&
+        actor_state(snapshot, actor).location == Location::City &&
+        actor_state(snapshot, partner).location == Location::Base) {
+      require_applied(simulation.get().return_to_base(actor));
+    }
+  }
   const auto snapshot = simulation.get().snapshot();
   if (actor_state(snapshot, Actor::Chef).location == Location::Base &&
       actor_state(snapshot, Actor::Appraiser).location == Location::Base) {
     current = MapId::Street;
+    mutant_clock = 0us;
+    mutants.clear();
+    for (const auto &patrol : config.patrols) {
+      mutants.push_back(
+          {.patrol = patrol, .state = {.position = standing_in(patrol.from)}});
+    }
   }
   for (const auto actor : ACTORS) {
     if (actor_state(snapshot, actor).location == Location::Base) {
@@ -700,14 +752,26 @@ void Exploration::advance_world() {
   }
 }
 
+std::vector<GridPosition> Exploration::obstacles_on(MapId map) const {
+  std::vector<GridPosition> cells;
+  for (const auto &obstacle : config.obstacles) {
+    if (obstacle.map == map) {
+      cells.push_back(obstacle.cell);
+    }
+  }
+  return cells;
+}
+
 CellMap Exploration::cells() const {
-  return CellMap(on_map(world.get().snapshot(), current));
+  return CellMap(on_map(world.get().snapshot(), current),
+                 obstacles_on(current));
 }
 
 void Exploration::travel() {
   const auto snapshot = simulation.get().snapshot();
   if (actor_state(snapshot, Actor::Chef).location != Location::City ||
-      actor_state(snapshot, Actor::Appraiser).location != Location::City) {
+      actor_state(snapshot, Actor::Appraiser).location != Location::City ||
+      chef.state.absent || appraiser.state.absent) {
     return;
   }
   const auto inside = [this](const MapExit &exit) {
@@ -725,8 +789,79 @@ void Exploration::travel() {
   }
 }
 
+bool Exploration::touched(const CellMap &map, const Body &body) const {
+  const auto cell = cell_of(body.position);
+  return map.obstructed(cell) ||
+         std::ranges::any_of(mutants, [&](const Mutant &mutant) {
+           return mutant.patrol.map == current &&
+                  cell_of(mutant.state.position) == cell;
+         });
+}
+
+void Exploration::send_away(Actor actor) {
+  const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+  const auto elsewhere =
+      actor_state(simulation.get().snapshot(), partner).location !=
+          Location::City ||
+      explorer(partner).state.absent;
+  if (elsewhere) {
+    for (const auto leaving : {actor, partner}) {
+      if (actor_state(simulation.get().snapshot(), leaving).location ==
+          Location::City) {
+        require_applied(simulation.get().return_to_base(leaving));
+      }
+    }
+    synchronize();
+    return;
+  }
+  auto &state = explorer(actor).state;
+  state.collecting.reset();
+  state.absent = config.absence;
+}
+
+void Exploration::release_absent() {
+  for (const auto actor : ACTORS) {
+    auto &state = explorer(actor).state;
+    if (state.absent == 0us) {
+      const auto partner =
+          actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+      state.body = explorer(partner).state.body;
+      state.absent.reset();
+    }
+  }
+}
+
+void Exploration::walk_mutants() {
+  for (auto &mutant : mutants) {
+    const auto left = standing_in(mutant.patrol.from).x;
+    const auto right = standing_in(mutant.patrol.to).x;
+    auto &state = mutant.state;
+    state.position.x +=
+        state.heading == Direction::Right ? MUTANT_STEP : -MUTANT_STEP;
+    if (state.position.x >= right) {
+      state.position.x = right;
+      state.heading = Direction::Left;
+    } else if (state.position.x <= left) {
+      state.position.x = left;
+      state.heading = Direction::Right;
+    }
+  }
+  const auto map = cells();
+  for (const auto actor : ACTORS) {
+    const auto &state = explorer(actor).state;
+    if (actor_state(simulation.get().snapshot(), actor).location ==
+            Location::City &&
+        !state.absent && touched(map, state.body)) {
+      send_away(actor);
+    }
+  }
+}
+
 void Exploration::tick(Actor actor, ExplorationInput input) {
   auto &state = explorer(actor).state;
+  if (state.absent) {
+    return;
+  }
   if (state.collecting) {
     input = {};
   }
@@ -734,7 +869,8 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
   const bool together =
       actor_state(simulation.get().snapshot(), partner).location ==
-      Location::City;
+          Location::City &&
+      !explorer(partner).state.absent;
   const auto partner_x = explorer(partner).state.body.position.x;
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
     auto next = physics_tick(map, state.body, input);
@@ -747,6 +883,10 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
     if (map.below(cell_of(state.body.position))) {
       require_applied(simulation.get().return_to_base(actor));
       synchronize();
+      return;
+    }
+    if (touched(map, state.body)) {
+      send_away(actor);
       return;
     }
   }

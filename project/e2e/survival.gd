@@ -22,6 +22,11 @@ const CHOSEN: String = "Fish Stew"
 const MENU_PRESSES: int = 12
 const COOK_ATTEMPTS: int = 12
 const STEP_FRAMES: int = 6
+## Waits of six frames a walker gives a patrol, and an absent walker is given.
+const MUTANT_WAIT_STEPS: int = 40
+const ABSENCE_WAIT_STEPS: int = 400
+## Sub-cells behind the walker a mutant still counts as in its way.
+const MUTANT_CLEARANCE: int = 16
 ## Half the height a panel rises from as it comes in, in pixels, and a wait on
 ## the real clock longer than its rise.
 const ENTRANCE_RISE: float = 9.0
@@ -38,9 +43,12 @@ const VENDOR_ROUTE: Array[Vector2i] = [Vector2i(23, 8), Vector2i(23, 6), Vector2
 const TOMATO_ROUTE: Array[Vector2i] = [Vector2i(11, 9)]
 ## From the entrance up the kitchen ladder to the shop shelf on the loft.
 const SHELF_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(4, 6)]
-## The drip stands on the upper walkway west of the kitchen ladder: six steps
-## in and out of it are three entries into the drip, which burns no one.
-const DRIP_ROUTE: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
+## The obstacle once drawn as the acid drip stands on the upper walkway west of
+## the kitchen ladder, at 1, 8; the walkway cell beside it is 2, 8.
+const OBSTACLE_CELL: Vector2i = Vector2i(1, 8)
+const BESIDE_OBSTACLE: Vector2i = Vector2i(2, 8)
+## The exploration time a touched actor is away: ten seconds, in milliseconds.
+const ABSENCE_MSEC: int = 10000
 ## From the entrance up the kitchen ladder to the foot of the roof ladder on
 ## the loft.
 const LADDER_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
@@ -145,7 +153,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, drip, roles, pause, leaving, hand-off, mouse, quit).")
+		print("Survival: ", checks, " live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, obstacle, roles, pause, leaving, hand-off, mouse, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -166,7 +174,7 @@ func _run() -> void:
 	if not failed:
 		await _the_days_change_the_city()
 	if not failed:
-		await _crossing_the_drip_sends_no_one_home()
+		await _touching_an_obstacle_sends_the_actor_away()
 	if not failed:
 		await _ai_chef_work_yields_to_a_dish_to_feed()
 	if not failed:
@@ -720,11 +728,9 @@ func _third_day_falls() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef sets out to the drip", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not await _walk_route([Vector2i(1, 8)]):
+	if not await _walk_to(BESIDE_OBSTACLE.x, BESIDE_OBSTACLE.y):
 		return
-	if not _check(_where("chef") == "city" and not _events_mention("acid drip"), "the acid drip burns no one: the chef stays out and nothing is logged"):
-		return
-	if not await _camera_settles("the drip"):
+	if not await _camera_settles("the west walkway"):
 		return
 	if not await _walk_to(24, 8):
 		return
@@ -782,9 +788,10 @@ func _third_day_falls() -> void:
 	await _tap(KEY_G)
 	await _until("the fall's day ends", func() -> bool: return _int("day") == day + 1, 30)
 
-## Starts a new day and crosses the drip again and again: it never sends the
-## chef home, however often it is entered.
-func _crossing_the_drip_sends_no_one_home() -> void:
+## Starts a new day: a mutant on its patrol changes position over time, and
+## the chef touching the obstacle disappears from the map and, ten seconds of
+## exploration time later, reappears beside its partner.
+func _touching_an_obstacle_sends_the_actor_away() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef re-enters", func() -> bool: return _where("chef") == "city", 30):
 		return
@@ -799,9 +806,39 @@ func _crossing_the_drip_sends_no_one_home() -> void:
 		return
 	if not _gone_bags_leave_the_map():
 		return
-	if not await _walk_route(DRIP_ROUTE):
+	var mutants: Array = _status()["mutants"]
+	if not _check(mutants.size() >= 3, "the street has patrolling mutants: %d" % mutants.size()):
 		return
-	_check(_where("chef") == "city" and not _events_mention("acid drip"), "three entries into the drip leave the chef in the city")
+	var patrolled: Array[int] = []
+	for mutant: Dictionary in mutants:
+		var sub_x: int = mutant["sub_x"]
+		patrolled.append(sub_x)
+	await _frames(30)
+	var moved: bool = false
+	var after: Array = _status()["mutants"]
+	for index: int in range(patrolled.size()):
+		var now: int = after[index]["sub_x"]
+		moved = moved or now != patrolled[index]
+	if not _check(moved, "a mutant's position changes over time"):
+		return
+	if not await _until("the AI partner joins the chef in the city", func() -> bool: return _where("appraiser") == "city", 1200):
+		return
+	if not await _walk_route([BESIDE_OBSTACLE]):
+		return
+	_key(WALK_KEYS[5 * _actor(walker, "key_set")], true)
+	var gone: bool = await _until("touching the obstacle takes the chef off the map", func() -> bool: return _actor("chef", "absent_ms") >= 0, 120)
+	_release()
+	if not gone:
+		return
+	if not _check(_where("chef") == "city" and _where("appraiser") == "city", "the touched chef is away from the map, still in the city"):
+		return
+	var away_ms: int = _actor("chef", "absent_ms")
+	if not _check(away_ms <= ABSENCE_MSEC and away_ms > ABSENCE_MSEC - 1000, "the chef is away for ten seconds: %d ms left" % away_ms):
+		return
+	if not await _until("the chef reappears beside its partner", func() -> bool: return _actor("chef", "absent_ms") < 0, 900):
+		return
+	var beside: int = absi(_actor("chef", "sub_x") - _actor("appraiser", "sub_x"))
+	_check(_where("chef") == "city" and beside <= 32, "the chef is back beside its partner: %d sub-cells apart" % beside)
 
 ## Tab hands the chef to AI, which works on the next step, so the line read on
 ## the swap's first frame names that work: cooking with no dish stored, but the
@@ -1185,6 +1222,7 @@ func _names_interact(line: String) -> bool:
 ## Presses the key for the one action NEXT names, as the controls page lists
 ## it, or waits while it names none.
 func _follow_next() -> void:
+	await _wait_out_absence()
 	var line: String = _next()
 	if line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
@@ -1199,11 +1237,39 @@ func _follow_next() -> void:
 	else:
 		await _frames(12)
 
+## Waits, like the AI, while a mutant of the walker's row is or soon will be in
+## the cells the next step crosses: within three cells ahead, which a mutant
+## covers in under a second. A patrol that never leaves the way is left after
+## `MUTANT_WAIT_STEPS` waits, and a touch is then waited out.
+func _let_mutants_pass(sign: int) -> void:
+	for waited in MUTANT_WAIT_STEPS:
+		var here: int = _actor(walker, "sub_x")
+		var row: int = _actor(walker, "sub_y")
+		var near: bool = false
+		for mutant: Dictionary in _mutants():
+			var mutant_x: int = mutant["sub_x"]
+			var mutant_y: int = mutant["sub_y"]
+			var ahead: int = (mutant_x - here) * sign
+			if mutant_y == row and ahead >= -MUTANT_CLEARANCE and ahead <= 3 * 32:
+				near = true
+		if not near:
+			return
+		await _frames(6)
+
+## Waits until a walker that touched a mutant or an obstacle is back.
+func _wait_out_absence() -> void:
+	for waited in ABSENCE_WAIT_STEPS:
+		if _actor(walker, "absent_ms") == -1:
+			return
+		await _frames(6)
+
 ## Moves the way NEXT names: a press and release in one frame walks or climbs
 ## one step at any frame length. A jump, or a step off an edge, holds its way
 ## until it lands, as the route it was planned on does.
 func _walk_a_cell(line: String) -> void:
 	var code: Key = ROUTE_KEYS.get(line.get_slice(" ", 1), KEY_NONE)
+	if line.begins_with("Walk ") and (code == KEY_A or code == KEY_D):
+		await _let_mutants_pass(1 if code == KEY_D else -1)
 	if code == KEY_NONE:
 		await _frames(STEP_FRAMES)
 		return
@@ -1571,6 +1637,9 @@ func _loss_clears_the_offer() -> void:
 		await _tap(KEY_G)
 	_check(_str("phase") == "lost" and _str("dish_offered") == "", "a lost party is offered no dish")
 
+func _mutants() -> Array:
+	return _status()["mutants"]
+
 func _next() -> String:
 	return _str("next")
 
@@ -1767,6 +1836,17 @@ func _camera_holds(where: String) -> bool:
 ## area. The control is that the AI partner is out in the city.
 func _camera_frames_partner(where: String) -> bool:
 	if not _check(_where("appraiser") == "city" and _actor("appraiser", "key_set") == -1, "the AI partner is out on %s" % where):
+		return false
+	# The camera follows the AI partner, so it rests only once the partner does.
+	var rest: Array[int] = [0, -1, -1]
+	var at_rest: Callable = func() -> bool:
+		var sub_x: int = _actor("appraiser", "sub_x")
+		var sub_y: int = _actor("appraiser", "sub_y")
+		rest[0] = rest[0] + 1 if sub_x == rest[1] and sub_y == rest[2] else 0
+		rest[1] = sub_x
+		rest[2] = sub_y
+		return rest[0] >= 60
+	if not await _until("the AI partner comes to rest on %s" % where, at_rest, 900):
 		return false
 	return await _camera_holds(where)
 

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 namespace neocity::survival {
@@ -42,7 +43,9 @@ ExplorationConfig tuning() {
           .exits = {},
           .interiors = {},
           .collection_distance = 1,
-          .sources = {{.id = SOURCE}}};
+          .sources = {{.id = SOURCE}},
+          .obstacles = {},
+          .patrols = {}};
 }
 
 /// The cell an explorer's feet stand in.
@@ -81,7 +84,9 @@ public:
                      .entry = entry,
                      .exits = {},
                      .interiors = {},
-                     .sources = {}}) {
+                     .sources = {},
+                     .obstacles = {},
+                     .patrols = {}}) {
     skip_to_day(simulation, exploration, day);
     if (exploration.enter(Actor::Chef) != Result::Applied) {
       throw std::logic_error("course entry refused");
@@ -850,7 +855,9 @@ public:
                        .arrival = HALL_ARRIVAL}},
             .interiors = {{.building = SHOP,
                            .area = {.x = 5, .y = 0, .width = 2, .height = 1}}},
-            .sources = {{.id = HALL_SOURCE}}};
+            .sources = {{.id = HALL_SOURCE}},
+            .obstacles = {},
+            .patrols = {}};
   }
 
   void both_enter() {
@@ -1008,6 +1015,245 @@ TEST(Exploration, AnExitNeedsASafeArrivalOnADifferentMap) {
   World second_world(Travel::objects());
   EXPECT_THROW(Exploration(second, second_world, same_map),
                std::invalid_argument);
+}
+
+/// A walkway from x = 0 to 59 with the party entering at x = 30, an obstacle
+/// west of the entry, and whatever mutant patrols the test adds. Time spent
+/// away from the map is ten seconds.
+class Danger {
+public:
+  static constexpr GridPosition WEST_ENTRY{.x = 30, .y = 0};
+  static constexpr GridPosition OBSTACLE{.x = 20, .y = 0};
+  static constexpr auto ABSENCE = 10s;
+
+  explicit Danger(std::vector<Obstacle> obstacles = {{.cell = OBSTACLE}},
+                  std::vector<Patrol> patrols = {})
+      : simulation({.exploration_budget = 600s, .seed = 0}),
+        world({floor_at(FLOOR, 0, 0, 60)}),
+        exploration(simulation, world,
+                    {.base = BASE,
+                     .entry = WEST_ENTRY,
+                     .exits = {},
+                     .interiors = {},
+                     .sources = {},
+                     .obstacles = std::move(obstacles),
+                     .patrols = std::move(patrols),
+                     .absence = ABSENCE}) {}
+
+  void enter(Actor actor) {
+    ASSERT_EQ(exploration.enter(actor), Result::Applied);
+  }
+  void both_enter() {
+    enter(Actor::Chef);
+    enter(Actor::Appraiser);
+  }
+
+  /// Presses `direction` for `actor` alone, the other idle, for one tick.
+  void press(Actor actor, Direction direction) {
+    std::array<ExplorationInput, 2> inputs{};
+    inputs.at(actor == Actor::Chef ? 0 : 1) = {.direction = direction};
+    ASSERT_EQ(exploration.advance(20ms, inputs), Result::Applied);
+  }
+
+  /// Idles `ticks` physics ticks.
+  void idle(int ticks) {
+    for (int tick = 0; tick < ticks; ++tick) {
+      ASSERT_EQ(exploration.advance(20ms, IDLE), Result::Applied);
+    }
+  }
+
+  /// Walks `actor` west until it is absent or the walkway has been crossed.
+  void walk_west_until_absent(Actor actor) {
+    for (int tick = 0; tick < 800 && !explorer(actor).absent; ++tick) {
+      press(actor, Direction::Left);
+    }
+  }
+
+  [[nodiscard]] ExplorerSnapshot explorer(Actor actor) const {
+    const auto snapshot = exploration.snapshot();
+    return actor == Actor::Chef ? snapshot.chef : snapshot.appraiser;
+  }
+  [[nodiscard]] Simulation &sim() { return simulation; }
+  [[nodiscard]] Exploration &exploring() { return exploration; }
+
+private:
+  Simulation simulation;
+  World world;
+  Exploration exploration;
+};
+
+TEST(Exploration, AnActorThatTouchesAnObstacleIsAbsentAndReturnsAtItsPartner) {
+  Danger danger;
+  danger.both_enter();
+  ASSERT_FALSE(danger.explorer(Actor::Chef).absent);
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  EXPECT_EQ(danger.sim().snapshot().chef.location, Location::City);
+  const auto away = danger.explorer(Actor::Chef).body.position;
+  ASSERT_LT(away.x, danger.explorer(Actor::Appraiser).body.position.x);
+  // 9.9 s later the actor is still away.
+  danger.idle(495);
+  EXPECT_TRUE(danger.explorer(Actor::Chef).absent);
+  EXPECT_EQ(danger.explorer(Actor::Chef).body.position, away);
+  // At 10 s it is beside the partner.
+  danger.idle(5);
+  EXPECT_FALSE(danger.explorer(Actor::Chef).absent);
+  EXPECT_EQ(danger.explorer(Actor::Chef).body.position,
+            danger.explorer(Actor::Appraiser).body.position);
+  EXPECT_EQ(danger.sim().snapshot().chef.location, Location::City);
+}
+
+TEST(Exploration, AnActorAloneInTheCityThatTouchesAnObstacleGoesHome) {
+  Danger danger;
+  danger.enter(Actor::Chef);
+  danger.walk_west_until_absent(Actor::Chef);
+  EXPECT_FALSE(danger.explorer(Actor::Chef).absent);
+  EXPECT_EQ(danger.sim().snapshot().chef.location, Location::Base);
+}
+
+TEST(Exploration, BothActorsTouchedGoHomeKeepingInventoryAndDay) {
+  Danger danger;
+  danger.both_enter();
+  ASSERT_EQ(danger.sim().collect(Actor::Chef, IngredientId{70}),
+            Result::Applied);
+  ASSERT_EQ(danger.sim().collect(Actor::Appraiser, IngredientId{71}),
+            Result::Applied);
+  const auto before = danger.sim().snapshot();
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  // The partner touches the same obstacle while the chef is away.
+  danger.walk_west_until_absent(Actor::Appraiser);
+  const auto after = danger.sim().snapshot();
+  EXPECT_EQ(after.chef.location, Location::Base);
+  EXPECT_EQ(after.appraiser.location, Location::Base);
+  EXPECT_EQ(after.chef.inventory, before.chef.inventory);
+  EXPECT_EQ(after.appraiser.inventory, before.appraiser.inventory);
+  EXPECT_EQ(after.day, before.day);
+  EXPECT_FALSE(danger.explorer(Actor::Chef).absent);
+  EXPECT_FALSE(danger.explorer(Actor::Appraiser).absent);
+}
+
+TEST(Exploration, AnObstacleAloneSendsAnActorAwayWithNoMutantOnTheMap) {
+  Danger danger({{.cell = Danger::OBSTACLE}}, {});
+  danger.both_enter();
+  ASSERT_TRUE(danger.exploring().snapshot().mutants.empty());
+  danger.walk_west_until_absent(Actor::Chef);
+  EXPECT_TRUE(danger.explorer(Actor::Chef).absent);
+}
+
+TEST(Exploration, AMutantAloneSendsAnActorAwayWithNoObstacleOnTheMap) {
+  Danger danger({}, {{.from = {.x = 18, .y = 0}, .to = {.x = 22, .y = 0}}});
+  danger.both_enter();
+  ASSERT_TRUE(danger.exploring().snapshot().obstacles.empty());
+  ASSERT_EQ(danger.exploring().snapshot().mutants.size(), 1U);
+  danger.walk_west_until_absent(Actor::Chef);
+  EXPECT_TRUE(danger.explorer(Actor::Chef).absent);
+}
+
+TEST(Exploration, WalkingTheSameWayPastNothingTouchesNoOne) {
+  Danger danger({}, {});
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  EXPECT_FALSE(danger.explorer(Actor::Chef).absent);
+  EXPECT_LT(at(danger.explorer(Actor::Chef)).x, Danger::OBSTACLE.x);
+}
+
+TEST(Exploration, AMutantWalksItsPatrolBackAndForthOverTime) {
+  Danger danger({}, {{.from = {.x = 40, .y = 0}, .to = {.x = 44, .y = 0}}});
+  danger.both_enter();
+  std::vector<std::int32_t> seen;
+  for (int second = 0; second < 12; ++second) {
+    danger.idle(50);
+    const auto mutants = danger.exploring().snapshot().mutants;
+    ASSERT_EQ(mutants.size(), 1U);
+    const auto x = mutants.front().position.x;
+    EXPECT_GE(x, 40 * SUBCELLS);
+    EXPECT_LE(x, 45 * SUBCELLS);
+    seen.push_back(x);
+  }
+  const auto swing = std::ranges::minmax(seen);
+  EXPECT_GE(swing.max - swing.min, 2 * SUBCELLS);
+}
+
+TEST(Exploration, TheScreenLockIgnoresAnActorThatIsAbsent) {
+  Danger danger;
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  const auto chef = danger.explorer(Actor::Chef);
+  ASSERT_TRUE(chef.absent);
+  // The partner walks east, beyond the lock's reach of the chef's body.
+  for (int tick = 0; tick < 120; ++tick) {
+    danger.press(Actor::Appraiser, Direction::Right);
+  }
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  EXPECT_GT(danger.explorer(Actor::Appraiser).body.position.x -
+                chef.body.position.x,
+            SCREEN_LOCK);
+}
+
+TEST(Exploration, AnAbsentActorTakesNoMovementCommand) {
+  Danger danger;
+  danger.both_enter();
+  danger.walk_west_until_absent(Actor::Chef);
+  ASSERT_TRUE(danger.explorer(Actor::Chef).absent);
+  const auto away = danger.explorer(Actor::Chef).body.position;
+  danger.press(Actor::Chef, Direction::Left);
+  EXPECT_EQ(danger.explorer(Actor::Chef).body.position, away);
+}
+
+TEST(Exploration, TheTimeUpWhileAbsentSendsEveryoneHome) {
+  Simulation simulation({.exploration_budget = 20s, .seed = 0});
+  World world({floor_at(FLOOR, 0, 0, 60)});
+  Exploration exploration(simulation, world,
+                          {.base = BASE,
+                           .entry = Danger::WEST_ENTRY,
+                           .exits = {},
+                           .interiors = {},
+                           .sources = {},
+                           .obstacles = {{.cell = Danger::OBSTACLE}},
+                           .patrols = {},
+                           .absence = 10s});
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  for (int tick = 0; tick < 800 && !exploration.snapshot().chef.absent;
+       ++tick) {
+    ASSERT_EQ(exploration.advance(20ms, {LEFT, {}}), Result::Applied);
+  }
+  ASSERT_TRUE(exploration.snapshot().chef.absent);
+  ASSERT_EQ(exploration.advance(20s, IDLE), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
+  EXPECT_EQ(simulation.snapshot().appraiser.location, Location::Base);
+  EXPECT_FALSE(exploration.snapshot().chef.absent);
+}
+
+TEST(Exploration, AnObstacleOrPatrolNeedsAPositiveAbsence) {
+  Simulation simulation({.exploration_budget = 20s, .seed = 0});
+  World world({floor_at(FLOOR, 0, 0, 60)});
+  EXPECT_THROW(Exploration(simulation, world,
+                           {.base = BASE,
+                            .entry = Danger::WEST_ENTRY,
+                            .exits = {},
+                            .interiors = {},
+                            .sources = {},
+                            .obstacles = {{.cell = Danger::OBSTACLE}},
+                            .patrols = {}}),
+               std::invalid_argument);
+}
+
+TEST(Exploration, ARouteNeverPassesThroughAnObstacleCell) {
+  const World world({floor_at(FLOOR, 0, 0, 60)});
+  const GridPosition obstacle = Danger::OBSTACLE;
+  const CellMap open(world.snapshot());
+  const CellMap blocked(world.snapshot(), {obstacle});
+  const auto walks_into = [&](const CellMap &cells) {
+    const GridPosition beside{.x = obstacle.x + 1, .y = obstacle.y};
+    return std::ranges::any_of(links(cells, beside), [&](const Link &link) {
+      return link.to == obstacle;
+    });
+  };
+  ASSERT_TRUE(walks_into(open));
+  EXPECT_FALSE(walks_into(blocked));
+  EXPECT_TRUE(blocked.obstructed(obstacle));
 }
 
 } // namespace

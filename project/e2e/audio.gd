@@ -3,8 +3,8 @@ extends SceneTree
 ## Plays with real key events and reads what the speakers were asked to play and
 ## which flourishes are on screen: the menus' cues, the title, workshop and city
 ## music and its tension, the cues of walking, jumping, landing, collecting,
-## travelling, appraising, cooking, feeding, a new day, rising acid, a drip crossed
-## unharmed and a fall into the acid, and the pause screen's volumes, where an effects volume of 0 plays no effect
+## travelling, appraising, cooking, feeding, a new day, rising acid
+## and a fall into the acid, and the pause screen's volumes, where an effects volume of 0 plays no effect
 ## and a music volume of 0 plays no music. Runs with no audio device.
 
 const SEED: int = 11
@@ -12,9 +12,6 @@ const SEED: int = 11
 ## them: the tomato machine and the shop shelf.
 const FIRST_SOURCE: Vector2i = Vector2i(10, 9)
 const SECOND_SOURCE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(5, 6)]
-## The acid drip stands on the upper walkway at 1, 8, west of the kitchen
-## ladder; six steps across it are six entries into the drip.
-const DRIP: Array[Vector2i] = [Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8), Vector2i(1, 8), Vector2i(2, 8)]
 ## Up the kitchen ladder to the west end of the kitchen loft.
 const LOFT_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
 const APPRAISE_ATTEMPTS: int = 12
@@ -52,7 +49,7 @@ func _run() -> void:
 		return
 	if not await _fall_into_the_acid():
 		return
-	print("Audio: ", checks, " live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, drip, fall, flourishes, effects off, music off).")
+	print("Audio: ", checks, " live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, fall, flourishes, effects off, music off).")
 	quit(0)
 
 func _title_plays_music_and_menu_cues() -> bool:
@@ -188,7 +185,7 @@ func _music_off_plays_nothing() -> bool:
 	await _tap(KEY_ESCAPE)
 	return await _until("the run continues", func() -> bool: return _str("interruption") == "", 30)
 
-## The unfed day raised the acid: the city plays tenser, and the drip that once burned is harmless.
+## The unfed day raised the acid: the city plays tenser.
 func _acid_raises_the_tension() -> bool:
 	if not _check(_heard("acid_rise") or _int("acid") > 0, "the acid has risen"):
 		return false
@@ -198,12 +195,7 @@ func _acid_raises_the_tension() -> bool:
 	var tension: float = _number("tension")
 	var pitch: float = _number("pitch")
 	var drone: float = _number("drone_db")
-	if not _check(tension > 0.0 and pitch > 1.0 and drone > -80.0, "risen acid raises the music's pitch and the drone"):
-		return false
-	for waypoint: Vector2i in DRIP:
-		if not await _walk_to(waypoint):
-			return false
-	return _check(_where("appraiser") == "city", "the drip burns no one: player two crosses it six times and stays out")
+	return _check(tension > 0.0 and pitch > 1.0 and drone > -80.0, "risen acid raises the music's pitch and the drone")
 
 ## Player two walks up to the kitchen loft and off its west end into the acid.
 func _fall_into_the_acid() -> bool:
