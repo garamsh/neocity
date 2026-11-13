@@ -174,10 +174,20 @@ static func check_floor_lines(subject: MainScene, cache: Dictionary = {}) -> boo
 	var layers: Array = world.get_meta("deck_layers", [])
 	var cells: int = 0
 	var controls: int = 0
+	var voids: int = 0
 	for floor_record: Dictionary in floors:
 		var area: Rect2 = floor_record["area"]
 		var floor_y: float = area.end.y
+		var standing: bool = floor_record["standing"]
 		for column: int in range(roundi(area.position.x), roundi(area.end.x), 32):
+			if not standing:
+				for offset: float in [0.5, 16.0, 31.5]:
+					var view: Transform2D = subject.get_meta("map_view", Transform2D())
+					if _stone_layers(view * Vector2(column + offset, floor_y + 0.25), layers, cache):
+						push_error("Stairs: absent terrain %s still draws a floor at x=%s." % [floor_record["name"], column + offset])
+						return false
+				voids += 1
+				continue
 			var top_layers: Array = []
 			for layer: Dictionary in layers:
 				var destination: Rect2 = layer["destination"]
@@ -196,6 +206,7 @@ static func check_floor_lines(subject: MainScene, cache: Dictionary = {}) -> boo
 				controls += 1
 			cells += 1
 	print("Stairs: %s day %s: %d terrain cells have opaque contact at x=0.5,16,31.5; %d nearest-row-above controls returned nothing." % [subject.survival_status()["map"], subject.survival_status()["day"], cells, controls])
+	print("Stairs: %d dormant or destroyed terrain cells correctly draw no collision deck." % voids)
 	return cells > 0
 
 ## Reads alpha through the actual texture, crop and draw transform, excluding all scenery and actors.

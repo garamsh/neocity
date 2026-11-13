@@ -157,7 +157,7 @@ godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// The stairs' stringer, under their treads, faces away from the light.
 godot::Color stringer_tint() { return {0.7F, 0.7F, 0.75F}; }
 /// The walked-on top edge of the ground is lit warm and bright.
-godot::Color ground_edge_tint() { return {2.4F, 2.0F, 1.6F}; }
+godot::Color ground_edge_tint() { return {3.6F, 3.0F, 2.4F}; }
 
 float cell_x(std::int32_t x) { return MAP_X + static_cast<float>(x) * CELL; }
 float cell_y(std::int32_t y) { return MAP_Y + static_cast<float>(y) * CELL; }
@@ -457,13 +457,14 @@ void paint_deck(godot::Node2D &canvas, const Art &art,
                 survival::GridPosition cell, bool corroded) {
   const godot::Rect2 source = deck_source(cell);
   const godot::Color tint = corroded ? corroded_tint() : untinted();
+  const godot::Color face = tint * godot::Color(0.75F, 0.75F, 0.75F);
   const Vector2 at(cell_x(cell.x), floor_y(cell.y));
   const bool loft = cell.y == LOFT_ROW;
   const bool left = !has_ground(standing, {.x = cell.x - 1, .y = cell.y});
   const bool right = !has_ground(standing, {.x = cell.x + 1, .y = cell.y});
   if (!left && !right) {
     art.image_part(canvas, Image::Deck, source,
-                   rect(at.x, at.y, CELL, DECK_DEPTH), tint);
+                   rect(at.x, at.y, CELL, DECK_DEPTH), face);
     if (loft) {
       art.image_part(
           canvas, Image::BuildingWall,
@@ -487,7 +488,7 @@ void paint_deck(godot::Node2D &canvas, const Art &art,
       const Image image = under ? Image::BuildingWall : Image::Deck;
       const float source_y =
           under ? UNDERSIDE_TOP + y - DECK_DEPTH : source.position.y + y;
-      const godot::Color face_tint = under ? untinted() : tint;
+      const godot::Color face_tint = under ? untinted() : face;
       const float inset_left = left ? LEFT.at(row) : 0.0F;
       const float inset_right = right ? RIGHT.at(row) : 0.0F;
       const float width = CELL - inset_left - inset_right;
@@ -519,10 +520,8 @@ void paint_deck(godot::Node2D &canvas, const Art &art,
 bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 
 /// Draws one ground cell of standing terrain under the floor line of its
-/// cell, the band of the mockup's walkway at its row and column, stained once
-/// the acid at `surface` reaches the deck, under the kitchen loft's deck its
-/// underside down to the walkway below, and a rubble heap standing on it
-/// where the ground is rubble. The ferry hull hangs below its collision deck.
+/// cell, using the map's deck band and a rubble heap where marked.
+/// The ferry hull hangs below its collision deck.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
                        std::span<const survival::GroundCell> standing,
                        const survival::GroundCell &ground, bool aquarium,
@@ -562,10 +561,8 @@ standing_ground(const survival::MapContent &content,
   return found;
 }
 
-/// The posts, chain and gauge pillar under the walkways, and the cable and
-/// lamp on them, where the mockup has them: its picture of a screen's worth
-/// once for each MOCKUP_COLUMNS of the map, on the floor line of
-/// STRUCTURE_ROW.
+/// Draws the street's supports and terminal, or the aquarium's flooded tanks,
+/// behind the map's collision floors.
 void paint_structure(godot::Node2D &canvas, const Art &art,
                      const survival::MapContent &content) {
   if (content.id == survival::MapId::Aquarium) {
@@ -1489,14 +1486,15 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 const std::vector<survival::ObjectId> &out_of_reach) {
   const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
+  canvas.set_meta("foreground_layers", godot::Array());
   const auto &objects = view.world.objects;
   godot::Array floors;
   for (const auto &object : objects) {
-    if (object.kind == ObjectKind::Terrain &&
-        object.state == ObjectState::Intact) {
+    if (object.kind == ObjectKind::Terrain) {
       godot::Dictionary floor;
       floor.set("name", from(survival::object_name(object.id)));
       floor.set("area", area_rect(object.area));
+      floor.set("standing", object.state == ObjectState::Intact);
       floors.push_back(floor);
     }
   }

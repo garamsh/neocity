@@ -325,6 +325,10 @@ private:
     godot::Vector2 end;
   };
 
+  /// Records a foreground texture command for alpha-based capture measurements.
+  void note_foreground(godot::Node2D &canvas, Image image, godot::Rect2 source,
+                       godot::Rect2 destination, bool mirrored = false) const;
+
   Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
       godot::Ref<godot::Font> face);
 

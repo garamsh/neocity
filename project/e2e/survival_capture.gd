@@ -124,13 +124,7 @@ const LIGHT_COLUMNS: float = 0.1
 const SEA_ROWS: Vector2i = Vector2i(2, 40)
 ## The camera's two zooms, the only ones it draws the scene at.
 const ZOOMS: Array[float] = [1.0, 2.0]
-## The most frames player two walks away from player one, and the frames the
-## camera then has to settle.
-const PART_FRAMES: int = 300
-## The ladders player two climbs on its way west from the entrance, by column,
-## with the row each takes it up to: the kitchen ladder to the loft, then the
-## roof ladder to the kitchen roof.
-const PART_LADDERS: Dictionary[int, int] = {3: 6, 1: 4}
+## Frames the camera settles after the two actors separate on the fixed east route.
 const PARTED_SETTLE: int = 60
 ## The least share, by layer, of its edge pixels, those that differ from a
 ## neighbour along a row or a column, that differ from both neighbours along
@@ -219,10 +213,13 @@ var character_frames: Dictionary[String, int] = {"chef": 0, "appraiser": 0}
 var character_masks: Array[Dictionary] = []
 var deck_footprint: Image = Image.create(1280, 720, false, Image.FORMAT_RGBA8)
 var deck_alpha_checked: bool = false
+var foreground_alpha_checked: bool = false
+var foreground_footprint: Image = Image.create(1920, 1080, false, Image.FORMAT_RGBA8)
 var finished_ends: int = 0
 var destroyed_end: bool = false
 var light_frames: int = 0
 var teeth_frames: int = 0
+var teeth_control_checked: bool = false
 var support_frames: int = 0
 var lit_frames: int = 0
 ## The throat picture, which the World layer draws where its `throat_at` meta
@@ -637,26 +634,31 @@ func _climb(y: int) -> void:
 
 ## Walks the chef sideways to column x, jumping whatever low block stops it,
 ## then climbs to row y.
-func _walk_to(x: int, y: int) -> void:
+func _walk_to(x: int, y: int, role: String = "chef", jump: bool = false) -> void:
+	var left: Key = KEY_A if role == "chef" else KEY_J
+	var right: Key = KEY_D if role == "chef" else KEY_L
+	var up: Key = KEY_W if role == "chef" else KEY_I
+	var down: Key = KEY_S if role == "chef" else KEY_K
+	var jump_key: Key = KEY_SPACE if role == "chef" else KEY_SEMICOLON
 	var stalled: int = 0
 	var last: int = -1
 	for frame: int in range(900):
-		var chef: Dictionary = scene.survival_status()["chef"]
-		var at_x: int = chef["x"]
-		var at_y: int = chef["y"]
-		if at_x == x and at_y == y and chef["stance"] != "airborne":
+		var body: Dictionary = scene.survival_status()[role]
+		var at_x: int = body["x"]
+		var at_y: int = body["y"]
+		if at_x == x and at_y == y and body["stance"] != "airborne":
 			break
 		var sideways: bool = at_x != x
-		_key(KEY_A, sideways and x < at_x)
-		_key(KEY_D, sideways and x > at_x)
-		_key(KEY_W, not sideways and y < at_y)
-		_key(KEY_S, not sideways and y > at_y)
-		var sub_x: int = chef["sub_x"]
-		stalled = stalled + 1 if sideways and sub_x == last and chef["stance"] == "standing" else 0
+		_key(left, sideways and x < at_x)
+		_key(right, sideways and x > at_x)
+		_key(up, not sideways and y < at_y)
+		_key(down, not sideways and y > at_y)
+		var sub_x: int = body["sub_x"]
+		stalled = stalled + 1 if sideways and sub_x == last and body["stance"] == "standing" else 0
 		last = sub_x
-		_key(KEY_SPACE, stalled > 6)
+		_key(jump_key, (jump and frame < 3) or stalled > 6)
 		await process_frame
-	for code: Key in [KEY_A, KEY_D, KEY_W, KEY_S, KEY_SPACE]:
+	for code: Key in [left, right, up, down, jump_key]:
 		_key(code, false)
 	await _frames(3)
 
@@ -765,6 +767,15 @@ func _plate_covers_character(plate: Rect2, layer: Dictionary) -> bool:
 ## a source's kind or anything but the goals NEXT names, or leave out the goal
 ## NEXT names to walk to, or when a look it shows is wrong.
 func _save_city(screen: String) -> Image:
+	var previous_scale: float = Engine.time_scale
+	Engine.time_scale = 0.0
+	var frame: Image = await _measure_city(screen)
+	# Consume the analysis interval while physics is held, before resuming play.
+	await process_frame
+	Engine.time_scale = previous_scale
+	return frame
+
+func _measure_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
 	if not _interface_corners(frame, screen):
 		return frame
@@ -856,14 +867,18 @@ func _shows(view: Transform2D, corner: Vector2, size: Vector2) -> bool:
 	return PLAY.encloses(Rect2(view * corner, size * view.x.x))
 
 ## Stamps the loaded source alpha through the fragment and transform actually drawn.
-func _stamp_deck(target: Image, source: Image, cut: Rect2, destination: Rect2, transform: Transform2D) -> void:
-	var area: Rect2 = transform * destination
+func _stamp_deck(target: Image, source: Image, cut: Rect2, destination: Rect2, transform: Transform2D, mirrored: bool = false) -> void:
+	var area: Rect2 = (transform * destination).abs()
 	var fragment: Image = source.get_region(Rect2i(cut))
+	if mirrored or destination.size.x < 0:
+		fragment.flip_x()
+	if destination.size.y < 0:
+		fragment.flip_y()
 	fragment.resize(maxi(1, roundi(area.size.x)), maxi(1, roundi(area.size.y)), Image.INTERPOLATE_NEAREST)
 	target.blend_rect(fragment, Rect2i(Vector2i.ZERO, fragment.get_size()), Vector2i(area.position.round()))
 
 ## The nearest opaque/transparent source pixels inside one fragment stay distinct.
-func _deck_alpha_control(source: Image) -> bool:
+func _fragment_alpha_control(source: Image) -> bool:
 	for y: int in range(source.get_height()):
 		for x: int in range(source.get_width() - 1):
 			if source.get_pixel(x, y).a < 0.99 or source.get_pixel(x + 1, y).a > 0.01:
@@ -905,7 +920,7 @@ func _read_decks(screen: String) -> bool:
 			pixels.convert(Image.FORMAT_RGBA8)
 			loaded[id] = pixels
 			if not deck_alpha_checked:
-				if not _deck_alpha_control(pixels):
+				if not _fragment_alpha_control(pixels):
 					return false
 				deck_alpha_checked = true
 		var pixels: Image = loaded[id]
@@ -914,6 +929,34 @@ func _read_decks(screen: String) -> bool:
 		var transform: Transform2D = layer["transform"]
 		_stamp_deck(deck_footprint, pixels, cut, destination, transform)
 	print("Capture: %s: actual deck footprint from %d fragments of %d loaded textures." % [screen, layers.size(), loaded.size()])
+	return true
+
+## Reconstructs opaque foreground pixels at native resolution so hidden fangs are not compared to scenery.
+func _read_foreground() -> bool:
+	foreground_footprint.fill(Color.TRANSPARENT)
+	var layers: Array = scene.get_node("World").get_meta("foreground_layers", [])
+	var loaded: Dictionary = {}
+	var sample: Rect2 = Rect2(0, PLAY.position.y * CANVAS_SCALE, CANVAS.x, TEETH_ROWS * CANVAS_SCALE)
+	for layer: Dictionary in layers:
+		var view: Transform2D = layer["transform"]
+		var transform: Transform2D = Transform2D(0.0, Vector2.ONE * CANVAS_SCALE, 0.0, Vector2.ZERO) * view
+		var destination: Rect2 = layer["destination"]
+		if not (transform * destination).abs().intersects(sample):
+			continue
+		var texture: Texture2D = layer["texture"]
+		var id: int = texture.get_instance_id()
+		if not loaded.has(id):
+			var source: Image = texture.get_image()
+			source.convert(Image.FORMAT_RGBA8)
+			loaded[id] = source
+			if not foreground_alpha_checked:
+				if not _fragment_alpha_control(source):
+					return false
+				foreground_alpha_checked = true
+		var source: Image = loaded[id]
+		var cut: Rect2 = layer["source"]
+		var mirrored: bool = layer["mirrored"]
+		_stamp_deck(foreground_footprint, source, cut, destination, transform, mirrored)
 	return true
 
 func _deck_opaque(mask: Image, at: Vector2) -> bool:
@@ -1114,6 +1157,14 @@ func _stairs_lit(_frame_image: Image, view: Transform2D, screen: String) -> bool
 ## the SEA_ROWS under the sea's surface. The control is that the camera did not
 ## move between the frames and that the rows read are on the play area.
 func _acid_moves(screen: String) -> bool:
+	var previous_scale: float = Engine.time_scale
+	Engine.time_scale = 0.0
+	var valid: bool = await _measure_acid_moves(screen)
+	await process_frame
+	Engine.time_scale = previous_scale
+	return valid
+
+func _measure_acid_moves(screen: String) -> bool:
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	var top: int = _band_top() + BAND_ROWS.x
 	var bottom: int = _band_top() + BAND_ROWS.y
@@ -1153,10 +1204,14 @@ func _acid_moves(screen: String) -> bool:
 ## frames while the camera rests; run with vsync off, so frames are not held to
 ## the display's rate.
 func _draws_fast(screen: String) -> bool:
+	var previous_scale: float = Engine.time_scale
+	Engine.time_scale = 0.0
 	await _frames(2)
 	var start: int = Time.get_ticks_usec()
 	await _frames(RATE_FRAMES)
 	var rate: float = RATE_FRAMES / ((Time.get_ticks_usec() - start) / 1000000.0)
+	await process_frame
+	Engine.time_scale = previous_scale
 	print("Capture: %s: the city drew %.1f frames a second over %d frames at %s (at least %.0f)." % [screen, rate, RATE_FRAMES, root.get_texture().get_size(), FRAME_RATE])
 	if rate < FRAME_RATE and OS.get_cmdline_user_args().has("--allow-software-fps"):
 		print("Capture: FPS verdict excepted by --allow-software-fps; measured %.1f, required %.0f." % [rate, FRAME_RATE])
@@ -1173,21 +1228,17 @@ func _draws_fast(screen: String) -> bool:
 ## that the camera headed for the scene's own size.
 func _zoom_steps() -> bool:
 	var zooms: Array[float] = []
-	var parted: bool = false
-	for frame: int in range(PART_FRAMES + PARTED_SETTLE):
-		var walker: Dictionary = scene.survival_status()["appraiser"]
-		var appraiser_at: Vector2i = _cell(walker)
-		var climbs: bool = appraiser_at.y > PART_LADDERS.get(appraiser_at.x, appraiser_at.y)
-		var walks: bool = not parted and frame < PART_FRAMES
-		_key(KEY_J, walks and not climbs)
-		_key(KEY_I, walks and climbs)
-		await process_frame
+	var headings: Array[float] = []
+	var observe: Callable = func() -> void:
 		var view: Transform2D = scene.get_meta("map_view", Transform2D())
 		var heading: Transform2D = scene.get_meta("map_heading", Transform2D())
 		zooms.append(view.x.x)
-		parted = parted or is_equal_approx(heading.x.x, 1.0)
-	_key(KEY_J, false)
-	_key(KEY_I, false)
+		headings.append(heading.x.x)
+	process_frame.connect(observe)
+	for target: Vector2i in [Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(25, 8)]:
+		await _walk_to(target.x, target.y, "appraiser", target.x in [13, 17])
+	await _frames(PARTED_SETTLE)
+	process_frame.disconnect(observe)
 	var between: Array[float] = []
 	var drawn: Array[float] = []
 	for zoom: float in zooms:
@@ -1195,12 +1246,11 @@ func _zoom_steps() -> bool:
 			drawn.append(zoom)
 		if not ZOOMS.any(func(step: float) -> bool: return is_equal_approx(zoom, step)):
 			between.append(zoom)
-	var last: float = zooms.back()
 	var status: Dictionary = scene.survival_status()
 	var appraiser: Dictionary = status["appraiser"]
 	var chef: Dictionary = status["chef"]
-	print("Capture: player two walked away from player one and ended on %s, player one on %s; the camera drew zooms %s, ending at %.3f." % [_cell(appraiser), _cell(chef), drawn, last])
-	if not parted:
+	print("Capture: player two followed the fixed east route to %s, player one on %s; camera zooms %s." % [_cell(appraiser), _cell(chef), drawn])
+	if not headings.any(func(zoom: float) -> bool: return is_equal_approx(zoom, 1.0)):
 		_fail("the camera's zoom cannot be read: it never headed for the scene's own size")
 		return false
 	if not between.is_empty():
@@ -1457,10 +1507,35 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 ## picture's colour in each channel, so the fangs hang from the top of the
 ## screen. The control is that the fangs cover at least TEETH_COVER of the
 ## pixels read, so the rows are the fangs'. Native colour comparisons exclude
-## observed overlays, deck fragments and actors; source coverage includes hidden fangs.
-func _teeth_show(frame: Image, screen: String) -> bool:
-	frame = native_frame
+## observed overlays, actual opaque foreground fragments and actors; source coverage includes hidden fangs.
+func _teeth_show(_frame_image: Image, screen: String) -> bool:
+	if not _read_foreground():
+		return false
 	var occluders: Array = scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", []) + scene.get_meta("map_plates", [])
+	var reading: Vector2 = _teeth_sample(native_frame, occluders)
+	teeth_frames += 1
+	print("Capture: %s: %.6f of the %.6f of the top %d rows of the play area the fangs cover show them (at least %.6f of at least %.6f)." % [screen, reading.x, reading.y, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
+	if not _teeth_visible(reading):
+		_fail("%s: the fangs do not hang from the top of the play area" % screen)
+		return false
+	if not teeth_control_checked:
+		var broken: Image = native_frame.duplicate() as Image
+		for y: int in range(roundi(PLAY.position.y * CANVAS_SCALE), roundi((PLAY.position.y + TEETH_ROWS) * CANVAS_SCALE)):
+			for x: int in range(broken.get_width()):
+				if _fang(x, y).a >= 0.5:
+					broken.set_pixel(x, y, Color(0.03, 0.04, 0.07))
+		var absent: Vector2 = _teeth_sample(broken, occluders)
+		if _teeth_visible(absent) or not is_equal_approx(reading.y, absent.y):
+			_fail("the same fang verdict accepted removed fang colours or changed its sampled subject")
+			return false
+		print("Capture: fang control rejected removed fang colours: share %.6f, unchanged source coverage %.6f; original share %.6f passed." % [absent.x, absent.y, reading.x])
+		teeth_control_checked = true
+	return true
+
+func _teeth_visible(reading: Vector2) -> bool:
+	return reading.y >= TEETH_COVER and reading.x >= TEETH_SHARE
+
+func _teeth_sample(frame: Image, occluders: Array) -> Vector2:
 	var candidates: int = 0
 	var covered: int = 0
 	var matched: int = 0
@@ -1473,20 +1548,13 @@ func _teeth_show(frame: Image, screen: String) -> bool:
 				continue
 			candidates += 1
 			var layout_point: Vector2 = Vector2(x + 0.5, y + 0.5) / CANVAS_SCALE
-			if occluders.any(func(area: Rect2) -> bool: return area.has_point(layout_point)) or _deck_opaque(deck_footprint, layout_point) or _character_covers(layout_point):
+			if occluders.any(func(area: Rect2) -> bool: return area.has_point(layout_point)) or _deck_opaque(foreground_footprint, Vector2(x + 0.5, y + 0.5)) or _character_covers(layout_point):
 				continue
 			covered += 1
 			var pixel: Color = frame.get_pixel(x, y)
 			if maxf(absf(pixel.r - tooth.r), maxf(absf(pixel.g - tooth.g), absf(pixel.b - tooth.b))) <= TEETH_TOLERANCE:
 				matched += 1
-	var cover: float = float(candidates) / count
-	var share: float = float(matched) / maxi(covered, 1)
-	teeth_frames += 1
-	print("Capture: %s: %.6f of the %.6f of the top %d rows of the play area the fangs cover show them (at least %.6f of at least %.6f)." % [screen, share, cover, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])
-	if cover < TEETH_COVER or share < TEETH_SHARE:
-		_fail("%s: the fangs do not hang from the top of the play area" % screen)
-		return false
-	return true
+	return Vector2(float(matched) / maxi(covered, 1), float(candidates) / count)
 
 ## The throat picture's pixel the World layer drew at screen pixel (x, y), by
 ## its `throat_at` meta, beside mirrored copies of itself, where it is a

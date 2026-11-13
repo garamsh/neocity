@@ -477,9 +477,31 @@ std::vector<godot::String> Art::take_written() const {
 
 std::vector<int> Art::take_sizes() const { return std::exchange(sizes, {}); }
 
+void Art::note_foreground(godot::Node2D &canvas, Image image,
+                          godot::Rect2 source, godot::Rect2 destination,
+                          bool mirrored) const {
+  const godot::String folder = godot::String(path(image)).get_slice("/", 0);
+  if (!canvas.has_meta("foreground_layers") ||
+      (folder != "world" && folder != "ground" && folder != "walkway")) {
+    return;
+  }
+  godot::Array layers = canvas.get_meta("foreground_layers", godot::Array());
+  godot::Dictionary layer;
+  layer.set("texture", images.at(slot(image)));
+  layer.set("source", source);
+  layer.set("destination", destination);
+  layer.set("transform", placed);
+  layer.set("mirrored", mirrored);
+  layers.push_back(layer);
+  canvas.set_meta("foreground_layers", layers);
+}
+
 void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
                 float scale, bool mirrored, godot::Color tint) const {
   const Vector2 drawn = size(image) * scale;
+  note_foreground(canvas, image,
+                  godot::Rect2(Vector2(), images.at(slot(image))->get_size()),
+                  godot::Rect2(position.floor(), drawn), mirrored);
   if (canvas.has_meta("character_layers") &&
       godot::String(path(image)).get_slice("/", 0) == "characters") {
     godot::Array layers = canvas.get_meta("character_layers", godot::Array());
@@ -530,6 +552,9 @@ Look Art::looking() const {
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   const float scale = density(image);
+  note_foreground(canvas, image,
+                  godot::Rect2(source.position * scale, source.size * scale),
+                  destination);
   if ((image == Image::Deck || image == Image::AquariumDeck) &&
       canvas.has_meta("deck_layers")) {
     godot::Array layers = canvas.get_meta("deck_layers", godot::Array());
