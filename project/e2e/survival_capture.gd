@@ -124,7 +124,7 @@ const LIGHT_COLUMNS: float = 0.1
 const SEA_ROWS: Vector2i = Vector2i(2, 40)
 ## The camera's two zooms, the only ones it draws the scene at.
 const ZOOMS: Array[float] = [1.0, 2.0]
-## Frames the camera settles after the two actors separate on the fixed east route.
+## Frames the camera settles after the two actors separate vertically.
 const PARTED_SETTLE: int = 60
 ## The least share, by layer, of its edge pixels, those that differ from a
 ## neighbour along a row or a column, that differ from both neighbours along
@@ -1233,11 +1233,7 @@ func _draws_fast(screen: String) -> bool:
 		return false
 	return true
 
-## Whether, as player two walks left and climbs the ladders there away from
-## player one until the camera heads for the scene's own size, and the
-## camera then settles, every frame draws the scene at one of the camera's
-## ZOOMS, and the camera drew the scene's own size on the way. The control is
-## that the camera headed for the scene's own size.
+## Checks both discrete zooms as player two climbs four rows above player one.
 func _zoom_steps() -> bool:
 	var zooms: Array[float] = []
 	var headings: Array[float] = []
@@ -1247,8 +1243,8 @@ func _zoom_steps() -> bool:
 		zooms.append(view.x.x)
 		headings.append(heading.x.x)
 	process_frame.connect(observe)
-	for target: Vector2i in [Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(25, 8)]:
-		await _walk_to(target.x, target.y, "appraiser", target.x in [13, 17])
+	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6), Vector2i(1, 4)]:
+		await _walk_to(target.x, target.y, "appraiser")
 	await _frames(PARTED_SETTLE)
 	process_frame.disconnect(observe)
 	var between: Array[float] = []
@@ -1261,7 +1257,7 @@ func _zoom_steps() -> bool:
 	var status: Dictionary = scene.survival_status()
 	var appraiser: Dictionary = status["appraiser"]
 	var chef: Dictionary = status["chef"]
-	print("Capture: player two followed the fixed east route to %s, player one on %s; camera zooms %s." % [_cell(appraiser), _cell(chef), drawn])
+	print("Capture: player two climbed the kitchen ladders to %s, player one on %s; camera zooms %s." % [_cell(appraiser), _cell(chef), drawn])
 	if not headings.any(func(zoom: float) -> bool: return is_equal_approx(zoom, 1.0)):
 		_fail("the camera's zoom cannot be read: it never headed for the scene's own size")
 		return false
