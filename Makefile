@@ -33,7 +33,7 @@ ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
 endif
 
-.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio ci run
+.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-screen-lock test-escape test-loss test-audio ci run
 
 $(TOOLS_STAMP): Makefile
 	$(PYTHON) -m venv $(TOOLS)
@@ -88,7 +88,7 @@ build: $(TOOLS_STAMP)
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
 	$(PYTHON) -c "$$GODOT_IMPORT_WITH_LIMIT" $(GODOT_IMPORT_LIMIT) "$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
-test: test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio
+test: test-unit test-startup test-title test-timing test-survival test-screen-lock test-escape test-loss test-audio
 
 test-unit: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
@@ -145,6 +145,11 @@ test-survival: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 249 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, drip, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
+
+test-screen-lock: build
+	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
+	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalScreenLockCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Screen lock: 12 live checks passed (lone actor, jump, joint travel).' "$$log"
 
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \

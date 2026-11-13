@@ -22,15 +22,21 @@ constexpr float PLAY_HEIGHT = 478.0F;
 /// picture pixel stays a whole square of screen pixels.
 constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
-/// How far ahead of a lone human the camera looks, in scene pixels.
+/// How far ahead of a lone actor the camera looks, in scene pixels.
 constexpr float LOOK_AHEAD = 80.0F;
-/// How far above its feet the camera aims at a human, so a human on the upper
+/// How far above its feet the camera aims at an actor, so one on the upper
 /// walkway stands on it where the mockup draws that walkway, at screen row 325.
 constexpr float WAIST = 12.0F;
-/// Room kept around two humans, in scene pixels: sideways, and above and
+/// Room kept around two actors, in scene pixels: sideways, and above and
 /// below their feet.
 constexpr float ROOM_ACROSS = 256.0F;
 constexpr float ROOM_UP = 128.0F;
+
+/// The screen lock keeps two actors in the city no further apart sideways than
+/// the close zoom still fits with their room, one scene pixel to a sub-cell.
+static_assert((static_cast<float>(survival::SCREEN_LOCK) + ROOM_ACROSS) *
+                  CLOSE <=
+              SCREEN_WIDTH);
 
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
 
@@ -51,7 +57,7 @@ Vector2 clamp_centre(Vector2 centre, float zoom, godot::Rect2 bounds) {
                (SCREEN_HEIGHT - FOCUS.y) / zoom)};
 }
 
-/// A human the camera follows: its feet and which way it faces.
+/// An actor the camera follows: its feet and which way it faces.
 struct Subject {
   Vector2 feet;
   float facing = 1.0F;
@@ -92,14 +98,12 @@ godot::Transform2D transform(const View &camera) {
 
 View whole_scene() { return {.centre = FOCUS, .zoom = 1.0F, .rest = FOCUS}; }
 
-View aim(const survival::Content &content, const survival::GameView &view,
-         survival::ControlMap control) {
+View aim(const survival::Content &content, const survival::GameView &view) {
   std::vector<Subject> subjects;
   for (const auto actor : ACTORS) {
     const auto &state = actor == Actor::Chef ? view.progression.chef
                                              : view.progression.appraiser;
-    if (!survival::key_set(control, actor) ||
-        state.location != survival::Location::City) {
+    if (state.location != survival::Location::City) {
       continue;
     }
     const auto &body = actor == Actor::Chef ? view.exploration.chef.body

@@ -731,8 +731,19 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
     input = {};
   }
   const auto map = cells();
+  const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+  const bool together =
+      actor_state(simulation.get().snapshot(), partner).location ==
+      Location::City;
+  const auto partner_x = explorer(partner).state.body.position.x;
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
-    state.body = physics_tick(map, state.body, input);
+    auto next = physics_tick(map, state.body, input);
+    const auto gap = std::abs(next.position.x - partner_x);
+    if (together && gap > SCREEN_LOCK &&
+        gap > std::abs(state.body.position.x - partner_x)) {
+      next = physics_tick(map, state.body, {.jump = input.jump});
+    }
+    state.body = next;
     if (map.below(cell_of(state.body.position))) {
       require_applied(simulation.get().return_to_base(actor));
       synchronize();

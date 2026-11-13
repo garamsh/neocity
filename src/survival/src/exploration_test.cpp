@@ -873,6 +873,27 @@ public:
                 exploration.snapshot().map != map);
   }
 
+  /// Walks both actors east side by side until the party changes map or the
+  /// chef passes `x`.
+  void walk_together_to(std::int32_t x) {
+    const std::array<ExplorationInput, 2> inputs{RIGHT, RIGHT};
+    const auto map = exploration.snapshot().map;
+    for (int tick = 0; tick < 400 && at(explorer(Actor::Chef)).x < x &&
+                       exploration.snapshot().map == map;
+         ++tick) {
+      ASSERT_EQ(exploration.advance(50ms, inputs), Result::Applied);
+    }
+  }
+
+  /// Presses east for `actor` alone for `ticks` steps of 50ms, the other idle.
+  void push_east(Actor actor, int ticks) {
+    std::array<ExplorationInput, 2> inputs{};
+    inputs.at(actor == Actor::Chef ? 0 : 1) = RIGHT;
+    for (int tick = 0; tick < ticks; ++tick) {
+      ASSERT_EQ(exploration.advance(50ms, inputs), Result::Applied);
+    }
+  }
+
   [[nodiscard]] ExplorerSnapshot explorer(Actor actor) const {
     const auto snapshot = exploration.snapshot();
     return actor == Actor::Chef ? snapshot.chef : snapshot.appraiser;
@@ -887,20 +908,50 @@ private:
   Exploration exploration;
 };
 
-TEST(Exploration, OneActorInAnExitZoneChangesNoMap) {
+TEST(Exploration, OneActorWalkingToAnExitStopsAtTheScreenLock) {
   Travel travel;
   travel.both_enter();
   ASSERT_EQ(travel.exploring().snapshot().map, MapId::Street);
-  travel.walk_to(Actor::Chef, 16);
+  travel.push_east(Actor::Chef, 400);
+  const auto chef = travel.explorer(Actor::Chef).body.position.x;
+  const auto appraiser = travel.explorer(Actor::Appraiser).body.position.x;
+  EXPECT_LE(chef - appraiser, SCREEN_LOCK);
+  EXPECT_GT(chef - appraiser, SCREEN_LOCK - PHYSICS.walk);
+  EXPECT_LT(at(travel.explorer(Actor::Chef)).x, EXIT_ZONE.x);
   EXPECT_EQ(travel.exploring().snapshot().map, MapId::Street);
   EXPECT_EQ(at(travel.explorer(Actor::Appraiser)), ENTRY);
+}
+
+TEST(Exploration, AnActorStoppedByTheScreenLockMovesOnOnceTheOtherCatchesUp) {
+  Travel travel;
+  travel.both_enter();
+  travel.push_east(Actor::Chef, 400);
+  const auto stopped = travel.explorer(Actor::Chef).body.position.x;
+  travel.push_east(Actor::Appraiser, 10);
+  travel.push_east(Actor::Chef, 100);
+  EXPECT_GT(travel.explorer(Actor::Chef).body.position.x, stopped);
+  EXPECT_LE(travel.explorer(Actor::Chef).body.position.x -
+                travel.explorer(Actor::Appraiser).body.position.x,
+            SCREEN_LOCK);
+}
+
+TEST(Exploration, TheScreenLockStopsOnlyTheSidewaysMotion) {
+  Travel travel;
+  travel.both_enter();
+  travel.push_east(Actor::Chef, 400);
+  const std::array<ExplorationInput, 2> jump{JUMP_RIGHT, ExplorationInput{}};
+  ASSERT_EQ(travel.exploring().advance(100ms, jump), Result::Applied);
+  EXPECT_EQ(travel.sim().snapshot().chef.location, Location::City);
+  EXPECT_LT(travel.explorer(Actor::Chef).body.position.y, 0);
+  EXPECT_LE(travel.explorer(Actor::Chef).body.position.x -
+                travel.explorer(Actor::Appraiser).body.position.x,
+            SCREEN_LOCK);
 }
 
 TEST(Exploration, BothActorsInAnExitZoneChangeTheMapAndArriveTogether) {
   Travel travel;
   travel.both_enter();
-  travel.walk_to(Actor::Chef, 16);
-  travel.walk_to(Actor::Appraiser, 16);
+  travel.walk_together_to(16);
   const auto snapshot = travel.exploring().snapshot();
   EXPECT_EQ(snapshot.map, MapId::Aquarium);
   EXPECT_EQ(at(snapshot.chef), HALL_ARRIVAL);
@@ -914,8 +965,7 @@ TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {
   travel.both_enter();
   EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
             CollectionResult::OutOfRange);
-  travel.walk_to(Actor::Chef, 16);
-  travel.walk_to(Actor::Appraiser, 16);
+  travel.walk_together_to(16);
   ASSERT_EQ(travel.exploring().snapshot().map, MapId::Aquarium);
   EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
             CollectionResult::Applied);
@@ -924,8 +974,7 @@ TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {
 TEST(Exploration, AnActorCannotEnterTheStreetWhileTheOtherIsInTheAquarium) {
   Travel travel;
   travel.both_enter();
-  travel.walk_to(Actor::Chef, 16);
-  travel.walk_to(Actor::Appraiser, 16);
+  travel.walk_together_to(16);
   ASSERT_EQ(travel.exploring().return_to_base(Actor::Chef), Result::Applied);
   EXPECT_EQ(travel.exploring().enter(Actor::Chef), Result::NotExploring);
   ASSERT_EQ(travel.exploring().return_to_base(Actor::Appraiser),
