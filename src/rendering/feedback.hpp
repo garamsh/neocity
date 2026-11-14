@@ -29,7 +29,9 @@ enum class Flourish : std::uint8_t {
   /// The monster's refusal of a dish.
   Disgust,
   /// The screen fading through dark between days.
-  NewDay
+  NewDay,
+  /// The screen fading out of one map and into the next, black between.
+  MapFade
 };
 
 /// One flourish under way: where it happened, in the city's sub-cells, and
@@ -51,7 +53,8 @@ void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
 /// Draws the flourishes that happen at base, over the kitchen.
 void paint_workshop_bursts(godot::Node2D &canvas, const Art &art,
                            const std::vector<Burst> &bursts);
-/// Draws the flourishes over the whole screen: the fade between days.
+/// Draws the flourishes over the whole screen: the fades between days and
+/// between maps.
 void paint_screen_bursts(godot::Node2D &canvas,
                          const std::vector<Burst> &bursts);
 

@@ -20,6 +20,8 @@ constexpr float SPLASH_SECONDS = 0.8F;
 constexpr float STEAM_SECONDS = 1.6F;
 constexpr float REACTION_SECONDS = 1.4F;
 constexpr float NEW_DAY_SECONDS = 0.9F;
+/// Out and in, so the map changes behind a black screen at the half.
+constexpr float MAP_FADE_SECONDS = 0.6F;
 /// The pot on the kitchen's stove, and the monster's feeding bucket.
 constexpr Vector2 POT(700.0F, 236.0F);
 constexpr Vector2 BUCKET(1205.0F, 202.0F);
@@ -134,6 +136,8 @@ const char *flourish_name(Flourish kind) {
     return "disgust";
   case Flourish::NewDay:
     return "new_day";
+  case Flourish::MapFade:
+    return "map_fade";
   }
   std::abort();
 }
@@ -152,6 +156,8 @@ float lifetime(Flourish kind) {
     return REACTION_SECONDS;
   case Flourish::NewDay:
     return NEW_DAY_SECONDS;
+  case Flourish::MapFade:
+    return MAP_FADE_SECONDS;
   }
   std::abort();
 }
@@ -186,6 +192,7 @@ void paint_city_bursts(godot::Node2D &canvas, const std::vector<Burst> &bursts,
     case Flourish::Delight:
     case Flourish::Disgust:
     case Flourish::NewDay:
+    case Flourish::MapFade:
       break;
     }
   }
@@ -207,6 +214,7 @@ void paint_workshop_bursts(godot::Node2D &canvas, const Art &art,
     case Flourish::Splash:
     case Flourish::Surge:
     case Flourish::NewDay:
+    case Flourish::MapFade:
       break;
     }
   }
@@ -224,6 +232,11 @@ void paint_screen_bursts(godot::Node2D &canvas,
       const float dark = 1.0F - std::abs(2.0F * done - 1.0F);
       canvas.draw_rect(screen, fade(palette().background, 0.9F * dark));
       clear *= 1.0F - 0.9F * dark;
+    } else if (burst.kind == Flourish::MapFade) {
+      // Black at the half, when the map behind it changes.
+      const float dark = 1.0F - std::abs(2.0F * done - 1.0F);
+      canvas.draw_rect(screen, fade(palette().background, dark));
+      clear *= 1.0F - dark;
     }
   }
   // The measuring checks read what veil the frame drew over the picture.

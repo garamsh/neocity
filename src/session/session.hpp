@@ -141,6 +141,9 @@ private:
   shown_targets(const rendering::Art &drawing) const;
   /// Draws the current screen for `paint`.
   void paint_screen(godot::Node2D &canvas, const rendering::Art &drawing) const;
+  /// The frame the screen shows: the map just left until a map fade has
+  /// darkened the screen, then the run's own frame.
+  [[nodiscard]] const hud::SurvivalFrame *seen() const;
   /// Whether the survival screen is open under no cinematic.
   [[nodiscard]] bool playing() const;
   void enter(Screen destination);
@@ -210,6 +213,9 @@ private:
   /// The open run's frame as the last advance left it, which every layer
   /// draws and the status reports, so it is read once a frame.
   std::optional<hud::SurvivalFrame> framed;
+  /// The frame before a change of map, held on screen until the fade out
+  /// of it ends; the rules have already moved on.
+  std::optional<hud::SurvivalFrame> leaving;
   Strides strides{};
   std::optional<godot::Vector2> pointer;
   bool volume_sent = false;

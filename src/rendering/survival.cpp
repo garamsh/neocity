@@ -120,6 +120,12 @@ constexpr int HALO_RINGS = 6;
 constexpr float OBSTACLE_GLOW = 30.0F;
 constexpr float OBSTACLE_LIGHT = 0.06F;
 
+/// How dark the outside of a building goes, from 0 to 1, while an actor is
+/// inside it, and how far past its interior the veil reaches, which covers
+/// whatever the camera shows of the map.
+constexpr float INTERIOR_VEIL = 0.65F;
+constexpr float VEIL_REACH = 4000.0F;
+
 /// The throat breathes over this many seconds, lifting this many pixels and
 /// brightening by this share as it draws in.
 constexpr float BREATH_SECONDS = 5.0F;
@@ -787,6 +793,53 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
       art.image(canvas, image,
                 Vector2(box.position.x, box.position.y + box.size.y - size.y));
     }
+  }
+}
+
+/// Darkens everything outside an occupied building's interior, easing in as
+/// an actor enters and out as the last one leaves; the interior stays lit.
+/// `present` holds the building each actor drawn in the city is inside, if
+/// any: the outside is only darkened while nobody is out in it.
+void paint_interior_veils(
+    godot::Node2D &canvas, const Art &art, const survival::Content &content,
+    const std::vector<std::optional<survival::ObjectId>> &present) {
+  const auto &interiors = content.companion.exploration.interiors;
+  float darkest = 0.0F;
+  for (std::size_t index = 0; index < interiors.size(); ++index) {
+    const auto &interior = interiors.at(index);
+    const bool occupied =
+        std::ranges::any_of(
+            present,
+            [&](const auto &inside) { return inside == interior.building; }) &&
+        std::ranges::none_of(
+            present, [](const auto &inside) { return !inside.has_value(); });
+    const float level =
+        art.glide("interior_veil_" +
+                      godot::String::num_int64(static_cast<int64_t>(index)),
+                  occupied ? INTERIOR_VEIL : 0.0F);
+    darkest = std::max(darkest, level);
+    if (level < 0.001F) {
+      continue;
+    }
+    auto tone = palette().background;
+    tone.a = level;
+    const auto box = area_rect(interior.area);
+    const auto reach = VEIL_REACH;
+    canvas.draw_rect(rect(box.position.x - reach, box.position.y - reach,
+                          box.size.x + 2.0F * reach, reach),
+                     tone);
+    canvas.draw_rect(rect(box.position.x - reach, box.position.y + box.size.y,
+                          box.size.x + 2.0F * reach, reach),
+                     tone);
+    canvas.draw_rect(
+        rect(box.position.x - reach, box.position.y, reach, box.size.y), tone);
+    canvas.draw_rect(
+        rect(box.position.x + box.size.x, box.position.y, reach, box.size.y),
+        tone);
+  }
+  // The measuring checks read how dark the outside is this frame.
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("interior_veil", darkest);
   }
 }
 
@@ -1609,6 +1662,14 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     paint_actor(canvas, art, view, Actor::Appraiser,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
   }
+  std::vector<std::optional<survival::ObjectId>> present;
+  if (party.chef_out) {
+    present.push_back(view.exploration.chef.interior);
+  }
+  if (party.appraiser_out) {
+    present.push_back(view.exploration.appraiser.interior);
+  }
+  paint_interior_veils(canvas, art, everything, present);
 }
 
 std::optional<Image> item_icon(std::string_view name) {
