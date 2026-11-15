@@ -100,6 +100,9 @@ const VOLUME_NAME_OFFSET: float = 200.0
 ## The screen's middle height: the kitchen's people stand above it and the
 ## task card sits below it.
 const SCREEN_MIDDLE: float = 360.0
+## What the chef says at base while the inventory is open: the screen takes the
+## interact key, so cooking waits for it to close.
+const CLOSE_FIRST: String = "Close the inventory first."
 ## The face the screen draws every changing line in.
 const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
 ## The face's grid, in layout units per em, which every drawn size is a multiple of.
@@ -201,6 +204,8 @@ func _run() -> void:
 		await _player_two_searches_and_holds_in_place()
 	if not failed:
 		await _search_screen_and_fridge()
+	if not failed:
+		await _chef_reappears_in_the_city_beside_a_partner_there()
 	if not failed:
 		await _mouse_in_the_city()
 	if not failed:
@@ -312,6 +317,17 @@ func _mouse_in_the_city() -> void:
 	if not _check(await _click("chef_other_0") and _actor("chef", "ingredients") == 1, "a click on a container slot takes the item into the pack"):
 		return
 	if not _check(await _click("chef_search") and _actor("chef", "searching") == -1, "a click on the action button closes the search"):
+		return
+	# Away from a container the inventory moves nothing: the pack keeps its item.
+	var carried: int = _actor("chef", "ingredients")
+	if not await _walk_route([BESIDE_OBSTACLE]):
+		return
+	if not _check(await _click("chef_search") and _screen_open(0), "setup: the inventory opens alone with an item in the pack"):
+		return
+	await _tap(KEY_E)
+	if not _check(carried == 1 and _actor("chef", "ingredients") == carried, "the interact key on the inventory alone moves nothing out of the pack"):
+		return
+	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the action button closes the inventory again"):
 		return
 	if not _check(await _click("pause") and _str("interruption") == "paused", "a click on the pause chip pauses, as Esc does"):
 		return
@@ -846,9 +862,10 @@ func _touching_an_obstacle_sends_the_actor_away() -> void:
 	if not await _until("the chef reappears beside its partner", func() -> bool: return _actor("chef", "absent_ms") < 0, 900):
 		return
 	var beside: int = absi(_actor("chef", "sub_x") - _actor("appraiser", "sub_x"))
-	# With the street emptied the AI partner may have gone home meanwhile, and the
-	# chef then reappears beside it at base.
-	_check(_where("chef") == _where("appraiser") and beside <= 32, "the chef is back beside its partner: %d sub-cells apart" % beside)
+	# The AI partner may have gone home meanwhile; the chef then reappears
+	# beside it at base. `_chef_reappears_in_the_city_beside_a_partner_there`
+	# holds the partner in the city and checks the city.
+	_check(_where("chef") == _where("appraiser") and beside <= 32, "the chef is back beside its partner, wherever it is: %d sub-cells apart" % beside)
 
 ## Tab hands the chef to AI, which works on the next step, so the line read on
 ## the swap's first frame names that work: cooking with no dish stored, but the
@@ -1232,10 +1249,7 @@ func _names_interact(line: String) -> bool:
 func _follow_next() -> void:
 	await _wait_out_absence()
 	var line: String = _next()
-	var screens: Array = _status()["screens"]
-	var inventory_open: bool = screens[0]["open"]
-	if inventory_open and not line.begins_with("Searching "):
-		# A search the clock closed leaves the key to open the inventory.
+	if line.begins_with("Inventory open"):
 		await _tap(KEY_R)
 	elif line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
@@ -1649,11 +1663,49 @@ func _search_screen_and_fridge() -> void:
 	await _tap(KEY_R)
 	if not _check(_int("fridge") == fridge + 1 and not _screen_open(0), "the fridge holds what was stored once the screen is closed"):
 		return
+	# By mouse: the fridge button on the chef's block opens the same screen, and
+	# while it is open the chef refuses a click until it is closed.
+	if not _check(await _click("chef_search") and _screen_open(0), "a click on the chef's fridge button opens the inventory and the fridge at base"):
+		return
+	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < SCREEN_MIDDLE)
+	if not _check(not kitchen_chef.is_empty() and str(kitchen_chef["refusal"]) == CLOSE_FIRST, "with the fridge open a click on the chef is refused with the close step: %s" % [_base_state()]):
+		return
+	if not _check(await _click("chef_other_%d" % fridge) and _int("fridge") == fridge and _actor("chef", "ingredients") == 1, "a click on a fridge slot withdraws the item into the pack"):
+		return
+	if not _check(await _click("chef_mine_0") and _int("fridge") == fridge + 1 and _actor("chef", "ingredients") == 0, "a click on a pack slot stores the item in the fridge"):
+		return
+	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < SCREEN_MIDDLE).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
+		return
 	var day: int = _int("day")
 	await _tap(KEY_G)
 	if not await _until("the day ends unfed", func() -> bool: return _int("day") == day + 1, 30):
 		return
 	_check(_int("fridge") == fridge + 1, "the fridge keeps its contents into the next day")
+
+## Two humans: player two stays where it is in the city while player one
+## touches the obstacle, so the chef must reappear in the city beside it.
+func _chef_reappears_in_the_city_beside_a_partner_there() -> void:
+	await _start_two_players()
+	walker = "chef"
+	await _tap(KEY_Q)
+	if not await _until("player one sets out", func() -> bool: return _where("chef") == "city", 30):
+		return
+	await _tap(KEY_U)
+	if not await _until("player two sets out", func() -> bool: return _where("appraiser") == "city", 30):
+		return
+	if not await _walk_route([BESIDE_OBSTACLE]):
+		return
+	if not _check(_where("appraiser") == "city" and _actor("appraiser", "absent_ms") < 0, "setup: the second player stays in the city while the chef touches the obstacle"):
+		return
+	_key(WALK_KEYS[5 * _actor(walker, "key_set")], true)
+	var gone: bool = await _until("touching the obstacle takes the chef off the map", func() -> bool: return _actor("chef", "absent_ms") >= 0, 120)
+	_release()
+	if not gone:
+		return
+	if not await _until("the chef reappears", func() -> bool: return _actor("chef", "absent_ms") < 0, 900):
+		return
+	var beside: int = absi(_actor("chef", "sub_x") - _actor("appraiser", "sub_x"))
+	_check(_where("chef") == "city" and _where("appraiser") == "city" and beside <= 32, "the chef is back in the city beside its partner: %d sub-cells apart" % beside)
 
 ## Player two searches while player one stays home: the search keeps player
 ## two in place and its button reads close until the search ends.

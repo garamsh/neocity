@@ -323,6 +323,7 @@ func _run() -> void:
 	# The fixed map's one-row rise needs a jump from the lower walkway.
 	await _walk_to(9, 9)
 	await _walk_to(7, 8, "chef", true)
+	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
 	await _until_phase("workshop")
@@ -558,10 +559,7 @@ func _names_interact(line: String) -> bool:
 ## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = scene.survival_status().get("next", "")
-	var screens: Array = scene.survival_status().get("screens", [])
-	var screen: Dictionary = screens[0] if screens.size() > 0 else {}
-	# A screen left open at base takes the interact key away from the cooker.
-	if screen.get("open", false) and scene.survival_status().get("phase", "") == "workshop":
+	if line.begins_with("Inventory open"):
 		await _tap(KEY_R)
 	elif line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
@@ -575,8 +573,6 @@ func _follow_next() -> void:
 		await _tap(KEY_R)
 	elif line.begins_with("Searching "):
 		await _tap(KEY_E)
-		await _tap(KEY_R)
-	elif line.begins_with("Inventory open"):
 		await _tap(KEY_R)
 	elif _names_interact(line):
 		await _tap(KEY_E)
