@@ -543,10 +543,10 @@ func _shown_canvas(window: String) -> bool:
 		return false
 	return true
 
-## Whether NEXT names what the interact key does: collect, appraise
-## or cook, as the controls page lists for it.
+## Whether NEXT names what the interact key does: appraise or cook, as the
+## controls page lists for it.
 func _names_interact(line: String) -> bool:
-	for verb: String in ["Collect from ", "Appraise ", "Cook "]:
+	for verb: String in ["Appraise ", "Cook "]:
 		if line.begins_with(verb):
 			return true
 	return false
@@ -563,6 +563,11 @@ func _follow_next() -> void:
 		await _tap(KEY_R)
 	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
+	elif line.begins_with("Search "):
+		await _tap(KEY_R)
+	elif line.begins_with("Searching "):
+		await _tap(KEY_E)
+		await _tap(KEY_R)
 	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):

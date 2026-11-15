@@ -15,8 +15,8 @@ const SECOND_SOURCE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i
 ## Up the kitchen ladder to the west end of the kitchen loft.
 const LOFT_ROUTE: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6), Vector2i(1, 6)]
 const APPRAISE_ATTEMPTS: int = 12
-## Frames of a collection's hold on the collecting actor, with a step to spare.
-const COLLECT_FRAMES: int = 102
+## Frames a search takes to close, with a step to spare.
+const CLOSE_FRAMES: int = 30
 const COOK_ATTEMPTS: int = 6
 const PLAYER_TWO: Dictionary[String, Key] = {
 	"left": KEY_J, "right": KEY_L, "up": KEY_I, "down": KEY_K, "jump": KEY_SEMICOLON,
@@ -100,16 +100,22 @@ func _a_day_plays_its_cues() -> bool:
 		return false
 	if not await _walk_to(FIRST_SOURCE):
 		return false
+	await _tap(KEY_P)
 	await _tap(KEY_O)
-	if not _check(_actor("ingredients") == 1 and _heard("collect") and _shown("pop"), "a collection plays its cue and pops on screen"):
+	if not _check(_actor("ingredients") == 1 and _heard("collect") and _shown("pop"), "taking an item from a container plays the collect cue and pops on screen"):
+		return false
+	await _tap(KEY_P)
+	if not await _until("the first search closes", func() -> bool: return _actor("searching") == -1, CLOSE_FRAMES):
 		return false
 	for waypoint: Vector2i in SECOND_SOURCE:
 		if not await _walk_to(waypoint):
 			return false
+	await _tap(KEY_P)
 	await _tap(KEY_O)
-	if not _check(_actor("ingredients") == 2, "a second collection fills the pack"):
+	if not _check(_actor("ingredients") == 2, "a second take fills the pack"):
 		return false
-	if not await _until("the second collection ends", func() -> bool: return _actor("collecting_ms") == 0, COLLECT_FRAMES):
+	await _tap(KEY_P)
+	if not await _until("the second search ends", func() -> bool: return _actor("searching") == -1, CLOSE_FRAMES):
 		return false
 	await _tap(KEY_U)
 	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 60):

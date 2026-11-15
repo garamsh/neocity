@@ -6,11 +6,14 @@ extends SceneTree
 
 const SEED: int = 11
 const DAY_FRAMES: int = 1200
-## How long one collection holds the collecting actor.
-const COLLECT_MS: int = 1500
-## Frames of a collection's hold, with a step to spare; a wait for AI to come
-## home adds one, since AI finishes its collection first.
+## Frames a search takes to close, with a step to spare; a wait for AI to come
+## home adds one, since AI finishes its search first.
 const COLLECT_FRAMES: int = 102
+## Presses of the search key before a container another actor holds is given up.
+const SEARCH_ATTEMPTS: int = 12
+## Frames the AI partner stands still before the camera is read: a search of a
+## full container holds it about this long.
+const REST_FRAMES: int = 30
 ## On this seed a party following NEXT alone escapes.
 const LONG_RUN_SEED: int = 44
 const LONG_RUN_DAYS: int = 60
@@ -195,7 +198,9 @@ func _run() -> void:
 	if not failed:
 		await _a_hated_dish_alone_sets_out_then_ends_the_day()
 	if not failed:
-		await _player_two_collects_and_holds_in_place()
+		await _player_two_searches_and_holds_in_place()
+	if not failed:
+		await _search_screen_and_fridge()
 	if not failed:
 		await _mouse_in_the_city()
 	if not failed:
@@ -283,7 +288,7 @@ func _a_click_on_the_chef_cooks() -> bool:
 	return _check(await _click_on(chef) and ((_int("foods") == foods + 1 and _next_event_has(chosen + " cooked.")) or _next_event_has(chosen + " burned")), "a click on the chef in the kitchen cooks the offered dish, as E does: %s" % [_base_state()])
 
 ## In the city by mouse: the set-out step sets out, a button with nothing in
-## reach says why, the action button collects, the pause chip pauses, the pause
+## reach says why, the action button searches, the pause chip pauses, the pause
 ## screen's blocks, leave and cancel answer clicks, and the travel key returns.
 func _mouse_in_the_city() -> void:
 	await _leave_run()
@@ -295,18 +300,19 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _until("a click on the set-out step sets out, as Q does", func() -> bool: return _where("chef") == "city", 30):
 		return
-	var nothing: Dictionary = _target("chef_interact")
-	_point_at(nothing)
-	await _frames(4)
-	var refusal: String = str(nothing.get("refusal", ""))
-	if not _check(refusal != "" and _drawn(refusal), "a button with nothing in reach says why under the mouse: %s" % refusal):
+	# With no container in reach the action button opens the inventory alone.
+	if not _check(await _click("chef_search") and _screen_open(0) and _actor("chef", "searching") == -1, "a click on the action button with nothing in reach opens the inventory alone"):
+		return
+	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the action button closes the inventory"):
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
-	var ingredients: int = _actor("chef", "ingredients")
-	if not _check(await _click("chef_interact") and (_actor("chef", "collecting_ms") > 0 or _actor("chef", "ingredients") > ingredients), "a click on the action button collects, as E does"):
+	if not _check(await _click("chef_search") and _actor("chef", "searching") >= 0, "a click on the action button opens the search, as R does"):
 		return
-	await _until("the collection ends", func() -> bool: return _actor("chef", "collecting_ms") == 0, COLLECT_FRAMES)
+	if not _check(await _click("chef_other_0") and _actor("chef", "ingredients") == 1, "a click on a container slot takes the item into the pack"):
+		return
+	if not _check(await _click("chef_search") and _actor("chef", "searching") == -1, "a click on the action button closes the search"):
+		return
 	if not _check(await _click("pause") and _str("interruption") == "paused", "a click on the pause chip pauses, as Esc does"):
 		return
 	var effects: float = scene.sound_status()["effects_level"]
@@ -345,7 +351,7 @@ func _two_players_share_the_mouse() -> void:
 		return
 	if not await _until("one click sets the whole party out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 30):
 		return
-	if not _check(not _target("chef_interact").is_empty() and not _target("appraiser_interact").is_empty(), "each human in the city has their own action button"):
+	if not _check(not _target("chef_search").is_empty() and not _target("appraiser_search").is_empty(), "each human in the city has their own action button"):
 		return
 	if not _check(await _click("appraiser_travel"), "player two's travel key takes a click"):
 		return
@@ -673,7 +679,7 @@ func _first_day() -> void:
 		return
 	if not _check(await _pause_shows_escape_goal(), "the pause screen over the city, and not the city, shows when escape checks begin"):
 		return
-	if not _check(_actions() == ["USE"] and _drawn("USE") and _drawn("WASD move  Shift run  Space jump  To base"), "away from a source the action button reads use, and the move, run and jump keys show beside the way to base: %s" % [_actions()]):
+	if not _check(_actions() == ["INVENTORY"] and _drawn("INVENTORY") and _drawn("WASD move  Shift run  Space jump  To base"), "away from a source the action button reads inventory, and the move, run and jump keys show beside the way to base: %s" % [_actions()]):
 		return
 	if not _names_no_action_key("the first city screen"):
 		return
@@ -686,18 +692,21 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the shelf's kelp", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	var shelf: String = "COLLECT " + _place("Shop Shelf")
-	if not _check(_actions() == [shelf] and _drawn(shelf), "at a source the action button offers to collect from it by its name: %s" % [_actions()]):
+	var shelf: String = "SEARCH " + _place("Shop Shelf")
+	if not _check(_actions() == [shelf] and _drawn(shelf), "at a source the action button offers to search it by its name: %s" % [_actions()]):
 		return
 	if not _check(_hud_area() < CITY_HUD_AREA_WITH_KEYS, "the city's HUD at a source covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), CITY_HUD_AREA_WITH_KEYS]):
 		return
-	if not _check(not _next().begins_with("Collect from ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
-		return
-	if not await _walk_route([Vector2i(3, 6), Vector2i(3, 8)] + TOMATO_ROUTE):
+	if not _check(not _next().begins_with("Search ") and _next().contains(" to Tomato machine"), "the screen moves past a kind the party already took: %s" % _next()):
 		return
 	var stock: int = _stock("Tomato Machine")
-	await _tap(KEY_E)
-	if not _check(_actor("chef", "ingredients") == 1 and _stock("Tomato Machine") < stock, "E collects into the pack and spends shared stock"):
+	if not await _walk_route([Vector2i(3, 6), Vector2i(3, 8)] + TOMATO_ROUTE):
+		return
+	walker = "chef"
+	# The AI appraiser shares the machine and may have emptied it first.
+	if not await _search_and_take(1, true):
+		return
+	if not _check(_stock("Tomato Machine") < stock, "a take spends the shared container's stock"):
 		return
 	var remaining: int = _int("remaining_ms")
 	if not await _until("time expires", func() -> bool: return _str("phase") == "workshop", DAY_FRAMES):
@@ -731,25 +740,6 @@ func _third_day_falls() -> void:
 		return
 	if not await _camera_settles("the west walkway"):
 		return
-	if not await _walk_to(24, 8):
-		return
-	if not await _camera_frames_partner("the east walkway on day three"):
-		return
-	if not await _backdrop_slides_along("the east walkway"):
-		return
-	if not await _walk_to(24, 8):
-		return
-	if not _plates_clear_of_sources("the east walkway on day three"):
-		return
-	if not _points_to_goal("the east walkway on day three"):
-		return
-	if not await _centres_pair("walking east onto the east walkway"):
-		return
-	await _tap(KEY_A)
-	if not await _camera_settles("the east walkway facing west"):
-		return
-	if not await _centres_pair("turning west on the east walkway"):
-		return
 	var remaining: int = _int("remaining_ms")
 	var pack: int = _actor("chef", "ingredients")
 	if not await _walk_to(18, 12):
@@ -780,8 +770,27 @@ func _third_day_falls() -> void:
 	await _tap(KEY_Q)
 	if not await _until("chef goes out again with time left", func() -> bool: return _where("chef") == "city", 30):
 		return
+	# The AI partner's trips home to empty its hands take much of the day, so the
+	# camera on the east walkway is read once the fall is over.
+	if not await _walk_to(24, 8):
+		return
+	if not await _camera_frames_partner("the east walkway on day three"):
+		return
+	if not _plates_clear_of_sources("the east walkway on day three"):
+		return
+	if not _points_to_goal("the east walkway on day three"):
+		return
+	if not await _centres_pair("walking east onto the east walkway"):
+		return
+	await _tap(KEY_A)
+	if not await _camera_settles("the east walkway facing west"):
+		return
+	if not await _centres_pair("turning west on the east walkway"):
+		return
+	if not await _backdrop_slides_along("the east walkway"):
+		return
 	await _tap(KEY_Q)
-	if not await _until("the party is home again", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
+	if not await _until("the party is home again", func() -> bool: return _str("phase") == "workshop", 900):
 		return
 	var day: int = _int("day")
 	await _tap(KEY_G)
@@ -837,7 +846,9 @@ func _touching_an_obstacle_sends_the_actor_away() -> void:
 	if not await _until("the chef reappears beside its partner", func() -> bool: return _actor("chef", "absent_ms") < 0, 900):
 		return
 	var beside: int = absi(_actor("chef", "sub_x") - _actor("appraiser", "sub_x"))
-	_check(_where("chef") == "city" and beside <= 32, "the chef is back beside its partner: %d sub-cells apart" % beside)
+	# With the street emptied the AI partner may have gone home meanwhile, and the
+	# chef then reappears beside it at base.
+	_check(_where("chef") == _where("appraiser") and beside <= 32, "the chef is back beside its partner: %d sub-cells apart" % beside)
 
 ## Tab hands the chef to AI, which works on the next step, so the line read on
 ## the swap's first frame names that work: cooking with no dish stored, but the
@@ -851,7 +862,7 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
 		return
 	# A collection holds AI for its time, so give it time for a dish's worth.
-	if not await _until("AI collects a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 2, DAY_FRAMES):
+	if not await _until("AI collects a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 6, DAY_FRAMES):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party is home", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
@@ -1094,7 +1105,7 @@ func _gather_rest_of_day() -> void:
 		steps += 1
 		await _follow_next()
 	await _tap(KEY_Q)
-	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", 300):
+	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", 900):
 		return
 	if not await _until("AI appraises the day's finds", func() -> bool: return not _next().contains("identifying"), 300):
 		return
@@ -1107,12 +1118,12 @@ func _gather_rest_of_day() -> void:
 ## A dish keeps, so the screen spends the day's time before ending the day.
 func _set_out_before_feeding() -> void:
 	await _tap(KEY_Q)
-	if not await _until("AI gathers a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 2, 900):
+	if not await _until("AI gathers a dish's worth", func() -> bool: return _actor("appraiser", "ingredients") >= 6, 900):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party comes back early", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
 		return
-	if not await _until("AI appraises before the chef cooks", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 300):
+	if not await _until("AI appraises before the chef cooks", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 900):
 		return
 	await _cook()
 	if failed:
@@ -1166,13 +1177,11 @@ func _a_broken_passage_with_no_stock_behind_stops_setting_out() -> void:
 		return
 	if not await _walk_route(ROOF_ROUTE):
 		return
-	await _tap(KEY_E)
-	if not await _until("the chef's first roof bag collection ends", func() -> bool: return _actor("chef", "collecting_ms") == 0, COLLECT_FRAMES):
+	walker = "chef"
+	var bag: int = _stock("Roof Bag")
+	if not await _search_and_take(mini(bag, 6)):
 		return
-	await _tap(KEY_E)
 	if not _check(_stock("Roof Bag") == 0 and _object("Roof Ladder") == "intact", "the roof bag is emptied while its ladder stands"):
-		return
-	if not await _until("the chef's second roof bag collection ends", func() -> bool: return _actor("chef", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the chef comes home from the roof", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
@@ -1211,9 +1220,9 @@ func _a_broken_passage_with_no_stock_behind_stops_setting_out() -> void:
 	await _tap(KEY_E)
 	_check(_object("Roof Ladder") == "destroyed", "no key repairs the broken ladder")
 
-## Whether NEXT names what the interact key does: collect, appraise or cook, as the controls page lists for it.
+## Whether NEXT names what the interact key does: appraise or cook, as the controls page lists for it.
 func _names_interact(line: String) -> bool:
-	for verb: String in ["Collect from ", "Appraise ", "Cook "]:
+	for verb: String in ["Appraise ", "Cook "]:
 		if line.begins_with(verb):
 			return true
 	return false
@@ -1223,12 +1232,22 @@ func _names_interact(line: String) -> bool:
 func _follow_next() -> void:
 	await _wait_out_absence()
 	var line: String = _next()
-	if line.contains("Set out") or line.contains("Nothing is within reach"):
+	var screens: Array = _status()["screens"]
+	var inventory_open: bool = screens[0]["open"]
+	if inventory_open and not line.begins_with("Searching "):
+		# A search the clock closed leaves the key to open the inventory.
+		await _tap(KEY_R)
+	elif line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
 	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
 	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
+	elif line.begins_with("Search "):
+		await _tap(KEY_R)
+	elif line.begins_with("Searching "):
+		await _tap(KEY_E)
+		await _tap(KEY_R)
 	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):
@@ -1305,7 +1324,7 @@ func _the_days_change_the_city() -> void:
 		return
 	if not _check(_int("elapsed_ms") == 54000 and _object("Washed-up Bag 7") == "intact", "every finished day passes its whole time and lands the bag"):
 		return
-	await _collect_from_the_vendor_cart()
+	await _search_the_vendor_cart()
 	if failed:
 		return
 	await _tap(KEY_G)
@@ -1317,7 +1336,7 @@ func _the_days_change_the_city() -> void:
 	await _until("the cracked stage brings the ferry", func() -> bool: return _object("Drifted Ferry") == "intact", 30)
 	_check(_object("Drifted Ferry") == "intact" and _int("acid") == 36, "the cracked stage brings the ferry in while acid rises")
 
-func _collect_from_the_vendor_cart() -> void:
+func _search_the_vendor_cart() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out for the cart", func() -> bool: return _where("chef") == "city", 30):
 		return
@@ -1325,19 +1344,21 @@ func _collect_from_the_vendor_cart() -> void:
 		return
 	# Let go of E held since setting out before pressing it at the machine.
 	await _frames(2 * STEP_FRAMES)
-	var pack: int = _actor("chef", "ingredients")
 	var left: int = _int("remaining_ms")
-	await _tap(KEY_E)
-	if not _check(_actor("chef", "ingredients") == pack + 1, "the chef collects from a source acid never destroys"):
+	await _tap(KEY_R)
+	# The AI partner may have emptied the cart on earlier days: a standing
+	# cart still opens.
+	if not _check(_actor("chef", "searching") >= 0, "the chef opens a source acid never destroys"):
 		return
-	if not _check(_actor("chef", "collecting_ms") > 0 and left - _int("remaining_ms") < COLLECT_MS, "a collection holds the chef and leaves the shared clock running"):
+	if not _check(_actor("chef", "searching") >= 0 and _int("remaining_ms") <= left, "a search holds the chef and leaves the shared clock running"):
 		return
-	if not _check(_next().begins_with("Collecting from Fish cart: ") and _next().ends_with("s left."), "the line shows how long the hold has left"):
+	if not _check(_next().begins_with("Searching Fish cart: "), "the line says the search is open: %s" % _next()):
 		return
 	await _tap(KEY_Q)
-	if not _check(_where("chef") == "city", "a held chef cannot return to base"):
+	if not _check(_where("chef") == "city", "a searching chef cannot return to base"):
 		return
-	if not await _until("the chef's collection ends", func() -> bool: return _actor("chef", "collecting_ms") == 0, COLLECT_FRAMES):
+	await _tap(KEY_R)
+	if not await _until("the chef's search closes", func() -> bool: return _actor("chef", "searching") == -1, COLLECT_FRAMES):
 		return
 	await _tap(KEY_Q)
 	await _until("the party is home from the cart", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120)
@@ -1357,14 +1378,13 @@ func _appraiser_run() -> void:
 	await _tap(KEY_Q)
 	if not await _walk_route(TOMATO_ROUTE):
 		return
-	if not _check(_next().contains("Tomato machine") and _next().contains("(takes 1.5s)"), "the screen offers the tomato machine in reach and its cost in time"):
+	if not _check(_next().begins_with("Search ") and _next().contains("Tomato machine"), "the screen offers the tomato machine in reach: %s" % _next()):
 		return
-	await _tap(KEY_E)
-	if not _check(_actor("appraiser", "ingredients") == 1, "the human collects an ingredient"):
+	if not await _search_and_take(1):
+		return
+	if not _check(_actor("appraiser", "ingredients") == 1, "the human takes an ingredient"):
 		return
 	if not await _until("AI collects", func() -> bool: return _actor("chef", "ingredients") >= 2, DAY_FRAMES):
-		return
-	if not await _until("the appraiser's collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
@@ -1372,8 +1392,13 @@ func _appraiser_run() -> void:
 	if not _check(_next().contains("Appraise") and _str("appraise_job").begins_with("Appraise "), "the human appraiser is told to appraise"):
 		return
 	var by_mouse: int = _int("identified")
-	var failed_before: bool = _next_event_has("appraisal failed")
-	if not _check(await _click_on(_target_at(APPRAISER_HEAD)) and (_int("identified") == by_mouse + 1 or (not failed_before and _next_event_has("appraisal failed"))), "a click on the ingredients over the appraiser's head appraises, as E does"):
+	# An appraisal can fail and leave the ingredient: the click is made again.
+	var clicks: int = 0
+	var clicked: bool = true
+	while clicked and _int("identified") == by_mouse and clicks < 6:
+		clicked = await _click_on(_target_at(APPRAISER_HEAD))
+		clicks += 1
+	if not _check(clicked and _int("identified") == by_mouse + 1, "a click on the ingredients over the appraiser's head appraises, as E does"):
 		return
 	var identified: int = _int("identified")
 	var attempts: int = 0
@@ -1581,9 +1606,58 @@ func _a_hated_dish_alone_sets_out_then_ends_the_day() -> void:
 		return
 	_check(_next().begins_with("End the day unfed"), "with nothing to cook or feed and no time left the line ends the day unfed: %s" % _next())
 
-## Player two collects while player one stays home: the hold keeps player two
-## in place and its button shows how long the hold has left.
-func _player_two_collects_and_holds_in_place() -> void:
+## Real keys on the transfer screens: a search opens the container beside the
+## inventory and a take lands in the pack; at base the same screen stores into
+## the fridge and withdraws from it, and what the fridge holds is still there
+## on the next day.
+func _search_screen_and_fridge() -> void:
+	await _start_two_players()
+	walker = "chef"
+	await _tap(KEY_Q)
+	if not await _until("player one sets out", func() -> bool: return _where("chef") == "city", 30):
+		return
+	if not await _walk_route(TOMATO_ROUTE):
+		return
+	await _frames(2 * STEP_FRAMES)
+	var stock: int = _stock("Tomato Machine")
+	await _tap(KEY_R)
+	if not _check(_screen_open(0) and _actor("chef", "searching") >= 0 and _actor("chef", "searching_items") == stock, "the search key opens the container beside the inventory"):
+		return
+	await _tap(KEY_E)
+	if not _check(_actor("chef", "ingredients") == 1 and _stock("Tomato Machine") == stock - 1, "the interact key moves the item under the cursor into the inventory"):
+		return
+	await _tap(KEY_R)
+	if not _check(not _screen_open(0) and _actor("chef", "searching") == -1, "the search key closes the screen"):
+		return
+	await _tap(KEY_Q)
+	if not await _until("player one is home", func() -> bool: return _where("chef") == "base", COLLECT_FRAMES + 600):
+		return
+	var fridge: int = _int("fridge")
+	await _tap(KEY_R)
+	if not _check(_screen_open(0), "the search key opens the inventory and the fridge at base"):
+		return
+	await _tap(KEY_S)
+	await _tap(KEY_E)
+	if not _check(_int("fridge") == fridge + 1 and _actor("chef", "ingredients") == 0, "an item moves from the inventory into the fridge"):
+		return
+	await _tap(KEY_W)
+	await _tap(KEY_E)
+	if not _check(_int("fridge") == fridge and _actor("chef", "ingredients") == 1, "an item moves from the fridge back into the inventory"):
+		return
+	await _tap(KEY_S)
+	await _tap(KEY_E)
+	await _tap(KEY_R)
+	if not _check(_int("fridge") == fridge + 1 and not _screen_open(0), "the fridge holds what was stored once the screen is closed"):
+		return
+	var day: int = _int("day")
+	await _tap(KEY_G)
+	if not await _until("the day ends unfed", func() -> bool: return _int("day") == day + 1, 30):
+		return
+	_check(_int("fridge") == fridge + 1, "the fridge keeps its contents into the next day")
+
+## Player two searches while player one stays home: the search keeps player
+## two in place and its button reads close until the search ends.
+func _player_two_searches_and_holds_in_place() -> void:
 	await _start_two_players()
 	walker = "appraiser"
 	await _tap(KEY_U)
@@ -1591,34 +1665,63 @@ func _player_two_collects_and_holds_in_place() -> void:
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
+	await _tap(KEY_P)
 	await _tap(KEY_O)
 	if not _check(_actor("appraiser", "ingredients") == 1, "player two carries the ingredient"):
 		return
 	await _frames(2)
-	if not _check(_actor("appraiser", "collecting_ms") > 0 and _actions().size() == 2 and _action(1).begins_with("COLLECTING ") and not _action(0).begins_with("COLLECTING "), "player two's button shows how long player two's hold has left: %s" % [_actions()]):
+	if not _check(_actor("appraiser", "searching") >= 0 and _actions().size() == 2 and _action(1) == "CLOSE" and _action(0) != "CLOSE", "player two's button reads close while player two searches: %s" % [_actions()]):
 		return
-	if not _check(_drawn("IJKL move  H run  ; jump") and _drawn("WASD move  Shift run  Space jump  Set out"), "player two's keys leave out travel while the hold keeps player two in place: %s" % [_drawn_lines()]):
+	if not _check(_drawn("IJKL move  H run  ; jump"), "player two's keys leave out travel while the search keeps player two in place: %s" % [_drawn_lines()]):
 		return
-	if not _text_fits("player two's hold"):
+	if not _text_fits("player two's search"):
 		return
-	if not await _until("player two's collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+	await _tap(KEY_P)
+	if not await _until("player two's search closes", func() -> bool: return _actor("appraiser", "searching") == -1, COLLECT_FRAMES):
 		return
 	await _frames(2)
-	_check(_actions().size() == 2 and _action(1) == "COLLECT Tomato machine" and _drawn("IJKL move  H run  ; jump  To base"), "player two's button names its action again once the hold ends: %s" % [_actions()])
+	_check(_actions().size() == 2 and _action(1) == "SEARCH Tomato machine" and _drawn("IJKL move  H run  ; jump  To base"), "player two's button names its action again once the search ends: %s" % [_actions()])
 
-## Sets out if at base, walks the waypoints and collects `times` at the last.
+## Sets out if at base, walks the waypoints and takes `times` items at the last.
 func _collect_along(waypoints: Array[Vector2i], times: int) -> bool:
 	if _where(walker) == "base":
 		await _tap(KEY_Q)
 	for waypoint: Vector2i in waypoints:
 		if not await _walk_to(waypoint.x, waypoint.y):
 			return false
+	return await _search_and_take(times)
+
+## The search key of the walker's key set.
+func _search_key() -> Key:
+	return KEY_P if _actor(walker, "key_set") == 1 else KEY_R
+
+## The interact key of the walker's key set.
+func _interact_key() -> Key:
+	return KEY_O if _actor(walker, "key_set") == 1 else KEY_E
+
+## Opens the container in reach with the walker's search key, takes the first
+## `times` items with its interact key and closes the search. A `shared`
+## container may hold fewer by then, and fewer are taken.
+func _search_and_take(times: int, shared: bool = false) -> bool:
 	var pack: int = _actor(walker, "ingredients")
-	for time: int in range(times):
-		await _tap(KEY_E)
-		if not await _until("the hold of collection %d ends" % (time + 1), func() -> bool: return _actor(walker, "collecting_ms") == 0, COLLECT_FRAMES):
-			return false
-	return _check(_actor(walker, "ingredients") == pack + times, "player one collects %d at %s" % [times, waypoints.back()])
+	# A container another actor has open is refused, so the key is pressed again
+	# once that actor has closed it.
+	for attempt: int in range(SEARCH_ATTEMPTS):
+		await _tap(_search_key())
+		if _actor(walker, "searching") >= 0:
+			break
+		await _frames(30)
+	if not _check(_actor(walker, "searching") >= 0, "the search key opens the container in reach"):
+		return false
+	# With the container shared with AI, what is left may be less than wanted.
+	var want: int = mini(times, _actor(walker, "searching_items")) if shared else times
+	for time: int in range(want):
+		await _tap(_interact_key())
+	var took: bool = _check(_actor(walker, "ingredients") == pack + want, "%s takes %d from the container" % [walker, want])
+	await _tap(_search_key())
+	if not await _until("the search closes", func() -> bool: return _actor(walker, "searching") == -1, 30):
+		return false
+	return took
 
 func _loss_clears_the_offer() -> void:
 	await _leave_run()
@@ -1738,7 +1841,7 @@ func _every_place_measured() -> bool:
 	var missing: Array[String] = []
 	for object: String in places:
 		var place: String = str(places[object])
-		var listed: bool = texts.has("COLLECT " + place) and texts.has(place + " appeared.")
+		var listed: bool = texts.has("SEARCH " + place) and texts.has(place + " appeared.")
 		if not listed and not missing.has(place):
 			missing.append(place)
 	return _check(not places.is_empty() and missing.is_empty(), "every place's lines are measured: %s" % [missing])
@@ -1845,7 +1948,7 @@ func _camera_frames_partner(where: String) -> bool:
 		rest[0] = rest[0] + 1 if sub_x == rest[1] and sub_y == rest[2] else 0
 		rest[1] = sub_x
 		rest[2] = sub_y
-		return rest[0] >= 60
+		return rest[0] >= REST_FRAMES
 	if not await _until("the AI partner comes to rest on %s" % where, at_rest, 900):
 		return false
 	return await _camera_holds(where)
@@ -1876,6 +1979,14 @@ func _centres_pair(where: String) -> bool:
 		return false
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	var middle: float = (view * _feet("chef")).x / 2.0 + (view * _feet("appraiser")).x / 2.0
+	# An AI partner walking between containers keeps the camera a step behind;
+	# the middle is read on a frame the camera has caught up.
+	for frame: int in range(120):
+		if absf(middle - FOCUS.x) <= 1.0:
+			break
+		await process_frame
+		view = scene.get_meta("map_view", Transform2D())
+		middle = (view * _feet("chef")).x / 2.0 + (view * _feet("appraiser")).x / 2.0
 	return _check(absf(middle - FOCUS.x) <= 1.0, "the camera centres the two actors %s: middle at x %.1f, expected %.1f" % [where, middle, FOCUS.x])
 
 ## The camera and where the backdrop's layers were drawn, back to front.
@@ -2056,6 +2167,12 @@ func _actor(who: String, field: String) -> int:
 	var actor: Dictionary = _status()[who]
 	var value: int = actor[field]
 	return value
+
+## Whether the transfer screen of the actor with the index is open.
+func _screen_open(index: int) -> bool:
+	var screens: Array = _status()["screens"]
+	var open: bool = screens[index]["open"]
+	return open
 
 func _stock(source: String) -> int:
 	var stock: Dictionary = _status()["stock"]

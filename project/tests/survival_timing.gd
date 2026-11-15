@@ -6,8 +6,6 @@ extends SceneTree
 ## slowed for real, the only ones that reach the engine's frame time cap.
 
 const BUDGET_MS: int = 18000
-## How long one collection holds the collecting actor.
-const COLLECT_MS: int = 1500
 const STEP_MS: int = 100
 ## Above this frame time Godot's default of 8 steps at 60 Hz cuts `delta`.
 const DEFAULT_CAP_MS: int = 133
@@ -103,7 +101,7 @@ func _fine_frames() -> void:
 	await _frames(10 * STEP_FRAMES)
 	if not _check(_stance("chef") == "standing", "one jump press jumps once"):
 		return
-	await _collecting_holds_the_actor()
+	await _searching_holds_the_actor()
 	if failed:
 		return
 	await _pause_holds_the_run()
@@ -123,9 +121,9 @@ func _fine_frames() -> void:
 		return
 	await _one_end_of_day_per_step()
 
-## A collection holds the chef where it stands while the shared clock runs on
-## step by step, and the chef walks again once the hold has run down.
-func _collecting_holds_the_actor() -> void:
+## A search holds the chef where it stands while the shared clock runs on
+## step by step, and the chef walks again once the search is closed.
+func _searching_holds_the_actor() -> void:
 	Input.action_press("survival_1_right")
 	for frame: int in range(20 * STEP_FRAMES):
 		await process_frame
@@ -136,29 +134,26 @@ func _collecting_holds_the_actor() -> void:
 	if not _check(_actor("chef", "x") >= 7 and _location("chef") == "city", "the chef walks up to the vendor cart"):
 		return
 	await _align_to_step()
-	var before: int = _int("remaining_ms")
+	await _one_frame("survival_1_search")
+	await _frames(STEP_FRAMES + 12)
 	await _one_frame("survival_1_interact")
 	await _frames(STEP_FRAMES + 12)
-	var held: int = _actor("chef", "collecting_ms")
-	if not _check(_actor("chef", "ingredients") == 1 and held > 0 and held <= COLLECT_MS and before - _int("remaining_ms") == COLLECT_MS - held, "a collection holds the chef and spends only the steps that pass"):
+	if not _check(_actor("chef", "searching") >= 0 and _actor("chef", "ingredients") == 1, "a search opens the cart and the interact key takes its first item"):
 		return
 	var x: int = _actor("chef", "sub_x")
-	before = _int("remaining_ms")
+	var before: int = _int("remaining_ms")
 	Input.action_press("survival_1_right")
 	await _frames(5 * STEP_FRAMES)
 	Input.action_release("survival_1_right")
-	if not _check(_actor("chef", "sub_x") == x and held - _actor("chef", "collecting_ms") == before - _int("remaining_ms") and _int("remaining_ms") < before, "a held chef does not walk while the hold runs down with the clock"):
+	if not _check(_actor("chef", "sub_x") == x and _int("remaining_ms") < before, "a searching chef does not walk while the shared clock runs on"):
 		return
-	for frame: int in range(COLLECT_MS / STEP_MS * STEP_FRAMES + STEP_FRAMES):
-		await process_frame
-		if _actor("chef", "collecting_ms") == 0:
-			break
-	x = _actor("chef", "sub_x")
+	await _one_frame("survival_1_search")
+	await _frames(STEP_FRAMES + 12)
 	Input.action_press("survival_1_left")
 	await _frames(2 * STEP_FRAMES)
 	Input.action_release("survival_1_left")
 	await _frames(STEP_FRAMES)
-	_check(_actor("chef", "collecting_ms") == 0 and _actor("chef", "sub_x") < x, "the chef walks again once the hold is over")
+	_check(_actor("chef", "searching") == -1 and _actor("chef", "sub_x") < x, "the chef walks again once the search is closed")
 
 ## Esc stops the clock and keeps the part of a step already played.
 func _pause_holds_the_run() -> void:

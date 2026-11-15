@@ -900,11 +900,11 @@ namespace {
 const char *source_word(SourceKind kind) {
   switch (kind) {
   case SourceKind::Crates:
-    return "crates";
+    return "cart";
   case SourceKind::Locker:
-    return "locker";
+    return "machine";
   case SourceKind::Shelf:
-    return "shelf";
+    return "shop";
   case SourceKind::Bag:
     return "bag";
   }

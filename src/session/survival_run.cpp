@@ -227,10 +227,9 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("sub_y", body.position.y);
   status.set("stance", stance_name(body.stance));
   const auto *container = open_container(view.exploration, actor);
-  status.set("searching",
-             container != nullptr
-                 ? static_cast<std::int64_t>(container->id.value)
-                 : std::int64_t{-1});
+  status.set("searching", container != nullptr
+                              ? static_cast<std::int64_t>(container->id.value)
+                              : std::int64_t{-1});
   status.set("searching_items",
              container != nullptr
                  ? static_cast<std::int64_t>(container->items.size())
@@ -456,6 +455,12 @@ void SurvivalRun::through_screen(std::size_t index, Actor actor,
       (opened_in.at(index) != state.location || explorer.absent ||
        (was_searching.at(index) && container == nullptr))) {
     screen = {};
+  }
+  // A container that has just opened takes the cursor from the inventory the
+  // screen showed alone until it did.
+  if (screen.open && container != nullptr && !was_searching.at(index)) {
+    screen.mine = false;
+    screen.slot = 0;
   }
   was_searching.at(index) = container != nullptr;
   if (input.search) {

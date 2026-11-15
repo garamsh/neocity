@@ -1618,12 +1618,10 @@ String done_text(const GameView &view, const ActionEvent &event) {
           return who + String(" closed the search.");
         } else if constexpr (std::is_same_v<Done, survival::Take>) {
           return who + String(" took ") +
-                 from(survival::ingredient_name(action.ingredient)) + " from " +
-                 rendering::place_name(view, action.source) + ".";
+                 from(survival::ingredient_name(action.ingredient)) + ".";
         } else if constexpr (std::is_same_v<Done, survival::Put>) {
-          return who + String(" put ") +
-                 from(survival::ingredient_name(action.ingredient)) + " in " +
-                 rendering::place_name(view, action.source) + ".";
+          return who + String(" put back ") +
+                 from(survival::ingredient_name(action.ingredient)) + ".";
         } else if constexpr (std::is_same_v<Done, survival::Store>) {
           return who + String(" stored ") +
                  from(survival::ingredient_name(action.ingredient)) +
@@ -1673,10 +1671,9 @@ std::vector<KeyRow> rows_for(bool together) {
   rows.push_back(row("Run", one.run, two.run));
   rows.push_back(row("Jump", one.jump, two.jump));
   rows.push_back(row("Set out or return to base", one.travel, two.travel));
+  rows.push_back(row("Search or open the inventory", one.search, two.search));
   rows.push_back(
-      row("Search a container or open the inventory", one.search, two.search));
-  rows.push_back(row("Appraise or cook at base; move an item in a search",
-                     one.interact, two.interact));
+      row("Appraise, cook or move an item", one.interact, two.interact));
   rows.push_back(row("Choose the dish, as the chef at base",
                      EVERY_CHOOSE_DISH_KEY, "none"));
   rows.push_back(row("Feed a stored dish", one.feed, two.feed));
