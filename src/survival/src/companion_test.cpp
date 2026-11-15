@@ -1,3 +1,5 @@
+#include "search_support.hpp"
+
 #include <survival/companion.hpp>
 
 #include <gtest/gtest.h>
@@ -155,6 +157,8 @@ ObjectSnapshot object_of(ObjectId id, ObjectKind kind, std::int32_t x) {
 GameView base_view() {
   GameView view;
   view.progression.remaining_exploration = 5s;
+  view.progression.inventory_slots = 12;
+  view.progression.fridge_slots = 30;
   auto floor = object_of(FLOOR, ObjectKind::Terrain, 0);
   floor.area.width = 10;
   floor.traversable = true;
@@ -179,7 +183,7 @@ void add_source(GameView &view, ObjectId id, std::int32_t x) {
   source.material_available = true;
   source.ingredient = CARROT;
   view.world.objects.push_back(source);
-  view.exploration.sources.push_back({.id = id});
+  view.exploration.sources.push_back(stock(id, 1, CARROT));
 }
 
 /// The chef at `position`, with a broken door at x 1 in a wall too tall to
@@ -263,7 +267,7 @@ TEST(Control, TwoHumansHoldOneKeySetEachAndAiHoldsNone) {
 
 TEST(Companion, WalksToASourceAndCollectsWithinRange) {
   Game game({floor_of(10), ingredient_source(SOURCE, 3)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   game.step(ALL_AI);
   EXPECT_EQ(at(game.exploration().snapshot().chef), ENTRY);
   game.step(ALL_AI);
@@ -274,9 +278,13 @@ TEST(Companion, WalksToASourceAndCollectsWithinRange) {
   EXPECT_EQ(at(game.exploration().snapshot().chef), (GridPosition{.x = 2}));
   ASSERT_TRUE(game.simulation().snapshot().chef.inventory.empty());
   game.step(ALL_AI);
+  EXPECT_TRUE(game.exploration().snapshot().chef.searching.has_value());
+  game.step(ALL_AI);
   EXPECT_EQ(game.simulation().snapshot().chef.inventory,
             std::vector<IngredientId>{CARROT});
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 0U);
+  game.step(ALL_AI);
+  EXPECT_FALSE(game.exploration().snapshot().chef.searching.has_value());
   EXPECT_EQ(game.refusals(), 0U);
 }
 
@@ -430,7 +438,7 @@ TEST(Companion, JumpsAGapAndClimbsALadderToAHighSourceWithoutFalling) {
        .area = {.x = 8, .height = 4}},
       {.id = ObjectId{4}, .area = {.x = 7, .width = 4}},
       ingredient_source(SOURCE, 10)};
-  auto places = tuning({{.id = SOURCE}});
+  auto places = tuning({stock(SOURCE, 1, CARROT)});
   places.entry = {.y = 3};
   Game game(city, places, kitchen(), 30s);
   game.step(ALL_AI);
@@ -446,14 +454,14 @@ TEST(Companion, JumpsAGapAndClimbsALadderToAHighSourceWithoutFalling) {
   }
   EXPECT_TRUE(jumped);
   EXPECT_TRUE(climbed);
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 0U);
 }
 TEST(Companion, JumpsALowBuildingAndWalksThroughATallOnesOpenEntrance) {
   const std::vector<ObjectDefinition> over{
       {.id = FLOOR, .area = {.y = 1, .width = 6}},
       {.id = WALL, .kind = ObjectKind::Building, .area = {.x = 2, .y = 1}},
       ingredient_source(SOURCE, 5, 1)};
-  auto places = tuning({{.id = SOURCE}});
+  auto places = tuning({stock(SOURCE, 1, CARROT)});
   places.entry = {.y = 1};
   Game jumped(over, places, kitchen());
   const std::vector<ObjectDefinition> through{
@@ -468,8 +476,8 @@ TEST(Companion, JumpsALowBuildingAndWalksThroughATallOnesOpenEntrance) {
     jumped.step(ALL_AI);
     entered.step(ALL_AI);
   }
-  EXPECT_EQ(jumped.exploration().snapshot().sources.front().remaining, 0U);
-  EXPECT_EQ(entered.exploration().snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(jumped.exploration().snapshot().sources.front().items.size(), 0U);
+  EXPECT_EQ(entered.exploration().snapshot().sources.front().items.size(), 0U);
 }
 TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
   const auto broken = [](std::int32_t height) {
@@ -484,7 +492,7 @@ TEST(Companion, ABrokenEntranceBlocksTheRouteUnlessItCanBeJumped) {
          .destroyed_from_day = 1},
         ingredient_source(SOURCE, 5, 1)};
   };
-  auto places = tuning({{.id = SOURCE}});
+  auto places = tuning({stock(SOURCE, 1, CARROT)});
   places.entry = {.y = 1};
   Game sealed(broken(3), places, kitchen());
   ASSERT_EQ(sealed.world().update(1), WorldUpdateResult::Applied);
@@ -547,7 +555,7 @@ TEST(Companion, SettingOutIsWorthItOnlyForStockThatCanBeReached) {
   view.world.objects.at(1).state = ObjectState::Intact;
   view.world.objects.at(1).traversable = true;
   EXPECT_TRUE(worth_entering(config, view));
-  view.exploration.sources.front().remaining = 0;
+  view.exploration.sources.front().items.clear();
   EXPECT_FALSE(worth_entering(config, view));
 }
 
@@ -558,12 +566,12 @@ TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
               .area = {.x = 2},
               .exposed_from_day = 99},
              ingredient_source(SOURCE, 4)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   ASSERT_EQ(game.view().world.objects.at(1).state, ObjectState::Dormant);
   for (int tick = 0; tick < 8; ++tick) {
     game.step(ALL_AI);
   }
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 0U);
 }
 
 TEST(Companion, SkipsDepletedAndUnavailableSourcesForOneItCanUse) {
@@ -577,7 +585,7 @@ TEST(Companion, SkipsDepletedAndUnavailableSourcesForOneItCanUse) {
   };
   ASSERT_EQ(heading(view), Direction::Left);
   auto depleted = view;
-  depleted.exploration.sources.front().remaining = 0;
+  depleted.exploration.sources.front().items.clear();
   EXPECT_EQ(heading(depleted), Direction::Right);
   auto unavailable = view;
   unavailable.world.objects.at(1).material_available = false;
@@ -619,11 +627,11 @@ TEST(Companion, ABrokenPassageSendsAnAiPartyHomeAndIsNeverRepaired) {
        .destroyed_from_day = 1},
       {.id = WALL, .kind = ObjectKind::Building, .area = {.x = 3, .y = -1}},
       ingredient_source(SOURCE, 5)};
-  Game game(city, tuning({{.id = SOURCE}}), kitchen());
+  Game game(city, tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   ASSERT_EQ(game.world().update(1), WorldUpdateResult::Applied);
   game.step(ALL_AI);
   EXPECT_EQ(game.simulation().snapshot().chef.location, Location::Base);
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 1U);
   EXPECT_EQ(game.refusals(), 0U);
 }
 
@@ -641,7 +649,7 @@ TEST(Companion, WaitsAtTheWorkshopForAHumanToSetOutOrEndTheDay) {
 
 TEST(Companion, FollowsAHumanOutAndBackSoTheWorkshopIsNeverHeldShut) {
   Game game({floor_of(10), ingredient_source(SOURCE, 8)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   const auto control = single_player(Actor::Chef);
   game.step(control);
   ASSERT_EQ(game.simulation().snapshot().phase, Phase::Workshop);
@@ -656,57 +664,67 @@ TEST(Companion, FollowsAHumanOutAndBackSoTheWorkshopIsNeverHeldShut) {
 
 TEST(Companion, KeepsCollectingWhileItsHumanPartnerStaysOut) {
   Game game({floor_of(10), ingredient_source(SOURCE, 2)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   const auto control = single_player(Actor::Chef);
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
-  for (int tick = 0; tick < 3; ++tick) {
+  for (int tick = 0; tick < 4; ++tick) {
     game.step(control);
   }
   EXPECT_EQ(game.simulation().snapshot().appraiser.inventory,
             std::vector<IngredientId>{CARROT});
   game.step(control);
+  game.step(control);
   EXPECT_EQ(game.simulation().snapshot().chef.location, Location::City);
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
 }
 
-TEST(Companion, ACollectingActorWaitsUnderEitherController) {
+TEST(Companion, ASearchingActorMovesNotAndOnlyTransfersOrCloses) {
   auto view = city_view({.x = 2});
   add_source(view, SOURCE, 3);
   const auto companion = companion_with();
   const PlayerInput pressed{.movement = {.direction = Direction::Right},
                             .travel = true,
-                            .interact = true};
+                            .search = true};
   const auto free_ai = companion.command(Actor::Chef, ALL_AI, NO_INPUT, view);
-  ASSERT_EQ(free_ai.action, std::optional<Action>{Collect{SOURCE}});
+  ASSERT_EQ(free_ai.action, std::optional<Action>{Search{SOURCE}});
   const auto free_human =
       companion.command(Actor::Chef, two_players(), pressed, view);
   ASSERT_EQ(free_human.action, std::optional<Action>{ReturnToBase{}});
   ASSERT_EQ(free_human.movement.direction, Direction::Right);
 
-  view.exploration.chef.collecting =
-      Collecting{.source = SOURCE, .remaining = 1s};
-  for (const auto control : {ALL_AI, two_players()}) {
-    const auto held = companion.command(Actor::Chef, control, pressed, view);
-    EXPECT_FALSE(held.action.has_value());
-    EXPECT_EQ(held.movement.direction, Direction::Idle);
-  }
+  view.exploration.chef.searching = Searching{.source = SOURCE};
+  const auto closed =
+      companion.command(Actor::Chef, two_players(), pressed, view);
+  EXPECT_EQ(closed.action, std::optional<Action>{CloseSearch{}});
+  EXPECT_EQ(closed.movement.direction, Direction::Idle);
+  const PlayerInput moving{
+      .movement = {.direction = Direction::Right},
+      .travel = true,
+      .transfer = Action{Take{.source = SOURCE, .ingredient = CARROT}}};
+  const auto taking =
+      companion.command(Actor::Chef, two_players(), moving, view);
+  EXPECT_EQ(taking.action, (std::optional<Action>{
+                               Take{.source = SOURCE, .ingredient = CARROT}}));
+  EXPECT_EQ(taking.movement.direction, Direction::Idle);
+  // A fridge move is not a container move.
+  const PlayerInput stored{.transfer = Action{Store{CARROT}}};
+  EXPECT_FALSE(companion.command(Actor::Chef, two_players(), stored, view)
+                   .action.has_value());
 }
 
-TEST(CompanionRun, AnAiPartnerFinishesItsCollectionBeforeFollowingHome) {
-  auto places = tuning({{.id = SOURCE, .remaining = 3}});
-  places.collection_time = 1s;
-  Game game({floor_of(10), ingredient_source(SOURCE, 2)}, places, kitchen(),
-            5s);
+TEST(CompanionRun, AnAiPartnerFinishesItsSearchBeforeFollowingHome) {
+  Game game({floor_of(10), ingredient_source(SOURCE, 2)},
+            tuning({stock(SOURCE, 3, CARROT)}), kitchen(), 5s);
   const auto control = single_player(Actor::Chef);
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
-  while (!game.exploration().snapshot().appraiser.collecting) {
+  while (!game.exploration().snapshot().appraiser.searching) {
     ASSERT_EQ(game.simulation().snapshot().appraiser.location, Location::City);
     game.step(control);
   }
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
   ASSERT_EQ(game.simulation().snapshot().chef.location, Location::Base);
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::City);
-  for (int tick = 0; tick < 10; ++tick) {
+  for (int tick = 0; tick < 20; ++tick) {
     game.step(control);
   }
   EXPECT_EQ(game.simulation().snapshot().appraiser.location, Location::Base);
@@ -722,7 +740,8 @@ TEST(Companion, TheAppraiserAppraisesEachCarriedIngredientKindOnce) {
   view.workshop.identified = {CARROT};
   EXPECT_EQ(ai_action(view, Actor::Appraiser), Action{Appraise{ONION}});
   view.workshop.identified = {CARROT, ONION};
-  EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
+  // Nothing left to appraise: what it carries goes to the fridge.
+  EXPECT_EQ(ai_action(view, Actor::Appraiser), Action{Store{ONION}});
 }
 
 TEST(Companion, TheChefCooksOnlyWhatIsIdentifiedAndCarried) {
@@ -757,7 +776,7 @@ TEST(Companion, ARoleActsOnlyInItsOwnRole) {
   auto view = base_view();
   view.progression.chef.inventory = {CARROT};
   ASSERT_EQ(ai_action(view, Actor::Appraiser), Action{Appraise{CARROT}});
-  EXPECT_EQ(ai_action(view, Actor::Chef), std::nullopt);
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{Store{CARROT}});
   view.workshop.identified = {CARROT};
   ASSERT_EQ(ai_action(view, Actor::Chef), Action{Cook{SOUP}});
   EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
@@ -793,7 +812,7 @@ TEST(Companion, AHiddenDislikeDoesNotChangeWhatItCooks) {
 
 TEST(Companion, OneStoredDishStopsTheChefCookingAnother) {
   auto view = base_view();
-  view.progression.chef.inventory = {CARROT};
+  view.progression.fridge = {CARROT};
   view.workshop.identified = {CARROT};
   ASSERT_EQ(ai_action(view, Actor::Chef), Action{Cook{SOUP}});
   view.workshop.foods = {{.food = SOUP}};
@@ -855,10 +874,10 @@ TEST(Companion, AHumanCollectsOnlyWithinRangeAndMovesAsPressed) {
   const auto companion = companion_with();
   const PlayerInput pressed{
       .movement = {.direction = Direction::Right, .running = true},
-      .interact = true};
+      .search = true};
   const auto near =
       companion.command(Actor::Chef, two_players(), pressed, view);
-  EXPECT_EQ(near.action, Action{Collect{SOURCE}});
+  EXPECT_EQ(near.action, Action{Search{SOURCE}});
   EXPECT_EQ(near.movement.direction, Direction::Right);
   EXPECT_TRUE(near.movement.running);
   view.exploration.chef.body.position = standing_in({.x = 0});
@@ -912,7 +931,7 @@ TEST(Companion, AHumanFeedsAndEndsTheDayOnRequest) {
 
 TEST(Companion, AnActionStillFacesTheRulesOfItsFeature) {
   Game game({floor_of(4), ingredient_source(SOURCE, 3)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   EXPECT_EQ(
       apply(game.exploration(), game.workshop(), Actor::Chef, Appraise{CARROT}),
       ActionResult{WorkshopResult::WrongRole});
@@ -922,7 +941,7 @@ TEST(Companion, AnActionStillFacesTheRulesOfItsFeature) {
   EXPECT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef, Feed{SOUP}),
             ActionResult{WorkshopResult::NoFood});
   EXPECT_EQ(
-      apply(game.exploration(), game.workshop(), Actor::Chef, Collect{SOURCE}),
+      apply(game.exploration(), game.workshop(), Actor::Chef, Search{SOURCE}),
       ActionResult{CollectionResult::NotExploring});
   EXPECT_EQ(
       apply(game.exploration(), game.workshop(), Actor::Chef, ReturnToBase{}),
@@ -930,7 +949,7 @@ TEST(Companion, AnActionStillFacesTheRulesOfItsFeature) {
   ASSERT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef, Enter{}),
             ActionResult{Result::Applied});
   EXPECT_EQ(
-      apply(game.exploration(), game.workshop(), Actor::Chef, Collect{SOURCE}),
+      apply(game.exploration(), game.workshop(), Actor::Chef, Search{SOURCE}),
       ActionResult{CollectionResult::OutOfRange});
   EXPECT_EQ(apply(game.exploration(), game.workshop(), Actor::Chef,
                   EndDayUnfed{UNFED_PENALTY}),
@@ -949,7 +968,7 @@ TEST(Companion, ASecondCommandOnTheSameViewFindsTheSameDecision) {
 
 TEST(Companion, ALeftActorKeepsItsStateAndAiCarriesOnFromIt) {
   Game game({floor_of(10), ingredient_source(SOURCE, 3)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   const std::array<PlayerInput, 2> out{PlayerInput{.travel = true},
                                        PlayerInput{.travel = true}};
   game.step(two_players(), out);
@@ -966,13 +985,15 @@ TEST(Companion, ALeftActorKeepsItsStateAndAiCarriesOnFromIt) {
   EXPECT_EQ(at(game.exploration().snapshot().appraiser),
             (GridPosition{.x = 1}));
   game.step(control, {NO_INPUT, NO_INPUT});
+  EXPECT_TRUE(game.exploration().snapshot().chef.searching.has_value());
+  game.step(control, {NO_INPUT, NO_INPUT});
   EXPECT_EQ(game.simulation().snapshot().chef.inventory,
             std::vector<IngredientId>{CARROT});
 }
 
 TEST(Companion, SwitchingHandsTheFormerHumanActorToAiMidRun) {
   Game game({floor_of(10), ingredient_source(SOURCE, 2)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   const auto control = single_player(Actor::Chef);
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
   game.step(control);
@@ -998,7 +1019,7 @@ void play_until_day(Game &game, std::uint32_t day, ControlMap control) {
 TEST(CompanionRun, AnAiPartyFeedsTheMonsterAcrossDaysWithoutCreatingAnything) {
   const auto recipes = kitchen({{.food = SOUP, .ingredients = {CARROT}}});
   Game game({floor_of(10), ingredient_source(SOURCE, 3)},
-            tuning({{.id = SOURCE, .remaining = 20}}), recipes);
+            tuning({stock(SOURCE, 20, CARROT)}), recipes);
   constexpr std::uint32_t LAST_DAY = 8;
   std::uint32_t day = 1;
   std::uint64_t expected_acid = 0;
@@ -1025,11 +1046,12 @@ TEST(CompanionRun, AnAiPartyFeedsTheMonsterAcrossDaysWithoutCreatingAnything) {
   }
   ASSERT_EQ(day, LAST_DAY);
   const auto view = game.view();
-  const auto taken = 20U - view.exploration.sources.front().remaining;
+  const auto taken = 20U - view.exploration.sources.front().items.size();
   EXPECT_GT(taken, 0U);
   EXPECT_LE(view.progression.chef.inventory.size() +
                 view.progression.appraiser.inventory.size() +
-                view.workshop.foods.size() + view.workshop.eaten_foods.size(),
+                view.progression.fridge.size() + view.workshop.foods.size() +
+                view.workshop.eaten_foods.size(),
             taken);
   EXPECT_FALSE(view.workshop.eaten_foods.empty());
   EXPECT_EQ(game.refusals(), 0U);
@@ -1038,8 +1060,8 @@ TEST(CompanionRun, AnAiPartyFeedsTheMonsterAcrossDaysWithoutCreatingAnything) {
 TEST(CompanionRun, ReplayingTheSameRunGivesTheSameState) {
   const std::vector<ObjectDefinition> city{floor_of(10),
                                            ingredient_source(SOURCE, 3)};
-  Game first(city, tuning({{.id = SOURCE, .remaining = 9}}), kitchen());
-  Game second(city, tuning({{.id = SOURCE, .remaining = 9}}), kitchen());
+  Game first(city, tuning({stock(SOURCE, 9, CARROT)}), kitchen());
+  Game second(city, tuning({stock(SOURCE, 9, CARROT)}), kitchen());
   play_until_day(first, 6, ALL_AI);
   play_until_day(second, 6, ALL_AI);
   EXPECT_EQ(first.simulation().snapshot(), second.simulation().snapshot());
@@ -1063,25 +1085,25 @@ TEST(CompanionRun, DaysPassWhenTheCityHoldsNoIngredients) {
 
 TEST(CompanionRun, DaysPassWhenEverySourceIsUnreachable) {
   Game game({floor_of(4), ingredient_source(SOURCE, 8)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   play_until_day(game, 6, ALL_AI);
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 1U);
   EXPECT_EQ(game.simulation().snapshot().remaining_exploration, 3s);
   EXPECT_EQ(game.refusals(), 0U);
 }
 
 TEST(CompanionRun, DaysPassWhenASourceIsFartherThanTheDayAllows) {
   Game game({floor_of(10), ingredient_source(SOURCE, 9)},
-            tuning({{.id = SOURCE}}), kitchen(), 300ms);
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen(), 300ms);
   play_until_day(game, 4, ALL_AI);
-  EXPECT_EQ(game.exploration().snapshot().sources.front().remaining, 1U);
+  EXPECT_EQ(game.exploration().snapshot().sources.front().items.size(), 1U);
   EXPECT_GT(game.simulation().snapshot().world_time, 0us);
   EXPECT_EQ(game.refusals(), 0U);
 }
 
 TEST(CompanionRun, AnAiPartnerStaysAtBaseWhenTheCityHoldsNothingForIt) {
   Game game({floor_of(4), ingredient_source(SOURCE, 8)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   const auto control = single_player(Actor::Chef);
   game.step(control, {PlayerInput{.travel = true}, NO_INPUT});
   ASSERT_EQ(game.simulation().snapshot().chef.location, Location::City);
@@ -1094,7 +1116,7 @@ TEST(CompanionRun, AnAiPartnerStaysAtBaseWhenTheCityHoldsNothingForIt) {
 
 TEST(CompanionRun, AnAiPartyAppraisesACarriedIngredient) {
   Game game({floor_of(10), ingredient_source(SOURCE, 1)},
-            tuning({{.id = SOURCE}}), kitchen());
+            tuning({stock(SOURCE, 1, CARROT)}), kitchen());
   play_until_day(game, 2, ALL_AI);
   const auto workshop = game.workshop().snapshot();
   EXPECT_EQ(workshop.identified, std::vector<IngredientId>{CARROT});
@@ -1169,7 +1191,7 @@ TEST(Companion, AStoredRejectedDishDoesNotStopTheChefCooking) {
       companion_with(kitchen({{.food = SOUP, .ingredients = {CARROT}},
                               {.food = STEW, .ingredients = {ONION}}}));
   auto view = base_view();
-  view.progression.chef.inventory = {ONION};
+  view.progression.fridge = {ONION};
   view.workshop.identified = {ONION};
   view.workshop.foods = {{.food = SOUP}};
   view.workshop.eaten_foods = {SOUP};
@@ -1194,7 +1216,7 @@ TEST(Companion, TheErrandNamesWhereAiWouldWalkAndStopsStepping) {
   const auto there = companion.errand(Actor::Chef, view).value_or(Errand{});
   EXPECT_EQ(there.target, NEAR);
   EXPECT_EQ(there.step, std::nullopt);
-  view.exploration.sources.back().remaining = 0;
+  view.exploration.sources.back().items.clear();
   EXPECT_FALSE(companion.errand(Actor::Chef, view).has_value());
 }
 
@@ -1205,8 +1227,9 @@ TEST(Companion, AiWalksToWhatThePartyLacksBeforeANearerSource) {
   add_source(view, NEAR, 2);
   add_source(view, FAR, 6);
   view.world.objects.back().ingredient = ONION;
+  view.exploration.sources.back().items = {ONION};
   EXPECT_EQ(ai_action(view, Actor::Chef),
-            (std::optional<Action>{Collect{NEAR}}));
+            (std::optional<Action>{Search{NEAR}}));
   view.progression.appraiser.inventory = {CARROT};
   const auto lacking =
       companion_with().command(Actor::Chef, ALL_AI, NO_INPUT, view);
@@ -1345,6 +1368,114 @@ TEST(Companion, ASetOutWaitsWhileThePartnerIsOutOnAnotherMap) {
   view.exploration.map = MapId::Street;
   EXPECT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
             Action{Enter{}});
+}
+
+TEST(Companion, ASearchingAiTakesTheFirstItemWhileItHasRoomThenCloses) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  view.exploration.sources.back() = stock(SOURCE, 3, CARROT);
+  view.exploration.chef.searching = Searching{.source = SOURCE};
+  EXPECT_EQ(
+      ai_action(view, Actor::Chef),
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
+  view.progression.chef.inventory.assign(11, ONION);
+  EXPECT_EQ(
+      ai_action(view, Actor::Chef),
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
+  // The twelfth slot is taken: no room left.
+  view.progression.chef.inventory.push_back(ONION);
+  EXPECT_EQ(ai_action(view, Actor::Chef), std::optional<Action>{CloseSearch{}});
+  view.progression.chef.inventory.clear();
+  view.exploration.sources.back().items.clear();
+  EXPECT_EQ(ai_action(view, Actor::Chef), std::optional<Action>{CloseSearch{}});
+}
+
+TEST(Companion, AnAiOverTheMaxWeightTakesNothingMoreAndGoesHome) {
+  const Companion heavy(
+      {.exploration =
+           [] {
+             auto places = tuning({});
+             places.carry = {.weights = {{.ingredient = CARROT, .weight = 3}},
+                             .max_weight = 6,
+                             .overweight_percent = 60};
+             return places;
+           }(),
+       .workshop = kitchen(),
+       .unfed_penalty = UNFED_PENALTY});
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  view.exploration.sources.back() = stock(SOURCE, 3, CARROT);
+  view.exploration.chef.searching = Searching{.source = SOURCE};
+  view.progression.chef.inventory = {CARROT};
+  EXPECT_EQ(
+      heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
+  view.progression.chef.inventory = {CARROT, CARROT};
+  EXPECT_EQ(heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+            std::optional<Action>{CloseSearch{}});
+  view.exploration.chef.searching.reset();
+  EXPECT_EQ(heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+            std::optional<Action>{ReturnToBase{}});
+}
+
+TEST(Companion, AnEmptyContainerIsNoErrand) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  view.exploration.sources.back().items.clear();
+  EXPECT_FALSE(companion_with().errand(Actor::Chef, view).has_value());
+}
+
+TEST(Companion, AnAiWaitsBesideAContainerItsPartnerHasOpen) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  ASSERT_EQ(ai_action(view, Actor::Chef),
+            (std::optional<Action>{Search{SOURCE}}));
+  view.exploration.appraiser.searching = Searching{.source = SOURCE};
+  EXPECT_FALSE(ai_action(view, Actor::Chef).has_value());
+}
+
+TEST(Companion, AnAiAtBaseStoresWhatItCarriesWhileItsPartnerIsOut) {
+  auto view = base_view();
+  view.progression.phase = Phase::Exploration;
+  view.progression.appraiser.location = Location::City;
+  view.progression.chef.inventory = {CARROT, ONION};
+  EXPECT_EQ(ai_action(view, Actor::Chef),
+            (std::optional<Action>{Store{CARROT}}));
+  view.progression.fridge.assign(30, ONION);
+  EXPECT_NE(ai_action(view, Actor::Chef),
+            (std::optional<Action>{Store{CARROT}}));
+}
+
+TEST(Companion, AHumanMovesBetweenInventoryAndFridgeOnlyAtBase) {
+  const auto view = base_view();
+  const auto companion = companion_with();
+  const PlayerInput withdraw{.transfer = Action{Withdraw{CARROT}}};
+  EXPECT_EQ(
+      companion.command(Actor::Chef, two_players(), withdraw, view).action,
+      (std::optional<Action>{Withdraw{CARROT}}));
+  const PlayerInput take{
+      .transfer = Action{Take{.source = SOURCE, .ingredient = CARROT}}};
+  EXPECT_FALSE(companion.command(Actor::Chef, two_players(), take, view)
+                   .action.has_value());
+}
+
+TEST(Companion, AnAiCooksFromTheFridgeAndAppraisesWhatItHolds) {
+  auto view = base_view();
+  view.progression.fridge = {CARROT};
+  EXPECT_EQ(ai_action(view, Actor::Appraiser), Action{Appraise{CARROT}});
+  view.workshop.identified = {CARROT};
+  EXPECT_EQ(ai_action(view, Actor::Chef), Action{Cook{SOUP}});
+}
+
+TEST(CompanionRun, AnAiPairFillsItsHandsThenEmptiesThemIntoTheFridge) {
+  Game game({floor_of(10), ingredient_source(SOURCE, 2)},
+            tuning({stock(SOURCE, 4, CARROT)}), kitchen(), 20s);
+  for (int step = 0; step < 400 && game.simulation().snapshot().fridge.empty();
+       ++step) {
+    game.step(ALL_AI);
+  }
+  EXPECT_FALSE(game.simulation().snapshot().fridge.empty());
+  EXPECT_EQ(game.refusals(), 0U);
 }
 
 } // namespace

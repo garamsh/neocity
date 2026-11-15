@@ -78,19 +78,38 @@ std::int64_t absent_ms(const survival::ExplorationSnapshot &snapshot,
               : -1;
 }
 
-/// How long the collection under way still holds `actor`; zero with none.
-std::chrono::microseconds
-collecting_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
-  const auto held = [&] {
-    switch (actor) {
-    case Actor::Chef:
-      return snapshot.chef.collecting;
-    case Actor::Appraiser:
-      return snapshot.appraiser.collecting;
-    }
-    std::abort();
-  }();
-  return held ? held->remaining : std::chrono::microseconds{};
+const survival::ExplorerSnapshot &
+explorer_of(const survival::ExplorationSnapshot &snapshot, Actor actor) {
+  switch (actor) {
+  case Actor::Chef:
+    return snapshot.chef;
+  case Actor::Appraiser:
+    return snapshot.appraiser;
+  }
+  std::abort();
+}
+
+/// What the container an actor has open holds; null with none open.
+const survival::SourceStock *
+open_container(const survival::ExplorationSnapshot &snapshot, Actor actor) {
+  const auto &searching = explorer_of(snapshot, actor).searching;
+  if (!searching) {
+    return nullptr;
+  }
+  const auto found = std::ranges::find(snapshot.sources, searching->source,
+                                       &survival::SourceStock::id);
+  return found == snapshot.sources.end() ? nullptr : &*found;
+}
+
+/// An AI's moves between containers, the fridge and its hands would crowd the
+/// log's few lines.
+bool crowds_log(const survival::Action &action) {
+  return std::holds_alternative<survival::Search>(action) ||
+         std::holds_alternative<survival::CloseSearch>(action) ||
+         std::holds_alternative<survival::Take>(action) ||
+         std::holds_alternative<survival::Put>(action) ||
+         std::holds_alternative<survival::Store>(action) ||
+         std::holds_alternative<survival::Withdraw>(action);
 }
 
 /// Feeding and ending the day unfed each finish the day.
@@ -118,6 +137,7 @@ void retain_edges(PlayerInput &pending, const PlayerInput &input) {
   }
   pending.travel = pending.travel || input.travel;
   pending.interact = pending.interact || input.interact;
+  pending.search = pending.search || input.search;
   pending.feed = pending.feed || input.feed;
   pending.end_day = pending.end_day || input.end_day;
   pending.switch_actor = pending.switch_actor || input.switch_actor;
@@ -193,6 +213,7 @@ const char *location_name(survival::Location location) {
 }
 
 godot::Dictionary actor_status(const GameView &view,
+                               const survival::CarryRules &carry,
                                survival::ControlMap control, Actor actor) {
   const auto &state = state_of(view.progression, actor);
   const auto position = position_of(view.exploration, actor);
@@ -205,12 +226,18 @@ godot::Dictionary actor_status(const GameView &view,
   status.set("sub_x", body.position.x);
   status.set("sub_y", body.position.y);
   status.set("stance", stance_name(body.stance));
-  status.set("collecting_ms",
-             std::chrono::duration_cast<std::chrono::milliseconds>(
-                 collecting_of(view.exploration, actor))
-                 .count());
+  const auto *container = open_container(view.exploration, actor);
+  status.set("searching", container != nullptr
+                              ? static_cast<std::int64_t>(container->id.value)
+                              : std::int64_t{-1});
+  status.set("searching_items",
+             container != nullptr
+                 ? static_cast<std::int64_t>(container->items.size())
+                 : std::int64_t{-1});
   status.set("absent_ms", absent_ms(view.exploration, actor));
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
+  status.set("weight", carried_weight(carry, state.inventory));
+  status.set("overweight", overweight(carry, state.inventory));
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
   return status;
 }
@@ -227,7 +254,8 @@ SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
 
 std::vector<hud::Event>
 SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
-                     survival::Direction dish_press) {
+                     survival::Direction dish_press,
+                     std::optional<hud::SlotPress> slot) {
   fresh.clear();
   if (std::isfinite(delta) && delta > 0.0) {
     accumulated += delta;
@@ -247,6 +275,9 @@ SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
   if (dish_press != survival::Direction::Idle) {
     dish_step = dish_press;
   }
+  if (slot) {
+    pending_slot = slot;
+  }
   while (accumulated >= STEP_SECONDS && !over()) {
     accumulated -= STEP_SECONDS;
     for (std::size_t index = 0; index < held.size(); ++index) {
@@ -262,6 +293,7 @@ SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
     }
     step();
     pending = {};
+    pending_slot.reset();
     dish_step = survival::Direction::Idle;
   }
   return fresh;
@@ -269,6 +301,7 @@ SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
 
 void SurvivalRun::drop_input() {
   pending = {};
+  pending_slot.reset();
   dish_step = survival::Direction::Idle;
 }
 
@@ -341,7 +374,7 @@ void SurvivalRun::step() {
   const auto city = features.world.get().snapshot();
   std::array<survival::ExplorationInput, 2> movement;
   std::array<bool, 2> walked_home{};
-  if (dish_step != survival::Direction::Idle &&
+  if (dish_step != survival::Direction::Idle && !screens.at(0).open &&
       progression.phase == survival::Phase::Workshop &&
       survival::key_set(controllers, Actor::Chef)) {
     pick_dish(view());
@@ -358,7 +391,9 @@ void SurvivalRun::step() {
     if (interact_hold.at(index) > 0ms) {
       pending.at(index).interact = false;
     }
-    const auto command = command_for(actor, pending.at(index), view());
+    auto input = pending.at(index);
+    through_screen(index, actor, input, view());
+    const auto command = command_for(actor, input, view());
     movement.at(index) = command.movement;
     if (command.action) {
       walked_home.at(index) =
@@ -403,6 +438,111 @@ void SurvivalRun::step() {
   }
 }
 
+void SurvivalRun::through_screen(std::size_t index, Actor actor,
+                                 PlayerInput &input, const GameView &current) {
+  auto &screen = screens.at(index);
+  if (!survival::key_set(controllers, actor)) {
+    screen = {};
+    return;
+  }
+  const auto &state = state_of(current.progression, actor);
+  const auto &explorer = explorer_of(current.exploration, actor);
+  const auto *container = open_container(current.exploration, actor);
+  const bool in_city = state.location == survival::Location::City;
+  // Leaving the place, being sent away, or the container closing under it
+  // (time up, a touch) closes the screen.
+  if (screen.open &&
+      (opened_in.at(index) != state.location || explorer.absent ||
+       (was_searching.at(index) && container == nullptr))) {
+    screen = {};
+  }
+  // A container that has just opened takes the cursor from the inventory the
+  // screen showed alone until it did.
+  if (screen.open && container != nullptr && !was_searching.at(index)) {
+    screen.mine = false;
+    screen.slot = 0;
+  }
+  was_searching.at(index) = container != nullptr;
+  if (input.search) {
+    if (screen.open) {
+      screen = {};
+      // Only a search that is open is closed; the key must not open another.
+      input.search = container != nullptr;
+    } else if (!explorer.absent) {
+      screen = {.open = true};
+      opened_in.at(index) = state.location;
+    }
+  }
+  if (!screen.open) {
+    return;
+  }
+  const bool has_other = container != nullptr || !in_city;
+  if (!has_other) {
+    screen.mine = true;
+  }
+  const auto direction = input.tap != survival::Direction::Idle
+                             ? input.tap
+                             : input.movement.direction;
+  if (direction != survival::Direction::Idle &&
+      direction != cursor_dir.at(index)) {
+    switch (direction) {
+    case survival::Direction::Left:
+      screen.slot = screen.slot > 0 ? screen.slot - 1 : 0;
+      break;
+    case survival::Direction::Right:
+      ++screen.slot;
+      break;
+    case survival::Direction::Up:
+      screen.mine = !has_other;
+      break;
+    case survival::Direction::Down:
+      screen.mine = true;
+      break;
+    case survival::Direction::Idle:
+      break;
+    }
+  }
+  cursor_dir.at(index) = direction;
+  input.tap = survival::Direction::Idle;
+  input.movement = {};
+  const std::size_t other_capacity = container != nullptr
+                                         ? container->capacity
+                                         : current.progression.fridge_slots;
+  const std::size_t capacity =
+      screen.mine ? current.progression.inventory_slots : other_capacity;
+  if (pending_slot && pending_slot->actor == actor &&
+      (pending_slot->mine || has_other)) {
+    screen.mine = pending_slot->mine;
+    screen.slot = pending_slot->index;
+    input.interact = true;
+  }
+  screen.slot = std::min(screen.slot, capacity > 0 ? capacity - 1 : 0);
+  if (!input.interact) {
+    return;
+  }
+  input.interact = false;
+  const auto &mine = state.inventory;
+  const std::vector<survival::IngredientId> &other =
+      container != nullptr ? container->items : current.progression.fridge;
+  if (screen.mine && screen.slot < mine.size()) {
+    const auto item = mine.at(screen.slot);
+    if (container != nullptr) {
+      input.transfer =
+          survival::Put{.source = container->id, .ingredient = item};
+    } else if (!in_city) {
+      input.transfer = survival::Store{item};
+    }
+  } else if (!screen.mine && has_other && screen.slot < other.size()) {
+    const auto item = other.at(screen.slot);
+    if (container != nullptr) {
+      input.transfer =
+          survival::Take{.source = container->id, .ingredient = item};
+    } else {
+      input.transfer = survival::Withdraw{item};
+    }
+  }
+}
+
 void SurvivalRun::run_action(Actor actor, const survival::Action &action,
                              std::uint32_t day) {
   // Two humans pressing in one step finish one day, not two.
@@ -414,9 +554,7 @@ void SurvivalRun::run_action(Actor actor, const survival::Action &action,
   if (features.simulation.get().snapshot().day != day) {
     chosen_dish.reset();
   }
-  // AI's collecting would crowd map changes out of the log.
-  if (survival::key_set(controllers, actor) ||
-      !std::holds_alternative<survival::Collect>(action)) {
+  if (survival::key_set(controllers, actor) || !crowds_log(action)) {
     record(
         hud::ActionEvent{.actor = actor, .action = action, .result = result});
   }
@@ -490,6 +628,7 @@ hud::SurvivalFrame SurvivalRun::frame() const {
                             .view = view(),
                             .control = controllers,
                             .offers = {},
+                            .screens = screens,
                             .started_together = started_together,
                             .last_day_map_changes = last_day_map_changes,
                             .events = {events.begin(), events.end()},
@@ -505,6 +644,7 @@ hud::SurvivalFrame SurvivalRun::frame() const {
       result.offers.at(index) = {
           .interact =
               command_for(actor, {.interact = true}, result.view).action,
+          .search = command_for(actor, {.search = true}, result.view).action,
           .feed = command_for(actor, {.feed = true}, result.view).action,
           .errand = state_of(result.view.progression, actor).location ==
                             survival::Location::City
@@ -549,8 +689,10 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
     mutants.push_back(one);
   }
   status.set("mutants", mutants);
-  status.set("chef", actor_status(view, controllers, Actor::Chef));
-  status.set("appraiser", actor_status(view, controllers, Actor::Appraiser));
+  const auto &carry = features.content.get().companion.exploration.carry;
+  status.set("chef", actor_status(view, carry, controllers, Actor::Chef));
+  status.set("appraiser",
+             actor_status(view, carry, controllers, Actor::Appraiser));
   status.set("identified",
              static_cast<std::int64_t>(view.workshop.identified.size()));
   status.set("foods", static_cast<std::int64_t>(view.workshop.foods.size()));
@@ -591,9 +733,23 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
   status.set("places", places);
   godot::Dictionary stock;
   for (const auto &source : view.exploration.sources) {
-    stock.set(from(survival::object_name(source.id)), source.remaining);
+    stock.set(from(survival::object_name(source.id)),
+              static_cast<std::int64_t>(source.items.size()));
   }
   status.set("stock", stock);
+  status.set("fridge",
+             static_cast<std::int64_t>(view.progression.fridge.size()));
+  status.set("inventory_slots", view.progression.inventory_slots);
+  status.set("fridge_slots", view.progression.fridge_slots);
+  godot::Array screens_open;
+  for (const auto &screen : current.screens) {
+    godot::Dictionary one;
+    one.set("open", screen.open);
+    one.set("mine", screen.mine);
+    one.set("slot", static_cast<std::int64_t>(screen.slot));
+    screens_open.push_back(one);
+  }
+  status.set("screens", screens_open);
   status.set("next", hud::next_step(current));
   status.set("hand_off", hud::hand_off_notice(current));
   godot::Array keys;

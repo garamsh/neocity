@@ -215,14 +215,16 @@ func _tour_move(target: Vector2i) -> bool:
 
 func _tour_collect() -> bool:
 	var before: int = scene.survival_status()["chef"]["ingredients"]
+	await _tap(KEY_R)
 	await _tap(KEY_E)
+	await _tap(KEY_R)
 	for frame: int in range(180):
 		var body: Dictionary = scene.survival_status()["chef"]
 		var ingredients: int = body["ingredients"]
 		if ingredients > before:
 			return true
 		await process_frame
-	_tour_fail("human collection did not add an ingredient: " + _tour_status(scene.survival_status()))
+	_tour_fail("human search did not add an ingredient: " + _tour_status(scene.survival_status()))
 	return false
 
 func _tour_status(state: Dictionary) -> String:

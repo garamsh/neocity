@@ -385,7 +385,7 @@ bool visible(const ObjectSnapshot &object) {
 /// cell. Every other source keeps showing its count.
 bool gone(const survival::SourceStock &stock, const ObjectSnapshot &object) {
   return stock.kind == SourceKind::Bag &&
-         (stock.remaining == 0 || object.state == ObjectState::Destroyed);
+         (stock.items.empty() || object.state == ObjectState::Destroyed);
 }
 
 /// The landmark picture `object` shows, if it has one.
@@ -880,11 +880,11 @@ void paint_npc(godot::Node2D &canvas, const Art &art,
 /// Every bag is the mockup's backpack.
 Image source_image(SourceKind kind) {
   switch (kind) {
-  case SourceKind::VendingMachine:
+  case SourceKind::Locker:
     return Image::VendingMachine;
-  case SourceKind::Npc:
+  case SourceKind::Crates:
     return Image::VendorCart;
-  case SourceKind::Shop:
+  case SourceKind::Shelf:
     return Image::Shop;
   case SourceKind::Bag:
     return Image::BagWashedUp;
@@ -913,7 +913,7 @@ struct Marker {
 
 /// Whether a shop's source stands inside `building`.
 bool shop_inside(const ObjectSnapshot &building, const Marker &marker) {
-  return marker.stock.kind == SourceKind::Shop &&
+  return marker.stock.kind == SourceKind::Shelf &&
          covers(building.area,
                 {.x = marker.object.area.x, .y = marker.object.area.y});
 }
@@ -930,7 +930,7 @@ void paint_shop_front(godot::Node2D &canvas, const Art &art,
   const bool housed = std::ranges::any_of(objects, [&](const auto &object) {
     return object.kind == ObjectKind::Building && shop_inside(object, marker);
   });
-  if (marker.stock.kind != SourceKind::Shop || housed) {
+  if (marker.stock.kind != SourceKind::Shelf || housed) {
     return;
   }
   const std::int32_t x = marker.object.area.x;
@@ -958,8 +958,8 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
   const auto cell = area_rect(marker.object.area);
   const auto box = cell.grow(-2.0F);
   const auto tones = palette();
-  if (marker.stock.kind != SourceKind::Shop) {
-    const godot::Color tint = marker.stock.kind == SourceKind::VendingMachine
+  if (marker.stock.kind != SourceKind::Shelf) {
+    const godot::Color tint = marker.stock.kind == SourceKind::Locker
                                   ? godot::Color(1.16F, 1.04F, 0.90F)
                                   : untinted();
     stand_on_floor(canvas, art, source_image(marker.stock.kind), cell, tint);
@@ -1177,7 +1177,7 @@ markers_of(const survival::GameView &view,
         std::ranges::find(objects, stock.id, &ObjectSnapshot::id);
     if (object != objects.end() && visible(*object) && !gone(stock, *object)) {
       const bool stocked_open =
-          object->material_available && stock.remaining > 0;
+          object->material_available && !stock.items.empty();
       const bool walkable =
           std::ranges::find(out_of_reach, stock.id) == out_of_reach.end();
       markers.push_back({.object = *object,
@@ -1302,7 +1302,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
   }
   for (const auto &marker : markers) {
     const auto cell = on_screen(marker.object.area);
-    const auto count = godot::String::num_int64(marker.stock.remaining);
+    const auto count = godot::String::num_int64(
+        static_cast<std::int64_t>(marker.stock.items.size()));
     const bool unreachable = marker.stocked_open && !marker.walkable;
     const Mark mark{.icon = supply_icon(marker.object),
                     .out_of_reach = unreachable};

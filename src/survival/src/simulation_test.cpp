@@ -330,5 +330,95 @@ TEST(Simulation, LosingKeepsWhatTheActorsCarry) {
             (std::vector<IngredientId>{RICE}));
 }
 
+/// A run with the chef in the city carrying `items`, in a two-slot inventory.
+Simulation chef_in_city(std::uint32_t inventory_slots,
+                        std::uint32_t fridge_slots) {
+  Simulation simulation({.exploration_budget = 10s,
+                         .seed = 1,
+                         .inventory_slots = inventory_slots,
+                         .fridge_slots = fridge_slots});
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  return simulation;
+}
+
+TEST(Survival, AnInventoryHoldsOnlyItsConfiguredSlots) {
+  auto simulation = chef_in_city(2, 5);
+  EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::Full);
+  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 2U);
+  EXPECT_EQ(simulation.snapshot().inventory_slots, 2U);
+  EXPECT_EQ(simulation.snapshot().fridge_slots, 5U);
+}
+
+TEST(Survival, SlotCountsOfZeroAreRefused) {
+  EXPECT_THROW(
+      (Simulation({.exploration_budget = 1s, .seed = 1, .inventory_slots = 0})),
+      std::invalid_argument);
+  EXPECT_THROW(
+      (Simulation({.exploration_budget = 1s, .seed = 1, .fridge_slots = 0})),
+      std::invalid_argument);
+}
+
+TEST(Survival, TheFridgeStoresAtBaseOnlyAndWithdrawsWhatItHolds) {
+  auto simulation = chef_in_city(4, 2);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  EXPECT_EQ(simulation.store(Actor::Chef, RICE), Result::NotInWorkshop);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  EXPECT_EQ(simulation.store(Actor::Chef, IngredientId{9}),
+            Result::MissingIngredients);
+  ASSERT_EQ(simulation.store(Actor::Chef, RICE), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+  EXPECT_EQ(simulation.snapshot().fridge, (std::vector{RICE}));
+  EXPECT_EQ(simulation.withdraw(Actor::Appraiser, IngredientId{9}),
+            Result::MissingIngredients);
+  ASSERT_EQ(simulation.withdraw(Actor::Appraiser, RICE), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().fridge.empty());
+  EXPECT_EQ(simulation.snapshot().appraiser.inventory, (std::vector{RICE}));
+}
+
+TEST(Survival, AFullFridgeRefusesAndAFullInventoryRefusesAWithdrawal) {
+  auto simulation = chef_in_city(1, 1);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Appraiser, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.store(Actor::Chef, RICE), Result::Applied);
+  EXPECT_EQ(simulation.store(Actor::Appraiser, RICE), Result::Full);
+  EXPECT_EQ(simulation.snapshot().appraiser.inventory, (std::vector{RICE}));
+  // The appraiser's single slot is taken, so it cannot withdraw.
+  EXPECT_EQ(simulation.withdraw(Actor::Appraiser, RICE), Result::Full);
+  EXPECT_EQ(simulation.snapshot().fridge, (std::vector{RICE}));
+}
+
+TEST(Survival, TheFridgeKeepsItsContentsToTheNextDayWithoutSpoiling) {
+  auto simulation = chef_in_city(4, 4);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.store(Actor::Chef, RICE), Result::Applied);
+  for (int day = 0; day < 3; ++day) {
+    ASSERT_EQ(simulation.finish_day({}), Result::Applied);
+  }
+  EXPECT_EQ(simulation.snapshot().day, 4U);
+  EXPECT_EQ(simulation.snapshot().fridge, (std::vector{RICE}));
+}
+
+TEST(Survival, CookingSpendsTheChefThenTheAppraiserThenTheFridge) {
+  auto simulation = chef_in_city(4, 4);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.store(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  const std::array both{RICE, RICE};
+  ASSERT_EQ(simulation.consume(both), Result::Applied);
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+  EXPECT_TRUE(simulation.snapshot().fridge.empty());
+  const std::array three{RICE, RICE, RICE};
+  EXPECT_EQ(simulation.consume(three), Result::MissingIngredients);
+}
+
 } // namespace
 } // namespace neocity::survival

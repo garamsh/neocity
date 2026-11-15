@@ -1,3 +1,5 @@
+#include "search_support.hpp"
+
 #include <survival/exploration.hpp>
 #include <survival/workshop.hpp>
 
@@ -519,14 +521,14 @@ TEST(WorkshopIntegration, FeedingResultReachesTheNextExplorationDay) {
                            .entry = {},
                            .exits = {},
                            .interiors = {},
-                           .sources = {{.id = SOURCE}},
+                           .sources = {stock(SOURCE, 1, CHILI)},
                            .obstacles = {},
                            .patrols = {}});
   Workshop workshop(simulation, balance());
   const std::array<ExplorationInput, 2> idle{};
 
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(1s, idle), Result::Applied);
   ASSERT_EQ(simulation.snapshot().phase, Phase::Workshop);
@@ -696,6 +698,42 @@ TEST(Workshop, TheMealThatFillsTheAcidIsRecordedAndNothingFollows) {
             WorkshopResult::NotInWorkshop);
   EXPECT_EQ(simulation.snapshot(), progression);
   EXPECT_EQ(workshop.snapshot(), kitchen);
+}
+
+TEST(Workshop, AppraisalAndCookingReadTheFridgeWithBothInventories) {
+  Simulation simulation({.exploration_budget = 10s, .seed = lucky_seed()});
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  Workshop workshop(simulation, balance());
+  ASSERT_EQ(workshop.store(Actor::Chef, RICE), WorkshopResult::Applied);
+  ASSERT_TRUE(simulation.snapshot().chef.inventory.empty());
+  // Only the fridge holds rice, and it is enough to appraise and cook with.
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  EXPECT_TRUE(simulation.snapshot().fridge.empty());
+  EXPECT_EQ(stored(workshop), (std::vector{PORRIDGE}));
+}
+
+TEST(Workshop, AnIngredientNowhereIsNotCarried) {
+  Simulation simulation({.exploration_budget = 10s, .seed = lucky_seed()});
+  Workshop workshop(simulation, balance());
+  EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
+            WorkshopResult::NotCarried);
+  EXPECT_EQ(workshop.store(Actor::Chef, RICE), WorkshopResult::NotCarried);
+  EXPECT_EQ(workshop.withdraw(Actor::Chef, RICE), WorkshopResult::NotCarried);
+}
+
+TEST(Workshop, TheFridgeIsOpenWhileThePartnerIsOutButNotAfterTheRunEnds) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  ASSERT_EQ(simulation.enter(Actor::Appraiser), Result::Applied);
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, RICE), Result::Applied);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.snapshot().phase, Phase::Exploration);
+  Workshop workshop(simulation, balance());
+  EXPECT_EQ(workshop.store(Actor::Chef, RICE), WorkshopResult::Applied);
+  EXPECT_EQ(workshop.withdraw(Actor::Chef, RICE), WorkshopResult::Applied);
 }
 
 } // namespace

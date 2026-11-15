@@ -128,7 +128,8 @@ enum class WorkshopResult : std::uint8_t {
   NotCarried,
   NotIdentified,
   UnknownRecipe,
-  NoFood
+  NoFood,
+  Full
 };
 
 /// Untimed base roles; owns appraisal facts, dishes, feeding history and its
@@ -141,6 +142,12 @@ public:
   Workshop(Simulation &progression, WorkshopConfig settings);
   /// The appraiser records a carried ingredient as identified on success.
   [[nodiscard]] WorkshopResult appraise(Actor actor, IngredientId ingredient);
+  /// Moves one carried `ingredient` into the fridge; `Full` with no free fridge
+  /// slot. Appraisal and cooking read the fridge with both inventories.
+  [[nodiscard]] WorkshopResult store(Actor actor, IngredientId ingredient);
+  /// Moves one `ingredient` out of the fridge into the actor's inventory;
+  /// `Full` with no free inventory slot, `NotCarried` if the fridge lacks it.
+  [[nodiscard]] WorkshopResult withdraw(Actor actor, IngredientId ingredient);
   /// The chef spends the identified ingredients; failure produces no dish, and
   /// the same roll decides whether a dish is fine.
   [[nodiscard]] WorkshopResult cook(Actor actor, FoodId food);

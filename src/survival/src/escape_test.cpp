@@ -1,3 +1,5 @@
+#include "search_support.hpp"
+
 #include <survival/escape.hpp>
 #include <survival/exploration.hpp>
 #include <survival/workshop.hpp>
@@ -214,12 +216,12 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
                            .exits = {},
                            .interiors = {},
                            .collection_distance = 2,
-                           .sources = {{.id = SOURCE}},
+                           .sources = {stock(SOURCE, 1)},
                            .obstacles = {},
                            .patrols = {}});
   // The control: entering and collecting apply before the escape.
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
   Workshop workshop(simulation, balance());
@@ -236,7 +238,7 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterEscape) {
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
   EXPECT_EQ(exploration.advance(1s, IDLE), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),
@@ -291,12 +293,12 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
                            .exits = {},
                            .interiors = {},
                            .collection_distance = 2,
-                           .sources = {{.id = SOURCE}},
+                           .sources = {stock(SOURCE, 1)},
                            .obstacles = {},
                            .patrols = {}});
   // The control: entering and collecting apply before the loss.
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
   Workshop workshop(simulation, balance());
@@ -312,7 +314,7 @@ TEST(Escape, NoFeatureCommandOutsideWorldChangesStateAfterALoss) {
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(exploration.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::NotExploring);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
   EXPECT_EQ(exploration.advance(1s, IDLE), Result::RunOver);
   EXPECT_EQ(workshop.appraise(Actor::Appraiser, RICE),

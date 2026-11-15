@@ -323,7 +323,6 @@ func _run() -> void:
 	# The fixed map's one-row rise needs a jump from the lower walkway.
 	await _walk_to(9, 9)
 	await _walk_to(7, 8, "chef", true)
-	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
 	await _until_phase("workshop")
@@ -436,7 +435,7 @@ func _run() -> void:
 	await _frames(12)
 	await _save("22-hand-off-notice")
 	# A human appraiser leaves the AI chef's finds unidentified, so the second
-	# day's base shows the day's result beside several of them.
+	# day's base shows the day's result beside several finds in packs and fridge.
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
 	await _tap(KEY_1)
@@ -448,10 +447,14 @@ func _run() -> void:
 	await _tap(KEY_G)
 	# Past the new day's flourish, which darkens the kitchen as it opens.
 	await _frames(120)
-	var bag: Array = scene.get_meta("bag", [])
-	var unknown: int = bag.filter(func(item: Dictionary) -> bool: return not item["known"]).size()
-	if _int("day") != 2 or unknown < 2:
-		_fail("the second day's base holds %d unidentified kinds on day %d" % [unknown, _int("day")])
+	var chef: Dictionary = scene.survival_status()["chef"]
+	var appraiser: Dictionary = scene.survival_status()["appraiser"]
+	var chef_pack: int = chef["ingredients"]
+	var appraiser_pack: int = appraiser["ingredients"]
+	# The AI chef stores its finds in the fridge when it is home.
+	var held: int = chef_pack + appraiser_pack + _int("fridge")
+	if _int("day") != 2 or held < 2:
+		_fail("the second day's base holds %d finds in the packs and fridge on day %d" % [held, _int("day")])
 		return
 	await _save("32-workshop-appraisal-and-result")
 	await _tap(KEY_M)
@@ -543,10 +546,10 @@ func _shown_canvas(window: String) -> bool:
 		return false
 	return true
 
-## Whether NEXT names what the interact key does: collect, appraise
-## or cook, as the controls page lists for it.
+## Whether NEXT names what the interact key does: appraise or cook, as the
+## controls page lists for it.
 func _names_interact(line: String) -> bool:
-	for verb: String in ["Collect from ", "Appraise ", "Cook "]:
+	for verb: String in ["Appraise ", "Cook "]:
 		if line.begins_with(verb):
 			return true
 	return false
@@ -555,7 +558,9 @@ func _names_interact(line: String) -> bool:
 ## it, or lets the day run while it names none.
 func _follow_next() -> void:
 	var line: String = scene.survival_status().get("next", "")
-	if line.contains("Set out") or line.contains("Nothing is within reach"):
+	if line.begins_with("Inventory open"):
+		await _tap(KEY_R)
+	elif line.contains("Set out") or line.contains("Nothing is within reach"):
 		await _tap(KEY_Q)
 	elif line.begins_with("Feed "):
 		await _tap(KEY_F)
@@ -563,6 +568,11 @@ func _follow_next() -> void:
 		await _tap(KEY_R)
 	elif line.begins_with("End the day"):
 		await _tap(KEY_G)
+	elif line.begins_with("Search "):
+		await _tap(KEY_R)
+	elif line.begins_with("Searching "):
+		await _tap(KEY_E)
+		await _tap(KEY_R)
 	elif _names_interact(line):
 		await _tap(KEY_E)
 	elif line.begins_with("Walk ") or line.begins_with("Climb ") or line.begins_with("Jump "):

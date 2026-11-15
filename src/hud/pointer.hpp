@@ -22,7 +22,7 @@ namespace neocity::hud {
 enum class MenuKey : std::uint8_t { Confirm, Pause, Menu };
 
 /// One of a human's keys a click stands for.
-enum class PlayerKey : std::uint8_t { Interact, Feed, EndDay, Travel };
+enum class PlayerKey : std::uint8_t { Interact, Search, Feed, EndDay, Travel };
 
 /// The menu entry its number key chooses, numbered from 1.
 struct OptionPress {
@@ -34,6 +34,15 @@ struct OptionPress {
 struct PlayerPress {
   std::optional<survival::Actor> actor;
   PlayerKey key = PlayerKey::Interact;
+};
+
+/// The slot `index` of `actor`'s transfer screen, on the actor's own side or on
+/// the container's or fridge's, which a click moves the cursor to and moves
+/// across.
+struct SlotPress {
+  survival::Actor actor = survival::Actor::Chef;
+  bool mine = false;
+  std::size_t index = 0;
 };
 
 /// A human chef's up or down press, which moves the dish choice.
@@ -57,8 +66,8 @@ struct DisplayPress {
 };
 
 /// The key press a click stands for.
-using Press = std::variant<OptionPress, MenuKey, PlayerPress, DishPress,
-                           VolumePress, DisplayPress>;
+using Press = std::variant<OptionPress, MenuKey, PlayerPress, SlotPress,
+                           DishPress, VolumePress, DisplayPress>;
 
 /// A place on the screen that a click acts on, the press it stands for, and
 /// why it does nothing now; `refusal` is empty while it acts.

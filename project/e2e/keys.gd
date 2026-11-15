@@ -5,10 +5,8 @@ extends SceneTree
 ## keys: a key change edits one row here and its binding in project.godot.
 
 const SEED: int = 11
-## How long one collection holds the collecting actor.
-const COLLECT_MS: int = 1500
-## Frames of a collection's hold, with a step to spare.
-const COLLECT_FRAMES: int = 102
+## Frames a search takes to close, with a step to spare.
+const CLOSE_FRAMES: int = 30
 ## Frames one of the run measurements holds a key down.
 const RUN_FRAMES: int = 20
 const APPRAISE_ATTEMPTS: int = 12
@@ -29,6 +27,7 @@ const KEYS: Dictionary[String, Key] = {
 	"survival_2_down": KEY_K,
 	"survival_2_run": KEY_H,
 	"survival_2_interact": KEY_O,
+	"survival_2_search": KEY_P,
 	"survival_2_feed": KEY_BRACKETLEFT,
 	"survival_1_jump": KEY_SPACE,
 	"survival_2_jump": KEY_SEMICOLON,
@@ -120,18 +119,21 @@ func _two_players() -> bool:
 		return false
 	if not await _walk_to("appraiser", keys, FIRST_SOURCE.x, FIRST_SOURCE.y):
 		return false
-	var remaining: int = _int("remaining_ms")
+	await _tap(KEYS["survival_2_search"])
 	await _tap(KEYS["survival_2_interact"])
-	if not _check(_actor("appraiser", "ingredients") == 1 and _actor("appraiser", "collecting_ms") > 0 and remaining - _int("remaining_ms") < COLLECT_MS, "%s collects for player two and holds player two, not the clock" % _name("survival_2_interact")):
+	if not _check(_actor("appraiser", "ingredients") == 1 and _actor("appraiser", "searching") >= 0, "%s opens a search and %s takes the first item into player two's slots" % [_name("survival_2_search"), _name("survival_2_interact")]):
 		return false
-	if not await _until("player two's collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+	await _tap(KEYS["survival_2_search"])
+	if not await _until("player two's search closes", func() -> bool: return _actor("appraiser", "searching") == -1, CLOSE_FRAMES):
 		return false
 	if not await _walk_route("appraiser", keys, SECOND_SOURCE):
 		return false
+	await _tap(KEYS["survival_2_search"])
 	await _tap(KEYS["survival_2_interact"])
-	if not _check(_actor("appraiser", "ingredients") == 2, "%s collects a second ingredient" % _name("survival_2_interact")):
+	if not _check(_actor("appraiser", "ingredients") == 2, "%s takes a second ingredient" % _name("survival_2_interact")):
 		return false
-	if not await _until("player two's second collection ends", func() -> bool: return _actor("appraiser", "collecting_ms") == 0, COLLECT_FRAMES):
+	await _tap(KEYS["survival_2_search"])
+	if not await _until("player two's second search closes", func() -> bool: return _actor("appraiser", "searching") == -1, CLOSE_FRAMES):
 		return false
 	await _tap(KEY_U)
 	if not await _until("player two returns", func() -> bool: return _str("phase") == "workshop", 60):

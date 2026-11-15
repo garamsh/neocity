@@ -289,7 +289,8 @@ stock_in(const Content &content, const std::set<std::uint32_t> &sources) {
       continue;
     }
     if (const auto ingredient = object->ingredient) {
-      totals[ingredient->value] += stock.remaining;
+      totals[ingredient->value] +=
+          static_cast<std::uint32_t>(stock.items.size());
     }
   }
   return totals;
@@ -659,6 +660,42 @@ TEST(TemporaryContent,
       << dishes << " dishes";
 }
 
+TEST(TemporaryContent, ContainersHoldTwoToSixSlotsAndEnoughStandOnEachMap) {
+  const auto content = temporary_content(1);
+  std::map<MapId, int> per_map;
+  for (const auto &source : content.companion.exploration.sources) {
+    EXPECT_GE(source.capacity, 2U);
+    EXPECT_LE(source.capacity, 6U);
+    EXPECT_LE(source.items.size(), source.capacity);
+    const auto object =
+        std::ranges::find(content.objects, source.id, &ObjectDefinition::id);
+    ASSERT_NE(object, content.objects.end());
+    // Only the containers that stay count; the washed-up bags drift in by day.
+    if (!object_name(source.id).starts_with("Washed-up Bag")) {
+      ++per_map[object->map];
+    }
+  }
+  EXPECT_GE(per_map[MapId::Street], 8);
+  EXPECT_GE(per_map[MapId::Aquarium], 4);
+}
+
+TEST(TemporaryContent, TheCarryRulesAndSlotCountsAreThePmsTemporaryNumbers) {
+  const auto content = temporary_content(1);
+  const auto &carry = content.companion.exploration.carry;
+  EXPECT_EQ(content.run.inventory_slots, 12U);
+  EXPECT_EQ(content.run.fridge_slots, 30U);
+  EXPECT_EQ(carry.max_weight, 20U);
+  EXPECT_EQ(carry.overweight_percent, 60U);
+  EXPECT_EQ(carry.weights.size(), 7U);
+  std::map<std::uint32_t, int> tally;
+  for (const auto &entry : carry.weights) {
+    ++tally[entry.weight];
+  }
+  EXPECT_EQ(tally[1], 3);
+  EXPECT_EQ(tally[2], 2);
+  EXPECT_EQ(tally[3], 2);
+}
+
 TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
   Game game(temporary_content(1));
   const auto world = game.world().snapshot();
@@ -695,7 +732,7 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
     const auto total = [](const std::vector<SourceStock> &sources) {
       return std::accumulate(sources.begin(), sources.end(), 0U,
                              [](std::uint32_t sum, const SourceStock &source) {
-                               return sum + source.remaining;
+                               return sum + source.items.size();
                              });
     };
     EXPECT_LT(total(after), total(before)) << "seed " << seed;
@@ -777,12 +814,12 @@ TEST(TemporaryContent,
 }
 
 TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
-  const auto first_trip = [](Content content) {
+  const auto first_day = [](Content content) {
     Game game(std::move(content));
     game.step(ALL_AI);
     for (std::uint32_t step = 0;
-         step < STEP_LIMIT &&
-         game.simulation().snapshot().phase != Phase::Workshop;
+         step < STEP_LIMIT && game.simulation().snapshot().day == 1U &&
+         game.simulation().snapshot().remaining_exploration > 0us;
          ++step) {
       game.step(ALL_AI);
     }
@@ -791,15 +828,16 @@ TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
         game.simulation().snapshot().remaining_exploration,
         std::accumulate(sources.begin(), sources.end(), 0U,
                         [](std::uint32_t sum, const SourceStock &source) {
-                          return sum + source.remaining;
+                          return sum + static_cast<std::uint32_t>(
+                                           source.items.size());
                         })};
   };
   auto content = temporary_content(1);
-  const auto [left, stock] = first_trip(content);
+  const auto [left, stock] = first_day(content);
   EXPECT_EQ(left, 0us);
   EXPECT_GT(stock, 0U);
   content.run.exploration_budget *= 10;
-  const auto [long_left, long_stock] = first_trip(content);
+  const auto [long_left, long_stock] = first_day(content);
   EXPECT_GT(long_left, 0us);
   EXPECT_LT(long_stock, stock);
 }

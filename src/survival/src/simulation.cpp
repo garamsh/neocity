@@ -24,11 +24,16 @@ Simulation::Simulation(Config config)
   if (config.exploration_budget <= std::chrono::microseconds::zero()) {
     throw std::invalid_argument("exploration budget must be positive");
   }
+  if (config.inventory_slots == 0 || config.fridge_slots == 0) {
+    throw std::invalid_argument("slot counts must be positive");
+  }
   if (config.full_acid.value == 0) {
     throw std::invalid_argument("full acid must be positive");
   }
   world.remaining_exploration = config.exploration_budget;
   world.seed = config.seed;
+  world.inventory_slots = config.inventory_slots;
+  world.fridge_slots = config.fridge_slots;
 }
 
 Result Simulation::enter(Actor actor) {
@@ -73,6 +78,48 @@ Result Simulation::collect(Actor actor, IngredientId ingredient) {
   if (state.location != Location::City) {
     return Result::NotExploring;
   }
+  if (state.inventory.size() >= world.inventory_slots) {
+    return Result::Full;
+  }
+  state.inventory.push_back(ingredient);
+  return Result::Applied;
+}
+
+Result Simulation::drop(Actor actor, IngredientId ingredient) {
+  auto &state = actor_state(actor);
+  if (state.location != Location::City) {
+    return Result::NotExploring;
+  }
+  return take(state.inventory, ingredient) ? Result::Applied
+                                           : Result::MissingIngredients;
+}
+
+Result Simulation::store(Actor actor, IngredientId ingredient) {
+  auto &state = actor_state(actor);
+  if (state.location != Location::Base) {
+    return Result::NotInWorkshop;
+  }
+  if (world.fridge.size() >= world.fridge_slots) {
+    return Result::Full;
+  }
+  if (!take(state.inventory, ingredient)) {
+    return Result::MissingIngredients;
+  }
+  world.fridge.push_back(ingredient);
+  return Result::Applied;
+}
+
+Result Simulation::withdraw(Actor actor, IngredientId ingredient) {
+  auto &state = actor_state(actor);
+  if (state.location != Location::Base) {
+    return Result::NotInWorkshop;
+  }
+  if (state.inventory.size() >= world.inventory_slots) {
+    return Result::Full;
+  }
+  if (!take(world.fridge, ingredient)) {
+    return Result::MissingIngredients;
+  }
   state.inventory.push_back(ingredient);
   return Result::Applied;
 }
@@ -83,13 +130,16 @@ Result Simulation::consume(std::span<const IngredientId> ingredients) {
   }
   auto chef = world.chef.inventory;
   auto appraiser = world.appraiser.inventory;
+  auto fridge = world.fridge;
   for (const auto ingredient : ingredients) {
-    if (!take(chef, ingredient) && !take(appraiser, ingredient)) {
+    if (!take(chef, ingredient) && !take(appraiser, ingredient) &&
+        !take(fridge, ingredient)) {
       return Result::MissingIngredients;
     }
   }
   world.chef.inventory = std::move(chef);
   world.appraiser.inventory = std::move(appraiser);
+  world.fridge = std::move(fridge);
   return Result::Applied;
 }
 

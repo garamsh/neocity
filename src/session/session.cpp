@@ -122,6 +122,8 @@ bool &key_of(survival::PlayerInput &input, hud::PlayerKey key) {
   switch (key) {
   case hud::PlayerKey::Interact:
     return input.interact;
+  case hud::PlayerKey::Search:
+    return input.search;
   case hud::PlayerKey::Feed:
     return input.feed;
   case hud::PlayerKey::EndDay:
@@ -150,10 +152,11 @@ void press_player_key(Command &command, survival::ControlMap control,
 /// not movement, which closes the open tip.
 bool acted(const Command &command) {
   return command.click || command.dish_step != survival::Direction::Idle ||
-         std::ranges::any_of(
-             command.survival, [](const survival::PlayerInput &keys) {
-               return keys.travel || keys.interact || keys.feed || keys.end_day;
-             });
+         std::ranges::any_of(command.survival,
+                             [](const survival::PlayerInput &keys) {
+                               return keys.travel || keys.interact ||
+                                      keys.search || keys.feed || keys.end_day;
+                             });
 }
 
 /// Ends the application; the running host's main loop is always its SceneTree.
@@ -413,6 +416,8 @@ void Session::click_at(Command &command, godot::Vector2 point) {
           if (run) {
             press_player_key(command, run->control(), press);
           }
+        } else if constexpr (std::is_same_v<Pressed, hud::SlotPress>) {
+          command.slot = press;
         } else if constexpr (std::is_same_v<Pressed, hud::DishPress>) {
           command.dish_step = press.direction;
         } else if constexpr (std::is_same_v<Pressed, hud::DisplayPress>) {
@@ -510,7 +515,8 @@ void Session::advance_run(SurvivalRun &open, double delta,
     open.drop_input();
     events = open.advance(delta, {}, survival::Direction::Idle);
   } else {
-    events = open.advance(delta, command.survival, command.dish_step);
+    events =
+        open.advance(delta, command.survival, command.dish_step, command.slot);
   }
   react(moments(before, open.view(), events, strides));
   if (opening) {
