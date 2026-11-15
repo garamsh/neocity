@@ -323,7 +323,6 @@ func _run() -> void:
 	# The fixed map's one-row rise needs a jump from the lower walkway.
 	await _walk_to(9, 9)
 	await _walk_to(7, 8, "chef", true)
-	await _walk_to(1, 8)
 	await _frames(30)
 	await _save_city("5-city-after-drip")
 	await _until_phase("workshop")
