@@ -14,12 +14,13 @@ const SEARCH_ATTEMPTS: int = 12
 ## Frames the AI partner stands still before the camera is read: a search of a
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
-## On this seed a party following NEXT alone escapes.
+## On this seed a party following NEXT alone ends the run satisfied.
 const LONG_RUN_SEED: int = 44
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
-const APPRAISER_DAYS: int = 29
+## Six days: a run ends at seven days fed to satisfaction, so six cannot end it.
+const APPRAISER_DAYS: int = 6
 ## This seed's pack after GATHERING_DAYS cooks this dish twice.
 const CHOSEN: String = "Fish Stew"
 const MENU_PRESSES: int = 12
@@ -111,8 +112,8 @@ const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Reg
 const FONT_GRID: int = 8
 ## The smallest size, in layout units, the interface draws a word at.
 const MIN_TEXT_SIZE: int = 16
-## When the escape checks begin, which the pause screen names.
-const ESCAPE_GOAL: String = "Escape checks from day 30"
+## What ends the run well, which the pause screen names.
+const ENDING_GOAL: String = "Satisfy the monster on 7 days"
 ## How many first-play tips there are, one per concept.
 const TIP_COUNT: int = 9
 ## The screen, where a tip must stand whole.
@@ -185,7 +186,7 @@ func _run() -> void:
 	if not failed:
 		await _chef_chooses_a_dish()
 	if not failed:
-		await _follow_next_to_an_escape()
+		await _follow_next_to_the_ending()
 	if not failed:
 		await _a_broken_passage_with_no_stock_behind_stops_setting_out()
 	if not failed:
@@ -645,7 +646,7 @@ func _menus() -> void:
 		return
 	if not _check(_hud_area() < BASE_HUD_AREA_WITH_KEYS, "the base's HUD covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), BASE_HUD_AREA_WITH_KEYS]):
 		return
-	if not _check(await _pause_shows_escape_goal(), "the pause screen over the base, and not the base, shows when escape checks begin"):
+	if not _check(await _pause_shows_ending_goal(), "the pause screen over the base, and not the base, shows what ends the run"):
 		return
 	if not await _a_click_closes_the_tip():
 		return
@@ -693,7 +694,7 @@ func _first_day() -> void:
 		return
 	if not _points_to_goal("the first city screen"):
 		return
-	if not _check(await _pause_shows_escape_goal(), "the pause screen over the city, and not the city, shows when escape checks begin"):
+	if not _check(await _pause_shows_ending_goal(), "the pause screen over the city, and not the city, shows what ends the run"):
 		return
 	if not _check(_actions() == ["INVENTORY"] and _drawn("INVENTORY") and _drawn("WASD move  Shift run  Space jump  To base"), "away from a source the action button reads inventory, and the move, run and jump keys show beside the way to base: %s" % [_actions()]):
 		return
@@ -1151,10 +1152,10 @@ func _set_out_before_feeding() -> void:
 		return
 	await _tap(KEY_Q)
 
-## Plays on what NEXT says alone to an escape. A dish the monster hated stays
+## Plays on what NEXT says alone to the ending. A dish the monster hated stays
 ## stored, so the line may end a day unfed beside it, but never beside a dish it
 ## would feed.
-func _follow_next_to_an_escape() -> void:
+func _follow_next_to_the_ending() -> void:
 	await _leave_run()
 	await _tap(KEY_1)
 	scene.pin_survival_seed(LONG_RUN_SEED)
@@ -1178,7 +1179,7 @@ func _follow_next_to_an_escape() -> void:
 			return
 	if not _check(beside.is_empty(), "the line never ends a day unfed beside a dish it would feed: %s" % [beside]):
 		return
-	if not _check(_str("phase") == "escaped", "following NEXT alone escapes"):
+	if not _check(_str("phase") == "ended", "following NEXT alone ends the run satisfied"):
 		return
 	_check(not hated.is_empty(), "the run met a dish the monster hated")
 	scene.pin_survival_seed(SEED)
@@ -1812,19 +1813,19 @@ func _result_says(words: String) -> bool:
 			return true
 	return false
 
-## Pauses and continues, and tells whether the escape goal was drawn over
+## Pauses and continues, and tells whether the ending goal was drawn over
 ## the pause screen and not on the screen under it. The screen and the pause
 ## over it each draw every word at a whole multiple of the font's grid.
-func _pause_shows_escape_goal() -> bool:
-	var before: bool = _drawn_says(ESCAPE_GOAL)
+func _pause_shows_ending_goal() -> bool:
+	var before: bool = _drawn_says(ENDING_GOAL)
 	if not _text_on_grid("the screen under the pause"):
 		return false
 	await _tap(KEY_ESCAPE)
-	var paused: bool = _str("interruption") == "paused" and _drawn_says(ESCAPE_GOAL)
+	var paused: bool = _str("interruption") == "paused" and _drawn_says(ENDING_GOAL)
 	if not _text_on_grid("the pause screen"):
 		return false
 	await _tap(KEY_ESCAPE)
-	return _str("goal") == ESCAPE_GOAL and not before and paused and _str("interruption") == ""
+	return _str("goal") == ENDING_GOAL and not before and paused and _str("interruption") == ""
 
 ## The lines the screen drew in its last frame, in drawing order.
 func _drawn_lines() -> PackedStringArray:

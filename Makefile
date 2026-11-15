@@ -151,7 +151,7 @@ test-survival: build
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 35 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \

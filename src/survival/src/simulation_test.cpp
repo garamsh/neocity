@@ -217,18 +217,18 @@ TEST(Survival, WorkshopResultsAreRefusedWhileAnActorIsExploring) {
   EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::Applied);
 }
 
-TEST(Survival, EscapeIsRefusedUntilBothActorsAreBackInTheWorkshop) {
+TEST(Survival, EndingIsRefusedUntilBothActorsAreBackInTheWorkshop) {
   Simulation simulation({.exploration_budget = 10s, .seed = 3});
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
   const auto exploring = simulation.snapshot();
-  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.end(Ending::MonsterSatisfied), Result::NotInWorkshop);
   EXPECT_EQ(simulation.snapshot(), exploring);
   ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
-  EXPECT_EQ(simulation.escape(), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().phase, Phase::Escaped);
+  EXPECT_EQ(simulation.end(Ending::MonsterSatisfied), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Ended);
 }
 
-TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
+TEST(Survival, NoCommandChangesTheSnapshotAfterTheEnding) {
   const std::array ingredients{RICE};
   Simulation simulation({.exploration_budget = 10s, .seed = 4});
   ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
@@ -240,9 +240,10 @@ TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
   EXPECT_EQ(control.finish_day(AcidLevel{1}), Result::Applied);
   EXPECT_EQ(control.enter(Actor::Chef), Result::Applied);
 
-  ASSERT_EQ(simulation.escape(), Result::Applied);
-  const auto escaped = simulation.snapshot();
-  ASSERT_EQ(escaped.phase, Phase::Escaped);
+  ASSERT_EQ(simulation.end(Ending::MonsterSatisfied), Result::Applied);
+  const auto ended = simulation.snapshot();
+  ASSERT_EQ(ended.phase, Phase::Ended);
+  ASSERT_EQ(ended.ending, Ending::MonsterSatisfied);
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::RunOver);
   EXPECT_EQ(simulation.enter(Actor::Appraiser), Result::RunOver);
   EXPECT_EQ(simulation.return_to_base(Actor::Chef), Result::NotExploring);
@@ -250,8 +251,8 @@ TEST(Survival, NoCommandChangesTheSnapshotAfterEscape) {
   EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::NotExploring);
   EXPECT_EQ(simulation.consume(ingredients), Result::NotInWorkshop);
   EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
-  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
-  EXPECT_EQ(simulation.snapshot(), escaped);
+  EXPECT_EQ(simulation.end(Ending::MonsterSatisfied), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.snapshot(), ended);
 }
 
 TEST(Simulation, FullAcidMustBePositive) {
@@ -315,7 +316,7 @@ TEST(Simulation, NoCommandChangesTheSnapshotAfterALoss) {
   EXPECT_EQ(simulation.collect(Actor::Chef, RICE), Result::NotExploring);
   EXPECT_EQ(simulation.consume(ingredients), Result::NotInWorkshop);
   EXPECT_EQ(simulation.finish_day(AcidLevel{1}), Result::NotInWorkshop);
-  EXPECT_EQ(simulation.escape(), Result::NotInWorkshop);
+  EXPECT_EQ(simulation.end(Ending::MonsterSatisfied), Result::NotInWorkshop);
   EXPECT_EQ(simulation.snapshot(), lost);
 }
 

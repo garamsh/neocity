@@ -3,7 +3,7 @@ extends SceneTree
 ## Plays the survival game from the main menu to the ending with real key events,
 ## and drives the cinematic contract with no asset, a working scene, and broken ones.
 
-## This seed misses on days 30 and 31 and hits on day 32.
+## Any seed does: following NEXT feeds to satisfaction on most days.
 const SEED: int = 7
 const INTRO: String = "res://levels/monster_mouth_escape/cinematics/intro/intro.tscn"
 const ENDING: String = "res://levels/monster_mouth_escape/cinematics/ending/ending.tscn"
@@ -16,6 +16,8 @@ const CARD_FRAME_MARGIN: int = 12
 const INTRO_CARD_FRAMES: int = 240
 const ENDING_CARD_FRAMES: int = 360
 const DAY_LIMIT: int = 120
+## The day the pinned seed ends on at 5 frames per second.
+const SLOW_END_DAY: int = 10
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
 const SLOW_FRAME_MS: int = 500
 ## The intro card's 4 seconds at SLOW_FRAME_MS, and 4 frames of margin.
@@ -70,7 +72,7 @@ func _run() -> void:
 		await part.call()
 		if failed:
 			return
-	print("Escape: ", checks, " live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, click, menu, instant finish).")
+	print("Escape: ", checks, " live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).")
 	quit(0)
 
 ## No intro asset exists, so a real run opens on the card, blocked, until it times out.
@@ -93,29 +95,24 @@ func _fallback_intro() -> void:
 	await _until("the party is back at base", func() -> bool: return _str("phase") == "workshop", 60)
 
 func _play_to_the_ending() -> void:
-	while _int("day") < 30 and _str("phase") != "lost":
+	var counted: int = 0
+	var only_grew: bool = true
+	var early_ending: bool = false
+	while _str("phase") != "ended" and _str("phase") != "lost" and _int("day") < DAY_LIMIT:
+		only_grew = only_grew and _int("satisfied_days") >= counted
+		early_ending = early_ending or _str("ending") != ""
+		counted = _int("satisfied_days")
 		await _follow_next()
-	if not _check(_str("phase") == "workshop" or _str("phase") == "exploration", "following NEXT reaches day thirty with the acid below full"):
+	if not _check(only_grew and not early_ending, "the satisfied days only grow and no ending shows before the last"):
 		return
-	if not _check(_int("escape_rolls") == 0, "no escape roll before day thirty finishes"):
+	if not _check(_str("phase") == "ended", "following NEXT satisfies the monster before the acid fills"):
 		return
-	if not _check(not _events_say("stayed shut"), "no miss is reported before the first check"):
-		return
-	while _int("day") == 30:
-		await _follow_next()
-	if not _check(_int("escape_rolls") == 1, "finishing day thirty rolls once"):
-		return
-	if not _check(_events_say("Day 30: the way out stayed shut."), "the missed check is reported"):
-		return
-	await _follow_to_the_end()
-	if not _check(_str("phase") == "escaped", "a later day escapes"):
-		return
-	_check(_int("day") > 31 and _int("escape_rolls") == _int("day") - 30, "each finished day from thirty rolled once, with a miss before the hit")
+	_check(_str("ending") == "monster_satisfied" and _int("satisfied_days") >= 7, "the run ends as monster satisfied on at least seven satisfied days")
 
 func _fallback_ending() -> void:
 	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the fallback card"):
 		return
-	if not _check(_str("dish_offered") == "", "an escaped party is offered no dish"):
+	if not _check(_str("dish_offered") == "", "an ended run is offered no dish"):
 		return
 	var before: Dictionary = _status()
 	await _tap(KEY_Q)
@@ -123,7 +120,7 @@ func _fallback_ending() -> void:
 	await _tap(KEY_F)
 	await _tap(KEY_R)
 	await _frames(30)
-	if not _check(_same_state(before), "no key changes an escaped run"):
+	if not _check(_same_state(before), "no key changes an ended run"):
 		return
 	if not _check(not _target("party_interact").is_empty() and not _target("menu").is_empty() and _card_names_no_key(), "the ending card offers its skip and the main menu to a click, naming no key"):
 		return
@@ -233,16 +230,16 @@ func _instant_ending(fixture: String) -> void:
 	_check(rolls_seen > 0 and scene.screen_name() == "main" and _status().is_empty() and not _mounted(), "an instant ending closes the run and returns to the main menu")
 
 ## Run with --fixed-fps 5: a frame spans two steps, so the step after the hit
-## would run in the frame that escaped.
+## would run in the frame that ended.
 func _slow_frames() -> void:
 	await _start()
 	await _tap(KEY_E)
 	if not _check(_str("cinematic") == "", "E skips the card on slow frames"):
 		return
 	await _follow_to_the_end()
-	if not _check(_str("phase") == "escaped" and _str("cinematic") == "ending", "a slow frame opens the ending on the hit"):
+	if not _check(_str("phase") == "ended" and _str("cinematic") == "ending", "a slow frame opens the ending"):
 		return
-	_check(_int("day") == 33 and _int("escape_rolls") == 3, "a slow frame takes the same rolls to the same day")
+	_check(_int("day") == SLOW_END_DAY and _int("satisfied_days") == 7, "a slow frame takes the same days to the same ending")
 
 ## Run with no --fixed-fps, which bypasses the engine's cap on `delta`: the card
 ## stands its 4 seconds of wall clock on frames longer than that cap.
@@ -285,7 +282,7 @@ func _leave() -> void:
 ## Plays on what NEXT says until the run ends: only following it holds the acid.
 func _follow_to_the_end() -> void:
 	while (_str("phase") == "workshop" or _str("phase") == "exploration") and _int("day") < DAY_LIMIT:
-		rolls_seen = _int("escape_rolls")
+		rolls_seen = _int("rolls")
 		await _follow_next()
 
 ## Whether NEXT names what the interact key does: appraise or cook, as the
@@ -335,7 +332,7 @@ func _mounted() -> bool:
 ## Compares the run's state, leaving out the event log's order of arrival.
 func _same_state(before: Dictionary) -> bool:
 	var now: Dictionary = _status()
-	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "escape_rolls", "foods", "chef", "appraiser", "stock", "objects"]:
+	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "satisfied_days", "foods", "chef", "appraiser", "stock", "objects"]:
 		if now[field] != before[field]:
 			return false
 	return true

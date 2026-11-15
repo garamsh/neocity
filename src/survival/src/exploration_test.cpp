@@ -633,7 +633,7 @@ ExplorationConfig two_source_tuning() {
   return config;
 }
 
-TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
+TEST(Exploration, AdvanceIsRefusedAfterTheEndingAndLeavesTheWorld) {
   constexpr ObjectId WEAK{30};
   auto objects = city();
   objects.push_back({.id = WEAK,
@@ -653,15 +653,15 @@ TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
   EXPECT_EQ(stayed_exploration.advance(1s, IDLE), Result::Applied);
   EXPECT_EQ(state_of_weak(stayed_world), ObjectState::Destroyed);
 
-  Simulation escaped({.exploration_budget = 5s, .seed = 1});
-  World escaped_world(objects);
-  Exploration escaped_exploration(escaped, escaped_world, tuning());
-  ASSERT_EQ(escaped.finish_day({}), Result::Applied);
-  ASSERT_EQ(escaped.escape(), Result::Applied);
-  const auto before = escaped_world.snapshot();
-  EXPECT_EQ(escaped_exploration.advance(1s, IDLE), Result::RunOver);
-  EXPECT_EQ(escaped_world.snapshot(), before);
-  EXPECT_EQ(state_of_weak(escaped_world), ObjectState::Intact);
+  Simulation ended({.exploration_budget = 5s, .seed = 1});
+  World ended_world(objects);
+  Exploration ended_exploration(ended, ended_world, tuning());
+  ASSERT_EQ(ended.finish_day({}), Result::Applied);
+  ASSERT_EQ(ended.end(Ending::MonsterSatisfied), Result::Applied);
+  const auto before = ended_world.snapshot();
+  EXPECT_EQ(ended_exploration.advance(1s, IDLE), Result::RunOver);
+  EXPECT_EQ(ended_world.snapshot(), before);
+  EXPECT_EQ(state_of_weak(ended_world), ObjectState::Intact);
 }
 
 /// The walkway with a rule that an actor over `max_weight` keeps 60% of its

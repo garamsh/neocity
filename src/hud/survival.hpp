@@ -48,14 +48,9 @@ struct WorldEvent {
   survival::ObjectState state = survival::ObjectState::Intact;
 };
 
-/// The escape check of finished day `day` did not hit.
-struct EscapeMissEvent {
-  std::uint32_t day = 0;
-};
-
 /// What the screen reports to the player.
-using Event = std::variant<ActionEvent, FallEvent, TouchEvent, TimeUpEvent,
-                           WorldEvent, EscapeMissEvent>;
+using Event =
+    std::variant<ActionEvent, FallEvent, TouchEvent, TimeUpEvent, WorldEvent>;
 
 /// What one human's interact, search and feed keys would do right now, and the
 /// errand AI would run in that human's place. The NEXT line names that errand,
@@ -147,14 +142,14 @@ enum class Tip : std::uint8_t {
   Feed,
   Rejected,
   Acid,
-  Escape
+  Ending
 };
 
 /// Every tip, in the order a run opens them when several are due at once and
 /// the How to play page lists them.
 inline constexpr std::array TIPS{Tip::SetOut,   Tip::Move, Tip::Collect,
                                  Tip::Appraise, Tip::Cook, Tip::Feed,
-                                 Tip::Rejected, Tip::Acid, Tip::Escape};
+                                 Tip::Rejected, Tip::Acid, Tip::Ending};
 
 /// Who plays which actor, as the choice of players offers it.
 enum class SetupEntry : std::uint8_t { Chef, Appraiser, TwoPlayers };
@@ -236,8 +231,8 @@ interruption_text(Interruption interruption);
 [[nodiscard]] godot::String tip_text(Tip tip);
 /// Names `tip` for the Godot checks, such as `set_out`.
 [[nodiscard]] godot::String tip_name(Tip tip);
-/// When the escape checks begin, on every survival screen.
-[[nodiscard]] godot::String escape_goal();
+/// What ends the run well, on every survival screen.
+[[nodiscard]] godot::String ending_goal();
 /// The last finished day's result, line by line; empty before the first.
 [[nodiscard]] std::vector<godot::String> day_result(const SurvivalFrame &frame);
 /// The offered dish's score, plain and fine, against the threshold; empty when

@@ -6,7 +6,7 @@
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
-#include <survival/escape.hpp>
+#include <survival/ending.hpp>
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/ref.hpp>
@@ -40,7 +40,7 @@ private:
   survival::World world;
   survival::Exploration exploration;
   survival::Workshop workshop;
-  survival::Escape escape;
+  survival::Endings endings;
   survival::Companion companion;
 };
 

@@ -158,11 +158,12 @@ Result Simulation::finish_day(AcidLevel acid_rise) {
   return Result::Applied;
 }
 
-Result Simulation::escape() {
+Result Simulation::end(Ending ending) {
   if (world.phase != Phase::Workshop) {
     return Result::NotInWorkshop;
   }
-  world.phase = Phase::Escaped;
+  world.phase = Phase::Ended;
+  world.ending = ending;
   return Result::Applied;
 }
 

@@ -85,7 +85,7 @@ enum class MonsterReaction : std::uint8_t {
   Satisfied
 };
 
-/// Result of a finished day; escape rules read the day number from here.
+/// Result of a finished day.
 struct DayOutcome {
   std::uint32_t completed_day = 0;
   MonsterReaction reaction = MonsterReaction::Unfed;
@@ -97,8 +97,9 @@ struct DayOutcome {
 };
 
 /// Read-only values for a renderer or companion controller. `rejected_foods`
-/// are the fed foods the monster disliked, and `rolls` counts the random draws
-/// consumed so far.
+/// are the fed foods the monster disliked, `satisfied_days` counts the days it
+/// was fed to satisfaction, and `rolls` counts the random draws consumed so
+/// far.
 struct WorkshopSnapshot {
   std::vector<IngredientId> identified;
   std::vector<Dish> foods;
@@ -106,6 +107,7 @@ struct WorkshopSnapshot {
   std::vector<IngredientId> eaten_ingredients;
   std::vector<FoodId> rejected_foods;
   std::optional<DayOutcome> last_day;
+  std::uint32_t satisfied_days = 0;
   std::uint64_t rolls = 0;
   friend bool operator==(const WorkshopSnapshot &,
                          const WorkshopSnapshot &) = default;

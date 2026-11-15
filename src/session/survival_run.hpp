@@ -4,7 +4,7 @@
 
 #include <survival/companion.hpp>
 #include <survival/content.hpp>
-#include <survival/escape.hpp>
+#include <survival/ending.hpp>
 
 #include <godot_cpp/variant/dictionary.hpp>
 
@@ -25,7 +25,7 @@ struct SurvivalFeatures {
   std::reference_wrapper<survival::World> world;
   std::reference_wrapper<survival::Exploration> exploration;
   std::reference_wrapper<survival::Workshop> workshop;
-  std::reference_wrapper<survival::Escape> escape;
+  std::reference_wrapper<survival::Endings> endings;
   std::reference_wrapper<const survival::Companion> companion;
 };
 
@@ -47,8 +47,8 @@ public:
           std::optional<hud::SlotPress> slot = std::nullopt);
   /// Forgets every key press not yet stepped, keeping the frame time.
   void drop_input();
-  /// Whether the run has ended in the escaped phase.
-  [[nodiscard]] bool escaped() const;
+  /// Whether the run has ended in an ending.
+  [[nodiscard]] bool ended() const;
   /// Whether the run has ended in the lost phase.
   [[nodiscard]] bool lost() const;
   /// Who drives each actor, for sampling their keys.

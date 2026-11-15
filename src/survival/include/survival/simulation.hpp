@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -11,13 +12,16 @@ namespace neocity::survival {
 /// The two independently located members of the exploring party.
 enum class Actor : std::uint8_t { Chef, Appraiser };
 
+/// How a run can end well; each is judged in `ending.hpp`.
+enum class Ending : std::uint8_t { MonsterSatisfied };
+
 /// Workshop includes the base and untimed appraisal, cooking and feeding.
-/// Escaped and Lost each end the run.
-enum class Phase : std::uint8_t { Workshop, Exploration, Escaped, Lost };
+/// Ended and Lost each end the run.
+enum class Phase : std::uint8_t { Workshop, Exploration, Ended, Lost };
 
 /// Whether `phase` has ended the run, so that no command changes state.
 [[nodiscard]] constexpr bool run_over(Phase phase) {
-  return phase == Phase::Escaped || phase == Phase::Lost;
+  return phase == Phase::Ended || phase == Phase::Lost;
 }
 
 /// An actor is at base or in the city; the other actor's location is separate.
@@ -58,7 +62,8 @@ struct Config {
 /// Value snapshot of one run; consumers cannot mutate the simulation through
 /// it. `fridge` is the base fridge's ingredients, one per slot, with no
 /// spoilage; `inventory_slots` and `fridge_slots` are the configured slot
-/// counts, for a consumer that fills slots. `world_time` is the run's clock:
+/// counts, for a consumer that fills slots. `ending` is set exactly when the
+/// phase is Ended. `world_time` is the run's clock:
 /// the exploration time spent today plus a full budget for every finished day,
 /// spent or not.
 struct Snapshot {
@@ -68,6 +73,7 @@ struct Snapshot {
   std::uint32_t inventory_slots = 0;
   std::uint32_t fridge_slots = 0;
   Phase phase = Phase::Workshop;
+  std::optional<Ending> ending;
   std::uint32_t day = 1;
   std::chrono::microseconds remaining_exploration{};
   AcidLevel acid;
@@ -121,9 +127,9 @@ public:
   /// clock, and starts the next day with a full exploration budget. Full acid
   /// ends the run as lost, before anything can act on the new day.
   [[nodiscard]] Result finish_day(AcidLevel acid_rise);
-  /// Ends the run from the workshop; every later command leaves the snapshot
-  /// unchanged.
-  [[nodiscard]] Result escape();
+  /// Ends the run with `ending` from the workshop; every later command leaves
+  /// the snapshot unchanged.
+  [[nodiscard]] Result end(Ending ending);
   /// Returns the complete current state, including the supplied replay seed.
   [[nodiscard]] Snapshot snapshot() const;
 
