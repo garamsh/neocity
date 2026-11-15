@@ -52,9 +52,30 @@ struct Enter {
 struct ReturnToBase {
   friend bool operator==(const ReturnToBase &, const ReturnToBase &) = default;
 };
-struct Collect {
+struct Search {
   ObjectId source;
-  friend bool operator==(const Collect &, const Collect &) = default;
+  friend bool operator==(const Search &, const Search &) = default;
+};
+struct CloseSearch {
+  friend bool operator==(const CloseSearch &, const CloseSearch &) = default;
+};
+struct Take {
+  ObjectId source;
+  IngredientId ingredient;
+  friend bool operator==(const Take &, const Take &) = default;
+};
+struct Put {
+  ObjectId source;
+  IngredientId ingredient;
+  friend bool operator==(const Put &, const Put &) = default;
+};
+struct Store {
+  IngredientId ingredient;
+  friend bool operator==(const Store &, const Store &) = default;
+};
+struct Withdraw {
+  IngredientId ingredient;
+  friend bool operator==(const Withdraw &, const Withdraw &) = default;
 };
 struct Appraise {
   IngredientId ingredient;
@@ -74,8 +95,8 @@ struct EndDayUnfed {
 };
 
 /// One discrete feature command, the same for a human and for AI.
-using Action = std::variant<Enter, ReturnToBase, Collect, Appraise, Cook, Feed,
-                            EndDayUnfed>;
+using Action = std::variant<Enter, ReturnToBase, Search, CloseSearch, Take, Put,
+                            Store, Withdraw, Appraise, Cook, Feed, EndDayUnfed>;
 
 /// The outcome the feature returned; a refusal changed nothing.
 using ActionResult = std::variant<Result, CollectionResult, WorkshopResult>;
@@ -93,13 +114,19 @@ struct ActorCommand {
 
 /// What one human pressed this step, free of device detail. `switch_actor` and
 /// `leave` are for the caller's ControlMap, not for `Companion`. `tap` is for
-/// the caller too, which turns it into `movement` for one step.
+/// the caller too, which turns it into `movement` for one step. `search` opens
+/// the container in reach, or closes the one open. `transfer` is the move the
+/// caller's screen chose between a container or the fridge and the inventory;
+/// it runs only as `Take` or `Put` while searching, and as `Store` or
+/// `Withdraw` at base.
 struct PlayerInput {
   ExplorationInput movement{};
   /// A direction pressed and released between two samples, so never held.
   Direction tap = Direction::Idle;
   bool travel = false;
   bool interact = false;
+  bool search = false;
+  std::optional<Action> transfer = std::nullopt;
   bool feed = false;
   bool end_day = false;
   bool switch_actor = false;
@@ -131,10 +158,11 @@ struct Errand {
 class Companion {
 public:
   explicit Companion(CompanionConfig settings);
-  /// Translates `input` for a human; AI ignores it. A collecting actor's
-  /// command is empty under either. Read a fresh view for each actor after
-  /// applying the other's action, and advance at most one 100ms movement unit
-  /// between commands, since AI steers from where it stands.
+  /// Translates `input` for a human; AI ignores it. A searching actor's
+  /// command is empty under either, but for closing the search. Read a fresh
+  /// view for each actor after applying the other's action, and advance at most
+  /// one 100ms movement unit between commands, since AI steers from where it
+  /// stands.
   [[nodiscard]] ActorCommand command(Actor actor, ControlMap control,
                                      const PlayerInput &input,
                                      const GameView &view) const;

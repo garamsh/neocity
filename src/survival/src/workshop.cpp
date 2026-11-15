@@ -14,7 +14,9 @@ bool carried(const Snapshot &snapshot, IngredientId ingredient) {
   return std::ranges::find(snapshot.chef.inventory, ingredient) !=
              snapshot.chef.inventory.end() ||
          std::ranges::find(snapshot.appraiser.inventory, ingredient) !=
-             snapshot.appraiser.inventory.end();
+             snapshot.appraiser.inventory.end() ||
+         std::ranges::find(snapshot.fridge, ingredient) !=
+             snapshot.fridge.end();
 }
 
 MonsterReaction react(const Recipe &recipe, std::uint64_t score,
@@ -109,6 +111,47 @@ WorkshopResult Workshop::appraise(Actor actor, IngredientId ingredient) {
   }
   state.identified.push_back(ingredient);
   return WorkshopResult::Applied;
+}
+
+namespace {
+
+WorkshopResult moved(Result result) {
+  switch (result) {
+  case Result::Applied:
+    return WorkshopResult::Applied;
+  case Result::Full:
+    return WorkshopResult::Full;
+  case Result::MissingIngredients:
+    return WorkshopResult::NotCarried;
+  case Result::NotExploring:
+  case Result::NoExplorationTime:
+  case Result::InvalidElapsed:
+  case Result::NotInWorkshop:
+  case Result::RunOver:
+  case Result::Busy:
+    return WorkshopResult::NotInWorkshop;
+  }
+  std::abort();
+}
+
+} // namespace
+
+WorkshopResult Workshop::store(Actor actor, IngredientId ingredient) {
+  // The fridge is at base, open while the partner is out in the city.
+  if (const auto phase = simulation.get().snapshot().phase;
+      phase == Phase::Escaped || phase == Phase::Lost) {
+    return WorkshopResult::NotInWorkshop;
+  }
+  return moved(simulation.get().store(actor, ingredient));
+}
+
+WorkshopResult Workshop::withdraw(Actor actor, IngredientId ingredient) {
+  // The fridge is at base, open while the partner is out in the city.
+  if (const auto phase = simulation.get().snapshot().phase;
+      phase == Phase::Escaped || phase == Phase::Lost) {
+    return WorkshopResult::NotInWorkshop;
+  }
+  return moved(simulation.get().withdraw(actor, ingredient));
 }
 
 WorkshopResult Workshop::cook(Actor actor, FoodId food) {

@@ -689,36 +689,56 @@ std::vector<Landmark> street_landmarks() {
   };
 }
 
+/// Every container with its slots and presentation, empty: `stocked` fills
+/// each with what its object supplies.
 std::vector<SourceStock> stock() {
+  using enum SourceKind;
   std::vector<SourceStock> sources{
-      {.id = TOMATO_MACHINE,
-       .kind = SourceKind::VendingMachine,
-       .remaining = 6},
-      {.id = VENDOR_CART, .kind = SourceKind::Npc, .remaining = 4},
-      {.id = SHOP_SHELF, .kind = SourceKind::Shop, .remaining = 3},
-      {.id = LOST_BASKET, .kind = SourceKind::Bag, .remaining = 4},
-      {.id = PICKLE_MACHINE,
-       .kind = SourceKind::VendingMachine,
-       .remaining = 3},
-      {.id = COLD_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
-      {.id = ROOF_BAG, .kind = SourceKind::Bag, .remaining = 2},
-      {.id = FERRY_BAG, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = TERMINAL_MACHINE,
-       .kind = SourceKind::VendingMachine,
-       .remaining = 4},
-      {.id = DECK_BAG, .kind = SourceKind::Bag, .remaining = 2},
-      {.id = DOCK_CRATE, .kind = SourceKind::Bag, .remaining = 3},
-      {.id = KEEPER_CART, .kind = SourceKind::Npc, .remaining = 4},
-      {.id = GIFT_SHELF, .kind = SourceKind::Shop, .remaining = 3},
-      {.id = JELLY_MACHINE, .kind = SourceKind::VendingMachine, .remaining = 3},
-      {.id = TANK_LOCKER, .kind = SourceKind::Shop, .remaining = 3},
+      {.id = TOMATO_MACHINE, .kind = Locker, .capacity = 6},
+      {.id = VENDOR_CART, .kind = Crates, .capacity = 4},
+      {.id = SHOP_SHELF, .kind = Shelf, .capacity = 3},
+      {.id = LOST_BASKET, .kind = Bag, .capacity = 4},
+      {.id = PICKLE_MACHINE, .kind = Locker, .capacity = 3},
+      {.id = COLD_LOCKER, .kind = Locker, .capacity = 3},
+      {.id = ROOF_BAG, .kind = Bag, .capacity = 2},
+      {.id = FERRY_BAG, .kind = Bag, .capacity = 3},
+      {.id = TERMINAL_MACHINE, .kind = Locker, .capacity = 4},
+      {.id = DECK_BAG, .kind = Bag, .capacity = 2},
+      {.id = DOCK_CRATE, .kind = Crates, .capacity = 3},
+      {.id = KEEPER_CART, .kind = Crates, .capacity = 4},
+      {.id = GIFT_SHELF, .kind = Shelf, .capacity = 3},
+      {.id = JELLY_MACHINE, .kind = Locker, .capacity = 3},
+      {.id = TANK_LOCKER, .kind = Locker, .capacity = 3},
   };
   for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
-    sources.push_back({.id = washed_bag(index),
-                       .kind = SourceKind::Bag,
-                       .remaining = BAG_STOCK});
+    sources.push_back(
+        {.id = washed_bag(index), .kind = Bag, .capacity = BAG_STOCK});
   }
   return sources;
+}
+
+/// `sources` filled to the brim with the ingredient of each one's object.
+std::vector<SourceStock> stocked(std::vector<SourceStock> sources,
+                                 const std::vector<ObjectDefinition> &objects) {
+  for (auto &source : sources) {
+    const auto object =
+        std::ranges::find(objects, source.id, &ObjectDefinition::id);
+    if (object != objects.end() && object->ingredient) {
+      source.items.assign(source.capacity, *object->ingredient);
+    }
+  }
+  return sources;
+}
+
+/// Temporary weights: the light ones weigh 1, the middling 2, the heavy 3.
+std::vector<IngredientWeight> weights() {
+  return {{.ingredient = KELP, .weight = 1},
+          {.ingredient = MUSHROOM, .weight = 1},
+          {.ingredient = PICKLES, .weight = 1},
+          {.ingredient = TOMATO, .weight = 2},
+          {.ingredient = FISH, .weight = 2},
+          {.ingredient = MEAT, .weight = 3},
+          {.ingredient = TRUFFLE, .weight = 3}};
 }
 
 /// The way to the aquarium at the end of the dock and the way back by its
@@ -818,20 +838,25 @@ std::vector<Flavor> flavors() {
 
 Content temporary_content(std::uint32_t seed) {
   auto objects = city();
+  auto sources = stocked(stock(), objects);
   auto street_cells = street_ground(objects);
   auto aquarium_cells = ground_of_terrain(objects, MapId::Aquarium, 0);
   return {
       .run = {.exploration_budget = DAY,
               .seed = seed,
-              .full_acid = AcidLevel{100}},
+              .full_acid = AcidLevel{100},
+              .inventory_slots = 12,
+              .fridge_slots = 30},
       .objects = std::move(objects),
       .companion = {.exploration = {.base = {.x = 1, .y = 8},
                                     .entry = {.x = 5, .y = 8},
                                     .exits = exits(),
                                     .interiors = interiors(),
                                     .collection_distance = 1,
-                                    .sources = stock(),
-                                    .collection_time = 1500ms,
+                                    .sources = std::move(sources),
+                                    .carry = {.weights = weights(),
+                                              .max_weight = 20,
+                                              .overweight_percent = 60},
                                     .obstacles = obstacles(),
                                     .patrols = patrols(),
                                     .absence = 10s},
@@ -874,12 +899,12 @@ namespace {
 /// What a source is, as its place name ends.
 const char *source_word(SourceKind kind) {
   switch (kind) {
-  case SourceKind::VendingMachine:
-    return "machine";
-  case SourceKind::Npc:
-    return "cart";
-  case SourceKind::Shop:
-    return "shop";
+  case SourceKind::Crates:
+    return "crates";
+  case SourceKind::Locker:
+    return "locker";
+  case SourceKind::Shelf:
+    return "shelf";
   case SourceKind::Bag:
     return "bag";
   }

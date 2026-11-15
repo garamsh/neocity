@@ -367,7 +367,8 @@ Cell CellMap::at(GridPosition cell) const {
   return cells.at(static_cast<std::size_t>(y * width + x));
 }
 
-Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
+Body physics_tick(const CellMap &map, Body body, ExplorationInput input,
+                  std::int32_t speed_percent) {
   const auto direction = input.direction;
   if (body.stance == Stance::Climbing &&
       !ladder_at(map.at(cell_of(body.position)))) {
@@ -398,7 +399,8 @@ Body physics_tick(const CellMap &map, Body body, ExplorationInput input) {
   const bool ran =
       sideways(direction) && input.running && body.stance == Stance::Standing;
   if (sideways(direction)) {
-    move_sideways(map, body, direction, ran ? PHYSICS.run : PHYSICS.walk);
+    const auto speed = (ran ? PHYSICS.run : PHYSICS.walk) * speed_percent / 100;
+    move_sideways(map, body, direction, speed);
   }
   if (body.stance == Stance::Standing &&
       !stands_on(map, cell_of(body.position))) {
@@ -484,11 +486,30 @@ std::vector<GridPosition> reachable_cells(const CellMap &map,
   return seen;
 }
 
+std::uint32_t weight_of(const CarryRules &rules, IngredientId ingredient) {
+  const auto found = std::ranges::find(rules.weights, ingredient,
+                                       &IngredientWeight::ingredient);
+  return found == rules.weights.end() ? 0 : found->weight;
+}
+
+std::uint32_t carried_weight(const CarryRules &rules,
+                             std::span<const IngredientId> items) {
+  std::uint32_t total = 0;
+  for (const auto item : items) {
+    total += weight_of(rules, item);
+  }
+  return total;
+}
+
+bool overweight(const CarryRules &rules, std::span<const IngredientId> items) {
+  return carried_weight(rules, items) > rules.max_weight;
+}
+
 Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
-  if (config.collection_time < 0us ||
+  if (config.carry.overweight_percent <= 0 ||
       !stands_on(CellMap(on_map(snapshot, MapId::Street)), config.entry)) {
     throw std::invalid_argument("exploration requires a safe entry");
   }
@@ -517,7 +538,7 @@ Exploration::Exploration(Simulation &progression, World &city,
     const auto object = std::ranges::find_if(
         snapshot.objects,
         [&](const ObjectSnapshot &entry) { return entry.id == source.id; });
-    if (source.remaining == 0 ||
+    if (source.capacity == 0 || source.items.size() > source.capacity ||
         std::ranges::find(ids, source.id) != ids.end() ||
         object == snapshot.objects.end() ||
         object->kind != ObjectKind::MaterialSource) {
@@ -553,7 +574,7 @@ Result Exploration::enter(Actor actor) {
 }
 
 Result Exploration::return_to_base(Actor actor) {
-  if (collecting(actor)) {
+  if (searching(actor)) {
     return Result::Busy;
   }
   const auto result = simulation.get().return_to_base(actor);
@@ -593,12 +614,6 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
       if (actor_state(before, actor).location == Location::City) {
         auto &state = explorer(actor);
         state.remainder += step;
-        if (auto &held = state.state.collecting) {
-          held->remaining -= std::min(step, held->remaining);
-          if (held->remaining == 0us) {
-            held.reset();
-          }
-        }
         if (auto &gone = state.state.absent) {
           *gone -= std::min(step, *gone);
         }
@@ -625,13 +640,13 @@ Result Exploration::advance(std::chrono::microseconds elapsed,
   return Result::Applied;
 }
 
-CollectionResult Exploration::collect(Actor actor, ObjectId source) {
+CollectionResult Exploration::search(Actor actor, ObjectId source) {
   if (actor_state(simulation.get().snapshot(), actor).location !=
           Location::City ||
       explorer(actor).state.absent) {
     return CollectionResult::NotExploring;
   }
-  if (collecting(actor)) {
+  if (searching(actor)) {
     return CollectionResult::Busy;
   }
   const auto stock =
@@ -656,18 +671,65 @@ CollectionResult Exploration::collect(Actor actor, ObjectId source) {
       config.collection_distance) {
     return CollectionResult::OutOfRange;
   }
-  if (stock->remaining == 0) {
-    return CollectionResult::Depleted;
+  const auto other = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
+  const auto &held = explorer(other).state.searching;
+  if (held && held->source == source) {
+    return CollectionResult::Occupied;
   }
-  if (!object->ingredient) {
-    return CollectionResult::UnknownSource;
+  explorer(actor).state.searching = Searching{.source = source};
+  return CollectionResult::Applied;
+}
+
+CollectionResult Exploration::close_search(Actor actor) {
+  if (!searching(actor)) {
+    return CollectionResult::NotSearching;
   }
-  require_applied(simulation.get().collect(actor, *object->ingredient));
-  --stock->remaining;
-  if (config.collection_time > 0us) {
-    explorer(actor).state.collecting =
-        Collecting{.source = source, .remaining = config.collection_time};
+  explorer(actor).state.searching.reset();
+  return CollectionResult::Applied;
+}
+
+SourceStock *Exploration::open_container(Actor actor, ObjectId source) {
+  const auto &held = explorer(actor).state.searching;
+  if (!held || held->source != source) {
+    return nullptr;
   }
+  const auto found =
+      std::ranges::find_if(config.sources, [source](const SourceStock &entry) {
+        return entry.id == source;
+      });
+  return found == config.sources.end() ? nullptr : &*found;
+}
+
+CollectionResult Exploration::take(Actor actor, ObjectId source,
+                                   IngredientId ingredient) {
+  auto *container = open_container(actor, source);
+  if (container == nullptr) {
+    return CollectionResult::NotSearching;
+  }
+  const auto found = std::ranges::find(container->items, ingredient);
+  if (found == container->items.end()) {
+    return CollectionResult::MissingItem;
+  }
+  if (simulation.get().collect(actor, ingredient) == Result::Full) {
+    return CollectionResult::InventoryFull;
+  }
+  container->items.erase(found);
+  return CollectionResult::Applied;
+}
+
+CollectionResult Exploration::put(Actor actor, ObjectId source,
+                                  IngredientId ingredient) {
+  auto *container = open_container(actor, source);
+  if (container == nullptr) {
+    return CollectionResult::NotSearching;
+  }
+  if (container->items.size() >= container->capacity) {
+    return CollectionResult::ContainerFull;
+  }
+  if (simulation.get().drop(actor, ingredient) != Result::Applied) {
+    return CollectionResult::MissingItem;
+  }
+  container->items.push_back(ingredient);
   return CollectionResult::Applied;
 }
 
@@ -709,8 +771,8 @@ Exploration::Explorer &Exploration::explorer(Actor actor) {
   std::abort();
 }
 
-bool Exploration::collecting(Actor actor) {
-  return explorer(actor).state.collecting.has_value();
+bool Exploration::searching(Actor actor) {
+  return explorer(actor).state.searching.has_value();
 }
 
 void Exploration::synchronize() {
@@ -829,7 +891,7 @@ void Exploration::send_away(Actor actor) {
     return;
   }
   auto &state = explorer(actor).state;
-  state.collecting.reset();
+  state.searching.reset();
   state.absent = config.absence;
 }
 
@@ -865,9 +927,15 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
   if (state.absent) {
     return;
   }
-  if (state.collecting) {
+  if (state.searching) {
     input = {};
   }
+  const auto inventory = actor == Actor::Chef
+                             ? simulation.get().snapshot().chef.inventory
+                             : simulation.get().snapshot().appraiser.inventory;
+  const auto percent = overweight(config.carry, inventory)
+                           ? config.carry.overweight_percent
+                           : 100;
   const auto map = cells();
   const auto partner = actor == Actor::Chef ? Actor::Appraiser : Actor::Chef;
   const bool together =
@@ -876,11 +944,11 @@ void Exploration::tick(Actor actor, ExplorationInput input) {
       !explorer(partner).state.absent;
   const auto partner_x = explorer(partner).state.body.position.x;
   for (auto count = 0; count < TICKS_PER_UNIT; ++count) {
-    auto next = physics_tick(map, state.body, input);
+    auto next = physics_tick(map, state.body, input, percent);
     const auto gap = std::abs(next.position.x - partner_x);
     if (together && gap > SCREEN_LOCK &&
         gap > std::abs(state.body.position.x - partner_x)) {
-      next = physics_tick(map, state.body, {.jump = input.jump});
+      next = physics_tick(map, state.body, {.jump = input.jump}, percent);
     }
     state.body = next;
     if (map.below(cell_of(state.body.position))) {

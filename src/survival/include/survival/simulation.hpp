@@ -35,7 +35,7 @@ struct AcidLevel {
   friend bool operator==(const AcidLevel &, const AcidLevel &) = default;
 };
 
-/// One actor's place and carried ingredients.
+/// One actor's place and carried ingredients, one per slot.
 struct ActorSnapshot {
   Location location = Location::Base;
   std::vector<IngredientId> inventory;
@@ -45,19 +45,28 @@ struct ActorSnapshot {
 
 /// Caller-supplied daily exploration budget and seed, with no production
 /// balance default. Acid reaching `full_acid` loses the run; left out, only the
-/// storage limit does.
+/// storage limit does. `inventory_slots` is each actor's slots and
+/// `fridge_slots` the base fridge's; left out, only the storage limit holds.
 struct Config {
   std::chrono::microseconds exploration_budget;
   std::uint32_t seed;
   AcidLevel full_acid{std::numeric_limits<std::uint32_t>::max()};
+  std::uint32_t inventory_slots = std::numeric_limits<std::uint32_t>::max();
+  std::uint32_t fridge_slots = std::numeric_limits<std::uint32_t>::max();
 };
 
 /// Value snapshot of one run; consumers cannot mutate the simulation through
-/// it. `world_time` is the run's clock: the exploration time spent today plus a
-/// full budget for every finished day, spent or not.
+/// it. `fridge` is the base fridge's ingredients, one per slot, with no
+/// spoilage; `inventory_slots` and `fridge_slots` are the configured slot
+/// counts, for a consumer that fills slots. `world_time` is the run's clock:
+/// the exploration time spent today plus a full budget for every finished day,
+/// spent or not.
 struct Snapshot {
   ActorSnapshot chef;
   ActorSnapshot appraiser;
+  std::vector<IngredientId> fridge;
+  std::uint32_t inventory_slots = 0;
+  std::uint32_t fridge_slots = 0;
   Phase phase = Phase::Workshop;
   std::uint32_t day = 1;
   std::chrono::microseconds remaining_exploration{};
@@ -76,7 +85,8 @@ enum class Result : std::uint8_t {
   NotInWorkshop,
   MissingIngredients,
   RunOver,
-  Busy
+  Busy,
+  Full
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
@@ -92,10 +102,20 @@ public:
   /// Advances only exploration; expiry returns both actors to the workshop.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed);
   /// Records collection authorized by exploration rules; no world lookup occurs
-  /// here.
+  /// here. `Result::Full` when the actor has no free slot.
   [[nodiscard]] Result collect(Actor actor, IngredientId ingredient);
+  /// Takes one `ingredient` out of a city actor's inventory, for putting it
+  /// back where it came from; `Result::MissingIngredients` if not carried.
+  [[nodiscard]] Result drop(Actor actor, IngredientId ingredient);
+  /// Moves one `ingredient` from a base actor's inventory to the fridge:
+  /// `Result::NotInWorkshop` away from base, `Result::MissingIngredients` if
+  /// not carried, `Result::Full` with no free fridge slot.
+  [[nodiscard]] Result store(Actor actor, IngredientId ingredient);
+  /// Moves one `ingredient` from the fridge to a base actor's inventory, with
+  /// the same refusals; `Result::Full` with no free inventory slot.
+  [[nodiscard]] Result withdraw(Actor actor, IngredientId ingredient);
   /// Removes every listed ingredient from the two inventories, the chef's
-  /// first, or removes none.
+  /// first, then the fridge, or removes none.
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
   /// Raises acid, stopping at full, passes the day's unspent time on the run's
   /// clock, and starts the next day with a full exploration budget. Full acid

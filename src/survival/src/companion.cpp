@@ -71,6 +71,16 @@ GridPosition landing_cell(const GameView &view, Actor actor) {
   return cell;
 }
 
+/// Whether `actor` can take one more item: a free slot, and under the most it
+/// carries without slowing.
+bool has_room(const CompanionConfig &config, const GameView &view,
+              Actor actor) {
+  const auto &inventory = state_of(view, actor).inventory;
+  return inventory.size() < view.progression.inventory_slots &&
+         carried_weight(config.exploration.carry, inventory) <
+             config.exploration.carry.max_weight;
+}
+
 /// An object to stand near and the action that works there. `lacking` marks a
 /// source of what the party carries none of.
 struct Goal {
@@ -80,28 +90,44 @@ struct Goal {
   bool lacking = false;
 };
 
-bool party_carries(const GameView &view, const ObjectSnapshot &source) {
-  const auto holds = [&source](const ActorSnapshot &state) {
-    return std::ranges::find(state.inventory, source.ingredient,
-                             [](IngredientId held) {
-                               return std::optional{held};
-                             }) != state.inventory.end();
+/// Whether the party has `ingredient` in either inventory or the fridge.
+bool party_carries(const GameView &view, IngredientId ingredient) {
+  const auto holds = [ingredient](const std::vector<IngredientId> &items) {
+    return std::ranges::find(items, ingredient) != items.end();
   };
-  return holds(view.progression.chef) || holds(view.progression.appraiser);
+  return holds(view.progression.chef.inventory) ||
+         holds(view.progression.appraiser.inventory) ||
+         holds(view.progression.fridge);
 }
 
-/// Stocked sources that are supplying, what the party lacks first.
+/// Every container that is supplying, for a human to open.
+std::vector<Goal> reachable_containers(const GameView &view) {
+  std::vector<Goal> goals;
+  for (const auto &stock : view.exploration.sources) {
+    const auto object =
+        std::ranges::find(view.world.objects, stock.id, &ObjectSnapshot::id);
+    if (object != view.world.objects.end() && object->material_available) {
+      goals.push_back({.target = stock.id,
+                       .area = object->area,
+                       .action = Search{stock.id}});
+    }
+  }
+  return goals;
+}
+
+/// Containers that hold something and are supplying, what the party lacks
+/// first.
 std::vector<Goal> collection_goals(const GameView &view) {
   std::vector<Goal> goals;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(view.world.objects, stock.id, &ObjectSnapshot::id);
-    if (stock.remaining > 0 && object != view.world.objects.end() &&
+    if (!stock.items.empty() && object != view.world.objects.end() &&
         object->material_available) {
       goals.push_back({.target = stock.id,
                        .area = object->area,
-                       .action = Collect{stock.id},
-                       .lacking = !party_carries(view, *object)});
+                       .action = Search{stock.id},
+                       .lacking = !party_carries(view, stock.items.front())});
     }
   }
   std::ranges::stable_partition(goals, &Goal::lacking);
@@ -213,8 +239,9 @@ std::optional<Route> next_errand(const CompanionConfig &config,
 }
 
 std::optional<IngredientId> first_unidentified(const GameView &view) {
-  for (const auto *inventory : {&view.progression.chef.inventory,
-                                &view.progression.appraiser.inventory}) {
+  for (const auto *inventory :
+       {&view.progression.chef.inventory, &view.progression.appraiser.inventory,
+        &view.progression.fridge}) {
     for (const auto ingredient : *inventory) {
       if (std::ranges::find(view.workshop.identified, ingredient) ==
           view.workshop.identified.end()) {
@@ -229,6 +256,8 @@ bool cookable(const Recipe &recipe, const GameView &view) {
   auto carried = view.progression.chef.inventory;
   carried.insert(carried.end(), view.progression.appraiser.inventory.begin(),
                  view.progression.appraiser.inventory.end());
+  carried.insert(carried.end(), view.progression.fridge.begin(),
+                 view.progression.fridge.end());
   for (const auto ingredient : recipe.ingredients) {
     const auto found = std::ranges::find(carried, ingredient);
     if (found == carried.end() ||
@@ -318,17 +347,24 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
                        const PlayerInput &input, const GameView &view) {
   ActorCommand command;
   if (state_of(view, actor).location == Location::City) {
-    if (explorer_of(view, actor).collecting) {
+    if (explorer_of(view, actor).searching) {
+      if (input.search) {
+        command.action = CloseSearch{};
+      } else if (input.transfer &&
+                 (std::holds_alternative<Take>(*input.transfer) ||
+                  std::holds_alternative<Put>(*input.transfer))) {
+        command.action = input.transfer;
+      }
       return command;
     }
     command.movement = input.movement;
     if (input.travel) {
       command.action = ReturnToBase{};
-    } else if (input.interact) {
+    } else if (input.search) {
       const auto position = cell_of_actor(view, actor);
       const auto range = config.exploration.collection_distance;
-      const auto goals = collection_goals(view);
-      if (const auto *goal = goal_in_range(goals, position, range)) {
+      const auto reach = reachable_containers(view);
+      if (const auto *goal = goal_in_range(reach, position, range)) {
         command.action = goal->action;
       }
     }
@@ -336,6 +372,10 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
   }
   if (input.travel) {
     command.action = Enter{};
+  } else if (input.transfer &&
+             (std::holds_alternative<Store>(*input.transfer) ||
+              std::holds_alternative<Withdraw>(*input.transfer))) {
+    command.action = input.transfer;
   } else if (input.interact) {
     command.action = role_craft(config.workshop, actor, view);
   } else if (input.feed) {
@@ -352,6 +392,13 @@ ActorCommand ai_at_workshop(const CompanionConfig &config, Actor actor,
                             ControlMap control, const GameView &view) {
   if (const auto work = ai_role_work(config.workshop, actor, view)) {
     return {.action = work};
+  }
+  // Whatever it carries goes into the fridge, which the workshop reads, so
+  // the next trip starts with free slots.
+  const auto &carried = state_of(view, actor).inventory;
+  if (!carried.empty() &&
+      view.progression.fridge.size() < view.progression.fridge_slots) {
+    return {.action = Store{carried.front()}};
   }
   const auto partner = partner_of(actor);
   // A human sets out and ends the day: the workshop has no clock to rush them.
@@ -454,9 +501,26 @@ ActorCommand plan_alone(const CompanionConfig &config, const GameView &view,
 ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
                                ControlMap control, const GameView &view) {
   const auto in_city = state_of(view, actor).location == Location::City;
-  // A collecting actor takes no command until the collection is done.
-  if (in_city && explorer_of(view, actor).collecting) {
-    return {};
+  // A searching actor takes what it has room for, then closes the container.
+  if (in_city) {
+    if (const auto &open = explorer_of(view, actor).searching) {
+      const auto stock = std::ranges::find(view.exploration.sources,
+                                           open->source, &SourceStock::id);
+      if (stock != view.exploration.sources.end() && !stock->items.empty() &&
+          has_room(config, view, actor)) {
+        return {.action = Take{open->source, stock->items.front()}};
+      }
+      return {.action = CloseSearch{}};
+    }
+    // Full, it goes home to empty its hands into the fridge.
+    if (!has_room(config, view, actor)) {
+      return {.action = ReturnToBase{}};
+    }
+  }
+  // Back at base while the partner is out, it empties its hands first.
+  if (!in_city && !state_of(view, actor).inventory.empty() &&
+      view.progression.fridge.size() < view.progression.fridge_slots) {
+    return {.action = Store{state_of(view, actor).inventory.front()}};
   }
   const auto partner = partner_of(actor);
   // Staying out with a human at base would hold the workshop shut.
@@ -571,6 +635,15 @@ ActorCommand decide(const CompanionConfig &config, Actor actor,
     return ai_at_workshop(config, actor, control, view);
   case Phase::Exploration: {
     const auto command = ai_in_exploration(config, actor, control, view);
+    // The partner has the container open: wait beside it for its turn.
+    if (command.action) {
+      if (const auto *search = std::get_if<Search>(&*command.action)) {
+        const auto &theirs = explorer_of(view, partner_of(actor)).searching;
+        if (theirs && theirs->source == search->source) {
+          return {};
+        }
+      }
+    }
     return mutant_ahead(config, actor, command, view) ? ActorCommand{}
                                                       : command;
   }
@@ -592,8 +665,33 @@ ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
 }
 
 ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
-                 Collect command) {
-  return exploration.collect(actor, command.source);
+                 Search command) {
+  return exploration.search(actor, command.source);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 CloseSearch /*command*/) {
+  return exploration.close_search(actor);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 Take command) {
+  return exploration.take(actor, command.source, command.ingredient);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 Put command) {
+  return exploration.put(actor, command.source, command.ingredient);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
+                 Store command) {
+  return workshop.store(actor, command.ingredient);
+}
+
+ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,
+                 Withdraw command) {
+  return workshop.withdraw(actor, command.ingredient);
 }
 
 ActionResult run(Exploration & /*exploration*/, Workshop &workshop, Actor actor,

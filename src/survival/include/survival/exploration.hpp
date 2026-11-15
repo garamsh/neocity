@@ -6,7 +6,9 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <optional>
+#include <span>
 #include <vector>
 
 namespace neocity::survival {
@@ -134,9 +136,11 @@ struct ExplorationInput {
 };
 
 /// One physics tick of `body` under `input`, the rule behind both movement and
-/// route planning.
+/// route planning. A walk or run covers `speed_percent` of its usual
+/// sub-cells, rounded down.
 [[nodiscard]] Body physics_tick(const CellMap &map, Body body,
-                                ExplorationInput input);
+                                ExplorationInput input,
+                                std::int32_t speed_percent = 100);
 
 /// One way out of a cell an actor holds, and the move that takes it.
 enum class Move : std::uint8_t {
@@ -168,16 +172,44 @@ struct Link {
 /// body is near enough the edge, and a body in the air keeps its heading.
 [[nodiscard]] ExplorationInput steer(Move move, const Body &body);
 
-/// Presentation categories share the world's MaterialSource identity.
-enum class SourceKind : std::uint8_t { VendingMachine, Npc, Shop, Bag };
+/// Presentation categories share the world's MaterialSource identity. A bag is
+/// a container that the tide brings and takes.
+enum class SourceKind : std::uint8_t { Crates, Locker, Shelf, Bag };
 
-/// Caller-supplied finite stock, shared by both actors for the entire run.
+/// A search container, shared by both actors for the entire run: `capacity`
+/// slots, of which `items` fill one each. What is left in it stays in it.
 struct SourceStock {
   ObjectId id;
-  SourceKind kind = SourceKind::Bag;
-  std::uint32_t remaining = 1;
+  SourceKind kind = SourceKind::Crates;
+  std::uint32_t capacity = 1;
+  std::vector<IngredientId> items = {};
   friend bool operator==(const SourceStock &, const SourceStock &) = default;
 };
+
+/// What one ingredient weighs; an ingredient with no entry weighs nothing.
+struct IngredientWeight {
+  IngredientId ingredient;
+  std::uint32_t weight = 0;
+};
+
+/// What an actor can carry before it slows. Left out, nothing slows an actor.
+struct CarryRules {
+  std::vector<IngredientWeight> weights = {};
+  std::uint32_t max_weight = std::numeric_limits<std::uint32_t>::max();
+  /// The share of its walking and running speed an actor over `max_weight`
+  /// keeps, in percent.
+  std::int32_t overweight_percent = 100;
+};
+
+/// The weight of one `ingredient`.
+[[nodiscard]] std::uint32_t weight_of(const CarryRules &rules,
+                                      IngredientId ingredient);
+/// The weight of every ingredient in `items`.
+[[nodiscard]] std::uint32_t carried_weight(const CarryRules &rules,
+                                           std::span<const IngredientId> items);
+/// Whether `items` weigh more than `rules.max_weight`.
+[[nodiscard]] bool overweight(const CarryRules &rules,
+                              std::span<const IngredientId> items);
 
 /// A zone on one map where both actors together move to another map. The two
 /// stand at `arrival` of the other map, which lies outside every zone there.
@@ -208,11 +240,11 @@ struct Patrol {
   GridPosition to;
 };
 
-/// Temporary tuning. `collection_time` is how long one collection holds the
-/// collecting actor. `entry` is the base entrance, a cell of the street.
-/// `absence` is how long an actor that touched a mutant or an obstacle is gone
-/// from the map before it returns beside its partner; it is positive whenever
-/// the config has patrols or obstacles.
+/// Temporary tuning. `carry` slows an actor that carries too much. `entry` is
+/// the base entrance, a cell of the street. `absence` is how long an actor that
+/// touched a mutant or an obstacle is gone from the map before it returns
+/// beside its partner; it is positive whenever the config has patrols or
+/// obstacles.
 struct ExplorationConfig {
   GridPosition base;
   GridPosition entry;
@@ -220,27 +252,26 @@ struct ExplorationConfig {
   std::vector<Interior> interiors;
   std::uint32_t collection_distance = 1;
   std::vector<SourceStock> sources;
-  std::chrono::microseconds collection_time{};
+  CarryRules carry = {};
   std::vector<Obstacle> obstacles;
   std::vector<Patrol> patrols;
   std::chrono::microseconds absence{};
 };
 
-/// A collection under way: the actor already holds the item and takes no
-/// command and no movement until `remaining` exploration time has passed.
-struct Collecting {
+/// A search under way: the actor has `source` open and takes no movement until
+/// it closes the search.
+struct Searching {
   ObjectId source;
-  std::chrono::microseconds remaining{};
-  friend bool operator==(const Collecting &, const Collecting &) = default;
+  friend bool operator==(const Searching &, const Searching &) = default;
 };
 
-/// Detailed body and collection hold; base has no movement. `interior` is the
+/// Detailed body and search; base has no movement. `interior` is the
 /// building whose zone the body stands in, if any. `absent` is the exploration
 /// time left before an actor that touched a mutant or an obstacle returns: it
 /// is in the city but not on the map, and its body is where it was touched.
 struct ExplorerSnapshot {
   Body body;
-  std::optional<Collecting> collecting = std::nullopt;
+  std::optional<Searching> searching = std::nullopt;
   std::optional<ObjectId> interior = std::nullopt;
   std::optional<std::chrono::microseconds> absent = std::nullopt;
   friend bool operator==(const ExplorerSnapshot &,
@@ -280,15 +311,21 @@ struct ExplorationSnapshot {
                          const ExplorationSnapshot &) = default;
 };
 
-/// Collection refusals leave inventories, stock and progression unchanged.
+/// Search refusals leave inventories, containers and progression unchanged.
+/// `Occupied`: the other actor has the container open. `Busy`: this actor
+/// already searches. `NotSearching`: the container is not open for this actor.
 enum class CollectionResult : std::uint8_t {
   Applied,
   NotExploring,
   UnknownSource,
   Unavailable,
   OutOfRange,
-  Depleted,
-  Busy
+  Occupied,
+  Busy,
+  NotSearching,
+  MissingItem,
+  InventoryFull,
+  ContainerFull
 };
 
 /// Coordinates existing progression/world commands; owns neither dependency.
@@ -302,7 +339,7 @@ public:
   /// the two are never on different maps.
   [[nodiscard]] Result enter(Actor actor);
   /// Synchronizes the detailed base position while preserving run state;
-  /// refused with `Result::Busy` while the actor is collecting.
+  /// refused with `Result::Busy` while the actor is searching.
   [[nodiscard]] Result return_to_base(Actor actor);
   /// Consumes shared time once, immediately; movement retains sub-tick time.
   /// Each 100ms movement unit runs its physics ticks under one input. While
@@ -319,11 +356,21 @@ public:
   /// Answers `Result::RunOver` with no change once the run is over.
   [[nodiscard]] Result advance(std::chrono::microseconds elapsed,
                                const std::array<ExplorationInput, 2> &inputs);
-  /// Checks identity, map, supply, distance and shared stock before recording
-  /// the source's ingredient, then holds the actor for `collection_time` while
-  /// the shared clock runs on. Expiry or a fall ends the hold, and the item is
-  /// kept.
-  [[nodiscard]] CollectionResult collect(Actor actor, ObjectId source);
+  /// Checks identity, map, supply, distance and that the other actor does not
+  /// have it open, then opens the container for `actor`, who stays in place
+  /// while the shared clock runs on until `close_search`. Returning to base
+  /// is refused while searching; a touch or the end of the day ends it.
+  [[nodiscard]] CollectionResult search(Actor actor, ObjectId source);
+  /// Closes the container `actor` has open.
+  [[nodiscard]] CollectionResult close_search(Actor actor);
+  /// Moves one `ingredient` from the open container to the actor's inventory:
+  /// `InventoryFull` with no free slot. The container keeps what is left.
+  [[nodiscard]] CollectionResult take(Actor actor, ObjectId source,
+                                      IngredientId ingredient);
+  /// Moves one `ingredient` from the actor's inventory back into the open
+  /// container: `ContainerFull` with no free slot.
+  [[nodiscard]] CollectionResult put(Actor actor, ObjectId source,
+                                     IngredientId ingredient);
   /// Returns independent values; requests are never retained in this snapshot.
   [[nodiscard]] ExplorationSnapshot snapshot() const;
 
@@ -334,7 +381,8 @@ private:
   };
 
   Explorer &explorer(Actor actor);
-  [[nodiscard]] bool collecting(Actor actor);
+  [[nodiscard]] bool searching(Actor actor);
+  [[nodiscard]] SourceStock *open_container(Actor actor, ObjectId source);
   void synchronize();
   void tick(Actor actor, ExplorationInput input);
   [[nodiscard]] bool touched(const CellMap &map, const Body &body) const;

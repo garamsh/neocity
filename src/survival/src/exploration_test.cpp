@@ -1,5 +1,7 @@
 #include <survival/exploration.hpp>
 
+#include "search_support.hpp"
+
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -43,7 +45,7 @@ ExplorationConfig tuning() {
           .exits = {},
           .interiors = {},
           .collection_distance = 1,
-          .sources = {{.id = SOURCE}},
+          .sources = {stock(SOURCE, 1)},
           .obstacles = {},
           .patrols = {}};
 }
@@ -383,7 +385,7 @@ TEST(Exploration, FallPreservesCollectedItemsAndTimeAndAllowsFreshEntry) {
   World world(definitions);
   Exploration exploration(simulation, world, tuning());
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(1s, RUN), Result::Applied);
   EXPECT_EQ(simulation.snapshot().chef.location, Location::Base);
@@ -394,7 +396,7 @@ TEST(Exploration, FallPreservesCollectedItemsAndTimeAndAllowsFreshEntry) {
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4800ms);
   EXPECT_EQ(simulation.snapshot().seed, 19U);
   EXPECT_EQ(simulation.snapshot().day, 1U);
-  EXPECT_EQ(exploration.snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 0U);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
   ASSERT_EQ(exploration.advance(50ms, WALK), Result::Applied);
@@ -407,7 +409,7 @@ TEST(Exploration, ManualReturnClearsPositionAndPartialMovementOnly) {
   Exploration exploration(simulation, world, tuning());
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(150ms, WALK), Result::Applied);
   EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
@@ -423,8 +425,8 @@ TEST(Exploration, ManualReturnClearsPositionAndPartialMovementOnly) {
   ASSERT_EQ(exploration.advance(50ms, WALK), Result::Applied);
   EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
   EXPECT_EQ(at(exploration.snapshot().appraiser), (GridPosition{.x = 2}));
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
-            CollectionResult::Depleted);
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
+            CollectionResult::MissingItem);
 }
 
 TEST(Exploration, ExpiryStopsBothActorsBeforeMovementOrCollectionBeyondBudget) {
@@ -435,7 +437,7 @@ TEST(Exploration, ExpiryStopsBothActorsBeforeMovementOrCollectionBeyondBudget) {
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   ASSERT_EQ(exploration.advance(100ms, WALK), Result::Applied);
   EXPECT_EQ(at(exploration.snapshot().chef), (GridPosition{.x = 1}));
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(10s, RUN), Result::Applied);
   EXPECT_EQ(at(exploration.snapshot().chef), BASE);
@@ -443,27 +445,27 @@ TEST(Exploration, ExpiryStopsBothActorsBeforeMovementOrCollectionBeyondBudget) {
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 0us);
   EXPECT_EQ(simulation.snapshot().phase, Phase::Workshop);
   EXPECT_EQ(simulation.snapshot().world_time, 150ms);
-  EXPECT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Appraiser, SOURCE),
             CollectionResult::NotExploring);
   EXPECT_EQ(exploration.enter(Actor::Chef), Result::NoExplorationTime);
   EXPECT_EQ(simulation.snapshot().chef.inventory,
             (std::vector{IngredientId{70}}));
 }
 
-TEST(Exploration, AllFourSourceKindsShareFiniteStockAndActorRules) {
+TEST(Exploration, AllFourContainerKindsShareStockAndActorRules) {
   auto definitions = city();
   auto config = tuning();
   config.sources.clear();
-  const std::array kinds{SourceKind::VendingMachine, SourceKind::Npc,
-                         SourceKind::Shop, SourceKind::Bag};
+  const std::array kinds{SourceKind::Crates, SourceKind::Locker,
+                         SourceKind::Shelf, SourceKind::Bag};
   for (std::size_t index = 0; index < kinds.size(); ++index) {
     const ObjectId id{static_cast<std::uint32_t>(100 + index)};
+    const IngredientId item{static_cast<std::uint32_t>(index)};
     definitions.push_back(
-        {.id = id,
-         .kind = ObjectKind::MaterialSource,
-         .ingredient = IngredientId{static_cast<std::uint32_t>(index)}});
-    config.sources.push_back(
-        {.id = id, .kind = kinds.at(index), .remaining = 2});
+        {.id = id, .kind = ObjectKind::MaterialSource, .ingredient = item});
+    auto container = stock(id, 2, item);
+    container.kind = kinds.at(index);
+    config.sources.push_back(container);
   }
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(definitions);
@@ -471,20 +473,20 @@ TEST(Exploration, AllFourSourceKindsShareFiniteStockAndActorRules) {
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
   for (const auto &source : config.sources) {
-    EXPECT_EQ(exploration.collect(Actor::Chef, source.id),
+    EXPECT_EQ(collect(exploration, Actor::Chef, source.id),
               CollectionResult::Applied);
-    EXPECT_EQ(exploration.collect(Actor::Appraiser, source.id),
+    EXPECT_EQ(collect(exploration, Actor::Appraiser, source.id),
               CollectionResult::Applied);
-    EXPECT_EQ(exploration.collect(Actor::Chef, source.id),
-              CollectionResult::Depleted);
+    EXPECT_EQ(collect(exploration, Actor::Chef, source.id),
+              CollectionResult::MissingItem);
   }
   EXPECT_EQ(simulation.snapshot().chef.inventory,
             simulation.snapshot().appraiser.inventory);
   EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 4U);
   auto copied = exploration.snapshot();
-  EXPECT_EQ(copied.sources.front().kind, SourceKind::VendingMachine);
-  copied.sources.front().remaining = 50;
-  EXPECT_EQ(exploration.snapshot().sources.front().remaining, 0U);
+  EXPECT_EQ(copied.sources.front().kind, SourceKind::Crates);
+  copied.sources.front() = stock(SOURCE, 50);
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 0U);
 }
 
 TEST(Exploration,
@@ -493,25 +495,25 @@ TEST(Exploration,
   World world(city());
   Exploration exploration(simulation, world, tuning());
   const auto at_base = exploration.snapshot();
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::NotExploring);
   EXPECT_EQ(exploration.snapshot(), at_base);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.advance(400ms, WALK), Result::Applied);
   const auto before = simulation.snapshot();
   const auto stock = exploration.snapshot();
-  EXPECT_EQ(exploration.collect(Actor::Chef, ObjectId{999}),
+  EXPECT_EQ(collect(exploration, Actor::Chef, ObjectId{999}),
             CollectionResult::UnknownSource);
-  EXPECT_EQ(exploration.collect(Actor::Chef, FLOOR),
+  EXPECT_EQ(collect(exploration, Actor::Chef, FLOOR),
             CollectionResult::UnknownSource);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::OutOfRange);
   EXPECT_EQ(simulation.snapshot(), before);
   EXPECT_EQ(exploration.snapshot(), stock);
   const std::array<ExplorationInput, 2> left{
       ExplorationInput{.direction = Direction::Left}, {}};
   ASSERT_EQ(exploration.advance(100ms, left), Result::Applied);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
 }
 
@@ -527,26 +529,26 @@ TEST(Exploration, SupplyTracksDormantDestroyedAndOwnerDestroyedWorldObjects) {
       definitions.back().destroyed_from_day = 3;
     }
     auto config = tuning();
-    config.sources.front().remaining = 2;
+    config.sources.front() = stock(SOURCE, 2);
     Simulation simulation({.exploration_budget = 5s, .seed = 0});
     World world(definitions);
     Exploration exploration(simulation, world, config);
     ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-    EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+    EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
               CollectionResult::Unavailable);
     ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
     skip_to_day(simulation, exploration, 2);
     ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-    ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+    ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
               CollectionResult::Applied);
     ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
     skip_to_day(simulation, exploration, 3);
     ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
     const auto before = simulation.snapshot();
-    EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+    EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
               CollectionResult::Unavailable);
     EXPECT_EQ(simulation.snapshot(), before);
-    EXPECT_EQ(exploration.snapshot().sources.front().remaining, 1U);
+    EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 1U);
   }
 }
 
@@ -605,7 +607,7 @@ TEST(Exploration,
   config.sources.front().id = ObjectId{999};
   EXPECT_THROW(Exploration(simulation, world, config), std::invalid_argument);
   config = tuning();
-  config.sources.front().remaining = 0;
+  config.sources.front() = stock(SOURCE, 0);
   EXPECT_THROW(Exploration(simulation, world, config), std::invalid_argument);
   config = tuning();
   config.entry = BASE;
@@ -627,7 +629,7 @@ std::vector<ObjectDefinition> two_source_city() {
 
 ExplorationConfig two_source_tuning() {
   auto config = tuning();
-  config.sources.push_back({.id = SECOND_SOURCE, .remaining = 2});
+  config.sources.push_back(stock(SECOND_SOURCE, 2, IngredientId{71}));
   return config;
 }
 
@@ -662,116 +664,201 @@ TEST(Exploration, AdvanceIsRefusedAfterEscapeAndLeavesTheWorld) {
   EXPECT_EQ(state_of_weak(escaped_world), ObjectState::Intact);
 }
 
-TEST(Exploration, ACollectionHoldsTheActorWhileTheSharedClockRunsOn) {
+/// The walkway with a rule that an actor over `max_weight` keeps 60% of its
+/// speed; ingredient 70 weighs 3 and 71 weighs 1.
+ExplorationConfig weighed_tuning(std::uint32_t max_weight) {
+  auto config = tuning();
+  config.carry = {.weights = {{.ingredient = IngredientId{70}, .weight = 3},
+                              {.ingredient = IngredientId{71}, .weight = 1}},
+                  .max_weight = max_weight,
+                  .overweight_percent = 60};
+  return config;
+}
+
+TEST(Exploration, SearchingOpensAContainerAndHoldsTheActorWhileTheClockRuns) {
   auto settings = tuning();
-  settings.sources = {{.id = SOURCE, .remaining = 5}};
-  settings.collection_time = 2s;
+  settings.sources = {stock(SOURCE, 5)};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
-            CollectionResult::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 1U);
-  EXPECT_EQ(simulation.snapshot().remaining_exploration, 5s);
-  EXPECT_EQ(simulation.snapshot().world_time, 0us);
-  EXPECT_EQ(exploration.snapshot().chef.collecting,
-            (Collecting{.source = SOURCE, .remaining = 2s}));
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  EXPECT_EQ(exploration.snapshot().chef.searching,
+            (Searching{.source = SOURCE}));
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
 
   const auto held_at = exploration.snapshot().chef.body.position;
   ASSERT_EQ(exploration.advance(1s, WALK), Result::Applied);
   EXPECT_EQ(exploration.snapshot().chef.body.position, held_at);
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4s);
-  EXPECT_EQ(simulation.snapshot().world_time, 1s);
-  EXPECT_EQ(exploration.snapshot().chef.collecting,
-            (Collecting{.source = SOURCE, .remaining = 1s}));
 
-  ASSERT_EQ(exploration.advance(1s, WALK), Result::Applied);
-  EXPECT_EQ(exploration.snapshot().chef.collecting, std::nullopt);
+  ASSERT_EQ(exploration.close_search(Actor::Chef), CollectionResult::Applied);
+  EXPECT_EQ(exploration.snapshot().chef.searching, std::nullopt);
   ASSERT_EQ(exploration.advance(100ms, WALK), Result::Applied);
   EXPECT_GT(exploration.snapshot().chef.body.position.x, held_at.x);
 }
 
-TEST(Exploration, ACollectingActorTakesNoOtherCommandUntilItIsDone) {
+TEST(Exploration, ASearchingActorTakesNoOtherCommand) {
   auto settings = two_source_tuning();
-  settings.collection_time = 1s;
-  settings.sources.at(0).remaining = 3;
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(two_source_city());
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SECOND_SOURCE),
-            CollectionResult::Applied);
-  ASSERT_EQ(exploration.advance(1s, IDLE), Result::Applied);
-  ASSERT_EQ(exploration.snapshot().chef.collecting, std::nullopt);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
-            CollectionResult::Applied);
-
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE), CollectionResult::Busy);
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  EXPECT_EQ(exploration.search(Actor::Chef, SECOND_SOURCE),
+            CollectionResult::Busy);
   EXPECT_EQ(exploration.return_to_base(Actor::Chef), Result::Busy);
-  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 2U);
   EXPECT_EQ(simulation.snapshot().chef.location, Location::City);
-
-  ASSERT_EQ(exploration.advance(1s, IDLE), Result::Applied);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
-            CollectionResult::Applied);
-  EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 3U);
+  EXPECT_EQ(exploration.take(Actor::Chef, SECOND_SOURCE, IngredientId{71}),
+            CollectionResult::NotSearching);
 }
 
-TEST(Exploration, BothActorsCollectAtOnceAndTheClockRunsOnce) {
+TEST(Exploration, TwoActorsCannotOpenTheSameContainerAtOnce) {
   auto settings = tuning();
-  settings.sources = {{.id = SOURCE, .remaining = 5}};
-  settings.collection_time = 2s;
+  settings.sources = {stock(SOURCE, 2)};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
   ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  EXPECT_EQ(exploration.search(Actor::Appraiser, SOURCE),
+            CollectionResult::Occupied);
+  EXPECT_EQ(exploration.snapshot().appraiser.searching, std::nullopt);
+  ASSERT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
             CollectionResult::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
+  ASSERT_EQ(exploration.close_search(Actor::Chef), CollectionResult::Applied);
+  // Closed, the partner opens it and finds what is left.
+  EXPECT_EQ(exploration.search(Actor::Appraiser, SOURCE),
             CollectionResult::Applied);
-  ASSERT_EQ(exploration.advance(2s, IDLE), Result::Applied);
-  EXPECT_EQ(simulation.snapshot().remaining_exploration, 3s);
-  EXPECT_EQ(exploration.snapshot().chef.collecting, std::nullopt);
-  EXPECT_EQ(exploration.snapshot().appraiser.collecting, std::nullopt);
-  EXPECT_EQ(exploration.snapshot().sources.at(0).remaining, 3U);
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 1U);
 }
 
-TEST(Exploration, ARefusedCollectionHoldsNobody) {
+TEST(Exploration, ATransferMovesOneItemAndContentsPersistAsMapState) {
   auto settings = tuning();
-  settings.sources = {{.id = SOURCE, .remaining = 1}};
-  settings.collection_time = 2s;
+  settings.sources = {stock(SOURCE, 3)};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  ASSERT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
             CollectionResult::Applied);
-  EXPECT_EQ(exploration.collect(Actor::Appraiser, SOURCE),
-            CollectionResult::Depleted);
-  EXPECT_EQ(exploration.snapshot().appraiser.collecting, std::nullopt);
-  EXPECT_TRUE(exploration.snapshot().chef.collecting.has_value());
+  EXPECT_EQ(simulation.snapshot().chef.inventory,
+            (std::vector{IngredientId{70}}));
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 2U);
+  // Undo: put it back.
+  ASSERT_EQ(exploration.put(Actor::Chef, SOURCE, IngredientId{70}),
+            CollectionResult::Applied);
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 3U);
+  ASSERT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
+            CollectionResult::Applied);
+  ASSERT_EQ(exploration.close_search(Actor::Chef), CollectionResult::Applied);
+  ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
+  skip_to_day(simulation, exploration, 2);
+  // The day after, the container still holds what was left.
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 2U);
 }
 
-TEST(Exploration, ExpiryEndsACollectionAndKeepsItsItem) {
+TEST(Exploration, ATakeIsRefusedWhenTheInventoryHasNoFreeSlot) {
   auto settings = tuning();
-  settings.sources = {{.id = SOURCE, .remaining = 5}};
-  settings.collection_time = 8s;
+  settings.sources = {stock(SOURCE, 2)};
+  Simulation simulation(
+      {.exploration_budget = 5s, .seed = 0, .inventory_slots = 1});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  ASSERT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
+            CollectionResult::Applied);
+  const auto before = exploration.snapshot();
+  EXPECT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
+            CollectionResult::InventoryFull);
+  EXPECT_EQ(exploration.snapshot(), before);
+  EXPECT_EQ(exploration.put(Actor::Chef, SOURCE, IngredientId{71}),
+            CollectionResult::MissingItem);
+}
+
+TEST(Exploration, APutIntoAFullContainerIsRefused) {
+  auto settings = tuning();
+  settings.sources = {stock(SOURCE, 2)};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{71}), Result::Applied);
+  // The container has two slots and both are taken.
+  const auto before = exploration.snapshot();
+  EXPECT_EQ(exploration.put(Actor::Chef, SOURCE, IngredientId{71}),
+            CollectionResult::ContainerFull);
+  EXPECT_EQ(exploration.snapshot(), before);
+  EXPECT_EQ(simulation.snapshot().chef.inventory,
+            (std::vector{IngredientId{71}}));
+}
+
+TEST(Exploration, AnActorOverTheMaxWeightKeepsSixtyPercentOfItsSpeed) {
+  const auto distance_after_a_walk = [](std::uint32_t carried_items) {
+    auto settings = weighed_tuning(5);
+    Simulation simulation({.exploration_budget = 5s, .seed = 0});
+    World world(city());
+    Exploration exploration(simulation, world, settings);
+    EXPECT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+    for (std::uint32_t item = 0; item < carried_items; ++item) {
+      EXPECT_EQ(simulation.collect(Actor::Chef, IngredientId{70}),
+                Result::Applied);
+    }
+    const auto start = exploration.snapshot().chef.body.position.x;
+    EXPECT_EQ(exploration.advance(500ms, WALK), Result::Applied);
+    return exploration.snapshot().chef.body.position.x - start;
+  };
+  const auto light = distance_after_a_walk(1);
+  const auto burdened = distance_after_a_walk(2);
+  ASSERT_GT(light, 0);
+  // 2 x 3 weighs 6 over a max of 5; 1 x 3 does not.
+  EXPECT_EQ(burdened * 100, light * 60);
+}
+
+TEST(Exploration, DroppingBelowTheMaxWeightRestoresFullSpeed) {
+  auto settings = weighed_tuning(5);
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{70}), Result::Applied);
+  ASSERT_EQ(simulation.collect(Actor::Chef, IngredientId{70}), Result::Applied);
+  ASSERT_TRUE(overweight(settings.carry, simulation.snapshot().chef.inventory));
+  const auto walked = [&exploration] {
+    const auto start = exploration.snapshot().chef.body.position.x;
+    EXPECT_EQ(exploration.advance(300ms, WALK), Result::Applied);
+    return exploration.snapshot().chef.body.position.x - start;
+  };
+  const auto slow = walked();
+  ASSERT_EQ(simulation.drop(Actor::Chef, IngredientId{70}), Result::Applied);
+  ASSERT_FALSE(
+      overweight(settings.carry, simulation.snapshot().chef.inventory));
+  const auto fast = walked();
+  EXPECT_EQ(slow * 100, fast * 60);
+}
+
+TEST(Exploration, ExpiryEndsASearchAndKeepsTheTakenItem) {
+  auto settings = tuning();
+  settings.sources = {stock(SOURCE, 5)};
+  Simulation simulation({.exploration_budget = 5s, .seed = 0});
+  World world(city());
+  Exploration exploration(simulation, world, settings);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.search(Actor::Chef, SOURCE), CollectionResult::Applied);
+  ASSERT_EQ(exploration.take(Actor::Chef, SOURCE, IngredientId{70}),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.advance(5s, IDLE), Result::Applied);
   const auto snapshot = simulation.snapshot();
   EXPECT_EQ(snapshot.phase, Phase::Workshop);
   EXPECT_EQ(snapshot.chef.location, Location::Base);
   EXPECT_EQ(snapshot.chef.inventory.size(), 1U);
-  EXPECT_EQ(exploration.snapshot().chef.collecting, std::nullopt);
-  EXPECT_EQ(simulation.snapshot().world_time, 5s);
+  EXPECT_EQ(exploration.snapshot().chef.searching, std::nullopt);
+  EXPECT_EQ(exploration.snapshot().sources.front().items.size(), 4U);
 }
 
 TEST(Exploration, TheWorldFollowsAFinishedDayOnceFromBase) {
@@ -787,13 +874,13 @@ TEST(Exploration, TheWorldFollowsAFinishedDayOnceFromBase) {
   EXPECT_EQ(world.snapshot().day, 2U);
 }
 
-TEST(Exploration, ACollectionTimeBelowZeroIsRefused) {
+TEST(Exploration, AnOverweightShareAtOrBelowZeroIsRefused) {
   auto settings = tuning();
-  settings.collection_time = -1us;
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
+  settings.carry.overweight_percent = 0;
   EXPECT_THROW(Exploration(simulation, world, settings), std::invalid_argument);
-  settings.collection_time = 0us;
+  settings.carry.overweight_percent = 60;
   EXPECT_NO_THROW(Exploration(simulation, world, settings));
 }
 
@@ -801,20 +888,20 @@ TEST(Exploration, ADestroyedSourceKeepsItsStockOutOfReach) {
   auto objects = city();
   objects.at(1).destroyed_from_day = 2;
   auto settings = tuning();
-  settings.sources = {{.id = SOURCE, .remaining = 3}};
+  settings.sources = {stock(SOURCE, 3)};
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(objects);
   Exploration exploration(simulation, world, settings);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  ASSERT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  ASSERT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Applied);
   ASSERT_EQ(exploration.return_to_base(Actor::Chef), Result::Applied);
   skip_to_day(simulation, exploration, 2);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
-  EXPECT_EQ(exploration.collect(Actor::Chef, SOURCE),
+  EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::Unavailable);
   EXPECT_EQ(simulation.snapshot().chef.inventory.size(), 1U);
-  EXPECT_EQ(exploration.snapshot().sources.at(0).remaining, 2U);
+  EXPECT_EQ(exploration.snapshot().sources.at(0).items.size(), 2U);
 }
 
 constexpr ObjectId HALL_FLOOR{2};
@@ -855,7 +942,7 @@ public:
                        .arrival = HALL_ARRIVAL}},
             .interiors = {{.building = SHOP,
                            .area = {.x = 5, .y = 0, .width = 2, .height = 1}}},
-            .sources = {{.id = HALL_SOURCE}},
+            .sources = {stock(HALL_SOURCE, 2)},
             .obstacles = {},
             .patrols = {}};
   }
@@ -971,11 +1058,11 @@ TEST(Exploration, BothActorsInAnExitZoneChangeTheMapAndArriveTogether) {
 TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {
   Travel travel;
   travel.both_enter();
-  EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
+  EXPECT_EQ(collect(travel.exploring(), Actor::Chef, HALL_SOURCE),
             CollectionResult::OutOfRange);
   travel.walk_together_to(16);
   ASSERT_EQ(travel.exploring().snapshot().map, MapId::Aquarium);
-  EXPECT_EQ(travel.exploring().collect(Actor::Chef, HALL_SOURCE),
+  EXPECT_EQ(collect(travel.exploring(), Actor::Chef, HALL_SOURCE),
             CollectionResult::Applied);
 }
 
@@ -1050,7 +1137,7 @@ public:
                                 .to = MapId::Aquarium,
                                 .arrival = {.x = 2, .y = 0}}},
                      .interiors = {},
-                     .sources = {{.id = NEAR_SOURCE}},
+                     .sources = {stock(NEAR_SOURCE, 1)},
                      .obstacles = std::move(obstacles),
                      .patrols = std::move(patrols),
                      .absence = ABSENCE}) {}
@@ -1279,7 +1366,7 @@ TEST(Exploration, AnAbsentActorCannotCollectFromASourceInRange) {
   ASSERT_LE(distance(at(danger.explorer(Actor::Chef)),
                      {.x = 21, .y = 0, .width = 1, .height = 1}),
             1);
-  EXPECT_EQ(danger.exploring().collect(Actor::Chef, Danger::NEAR_SOURCE),
+  EXPECT_EQ(collect(danger.exploring(), Actor::Chef, Danger::NEAR_SOURCE),
             CollectionResult::NotExploring);
   // The control: the partner, on the map and in range, collects.
   danger.press(Actor::Appraiser, Direction::Left);
@@ -1287,7 +1374,7 @@ TEST(Exploration, AnAbsentActorCannotCollectFromASourceInRange) {
        ++tick) {
     danger.press(Actor::Appraiser, Direction::Left);
   }
-  EXPECT_EQ(danger.exploring().collect(Actor::Appraiser, Danger::NEAR_SOURCE),
+  EXPECT_EQ(collect(danger.exploring(), Actor::Appraiser, Danger::NEAR_SOURCE),
             CollectionResult::Applied);
 }
 
