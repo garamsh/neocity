@@ -182,7 +182,7 @@ struct SourceStock {
   ObjectId id;
   SourceKind kind = SourceKind::Crates;
   std::uint32_t capacity = 1;
-  std::vector<IngredientId> items = {};
+  std::vector<IngredientId> items;
   friend bool operator==(const SourceStock &, const SourceStock &) = default;
 };
 
@@ -194,7 +194,7 @@ struct IngredientWeight {
 
 /// What an actor can carry before it slows. Left out, nothing slows an actor.
 struct CarryRules {
-  std::vector<IngredientWeight> weights = {};
+  std::vector<IngredientWeight> weights;
   std::uint32_t max_weight = std::numeric_limits<std::uint32_t>::max();
   /// The share of its walking and running speed an actor over `max_weight`
   /// keeps, in percent.

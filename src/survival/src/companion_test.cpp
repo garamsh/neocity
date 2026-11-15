@@ -697,12 +697,14 @@ TEST(Companion, ASearchingActorMovesNotAndOnlyTransfersOrCloses) {
       companion.command(Actor::Chef, two_players(), pressed, view);
   EXPECT_EQ(closed.action, std::optional<Action>{CloseSearch{}});
   EXPECT_EQ(closed.movement.direction, Direction::Idle);
-  const PlayerInput moving{.movement = {.direction = Direction::Right},
-                           .travel = true,
-                           .transfer = Action{Take{SOURCE, CARROT}}};
+  const PlayerInput moving{
+      .movement = {.direction = Direction::Right},
+      .travel = true,
+      .transfer = Action{Take{.source = SOURCE, .ingredient = CARROT}}};
   const auto taking =
       companion.command(Actor::Chef, two_players(), moving, view);
-  EXPECT_EQ(taking.action, (std::optional<Action>{Take{SOURCE, CARROT}}));
+  EXPECT_EQ(taking.action, (std::optional<Action>{
+                               Take{.source = SOURCE, .ingredient = CARROT}}));
   EXPECT_EQ(taking.movement.direction, Direction::Idle);
   // A fridge move is not a container move.
   const PlayerInput stored{.transfer = Action{Store{CARROT}}};
@@ -1373,11 +1375,13 @@ TEST(Companion, ASearchingAiTakesTheFirstItemWhileItHasRoomThenCloses) {
   add_source(view, SOURCE, 3);
   view.exploration.sources.back() = stock(SOURCE, 3, CARROT);
   view.exploration.chef.searching = Searching{.source = SOURCE};
-  EXPECT_EQ(ai_action(view, Actor::Chef),
-            (std::optional<Action>{Take{SOURCE, CARROT}}));
+  EXPECT_EQ(
+      ai_action(view, Actor::Chef),
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
   view.progression.chef.inventory.assign(11, ONION);
-  EXPECT_EQ(ai_action(view, Actor::Chef),
-            (std::optional<Action>{Take{SOURCE, CARROT}}));
+  EXPECT_EQ(
+      ai_action(view, Actor::Chef),
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
   // The twelfth slot is taken: no room left.
   view.progression.chef.inventory.push_back(ONION);
   EXPECT_EQ(ai_action(view, Actor::Chef), std::optional<Action>{CloseSearch{}});
@@ -1403,8 +1407,9 @@ TEST(Companion, AnAiOverTheMaxWeightTakesNothingMoreAndGoesHome) {
   view.exploration.sources.back() = stock(SOURCE, 3, CARROT);
   view.exploration.chef.searching = Searching{.source = SOURCE};
   view.progression.chef.inventory = {CARROT};
-  EXPECT_EQ(heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
-            (std::optional<Action>{Take{SOURCE, CARROT}}));
+  EXPECT_EQ(
+      heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
+      (std::optional<Action>{Take{.source = SOURCE, .ingredient = CARROT}}));
   view.progression.chef.inventory = {CARROT, CARROT};
   EXPECT_EQ(heavy.command(Actor::Chef, ALL_AI, NO_INPUT, view).action,
             std::optional<Action>{CloseSearch{}});
@@ -1442,13 +1447,14 @@ TEST(Companion, AnAiAtBaseStoresWhatItCarriesWhileItsPartnerIsOut) {
 }
 
 TEST(Companion, AHumanMovesBetweenInventoryAndFridgeOnlyAtBase) {
-  auto view = base_view();
+  const auto view = base_view();
   const auto companion = companion_with();
   const PlayerInput withdraw{.transfer = Action{Withdraw{CARROT}}};
   EXPECT_EQ(
       companion.command(Actor::Chef, two_players(), withdraw, view).action,
       (std::optional<Action>{Withdraw{CARROT}}));
-  const PlayerInput take{.transfer = Action{Take{SOURCE, CARROT}}};
+  const PlayerInput take{
+      .transfer = Action{Take{.source = SOURCE, .ingredient = CARROT}}};
   EXPECT_FALSE(companion.command(Actor::Chef, two_players(), take, view)
                    .action.has_value());
 }

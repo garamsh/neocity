@@ -138,8 +138,8 @@ bool survival_controls_held() {
   return std::ranges::any_of(KEY_SETS, [input](const KeySet &keys) {
     return std::ranges::any_of(
         std::array{keys.left, keys.right, keys.up, keys.down, keys.run,
-                   keys.travel, keys.interact, keys.search, keys.feed, keys.end_day,
-                   keys.switch_actor, keys.leave, keys.jump},
+                   keys.travel, keys.interact, keys.search, keys.feed,
+                   keys.end_day, keys.switch_actor, keys.leave, keys.jump},
         [input](const char *action) {
           return input->is_action_pressed(action);
         });

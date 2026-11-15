@@ -11,7 +11,7 @@ const ENTRANCE_MS: int = 300
 ## A word of each concept the How to play page explains, in its order: set
 ## out, move, collect, appraise, cook, feed, a hated dish, acid,
 ## and the escape.
-const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Collect", "?", "cooks", "Feeding", "hated", "acid", "way out"]
+const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Search", "?", "cooks", "Feeding", "hated", "acid", "way out"]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}

@@ -152,11 +152,11 @@ void press_player_key(Command &command, survival::ControlMap control,
 /// not movement, which closes the open tip.
 bool acted(const Command &command) {
   return command.click || command.dish_step != survival::Direction::Idle ||
-         std::ranges::any_of(
-             command.survival, [](const survival::PlayerInput &keys) {
-               return keys.travel || keys.interact || keys.search || keys.feed ||
-                      keys.end_day;
-             });
+         std::ranges::any_of(command.survival,
+                             [](const survival::PlayerInput &keys) {
+                               return keys.travel || keys.interact ||
+                                      keys.search || keys.feed || keys.end_day;
+                             });
 }
 
 /// Ends the application; the running host's main loop is always its SceneTree.
@@ -515,8 +515,8 @@ void Session::advance_run(SurvivalRun &open, double delta,
     open.drop_input();
     events = open.advance(delta, {}, survival::Direction::Idle);
   } else {
-    events = open.advance(delta, command.survival, command.dish_step,
-                          command.slot);
+    events =
+        open.advance(delta, command.survival, command.dish_step, command.slot);
   }
   react(moments(before, open.view(), events, strides));
   if (opening) {

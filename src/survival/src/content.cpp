@@ -694,25 +694,27 @@ std::vector<Landmark> street_landmarks() {
 std::vector<SourceStock> stock() {
   using enum SourceKind;
   std::vector<SourceStock> sources{
-      {.id = TOMATO_MACHINE, .kind = Locker, .capacity = 6},
-      {.id = VENDOR_CART, .kind = Crates, .capacity = 4},
-      {.id = SHOP_SHELF, .kind = Shelf, .capacity = 3},
-      {.id = LOST_BASKET, .kind = Bag, .capacity = 4},
-      {.id = PICKLE_MACHINE, .kind = Locker, .capacity = 3},
-      {.id = COLD_LOCKER, .kind = Shelf, .capacity = 3},
-      {.id = ROOF_BAG, .kind = Bag, .capacity = 2},
-      {.id = FERRY_BAG, .kind = Bag, .capacity = 3},
-      {.id = TERMINAL_MACHINE, .kind = Locker, .capacity = 4},
-      {.id = DECK_BAG, .kind = Bag, .capacity = 2},
-      {.id = DOCK_CRATE, .kind = Bag, .capacity = 3},
-      {.id = KEEPER_CART, .kind = Crates, .capacity = 4},
-      {.id = GIFT_SHELF, .kind = Shelf, .capacity = 3},
-      {.id = JELLY_MACHINE, .kind = Locker, .capacity = 3},
-      {.id = TANK_LOCKER, .kind = Shelf, .capacity = 3},
+      {.id = TOMATO_MACHINE, .kind = Locker, .capacity = 6, .items = {}},
+      {.id = VENDOR_CART, .kind = Crates, .capacity = 4, .items = {}},
+      {.id = SHOP_SHELF, .kind = Shelf, .capacity = 3, .items = {}},
+      {.id = LOST_BASKET, .kind = Bag, .capacity = 4, .items = {}},
+      {.id = PICKLE_MACHINE, .kind = Locker, .capacity = 3, .items = {}},
+      {.id = COLD_LOCKER, .kind = Shelf, .capacity = 3, .items = {}},
+      {.id = ROOF_BAG, .kind = Bag, .capacity = 2, .items = {}},
+      {.id = FERRY_BAG, .kind = Bag, .capacity = 3, .items = {}},
+      {.id = TERMINAL_MACHINE, .kind = Locker, .capacity = 4, .items = {}},
+      {.id = DECK_BAG, .kind = Bag, .capacity = 2, .items = {}},
+      {.id = DOCK_CRATE, .kind = Bag, .capacity = 3, .items = {}},
+      {.id = KEEPER_CART, .kind = Crates, .capacity = 4, .items = {}},
+      {.id = GIFT_SHELF, .kind = Shelf, .capacity = 3, .items = {}},
+      {.id = JELLY_MACHINE, .kind = Locker, .capacity = 3, .items = {}},
+      {.id = TANK_LOCKER, .kind = Shelf, .capacity = 3, .items = {}},
   };
   for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
-    sources.push_back(
-        {.id = washed_bag(index), .kind = Bag, .capacity = BAG_STOCK});
+    sources.push_back({.id = washed_bag(index),
+                       .kind = Bag,
+                       .capacity = BAG_STOCK,
+                       .items = {}});
   }
   return sources;
 }
@@ -723,8 +725,10 @@ std::vector<SourceStock> stocked(std::vector<SourceStock> sources,
   for (auto &source : sources) {
     const auto object =
         std::ranges::find(objects, source.id, &ObjectDefinition::id);
-    if (object != objects.end() && object->ingredient) {
-      source.items.assign(source.capacity, *object->ingredient);
+    const auto ingredient =
+        object != objects.end() ? object->ingredient : std::nullopt;
+    if (ingredient) {
+      source.items.assign(source.capacity, *ingredient);
     }
   }
   return sources;

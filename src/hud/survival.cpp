@@ -1006,9 +1006,9 @@ std::size_t rows_of(std::size_t slots) {
 
 /// Where slot `index` of a block of slots at `origin` stands.
 godot::Rect2 slot_area(Vector2 origin, std::size_t index) {
+  const std::size_t row = index / SLOT_COLUMNS;
   return rect(origin.x + static_cast<float>(index % SLOT_COLUMNS) * SLOT_PITCH,
-              origin.y + static_cast<float>(index / SLOT_COLUMNS) * SLOT_PITCH,
-              SLOT, SLOT);
+              origin.y + static_cast<float>(row) * SLOT_PITCH, SLOT, SLOT);
 }
 
 /// Each open transfer screen, chef first: one centred, two side by side.

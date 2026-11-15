@@ -508,7 +508,8 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
                                            open->source, &SourceStock::id);
       if (stock != view.exploration.sources.end() && !stock->items.empty() &&
           has_room(config, view, actor)) {
-        return {.action = Take{open->source, stock->items.front()}};
+        return {.action = Take{.source = open->source,
+                               .ingredient = stock->items.front()}};
       }
       return {.action = CloseSearch{}};
     }

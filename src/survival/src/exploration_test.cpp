@@ -699,7 +699,7 @@ TEST(Exploration, SearchingOpensAContainerAndHoldsTheActorWhileTheClockRuns) {
 }
 
 TEST(Exploration, ASearchingActorTakesNoOtherCommand) {
-  auto settings = two_source_tuning();
+  const auto settings = two_source_tuning();
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(two_source_city());
   Exploration exploration(simulation, world, settings);
@@ -800,7 +800,7 @@ TEST(Exploration, APutIntoAFullContainerIsRefused) {
 
 TEST(Exploration, AnActorOverTheMaxWeightKeepsSixtyPercentOfItsSpeed) {
   const auto distance_after_a_walk = [](std::uint32_t carried_items) {
-    auto settings = weighed_tuning(5);
+    const auto settings = weighed_tuning(5);
     Simulation simulation({.exploration_budget = 5s, .seed = 0});
     World world(city());
     Exploration exploration(simulation, world, settings);
@@ -821,7 +821,7 @@ TEST(Exploration, AnActorOverTheMaxWeightKeepsSixtyPercentOfItsSpeed) {
 }
 
 TEST(Exploration, DroppingBelowTheMaxWeightRestoresFullSpeed) {
-  auto settings = weighed_tuning(5);
+  const auto settings = weighed_tuning(5);
   Simulation simulation({.exploration_budget = 5s, .seed = 0});
   World world(city());
   Exploration exploration(simulation, world, settings);

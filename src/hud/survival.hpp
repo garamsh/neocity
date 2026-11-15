@@ -57,9 +57,9 @@ struct EscapeMissEvent {
 using Event = std::variant<ActionEvent, FallEvent, TouchEvent, TimeUpEvent,
                            WorldEvent, EscapeMissEvent>;
 
-/// What one human's interact, search and feed keys would do right now, and the errand
-/// AI would run in that human's place. The NEXT line names that errand, so the
-/// screen tells a player where to walk.
+/// What one human's interact, search and feed keys would do right now, and the
+/// errand AI would run in that human's place. The NEXT line names that errand,
+/// so the screen tells a player where to walk.
 struct Offers {
   std::optional<survival::Action> interact;
   /// The container the search key would open, if one is in reach.

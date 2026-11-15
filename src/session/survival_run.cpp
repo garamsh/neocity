@@ -527,7 +527,8 @@ void SurvivalRun::through_screen(std::size_t index, Actor actor,
   if (screen.mine && screen.slot < mine.size()) {
     const auto item = mine.at(screen.slot);
     if (container != nullptr) {
-      input.transfer = survival::Put{container->id, item};
+      input.transfer =
+          survival::Put{.source = container->id, .ingredient = item};
     } else if (!in_city) {
       input.transfer = survival::Store{item};
     } else {
@@ -537,7 +538,8 @@ void SurvivalRun::through_screen(std::size_t index, Actor actor,
   } else if (!screen.mine && has_other && screen.slot < other.size()) {
     const auto item = other.at(screen.slot);
     if (container != nullptr) {
-      input.transfer = survival::Take{container->id, item};
+      input.transfer =
+          survival::Take{.source = container->id, .ingredient = item};
     } else {
       input.transfer = survival::Withdraw{item};
     }
