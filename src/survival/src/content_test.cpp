@@ -670,7 +670,10 @@ TEST(TemporaryContent, ContainersHoldTwoToSixSlotsAndEnoughStandOnEachMap) {
     const auto object =
         std::ranges::find(content.objects, source.id, &ObjectDefinition::id);
     ASSERT_NE(object, content.objects.end());
-    ++per_map[object->map];
+    // Only the containers that stay count; the washed-up bags drift in by day.
+    if (!object_name(source.id).starts_with("Washed-up Bag")) {
+      ++per_map[object->map];
+    }
   }
   EXPECT_GE(per_map[MapId::Street], 8);
   EXPECT_GE(per_map[MapId::Aquarium], 4);
