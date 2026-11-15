@@ -68,7 +68,7 @@ std::optional<audio::Cue> action_cue(const hud::ActionEvent &event,
         if constexpr (std::is_same_v<Done, survival::Enter> ||
                       std::is_same_v<Done, survival::ReturnToBase>) {
           return audio::Cue::Travel;
-        } else if constexpr (std::is_same_v<Done, survival::Collect>) {
+        } else if constexpr (std::is_same_v<Done, survival::Take>) {
           return audio::Cue::Collect;
         } else if constexpr (std::is_same_v<Done, survival::Appraise>) {
           return missed ? audio::Cue::AppraisalFailed : audio::Cue::Identified;

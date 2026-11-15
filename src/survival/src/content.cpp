@@ -699,16 +699,16 @@ std::vector<SourceStock> stock() {
       {.id = SHOP_SHELF, .kind = Shelf, .capacity = 3},
       {.id = LOST_BASKET, .kind = Bag, .capacity = 4},
       {.id = PICKLE_MACHINE, .kind = Locker, .capacity = 3},
-      {.id = COLD_LOCKER, .kind = Locker, .capacity = 3},
+      {.id = COLD_LOCKER, .kind = Shelf, .capacity = 3},
       {.id = ROOF_BAG, .kind = Bag, .capacity = 2},
       {.id = FERRY_BAG, .kind = Bag, .capacity = 3},
       {.id = TERMINAL_MACHINE, .kind = Locker, .capacity = 4},
       {.id = DECK_BAG, .kind = Bag, .capacity = 2},
-      {.id = DOCK_CRATE, .kind = Crates, .capacity = 3},
+      {.id = DOCK_CRATE, .kind = Bag, .capacity = 3},
       {.id = KEEPER_CART, .kind = Crates, .capacity = 4},
       {.id = GIFT_SHELF, .kind = Shelf, .capacity = 3},
       {.id = JELLY_MACHINE, .kind = Locker, .capacity = 3},
-      {.id = TANK_LOCKER, .kind = Locker, .capacity = 3},
+      {.id = TANK_LOCKER, .kind = Shelf, .capacity = 3},
   };
   for (std::size_t index = 0; index < WASHED_BAG_COUNT; ++index) {
     sources.push_back(

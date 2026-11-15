@@ -32,6 +32,8 @@ const char *key_word(PlayerKey key) {
   switch (key) {
   case PlayerKey::Interact:
     return "interact";
+  case PlayerKey::Search:
+    return "search";
   case PlayerKey::Feed:
     return "feed";
   case PlayerKey::EndDay:
@@ -99,6 +101,10 @@ String press_name(const Press &press) {
         } else if constexpr (std::is_same_v<Pressed, PlayerPress>) {
           return String(pressed.actor ? actor_word(*pressed.actor) : "party") +
                  "_" + key_word(pressed.key);
+        } else if constexpr (std::is_same_v<Pressed, SlotPress>) {
+          return String(actor_word(pressed.actor)) +
+                 (pressed.mine ? "_mine_" : "_other_") +
+                 String::num_int64(static_cast<std::int64_t>(pressed.index));
         } else if constexpr (std::is_same_v<Pressed, DishPress>) {
           return pressed.direction == survival::Direction::Up ? "dish_up"
                                                               : "dish_down";

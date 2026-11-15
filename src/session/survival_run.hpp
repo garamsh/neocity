@@ -43,7 +43,8 @@ public:
   /// returns the events those steps recorded, oldest first.
   std::vector<hud::Event>
   advance(double delta, const std::array<survival::PlayerInput, 2> &input,
-          survival::Direction dish_press);
+          survival::Direction dish_press,
+          std::optional<hud::SlotPress> slot = std::nullopt);
   /// Forgets every key press not yet stepped, keeping the frame time.
   void drop_input();
   /// Whether the run has ended in the escaped phase.
@@ -72,6 +73,11 @@ private:
   command_for(survival::Actor actor, const survival::PlayerInput &input,
               const survival::GameView &current) const;
   void pick_dish(const survival::GameView &current);
+  /// Moves a human's transfer cursor, opens or closes the screen, and turns the
+  /// interact key into the transfer the cursor is on while the screen is open.
+  void through_screen(std::size_t index, survival::Actor actor,
+                      survival::PlayerInput &input,
+                      const survival::GameView &current);
   void step();
   void run_action(survival::Actor actor, const survival::Action &action,
                   std::uint32_t day);
@@ -90,6 +96,17 @@ private:
   /// Game time left before each actor's interact edge acts again; a held run
   /// takes no step, so it does not run down.
   std::array<std::chrono::milliseconds, 2> interact_hold{};
+  /// Each human's transfer screen, chef first.
+  std::array<hud::TransferScreen, 2> screens{};
+  /// Where each screen opened, so changing places closes it.
+  std::array<survival::Location, 2> opened_in{};
+  /// Whether a container was open at the last step, so its ending closes the
+  /// screen.
+  std::array<bool, 2> was_searching{};
+  /// The direction each cursor last moved on, so a held key moves it once.
+  std::array<survival::Direction, 2> cursor_dir{};
+  /// A click on a slot since the last step.
+  std::optional<hud::SlotPress> pending_slot;
   /// The chef's up or down press since the last step.
   survival::Direction dish_step = survival::Direction::Idle;
   /// Lasts for the day and applies while it can be cooked.

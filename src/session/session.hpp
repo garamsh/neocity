@@ -55,6 +55,8 @@ struct Command {
   std::optional<godot::Vector2> pointer;
   /// The mouse button went down this frame, at `pointer`.
   bool click = false;
+  /// A click on a transfer slot this frame.
+  std::optional<hud::SlotPress> slot;
 };
 
 /// Plays one cinematic scene at a time for the session, without ever failing

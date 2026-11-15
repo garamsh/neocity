@@ -14,11 +14,11 @@ namespace {
 /// How long a tip shows when nothing closes it first; a temporary value.
 constexpr double TIP_SECONDS = 8.0;
 
-/// Whether a human in the city stands where its interact key collects.
-bool human_can_collect(const hud::SurvivalFrame &frame) {
+/// Whether a human in the city stands where its search key opens a container.
+bool human_can_search(const hud::SurvivalFrame &frame) {
   return std::ranges::any_of(frame.offers, [](const hud::Offers &offers) {
-    return offers.interact &&
-           std::holds_alternative<survival::Collect>(*offers.interact);
+    return offers.search &&
+           std::holds_alternative<survival::Search>(*offers.search);
   });
 }
 
@@ -56,7 +56,7 @@ bool due(hud::Tip tip, const hud::SurvivalFrame &frame) {
   case hud::Tip::Move:
     return human_in_city(frame);
   case hud::Tip::Collect:
-    return human_can_collect(frame);
+    return human_can_search(frame);
   case hud::Tip::Appraise:
     return carries_unidentified(view);
   case hud::Tip::Cook:

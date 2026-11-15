@@ -84,8 +84,8 @@ constexpr float NOTE_WIDTH = 340.0F;
 constexpr float NOTE_HEIGHT = 24.0F;
 constexpr float NOTE_SECONDS = 4.0F;
 constexpr float NOTE_FADE_SECONDS = 1.0F;
-/// The bottom corners: the two actors at the left, the bag in the middle,
-/// and the action at the right in the city or the dishes at base.
+/// The bottom corners: the two actors at the left and the action at the right
+/// in the city or the dishes at base.
 constexpr float FOOT_HEIGHT = 84.0F;
 constexpr float FOOT_Y = SCREEN_HEIGHT - MARGIN - FOOT_HEIGHT;
 constexpr float FRAME = 7.0F;
@@ -99,14 +99,17 @@ constexpr float APPRAISER_FACE_Y = 27.0F;
 constexpr float FACE = 32.0F;
 constexpr float ACTOR_COLUMN = MARGIN + PORTRAIT + 12.0F;
 constexpr float ACTOR_TEXT_WIDTH = ACTOR_WIDTH - ACTOR_COLUMN - FRAME;
-constexpr float BAG_X = MARGIN + 2.0F * (ACTOR_WIDTH + GAP);
-constexpr std::size_t BAG_SLOTS = 7;
-constexpr float SLOT = 64.0F;
-constexpr float SLOT_PITCH = 66.0F;
-constexpr float BAG_WIDTH =
-    static_cast<float>(BAG_SLOTS) * SLOT_PITCH - 2.0F + 2.0F * 10.0F;
 constexpr float ICON = 56.0F;
-constexpr float ACTION_X = BAG_X + BAG_WIDTH + GAP;
+/// The action panel keeps the place it had beside the old bag bar.
+constexpr float ACTION_X = MARGIN + 2.0F * (ACTOR_WIDTH + GAP) + 480.0F + GAP;
+/// A transfer screen: slots in rows of eight under a title, the container's
+/// (or the fridge's) over the actor's own.
+constexpr float SLOT = 58.0F;
+constexpr float SLOT_PITCH = 60.0F;
+constexpr std::size_t SLOT_COLUMNS = 8;
+constexpr float TRANSFER_WIDTH =
+    static_cast<float>(SLOT_COLUMNS) * SLOT_PITCH - 2.0F + 2.0F * INSET;
+constexpr float TRANSFER_Y = 116.0F;
 constexpr float ACTION_WIDTH = SCREEN_WIDTH - MARGIN - ACTION_X;
 constexpr float ACTION_INNER = ACTION_WIDTH - 2.0F * 10.0F;
 constexpr int ACTION_SIZE = SMALL_SIZE;
@@ -220,6 +223,7 @@ struct KeyLabels {
   const char *run;
   const char *travel;
   const char *interact;
+  const char *search;
   const char *feed;
   const char *end_day;
   const char *switch_actor;
@@ -232,6 +236,7 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .run = "Shift",
                                           .travel = "Q",
                                           .interact = "E",
+                                          .search = "R",
                                           .feed = "F",
                                           .end_day = "G",
                                           .switch_actor = "Tab",
@@ -242,6 +247,7 @@ constexpr std::array KEY_LABELS{KeyLabels{.move = "WASD",
                                           .run = "H",
                                           .travel = "U",
                                           .interact = "O",
+                                          .search = "P",
                                           .feed = "[",
                                           .end_day = "]",
                                           .switch_actor = "B",
@@ -296,14 +302,14 @@ const survival::ActorSnapshot &state_of(const GameView &view, Actor actor) {
   std::abort();
 }
 
-/// The collection holding this actor, if one is under way.
-const std::optional<survival::Collecting> &collecting_of(const GameView &view,
-                                                         Actor actor) {
+/// The container this actor has open, if any.
+const std::optional<survival::Searching> &searching_of(const GameView &view,
+                                                       Actor actor) {
   switch (actor) {
   case Actor::Chef:
-    return view.exploration.chef.collecting;
+    return view.exploration.chef.searching;
   case Actor::Appraiser:
-    return view.exploration.appraiser.collecting;
+    return view.exploration.appraiser.searching;
   }
   std::abort();
 }
@@ -331,26 +337,22 @@ String corner_clock(std::chrono::microseconds remaining) {
   return two_digits(whole / 60) + ":" + two_digits(whole % 60);
 }
 
-/// A short span in seconds to a tenth, rounded up: 2.5s.
-String seconds(std::chrono::microseconds span) {
-  using Tenths = std::chrono::duration<std::int64_t, std::deci>;
-  const auto tenths =
-      static_cast<std::uint64_t>(std::chrono::ceil<Tenths>(span).count());
-  return number(tenths / 10) + "." + number(tenths % 10) + "s";
-}
-
 bool identified(const GameView &view, IngredientId ingredient) {
   const auto &known = view.workshop.identified;
   return std::ranges::find(known, ingredient) != known.end();
 }
 
-/// Ingredients the two actors carry together, by identity value.
+/// Ingredients the two actors carry and the fridge holds together, by
+/// identity value: what base work reads.
 std::map<std::uint32_t, std::uint32_t> pack_of(const GameView &view) {
   std::map<std::uint32_t, std::uint32_t> pack;
   for (const auto actor : ACTORS) {
     for (const auto ingredient : state_of(view, actor).inventory) {
       ++pack[ingredient.value];
     }
+  }
+  for (const auto ingredient : view.progression.fridge) {
+    ++pack[ingredient.value];
   }
   return pack;
 }
@@ -421,8 +423,8 @@ String offered_step(const GameView &view, const survival::Action &action) {
   return std::visit(
       [&view](const auto &offer) -> String {
         using Offer = std::decay_t<decltype(offer)>;
-        if constexpr (std::is_same_v<Offer, survival::Collect>) {
-          return "Collect from " + rendering::place_name(view, offer.source);
+        if constexpr (std::is_same_v<Offer, survival::Search>) {
+          return "Search " + rendering::place_name(view, offer.source);
         } else if constexpr (std::is_same_v<Offer, survival::Appraise>) {
           return "Appraise " +
                  from(survival::ingredient_name(offer.ingredient));
@@ -484,26 +486,20 @@ bool worth_setting_out(const SurvivalFrame &frame) {
   });
 }
 
-String collection_clock(const SurvivalFrame &frame) {
-  return seconds(frame.content.get().companion.exploration.collection_time);
-}
-
 String city_step(const SurvivalFrame &frame, Actor actor,
                  const KeyLabels &keys) {
   const auto &offers = frame.offers.at(index_of(actor));
-  const bool collecting =
-      offers.interact &&
-      std::holds_alternative<survival::Collect>(*offers.interact);
   const bool walking = offers.errand && offers.errand->step.has_value();
-  if (const auto &held = collecting_of(frame.view, actor)) {
-    return "Collecting from " +
-           rendering::place_name(frame.view, held->source) + ": " +
-           seconds(held->remaining) + " left.";
+  if (const auto &held = searching_of(frame.view, actor)) {
+    return "Searching " + rendering::place_name(frame.view, held->source) +
+           ": move food, then search again to close.";
   }
-  // A source passed on the way to what the party lacks would hold the actor.
-  if (offers.interact && offers.errand && !walking) {
-    return offered_step(frame.view, *offers.interact) +
-           (collecting ? " (takes " + collection_clock(frame) + ")" : String());
+  if (frame.screens.at(index_of(actor)).open) {
+    return "Inventory open: search again to close.";
+  }
+  // A container passed on the way to what the party lacks can be searched.
+  if (offers.search && offers.errand && !walking) {
+    return offered_step(frame.view, *offers.search);
   }
   if (!offers.errand) {
     return "Nothing is within reach for now: return to base.";
@@ -984,92 +980,220 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
                human ? tones.cyan : tones.muted, CHANGING);
 }
 
-/// One kind of ingredient in the bag.
-struct BagItem {
-  std::string_view name;
-  std::uint32_t count = 0;
-  bool known = true;
+/// The container or fridge a human's transfer screen shows beside its own
+/// slots, and where the screen stands.
+struct TransferView {
+  Actor actor = Actor::Chef;
+  TransferScreen screen;
+  /// The open container; null at base (the fridge) or with nothing open.
+  const survival::SourceStock *container = nullptr;
+  bool has_other = false;
+  std::vector<IngredientId> other_items;
+  std::size_t other_capacity = 0;
+  std::size_t mine_capacity = 0;
+  godot::Rect2 panel;
+  Vector2 other_origin;
+  Vector2 mine_origin;
+  float other_title = 0.0F;
+  float mine_title = 0.0F;
+  float weight_line = 0.0F;
+  float hint_line = 0.0F;
 };
 
-/// The ingredients both actors carry.
-std::vector<BagItem> bag_of(const SurvivalFrame &frame) {
-  const auto &view = frame.view;
-  std::vector<BagItem> items;
-  for (const auto &[value, count] : pack_of(view)) {
-    const auto ingredient = IngredientId{value};
-    items.push_back({.name = survival::ingredient_name(ingredient),
-                     .count = count,
-                     .known = identified(view, ingredient)});
-  }
-  return items;
+std::size_t rows_of(std::size_t slots) {
+  return (slots + SLOT_COLUMNS - 1) / SLOT_COLUMNS;
 }
 
-/// The bag at the bottom middle: numbered slots with each item's icon and
-/// count and a mark on an ingredient not yet identified. Leaves on the canvas
-/// the drawn items as the `bag` meta.
-void paint_bag(godot::Node2D &canvas, const rendering::Art &drawing,
-               const SurvivalFrame &frame) {
-  const auto tones = rendering::palette();
-  cover(canvas, rect(BAG_X, FOOT_Y, BAG_WIDTH, FOOT_HEIGHT));
-  const auto items = bag_of(frame);
-  const std::size_t slots = std::max(BAG_SLOTS, items.size());
-  // More kinds than slots share the bag's width, each slot showing its
-  // left part under the next.
-  const float pitch = slots > BAG_SLOTS ? (BAG_WIDTH - 20.0F - SLOT) /
-                                              static_cast<float>(slots - 1)
-                                        : SLOT_PITCH;
-  const float shown = std::min(SLOT, pitch - 2.0F);
-  const auto slot_at = [pitch](std::size_t index) {
-    return Vector2(BAG_X + 10.0F + static_cast<float>(index) * pitch,
-                   FOOT_Y + (FOOT_HEIGHT - SLOT) / 2.0F);
-  };
-  for (std::size_t index = 0; index < slots; ++index) {
-    const auto at = slot_at(index);
-    rendering::inset(canvas, rect(at.x, FOOT_Y, SLOT, FOOT_HEIGHT));
-    if (index < items.size()) {
-      paint_item(canvas, drawing, items.at(index).name,
-                 at + Vector2(4.0F, 4.0F));
-    }
-  }
-  // The marks go over every slot, so a crowded bag hides none of them.
-  godot::Array drawn;
-  for (std::size_t index = 0; index < slots; ++index) {
-    const auto at = slot_at(index);
-    drawing.text(canvas, at.x + 5.0F, at.y + 15.0F, number(index + 1),
-                 SMALL_SIZE, tones.faint, Weight::Bold);
-    if (index >= items.size()) {
+/// Where slot `index` of a block of slots at `origin` stands.
+godot::Rect2 slot_area(Vector2 origin, std::size_t index) {
+  return rect(origin.x + static_cast<float>(index % SLOT_COLUMNS) * SLOT_PITCH,
+              origin.y + static_cast<float>(index / SLOT_COLUMNS) * SLOT_PITCH,
+              SLOT, SLOT);
+}
+
+/// Each open transfer screen, chef first: one centred, two side by side.
+std::vector<TransferView> transfers(const SurvivalFrame &frame) {
+  std::vector<TransferView> found;
+  for (const auto actor : ACTORS) {
+    const auto &screen = frame.screens.at(index_of(actor));
+    if (!screen.open || !survival::key_set(frame.control, actor)) {
       continue;
     }
-    const auto &item = items.at(index);
-    const String count = number(item.count);
-    chip(canvas, drawing,
-         at.x + shown - drawing.text_width(count, SMALL_SIZE, CHANGING) - 6.0F,
-         at.y + SLOT - 5.0F, count, SMALL_SIZE, tones.white);
-    if (!item.known) {
-      chip(canvas, drawing, at.x + shown - 13.0F, at.y + 16.0F, "?", SMALL_SIZE,
-           tones.gold);
+    TransferView view;
+    view.actor = actor;
+    view.screen = screen;
+    const auto &held = searching_of(frame.view, actor);
+    if (held) {
+      const auto &sources = frame.view.exploration.sources;
+      const auto stock =
+          std::ranges::find(sources, held->source, &survival::SourceStock::id);
+      if (stock != sources.end()) {
+        view.container = &*stock;
+      }
     }
-    godot::Dictionary entry;
-    entry.set("name", from(item.name));
-    entry.set("count", item.count);
-    entry.set("known", item.known);
-    drawn.push_back(entry);
+    const bool at_base = state_of(frame.view, actor).location == Location::Base;
+    view.has_other = view.container != nullptr || at_base;
+    if (view.container != nullptr) {
+      view.other_items = view.container->items;
+      view.other_capacity = view.container->capacity;
+    } else if (at_base) {
+      view.other_items = frame.view.progression.fridge;
+      view.other_capacity = frame.view.progression.fridge_slots;
+    }
+    view.mine_capacity = frame.view.progression.inventory_slots;
+    found.push_back(std::move(view));
   }
-  canvas.set_meta("bag", drawn);
+  if (found.empty()) {
+    return found;
+  }
+  const float gap = GAP;
+  const float total = static_cast<float>(found.size()) * TRANSFER_WIDTH +
+                      static_cast<float>(found.size() - 1) * gap;
+  float left = (SCREEN_WIDTH - total) / 2.0F;
+  for (auto &view : found) {
+    const float x = left + INSET;
+    float y = TRANSFER_Y + 12.0F;
+    if (view.has_other) {
+      view.other_title = y + static_cast<float>(SMALL_SIZE);
+      y = view.other_title + 8.0F;
+      view.other_origin = Vector2(x, y);
+      y += static_cast<float>(rows_of(view.other_capacity)) * SLOT_PITCH + 6.0F;
+    }
+    view.mine_title = y + static_cast<float>(SMALL_SIZE);
+    y = view.mine_title + 8.0F;
+    view.mine_origin = Vector2(x, y);
+    y += static_cast<float>(rows_of(view.mine_capacity)) * SLOT_PITCH + 4.0F;
+    view.weight_line = y + static_cast<float>(SMALL_SIZE);
+    view.hint_line = view.weight_line + static_cast<float>(SMALL_SIZE) + 6.0F;
+    view.panel = rect(left, TRANSFER_Y, TRANSFER_WIDTH,
+                      view.hint_line + 12.0F - TRANSFER_Y);
+    left += TRANSFER_WIDTH + gap;
+  }
+  return found;
 }
 
-/// What one human's interact key does in the city and to what, or how long
-/// the collection under way still holds the actor, for its button.
+/// One block of slots with each item's icon and weight and a mark on an
+/// ingredient not yet identified, and the cursor's ring on slot `cursor`.
+void paint_slots(godot::Node2D &canvas, const rendering::Art &drawing,
+                 const SurvivalFrame &frame,
+                 const std::vector<IngredientId> &items, std::size_t capacity,
+                 Vector2 origin, std::optional<std::size_t> cursor) {
+  const auto tones = rendering::palette();
+  const auto &carry = frame.content.get().companion.exploration.carry;
+  for (std::size_t index = 0; index < capacity; ++index) {
+    const auto area = slot_area(origin, index);
+    rendering::inset(canvas, area);
+    if (index < items.size()) {
+      const auto item = items.at(index);
+      paint_item(canvas, drawing, survival::ingredient_name(item),
+                 area.position + Vector2(1.0F, 1.0F));
+      const String weight = number(survival::weight_of(carry, item));
+      chip(canvas, drawing,
+           area.position.x + SLOT -
+               drawing.text_width(weight, SMALL_SIZE, CHANGING) - 6.0F,
+           area.position.y + SLOT - 5.0F, weight, SMALL_SIZE, tones.white);
+      if (!identified(frame.view, item)) {
+        chip(canvas, drawing, area.position.x + SLOT - 13.0F,
+             area.position.y + 16.0F, "?", SMALL_SIZE, tones.gold);
+      }
+    }
+  }
+  if (cursor && *cursor < capacity) {
+    canvas.draw_rect(slot_area(origin, *cursor), tones.gold, false, 2.0F);
+  }
+}
+
+/// The title over the container's or fridge's slots.
+String other_title(const SurvivalFrame &frame, const TransferView &view) {
+  const String count =
+      number(view.other_items.size()) + "/" + number(view.other_capacity);
+  if (view.container != nullptr) {
+    return rendering::place_name(frame.view, view.container->id) + "  " + count;
+  }
+  return "FRIDGE  " + count;
+}
+
+/// The weight line under an actor's slots: carried over the most it carries
+/// at full speed, with the slowdown named while over.
+String weight_text(const SurvivalFrame &frame, Actor actor) {
+  const auto &carry = frame.content.get().companion.exploration.carry;
+  const auto &items = state_of(frame.view, actor).inventory;
+  String text = "Weight " + number(survival::carried_weight(carry, items)) +
+                "/" + number(carry.max_weight);
+  if (survival::overweight(carry, items)) {
+    text += "  OVERWEIGHT: " +
+            number(static_cast<std::uint64_t>(carry.overweight_percent)) +
+            "% speed";
+  }
+  return text;
+}
+
+/// The keys a transfer screen answers to, for its hint line.
+String transfer_hint(const SurvivalFrame &frame, Actor actor) {
+  const auto keys = survival::key_set(frame.control, actor);
+  const auto &labels = KEY_LABELS.at(keys.value_or(0));
+  return from(labels.move) + " pick  " + from(labels.interact) + " move  " +
+         from(labels.search) + " close";
+}
+
+/// The search and inventory screens over the scene: for each human who opened
+/// one, the container's (or fridge's) slots over its own twelve.
+void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
+                     const SurvivalFrame &frame) {
+  const auto tones = rendering::palette();
+  godot::Array drawn;
+  for (const auto &view : transfers(frame)) {
+    hud_panel(canvas, view.panel);
+    const auto &state = state_of(frame.view, view.actor);
+    const float x = view.panel.position.x + INSET;
+    if (view.has_other) {
+      drawing.text(canvas, x, view.other_title, other_title(frame, view),
+                   SMALL_SIZE, tones.cyan, CHANGING);
+      paint_slots(canvas, drawing, frame, view.other_items, view.other_capacity,
+                  view.other_origin,
+                  view.screen.mine ? std::nullopt
+                                   : std::optional(view.screen.slot));
+    }
+    drawing.text(canvas, x, view.mine_title,
+                 String(actor_name(view.actor)) + "  " +
+                     number(state.inventory.size()) + "/" +
+                     number(view.mine_capacity),
+                 SMALL_SIZE, tones.cyan, CHANGING);
+    paint_slots(canvas, drawing, frame, state.inventory, view.mine_capacity,
+                view.mine_origin,
+                view.screen.mine ? std::optional(view.screen.slot)
+                                 : std::nullopt);
+    const auto &carry = frame.content.get().companion.exploration.carry;
+    drawing.text(
+        canvas, x, view.weight_line, weight_text(frame, view.actor), SMALL_SIZE,
+        survival::overweight(carry, state.inventory) ? tones.gold : tones.white,
+        CHANGING);
+    drawing.text(canvas, x, view.hint_line, transfer_hint(frame, view.actor),
+                 SMALL_SIZE, tones.muted, CHANGING);
+    godot::Dictionary entry;
+    entry.set("actor", from(actor_name(view.actor)));
+    entry.set("panel", view.panel);
+    entry.set("mine", view.screen.mine);
+    entry.set("slot", static_cast<std::int64_t>(view.screen.slot));
+    drawn.push_back(entry);
+  }
+  // Recorded for the art checks only; the game itself records none of it.
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("transfers", drawn);
+  }
+}
+
+/// What one human's search key does in the city and to what, for its button.
 String interact_label(const SurvivalFrame &frame, Actor actor) {
-  if (const auto &held = collecting_of(frame.view, actor)) {
-    return "COLLECTING " + seconds(held->remaining);
+  if (frame.screens.at(index_of(actor)).open) {
+    return "CLOSE";
   }
-  const auto &offer = frame.offers.at(index_of(actor)).interact;
-  if (const auto *collect =
-          offer ? std::get_if<survival::Collect>(&*offer) : nullptr) {
-    return "COLLECT " + rendering::place_name(frame.view, collect->source);
+  const auto &offer = frame.offers.at(index_of(actor)).search;
+  if (const auto *search =
+          offer ? std::get_if<survival::Search>(&*offer) : nullptr) {
+    return "SEARCH " + rendering::place_name(frame.view, search->source);
   }
-  return "USE";
+  return "INVENTORY";
 }
 
 /// The movement, run and jump keys of one human.
@@ -1078,10 +1202,10 @@ String move_keys(const KeyLabels &keys) {
          from(keys.jump) + " jump  ";
 }
 
-/// Where travel takes the actor, named by where it goes; none while a
-/// collection holds the actor.
+/// Where travel takes the actor, named by where it goes; none while a search
+/// holds the actor.
 std::optional<String> travel_hint(const SurvivalFrame &frame, Actor actor) {
-  if (collecting_of(frame.view, actor)) {
+  if (searching_of(frame.view, actor)) {
     return std::nullopt;
   }
   return state_of(frame.view, actor).location == Location::City ? "To base"
@@ -1166,7 +1290,7 @@ void paint_actions(godot::Node2D &canvas, const rendering::Art &drawing,
     }
     paint_button(canvas, drawing, row.button, interact_label(frame, row.actor),
                  alone ? ACTION_SIZE : DUO_SIZE,
-                 frame.offers.at(index_of(row.actor)).interact.has_value());
+                 frame.offers.at(index_of(row.actor)).search.has_value());
     drawing.text(canvas, row.hint.x, row.hint.y,
                  key_hint(frame, row.actor, keys), SMALL_SIZE, tones.muted,
                  CHANGING);
@@ -1372,13 +1496,12 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-/// The two actors, the bag and the right corner's block along the bottom.
+/// The two actors and the right corner's block along the bottom.
 void paint_foot(godot::Node2D &canvas, const rendering::Art &drawing,
                 const SurvivalFrame &frame) {
   paint_actor(canvas, drawing, frame, Actor::Chef, MARGIN);
   paint_actor(canvas, drawing, frame, Actor::Appraiser,
               MARGIN + ACTOR_WIDTH + GAP);
-  paint_bag(canvas, drawing, frame);
 }
 
 void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -1413,7 +1536,9 @@ String refusal_text(survival::Result result) {
   case survival::Result::NotExploring:
     return "The way out is blocked.";
   case survival::Result::Busy:
-    return "Finish collecting first.";
+    return "Close the search first.";
+  case survival::Result::Full:
+    return "Your slots are full.";
   case survival::Result::InvalidElapsed:
   case survival::Result::NotInWorkshop:
   case survival::Result::MissingIngredients:
@@ -1427,14 +1552,21 @@ String refusal_text(survival::CollectionResult result) {
   switch (result) {
   case survival::CollectionResult::Applied:
     return "";
-  case survival::CollectionResult::Depleted:
-    return "That source is empty.";
+  case survival::CollectionResult::Occupied:
+    return "The other actor is searching it.";
   case survival::CollectionResult::Unavailable:
-    return "That source is gone.";
+    return "That container is gone.";
   case survival::CollectionResult::OutOfRange:
     return "Move closer.";
   case survival::CollectionResult::Busy:
-    return "Finish collecting first.";
+    return "Close the search first.";
+  case survival::CollectionResult::InventoryFull:
+    return "Your slots are full.";
+  case survival::CollectionResult::ContainerFull:
+    return "That container is full.";
+  case survival::CollectionResult::MissingItem:
+    return "It is no longer there.";
+  case survival::CollectionResult::NotSearching:
   case survival::CollectionResult::NotExploring:
   case survival::CollectionResult::UnknownSource:
     return "That cannot be done now.";
@@ -1453,6 +1585,8 @@ String refusal_text(survival::WorkshopResult result) {
     return "The ingredients are not carried.";
   case survival::WorkshopResult::NoFood:
     return "No dish is stored.";
+  case survival::WorkshopResult::Full:
+    return "The fridge is full.";
   case survival::WorkshopResult::WrongRole:
   case survival::WorkshopResult::AlreadyIdentified:
   case survival::WorkshopResult::NotIdentified:
@@ -1477,9 +1611,27 @@ String done_text(const GameView &view, const ActionEvent &event) {
           return who + String(" set out.");
         } else if constexpr (std::is_same_v<Done, survival::ReturnToBase>) {
           return who + String(" returned to base.");
-        } else if constexpr (std::is_same_v<Done, survival::Collect>) {
-          return who + String(" took from ") +
+        } else if constexpr (std::is_same_v<Done, survival::Search>) {
+          return who + String(" searched ") +
                  rendering::place_name(view, action.source) + ".";
+        } else if constexpr (std::is_same_v<Done, survival::CloseSearch>) {
+          return who + String(" closed the search.");
+        } else if constexpr (std::is_same_v<Done, survival::Take>) {
+          return who + String(" took ") +
+                 from(survival::ingredient_name(action.ingredient)) + " from " +
+                 rendering::place_name(view, action.source) + ".";
+        } else if constexpr (std::is_same_v<Done, survival::Put>) {
+          return who + String(" put ") +
+                 from(survival::ingredient_name(action.ingredient)) + " in " +
+                 rendering::place_name(view, action.source) + ".";
+        } else if constexpr (std::is_same_v<Done, survival::Store>) {
+          return who + String(" stored ") +
+                 from(survival::ingredient_name(action.ingredient)) +
+                 " in the fridge.";
+        } else if constexpr (std::is_same_v<Done, survival::Withdraw>) {
+          return who + String(" took ") +
+                 from(survival::ingredient_name(action.ingredient)) +
+                 " from the fridge.";
         } else if constexpr (std::is_same_v<Done, survival::Appraise>) {
           return from(survival::ingredient_name(action.ingredient)) +
                  (failed ? String(" appraisal failed: try again.")
@@ -1522,7 +1674,9 @@ std::vector<KeyRow> rows_for(bool together) {
   rows.push_back(row("Jump", one.jump, two.jump));
   rows.push_back(row("Set out or return to base", one.travel, two.travel));
   rows.push_back(
-      row("Collect; appraise or cook at base", one.interact, two.interact));
+      row("Search a container or open the inventory", one.search, two.search));
+  rows.push_back(row("Appraise or cook at base; move an item in a search",
+                     one.interact, two.interact));
   rows.push_back(row("Choose the dish, as the chef at base",
                      EVERY_CHOOSE_DISH_KEY, "none"));
   rows.push_back(row("Feed a stored dish", one.feed, two.feed));
@@ -1538,20 +1692,25 @@ std::vector<KeyRow> rows_for(bool together) {
 }
 
 /// Every refusal a feature can answer with.
-constexpr std::array<survival::ActionResult, 24> REFUSALS{
+constexpr std::array<survival::ActionResult, 32> REFUSALS{
     survival::Result::NotExploring,
     survival::Result::NoExplorationTime,
     survival::Result::Busy,
+    survival::Result::Full,
     survival::Result::InvalidElapsed,
     survival::Result::NotInWorkshop,
     survival::Result::MissingIngredients,
     survival::Result::RunOver,
-    survival::CollectionResult::Depleted,
+    survival::CollectionResult::Occupied,
     survival::CollectionResult::Unavailable,
     survival::CollectionResult::OutOfRange,
     survival::CollectionResult::Busy,
     survival::CollectionResult::NotExploring,
     survival::CollectionResult::UnknownSource,
+    survival::CollectionResult::NotSearching,
+    survival::CollectionResult::MissingItem,
+    survival::CollectionResult::InventoryFull,
+    survival::CollectionResult::ContainerFull,
     survival::WorkshopResult::NotInWorkshop,
     survival::WorkshopResult::NotCarried,
     survival::WorkshopResult::NoFood,
@@ -1559,6 +1718,7 @@ constexpr std::array<survival::ActionResult, 24> REFUSALS{
     survival::WorkshopResult::AlreadyIdentified,
     survival::WorkshopResult::NotIdentified,
     survival::WorkshopResult::UnknownRecipe,
+    survival::WorkshopResult::Full,
     survival::Result::Applied,
     survival::CollectionResult::Applied,
     survival::WorkshopResult::Applied,
@@ -1601,9 +1761,24 @@ std::vector<String> every_note(const SurvivalFrame &frame,
       acted(actor, survival::Enter{}, result);
       acted(actor, survival::ReturnToBase{}, result);
     }
+    acted(actor, survival::CloseSearch{}, survival::CollectionResult::Applied);
     for (const auto object : places) {
-      acted(actor, survival::Collect{.source = object},
+      acted(actor, survival::Search{.source = object},
             survival::CollectionResult::Applied);
+      for (const auto &flavor : tuning.workshop.flavors) {
+        acted(actor,
+              survival::Take{.source = object, .ingredient = flavor.ingredient},
+              survival::CollectionResult::Applied);
+        acted(actor,
+              survival::Put{.source = object, .ingredient = flavor.ingredient},
+              survival::CollectionResult::Applied);
+      }
+    }
+    for (const auto &flavor : tuning.workshop.flavors) {
+      acted(actor, survival::Store{.ingredient = flavor.ingredient},
+            survival::WorkshopResult::Applied);
+      acted(actor, survival::Withdraw{.ingredient = flavor.ingredient},
+            survival::WorkshopResult::Applied);
     }
   }
   for (const auto object : places) {
@@ -1920,6 +2095,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
     // The task card names the step at base; the goal line keeps the notice.
     paint_goal(canvas, drawing, {}, hand_off_notice(frame));
   }
+  paint_transfers(canvas, drawing, frame);
   paint_corners(canvas, drawing, frame);
   const auto notes = paint_notes(canvas, drawing, frame);
   godot::Array note_areas;
@@ -2052,8 +2228,8 @@ String tip_text(Tip tip) {
     return "Walk, run and jump with the keys under your action button; climb "
            "ladders.";
   case Tip::Collect:
-    return "Collect with the action button. It holds you while the clock runs "
-           "on.";
+    return "Search a container with the search key: move food between it and "
+           "your slots. The clock runs on.";
   case Tip::Appraise:
     return "A ? marks a find not yet identified: the appraiser does it at "
            "base.";
@@ -2298,7 +2474,7 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(objects, stock.id, &survival::ObjectSnapshot::id);
-    if (stock.remaining == 0 || object == objects.end() ||
+    if (stock.items.empty() || object == objects.end() ||
         !object->material_available) {
       continue;
     }
@@ -2347,14 +2523,14 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   const bool alone = players.size() == 1;
   const float button = (alone ? ACTION_INNER : DUO_BUTTON) - padding;
   const float hint = alone ? ACTION_INNER - 2.0F : DUO_BUTTON - 2.0F;
-  std::vector<String> labels{"COLLECTING " + collection_clock(frame)};
+  std::vector<String> labels{"CLOSE", "INVENTORY"};
   for (const auto &[actor, set] : players) {
     const auto &keys = KEY_LABELS.at(set);
     labels.push_back(interact_label(frame, actor));
     lines.push_back(fitted(key_hint(frame, actor, keys), SMALL_SIZE, hint));
     for (const auto object : places) {
       const String place = rendering::place_name(frame.view, object);
-      labels.push_back("COLLECT " + place);
+      labels.push_back("SEARCH " + place);
     }
   }
   for (const auto &label : labels) {
@@ -2485,16 +2661,9 @@ void city_targets(std::vector<Target> &targets, const rendering::Art &drawing,
                   const SurvivalFrame &frame) {
   for (const auto &row : action_rows(frame)) {
     const auto &keys = KEY_LABELS.at(row.set);
-    String refusal;
-    if (collecting_of(frame.view, row.actor)) {
-      refusal = "Collecting: wait until it is done.";
-    } else if (!frame.offers.at(index_of(row.actor)).interact) {
-      refusal = "Nothing within reach to collect.";
-    }
     targets.push_back(
         {.area = row.button,
-         .press = PlayerPress{.actor = row.actor, .key = PlayerKey::Interact},
-         .refusal = refusal});
+         .press = PlayerPress{.actor = row.actor, .key = PlayerKey::Search}});
     if (const auto travel = travel_hint(frame, row.actor)) {
       const float x = row.hint.x +
                       drawing.text_width(move_keys(keys), SMALL_SIZE, CHANGING);
@@ -2592,6 +2761,21 @@ std::vector<Target> survival_targets(const rendering::Art &drawing,
     city_targets(targets, drawing, frame);
   } else if (frame.view.progression.phase == Phase::Workshop) {
     workshop_targets(targets, drawing, frame);
+  }
+  // A transfer screen is drawn over the rest, so its slots come later.
+  for (const auto &view : transfers(frame)) {
+    const auto slots = [&](bool mine, Vector2 origin, std::size_t capacity) {
+      for (std::size_t index = 0; index < capacity; ++index) {
+        targets.push_back(
+            {.area = slot_area(origin, index),
+             .press =
+                 SlotPress{.actor = view.actor, .mine = mine, .index = index}});
+      }
+    };
+    if (view.has_other) {
+      slots(false, view.other_origin, view.other_capacity);
+    }
+    slots(true, view.mine_origin, view.mine_capacity);
   }
   targets.push_back({.area = pause_chip(drawing), .press = MenuKey::Pause});
   return targets;

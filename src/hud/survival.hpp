@@ -57,13 +57,24 @@ struct EscapeMissEvent {
 using Event = std::variant<ActionEvent, FallEvent, TouchEvent, TimeUpEvent,
                            WorldEvent, EscapeMissEvent>;
 
-/// What one human's interact and feed keys would do right now, and the errand
+/// What one human's interact, search and feed keys would do right now, and the errand
 /// AI would run in that human's place. The NEXT line names that errand, so the
 /// screen tells a player where to walk.
 struct Offers {
   std::optional<survival::Action> interact;
+  /// The container the search key would open, if one is in reach.
+  std::optional<survival::Action> search;
   std::optional<survival::Action> feed;
   std::optional<survival::Errand> errand;
+};
+
+/// One human's transfer screen: the container's (or fridge's) slots beside the
+/// actor's own, and a cursor on one of them. Closed, nothing is drawn.
+struct TransferScreen {
+  bool open = false;
+  /// The cursor is on the actor's own slots.
+  bool mine = false;
+  std::size_t slot = 0;
 };
 
 /// Everything one survival frame draws, read from snapshots.
@@ -73,6 +84,8 @@ struct SurvivalFrame {
   survival::ControlMap control;
   /// Chef first; an AI actor's entry stays empty.
   std::array<Offers, 2> offers;
+  /// Chef first.
+  std::array<TransferScreen, 2> screens;
   /// An AI chef has base work to do on its next step.
   bool ai_chef_working = false;
   /// The run opened with two humans, so a lone human now means a hand-off.
