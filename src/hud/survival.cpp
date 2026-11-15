@@ -200,6 +200,10 @@ constexpr float ENTRANCE_LIFT = 18.0F;
 constexpr const char *PAUSE_HINT = "Pause, keys";
 constexpr float CHIP_PAD = 8.0F;
 constexpr const char *NO_DISH = "None stored yet";
+/// What the NEXT line says while a screen is open, since the screen takes the
+/// interact key.
+constexpr const char *CLOSE_FIRST = "Close the inventory first.";
+constexpr const char *INVENTORY_OPEN = "Inventory open: search again to close.";
 /// A first-play tip: one line on a panel, and its gold caption.
 constexpr float TIP_HEIGHT = 36.0F;
 constexpr float TIP_PAD = 14.0F;
@@ -495,7 +499,7 @@ String city_step(const SurvivalFrame &frame, Actor actor,
            ": move food, then search again to close.";
   }
   if (frame.screens.at(index_of(actor)).open) {
-    return "Inventory open: search again to close.";
+    return INVENTORY_OPEN;
   }
   // A container passed on the way to what the party lacks can be searched.
   if (offers.search && offers.errand && !walking) {
@@ -591,6 +595,15 @@ Actor first_player(const SurvivalFrame &frame) {
 
 Job workshop_step(const SurvivalFrame &frame) {
   if (auto step = workshop_craft_step(frame)) {
+    // An open screen takes its human's interact key, so the step waits on
+    // closing it.
+    if (step->press && step->press->key == PlayerKey::Interact &&
+        step->press->actor &&
+        frame.screens.at(index_of(*step->press->actor)).open) {
+      return {.text = INVENTORY_OPEN,
+              .press = PlayerPress{.actor = step->press->actor,
+                                   .key = PlayerKey::Search}};
+    }
     return *step;
   }
   if (worth_setting_out(frame)) {
@@ -955,6 +968,22 @@ String actor_status(const SurvivalFrame &frame, Actor actor) {
                                                                  : "at base");
 }
 
+/// Where an actor's block at the bottom left starts.
+float actor_block_x(Actor actor) {
+  return actor == Actor::Chef ? MARGIN : MARGIN + ACTOR_WIDTH + GAP;
+}
+
+/// What a human clicks on its block at base to open the fridge, or to close
+/// the screen; none for AI and once the party is out, when the action button
+/// does it.
+std::optional<String> fridge_label(const SurvivalFrame &frame, Actor actor) {
+  if (!survival::key_set(frame.control, actor) ||
+      frame.view.progression.phase != Phase::Workshop) {
+    return std::nullopt;
+  }
+  return frame.screens.at(index_of(actor)).open ? "CLOSE" : "FRIDGE";
+}
+
 /// One actor at the bottom left: its face in a frame, who plays it and where
 /// it is.
 void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -978,6 +1007,10 @@ void paint_actor(godot::Node2D &canvas, const rendering::Art &drawing,
   const String status = actor_status(frame, actor);
   drawing.text(canvas, column, FOOT_Y + 22.0F, status, SMALL_SIZE,
                human ? tones.cyan : tones.muted, CHANGING);
+  if (const auto label = fridge_label(frame, actor)) {
+    drawing.text(canvas, column, FOOT_Y + 52.0F, *label, SMALL_SIZE, tones.gold,
+                 Weight::Bold);
+  }
 }
 
 /// The container or fridge a human's transfer screen shows beside its own
@@ -1499,9 +1532,9 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
 /// The two actors and the right corner's block along the bottom.
 void paint_foot(godot::Node2D &canvas, const rendering::Art &drawing,
                 const SurvivalFrame &frame) {
-  paint_actor(canvas, drawing, frame, Actor::Chef, MARGIN);
-  paint_actor(canvas, drawing, frame, Actor::Appraiser,
-              MARGIN + ACTOR_WIDTH + GAP);
+  for (const auto actor : ACTORS) {
+    paint_actor(canvas, drawing, frame, actor, actor_block_x(actor));
+  }
 }
 
 void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
@@ -2513,6 +2546,9 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
         fitted(actor_status(frame, actor), SMALL_SIZE, ACTOR_TEXT_WIDTH));
   }
   lines.push_back(fitted("AI  at base", SMALL_SIZE, ACTOR_TEXT_WIDTH));
+  for (const char *label : {"FRIDGE", "CLOSE"}) {
+    lines.push_back(fitted(label, SMALL_SIZE, ACTOR_TEXT_WIDTH));
+  }
   // The city's action: a lone human's button and keys, or each of two
   // humans' rows, with every place its key can act on in the button, and
   // the hold's words in place of the verb.
@@ -2709,13 +2745,17 @@ void workshop_targets(std::vector<Target> &targets,
   if (survival::key_set(frame.control, Actor::Chef)) {
     const auto &offer = frame.offers.at(index_of(Actor::Chef)).interact;
     const auto figure = drawing.size(rendering::Image::ChefIdle) * FIGURE_SCALE;
+    String refusal;
+    if (frame.screens.at(index_of(Actor::Chef)).open) {
+      refusal = CLOSE_FIRST;
+    } else if (!offer || !std::holds_alternative<survival::Cook>(*offer)) {
+      refusal = "No dish can be cooked now.";
+    }
     targets.push_back(
         {.area =
              rect(CHEF_FIGURE_X, KITCHEN_FLOOR - figure.y, figure.x, figure.y),
          .press = PlayerPress{.actor = Actor::Chef, .key = PlayerKey::Interact},
-         .refusal = offer && std::holds_alternative<survival::Cook>(*offer)
-                        ? String()
-                        : String("No dish can be cooked now.")});
+         .refusal = refusal});
   }
   const auto unknown =
       std::ranges::count_if(pack_of(frame.view), [&frame](const auto &entry) {
@@ -2728,6 +2768,8 @@ void workshop_targets(std::vector<Target> &targets,
     String refusal;
     if (!human) {
       refusal = "The AI appraiser works here.";
+    } else if (frame.screens.at(index_of(Actor::Appraiser)).open) {
+      refusal = CLOSE_FIRST;
     } else if (!offer || !std::holds_alternative<survival::Appraise>(*offer)) {
       refusal = "Nothing to appraise now.";
     }
@@ -2736,6 +2778,14 @@ void workshop_targets(std::vector<Target> &targets,
          .press =
              PlayerPress{.actor = Actor::Appraiser, .key = PlayerKey::Interact},
          .refusal = refusal});
+  }
+  // The block of a human at base opens the fridge, or closes the screen.
+  for (const auto actor : ACTORS) {
+    if (fridge_label(frame, actor)) {
+      targets.push_back(
+          {.area = rect(actor_block_x(actor), FOOT_Y, ACTOR_WIDTH, FOOT_HEIGHT),
+           .press = PlayerPress{.actor = actor, .key = PlayerKey::Search}});
+    }
   }
 }
 

@@ -531,9 +531,6 @@ void SurvivalRun::through_screen(std::size_t index, Actor actor,
           survival::Put{.source = container->id, .ingredient = item};
     } else if (!in_city) {
       input.transfer = survival::Store{item};
-    } else {
-      // Nothing to put it in: let go of it where it stands.
-      static_cast<void>(features.simulation.get().drop(actor, item));
     }
   } else if (!screen.mine && has_other && screen.slot < other.size()) {
     const auto item = other.at(screen.slot);
