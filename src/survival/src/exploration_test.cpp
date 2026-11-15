@@ -907,6 +907,7 @@ TEST(Exploration, ADestroyedSourceKeepsItsStockOutOfReach) {
 constexpr ObjectId HALL_FLOOR{2};
 constexpr ObjectId SHOP{3};
 constexpr ObjectId HALL_SOURCE{11};
+constexpr ObjectId EXIT_SOURCE{12};
 constexpr GridPosition HALL_ARRIVAL{.x = 2, .y = 0};
 constexpr WorldArea EXIT_ZONE{.x = 15, .y = 0, .width = 3, .height = 1};
 
@@ -923,6 +924,10 @@ public:
             {.id = SHOP,
              .kind = ObjectKind::Building,
              .area = {.x = 4, .y = -2, .width = 5, .height = 2}},
+            {.id = EXIT_SOURCE,
+             .kind = ObjectKind::MaterialSource,
+             .area = {.x = 16},
+             .ingredient = IngredientId{70}},
             {.id = HALL_FLOOR,
              .area = {.x = 0, .y = 0, .width = 10},
              .map = MapId::Aquarium},
@@ -942,7 +947,7 @@ public:
                        .arrival = HALL_ARRIVAL}},
             .interiors = {{.building = SHOP,
                            .area = {.x = 5, .y = 0, .width = 2, .height = 1}}},
-            .sources = {stock(HALL_SOURCE, 2)},
+            .sources = {stock(HALL_SOURCE, 2), stock(EXIT_SOURCE, 2)},
             .obstacles = {},
             .patrols = {}};
   }
@@ -1053,6 +1058,22 @@ TEST(Exploration, BothActorsInAnExitZoneChangeTheMapAndArriveTogether) {
   EXPECT_EQ(at(snapshot.appraiser), HALL_ARRIVAL);
   EXPECT_EQ(travel.sim().snapshot().chef.location, Location::City);
   EXPECT_EQ(travel.sim().snapshot().appraiser.location, Location::City);
+}
+
+TEST(Exploration, ACrossingClosesTheSearchOpenInTheExitZone) {
+  Travel travel;
+  travel.both_enter();
+  travel.walk_together_to(12);
+  travel.walk_to(Actor::Chef, 15);
+  ASSERT_EQ(travel.exploring().snapshot().map, MapId::Street);
+  ASSERT_EQ(travel.exploring().search(Actor::Chef, EXIT_SOURCE),
+            CollectionResult::Applied);
+  travel.walk_to(Actor::Appraiser, 16);
+  ASSERT_EQ(travel.exploring().snapshot().map, MapId::Aquarium);
+  EXPECT_EQ(travel.explorer(Actor::Chef).searching, std::nullopt);
+  EXPECT_EQ(travel.exploring().take(Actor::Chef, EXIT_SOURCE, IngredientId{70}),
+            CollectionResult::NotSearching);
+  EXPECT_EQ(travel.exploring().snapshot().sources.back().items.size(), 2U);
 }
 
 TEST(Exploration, ASourceOnAnotherMapIsOutOfRange) {

@@ -509,8 +509,11 @@ Exploration::Exploration(Simulation &progression, World &city,
                          ExplorationConfig settings)
     : simulation(progression), world(city), config(std::move(settings)) {
   const auto snapshot = world.get().snapshot();
-  if (config.carry.overweight_percent <= 0 ||
-      !stands_on(CellMap(on_map(snapshot, MapId::Street)), config.entry)) {
+  if (config.carry.overweight_percent <= 0) {
+    throw std::invalid_argument(
+        "exploration requires a positive overweight speed");
+  }
+  if (!stands_on(CellMap(on_map(snapshot, MapId::Street)), config.entry)) {
     throw std::invalid_argument("exploration requires a safe entry");
   }
   for (const auto &exit : config.exits) {
@@ -710,8 +713,12 @@ CollectionResult Exploration::take(Actor actor, ObjectId source,
   if (found == container->items.end()) {
     return CollectionResult::MissingItem;
   }
-  if (simulation.get().collect(actor, ingredient) == Result::Full) {
+  const auto collected = simulation.get().collect(actor, ingredient);
+  if (collected == Result::Full) {
     return CollectionResult::InventoryFull;
+  }
+  if (collected != Result::Applied) {
+    return CollectionResult::NotExploring;
   }
   container->items.erase(found);
   return CollectionResult::Applied;
@@ -846,6 +853,8 @@ void Exploration::travel() {
   current = found->to;
   for (auto *state : {&chef.state, &appraiser.state}) {
     state->body = {.position = standing_in(found->arrival)};
+    // A container of the map left behind is out of reach.
+    state->searching.reset();
   }
 }
 
