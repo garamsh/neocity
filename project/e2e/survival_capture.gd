@@ -11,7 +11,7 @@ extends SceneTree
 ## are drawn in pixels larger than a screen pixel at twice the scene's size, the
 ## city draws fewer than 60 frames a second,
 ## one of its word plates covers another, a source other than the source's
-## own count, or lies under a HUD panel or note, its words name a source's kind or a place other than the goals
+## own count, or lies under a HUD panel, its words name a source's kind or a place other than the goals
 ## NEXT names, or leave out the goal NEXT names to walk to, the throat's fangs do not hang from the top of the play area,
 ## a support reaches down from a walkway too high for it, the shops, stall
 ## and vending machines do not read warm and lit, or a window of another size,
@@ -741,36 +741,31 @@ func _save(screen: String) -> Image:
 	frame.resize(SCREEN.x, SCREEN.y, Image.INTERPOLATE_NEAREST)
 	return frame
 
-## Reads actual frame textures; the first city has no screen fade over its native corners.
-func _interface_corners(frame: Image, screen: String) -> bool:
-	var expected: Dictionary = {"frame_panel.png": Vector2i(368, 46), "frame_button.png": Vector2i(163, 54), "frame_slot.png": Vector2i(73, 79)}
-	var drawn: Dictionary = scene.get_meta("interface_frames", {})
-	if drawn.is_empty():
-		_fail("%s: no actual interface frame textures were observed" % screen)
+## The three top plates stand where the HUD says, each the size of its #222
+## art at 48 pixels tall and drawn over the frame, not left blank.
+func _top_plates(frame: Image, screen: String) -> bool:
+	var art: Array[String] = ["hud_day", "hud_acid", "hud_clock"]
+	var areas: Array[Rect2] = []
+	for area: Rect2 in scene.get_meta("hud_panels", []):
+		if area.end.y <= 56.0:
+			areas.append(area)
+	areas.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.x < b.position.x)
+	if areas.size() != 3:
+		_fail("%s: %d top plates stand, not three" % [screen, areas.size()])
 		return false
-	for path: String in drawn:
-		var observation: Dictionary = drawn[path]
-		var texture: Texture2D = observation["texture"]
-		var image: Image = texture.get_image()
-		if image.get_size() != expected.get(path.get_file(), Vector2i.ZERO):
-			_fail("%s: interface texture %s loaded at %s" % [screen, path, image.get_size()])
+	for index: int in range(3):
+		var path: String = "res://levels/monster_mouth_escape/art_hd/ui/%s.png" % art[index]
+		var image: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
+		var area: Rect2 = areas[index]
+		if image == null or not is_equal_approx(area.size.y, 48.0) or absf(area.size.x - 48.0 * image.get_width() / image.get_height()) > 1.0:
+			_fail("%s: top plate %d is %s, not %s at 48 pixels tall" % [screen, index, area.size, art[index]])
 			return false
-		if screen != "4-city-collect-prompt":
-			continue
-		var area: Rect2 = observation["area"]
-		var compared: int = 0
-		for y: int in range(9):
-			for x: int in range(9):
-				var original: Color = image.get_pixel(x, y)
-				var at: Vector2i = Vector2i(area.position) + Vector2i(x, y)
-				if original.a < 1.0 or not Rect2i(Vector2i.ZERO, frame.get_size()).has_point(at):
-					continue
-				if not frame.get_pixelv(at).is_equal_approx(original):
-					_fail("%s: %s native corner differs at %s" % [screen, path.get_file(), at])
-					return false
-				compared += 1
-		if compared < 8:
-			_fail("%s: fewer than eight opaque native corner pixels for %s" % [screen, path])
+		var colors: Dictionary = {}
+		for y: int in range(int(area.position.y), int(area.end.y), 6):
+			for x: int in range(int(area.position.x), int(area.end.x), 6):
+				colors[frame.get_pixel(x, y).to_html(false)] = true
+		if colors.size() < 4:
+			_fail("%s: top plate %d draws %d colours, a blank plate" % [screen, index, colors.size()])
 			return false
 	return true
 
@@ -806,7 +801,7 @@ func _plate_covers_character(plate: Rect2, layer: Dictionary) -> bool:
 
 ## Saves a city frame and fails it when one word plate covers another, or a
 ## plate other than a source's count covers a source, when a plate lies under
-## a HUD panel or note, when it
+## a HUD panel, when it
 ## drew no plate beyond a count for each source labelled, when its words name
 ## a source's kind or anything but the goals NEXT names, or leave out the goal
 ## NEXT names to walk to, or when a look it shows is wrong.
@@ -821,7 +816,7 @@ func _save_city(screen: String) -> Image:
 
 func _measure_city(screen: String) -> Image:
 	var frame: Image = await _save(screen)
-	if not _interface_corners(frame, screen):
+	if not _top_plates(frame, screen):
 		return frame
 	var plates: Array = scene.get_meta("map_plates", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
@@ -869,8 +864,17 @@ func _measure_city(screen: String) -> Image:
 				_fail("%s: the plate at %s covers the source at %s" % [screen, plate, area])
 				return frame
 	var panels: Array = scene.get_meta("hud_panels", [])
-	var notes: Array = scene.get_meta("hud_notes", [])
-	var hud: Array = panels + notes
+	var hud: Array = panels
+	var plates_up: int = 0
+	var below: int = 0
+	for area: Rect2 in panels:
+		if area.end.y <= 56.0:
+			plates_up += 1
+		elif area.position.y < 360.0:
+			below += 1
+	if plates_up != 3 or below != 0:
+		_fail("%s: the HUD is not the three top plates and the action prompts: %s" % [screen, panels])
+		return frame
 	for plate: Rect2 in plates:
 		for area: Rect2 in hud:
 			if plate.intersects(area):
@@ -1355,7 +1359,7 @@ func _dense(frame: Image, view: Transform2D, screen: String, plates: Array) -> b
 		return false
 	if not is_equal_approx(zoom, 2.0):
 		return true
-	var covered: Array = plates + scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", [])
+	var covered: Array = plates + scene.get_meta("hud_panels", [])
 	var acid_rows: Vector2i = Vector2i(_band_top() + BAND_ROWS.x, _band_top() + BAND_ROWS.y)
 	if not _band_clear(view):
 		var sea: int = _sea_top(view)
@@ -1593,7 +1597,7 @@ func _acid_lights(frame: Image, view: Transform2D, screen: String) -> bool:
 func _teeth_show(_frame_image: Image, screen: String) -> bool:
 	if not _read_foreground():
 		return false
-	var occluders: Array = scene.get_meta("hud_panels", []) + scene.get_meta("hud_notes", []) + scene.get_meta("map_plates", [])
+	var occluders: Array = scene.get_meta("hud_panels", []) + scene.get_meta("map_plates", [])
 	var reading: Vector2 = _teeth_sample(native_frame, occluders)
 	teeth_frames += 1
 	print("Capture: %s: %.6f of the %.6f of the top %d rows of the play area the fangs cover show them (at least %.6f of at least %.6f)." % [screen, reading.x, reading.y, TEETH_ROWS, TEETH_SHARE, TEETH_COVER])

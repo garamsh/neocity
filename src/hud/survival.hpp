@@ -180,15 +180,15 @@ void paint_survival_glow(godot::Node2D &canvas, const rendering::Art &drawing,
                          const rendering::Shot &shot);
 /// Draws over the scene the city's words and its pointers to each human's
 /// goal off the screen, as `shot` shows them, or the workshop, whichever the
-/// phase opens, with the HUD, `tip` and the flourishes under way; the city's
-/// words stand clear of every panel, chip and note of the HUD. Leaves on the
-/// canvas the area of every panel and chip of the HUD it drew, the fading
-/// notes and the tip left out, as the `hud_panels` meta, and the notes' areas
-/// as `hud_notes`, each an array of `Rect2`.
-/// The tip stands clear of the HUD, the notes, every target and, in the city,
-/// the map's words; it is left out while no place is clear, and the one drawn
-/// is left as the `hud_tip` meta, a dictionary of its `rect`, its `text` and
-/// whether it is drawn over the `city`.
+/// phase opens, with the HUD and the flourishes under way, and at base `tip`;
+/// the HUD of the city is the day, acid and clock plates and an action prompt
+/// for each human with an action; the city's words stand clear of every plate
+/// and prompt of it. Leaves on the canvas the area of every panel, plate and
+/// prompt of the HUD it drew, the tip left out, as the `hud_panels` meta, an
+/// array of `Rect2`.
+/// The tip stands clear of the HUD and every target; it is left out while no
+/// place is clear, and the one drawn is left as the `hud_tip` meta, a
+/// dictionary of its `rect` and its `text`.
 void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame, const rendering::Shot &shot,
                     const std::vector<rendering::Burst> &bursts,
@@ -250,7 +250,8 @@ out_of_reach(const SurvivalFrame &frame);
 /// Every changing line of this frame, with the cook panel's status in each form
 /// any pack could give it.
 [[nodiscard]] std::vector<FittedText> changing_text(const SurvivalFrame &frame);
-/// What each human's action button reads, the chef's first.
+/// What each human's action prompt reads, the chef's first; empty while the
+/// prompt is hidden.
 [[nodiscard]] std::vector<godot::String>
 action_labels(const SurvivalFrame &frame);
 /// The sentence the log shows for `event`, naming places as `view` does.
@@ -260,8 +261,8 @@ action_labels(const SurvivalFrame &frame);
 /// The choice of players' entries, each clicked as its number key.
 [[nodiscard]] std::vector<Target> setup_targets();
 /// What a click acts on in a survival frame: in the city each human's action
-/// button and travel key, at base the task card's step, feed, dish choice and
-/// end of day and the appraiser's ingredients, and the pause key in both.
+/// prompt, which presses the key it names, at base the task card's
+/// step, feed, dish choice and end of day and the appraiser's ingredients.
 [[nodiscard]] std::vector<Target>
 survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);
 /// The placeholder card's skip, which presses every human's interact key as

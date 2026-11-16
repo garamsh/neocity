@@ -7,9 +7,10 @@
 
 namespace neocity::session {
 
-/// The first-play tips of one run. Each opens once, the first time the run
-/// shows its concept, one at a time, and never holds the run: it closes on a
-/// click, on the next action a human takes, or once it has shown a while.
+/// The first-play tips of one run, shown at base only. Each opens once, the
+/// first time the run shows its concept, one at a time, and never holds the
+/// run: it closes on a click, on the next action a human takes, once it has
+/// shown a while, or when the party sets out.
 class Tips {
 public:
   /// Closes the open tip when `acted` or once it has shown long enough,

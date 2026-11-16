@@ -73,9 +73,6 @@ const SETTLE_LIMIT_MSEC: int = 3000
 ## heading and count as at rest. Only the rest test uses it; the checks that
 ## read the settled camera stay exact.
 const SETTLE_SLACK: float = 24.0
-## A note shows four seconds and fades over one, on the real clock; the wait
-## for it to go allows that and more.
-const NOTE_FADE_LIMIT_MSEC: int = 8000
 ## The middle of the play area on screen, where the camera draws what it
 ## heads for.
 const FOCUS: Vector2 = Vector2(640, 301)
@@ -114,10 +111,16 @@ const FONT_GRID: int = 8
 const MIN_TEXT_SIZE: int = 16
 ## What ends the run well, which the pause screen names.
 const ENDING_GOAL: String = "Satisfy the monster on 7 days"
-## How many first-play tips there are, one per concept.
-const TIP_COUNT: int = 9
+## How many first-play tips there are, one per concept that base shows; the
+## controls page lists the move and collect tips, which no screen opens.
+const TIP_COUNT: int = 7
 ## The screen, where a tip must stand whole.
 const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
+## The key caps the action prompts draw: the search and travel keys of each key
+## set.
+const PROMPT_CAPS: Array[String] = ["[R]", "[P]", "[Q]", "[U]"]
+## The top band's lower edge, which holds the day, acid and clock plates alone.
+const TOP_BAND_END: float = 56.0
 ## The words of a source's kind the map once wrote beside its supply.
 const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## The map's words that are neither a place's name nor a number, such as a
@@ -149,9 +152,9 @@ var every_tip: Dictionary[String, bool] = {}
 var tip_reopened: bool = false
 var last_tip: String = ""
 ## What a drawn tip covered or where it stood off the screen, and how many
-## frames drew one at base and over the city's words.
+## frames drew one, at base only.
 var tip_overlaps: Array[String] = []
-var tip_frames: Dictionary[String, int] = {"base": 0, "city": 0}
+var tip_frames: int = 0
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -293,9 +296,9 @@ func _a_click_on_the_chef_cooks() -> bool:
 	var foods: int = _int("foods")
 	return _check(await _click_on(chef) and ((_int("foods") == foods + 1 and _next_event_has(chosen + " cooked.")) or _next_event_has(chosen + " burned")), "a click on the chef in the kitchen cooks the offered dish, as E does: %s" % [_base_state()])
 
-## In the city by mouse: the set-out step sets out, a button with nothing in
-## reach says why, the action button searches, the pause chip pauses, the pause
-## screen's blocks, leave and cancel answer clicks, and the travel key returns.
+## In the city by mouse: the set-out step sets out, nothing in reach shows no
+## prompt, the prompt searches and closes, the pause screen's blocks, leave and
+## cancel answer clicks, and the keys alone pause and return.
 func _mouse_in_the_city() -> void:
 	await _leave_run()
 	await _tap(KEY_1)
@@ -306,10 +309,14 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _until("a click on the set-out step sets out, as Q does", func() -> bool: return _where("chef") == "city", 30):
 		return
-	# With no container in reach the action button opens the inventory alone.
-	if not _check(await _click("chef_search") and _screen_open(0) and _actor("chef", "searching") == -1, "a click on the action button with nothing in reach opens the inventory alone"):
+	# With no container in reach the prompt offers the way to base, and no search
+	# or pause chip; R opens the inventory alone, and the prompt then closes it.
+	if not _check(_target("chef_search").is_empty() and _target("pause").is_empty() and not _target("chef_travel").is_empty() and _actions() == ["TO BASE"] and _drawn("[Q]"), "with nothing in reach the prompt offers the way to base by its key and no search or pause chip stands: %s" % [_actions()]):
 		return
-	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the action button closes the inventory"):
+	await _tap(KEY_R)
+	if not _check(_screen_open(0) and _actor("chef", "searching") == -1 and _actions() == ["CLOSE"], "R with nothing in reach opens the inventory alone, and its prompt reads close: %s" % [_actions()]):
+		return
+	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the close prompt closes the inventory"):
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
@@ -323,14 +330,16 @@ func _mouse_in_the_city() -> void:
 	var carried: int = _actor("chef", "ingredients")
 	if not await _walk_route([BESIDE_OBSTACLE]):
 		return
-	if not _check(await _click("chef_search") and _screen_open(0), "setup: the inventory opens alone with an item in the pack"):
+	await _tap(KEY_R)
+	if not _check(_screen_open(0), "setup: the inventory opens alone with an item in the pack"):
 		return
 	await _tap(KEY_E)
 	if not _check(carried == 1 and _actor("chef", "ingredients") == carried, "the interact key on the inventory alone moves nothing out of the pack"):
 		return
-	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the action button closes the inventory again"):
+	if not _check(await _click("chef_search") and not _screen_open(0), "a click on the close prompt closes the inventory again"):
 		return
-	if not _check(await _click("pause") and _str("interruption") == "paused", "a click on the pause chip pauses, as Esc does"):
+	await _tap(KEY_ESCAPE)
+	if not _check(_str("interruption") == "paused", "Esc pauses the run"):
 		return
 	var effects: float = scene.sound_status()["effects_level"]
 	var music: float = scene.sound_status()["music_level"]
@@ -355,24 +364,23 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _until("the run continues", func() -> bool: return _str("interruption") == "", 30):
 		return
-	if not _check(await _click("chef_travel"), "the travel key takes a click"):
-		return
-	await _until("a click on the travel key returns to base, as Q does", func() -> bool: return _where("chef") == "base", 30)
+	await _tap(KEY_Q)
+	await _until("Q returns to base", func() -> bool: return _where("chef") == "base", 30)
 
-## Two players share one mouse: the set-out step sets the party out, each human
-## in the city has their own action button, and a click on one human's travel
-## key moves that human alone.
+## Two players share one mouse: the set-out step sets the party out, a human
+## in the city has a prompt only with an action, and the travel key moves
+## that human alone.
 func _two_players_share_the_mouse() -> void:
 	await _start_two_players()
 	if not _check(await _click("party_travel"), "the set-out step takes a click with two players"):
 		return
 	if not await _until("one click sets the whole party out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 30):
 		return
-	if not _check(not _target("chef_search").is_empty() and not _target("appraiser_search").is_empty(), "each human in the city has their own action button"):
+	if not _check(_target("chef_search").is_empty() and _target("appraiser_search").is_empty() and _actions() == ["TO BASE", "TO BASE"] and _drawn("[U]"), "with nothing in reach each human's prompt offers the way to base: %s" % [_actions()]):
 		return
-	if not _check(await _click("appraiser_travel"), "player two's travel key takes a click"):
+	if not _check(await _click("appraiser_travel"), "player two's travel prompt takes a click"):
 		return
-	if not await _until("a click on player two's travel key moves only the appraiser", func() -> bool: return _where("appraiser") == "base" and _where("chef") == "city", 30):
+	if not await _until("a click on player two's travel prompt moves only the appraiser", func() -> bool: return _where("appraiser") == "base" and _where("chef") == "city", 30):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes back", func() -> bool: return _str("phase") == "workshop", 30)
@@ -394,7 +402,7 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out", func() -> bool: return _where("chef") == "city", 30):
 		return
-	if not _check(_drawn("Pause, keys"), "the top band offers the pause, where the keys are"):
+	if not _check(_top_bar_drawn(), "the top bar draws the day, the acid and the clock"):
 		return
 	var unpaused_rules: bool = FEED_RULES.any(func(rule: String) -> bool: return _drawn(rule))
 	var rise: float = await _pause_rise()
@@ -514,9 +522,9 @@ func _hand_off_shows_the_keys_left() -> void:
 		return
 	_check(_str("hand_off") == "", "one player from the start gets no hand-off notice")
 
-## A line the log repeats once the same line has dropped out of it shows as a
-## new note: the chef sets out and returns with the AI appraiser, which fills
-## the log, and sets out again after the first note has faded.
+## A line the log repeats once the same line has dropped out of it is logged
+## again, and the HUD draws no note of it: the chef sets out and returns with
+## the AI appraiser, which fills the log, and sets out again.
 func _repeated_note_appears() -> void:
 	await _leave_run()
 	await _tap(KEY_1)
@@ -525,19 +533,10 @@ func _repeated_note_appears() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the party sets out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 60):
 		return
-	if not _check(_drawn("Chef set out."), "a new note shows: %s" % [_drawn_lines()]):
+	if not _check(_events().has("Chef set out.") and not _drawn_says("Chef set out."), "the log records the line and the HUD draws no note: %s %s" % [_events(), _drawn_lines()]):
 		return
 	await _tap(KEY_Q)
 	if not await _until("the party comes home", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120):
-		return
-	# The pause holds the run while the notes go on fading on the real clock.
-	await _tap(KEY_ESCAPE)
-	var start: int = Time.get_ticks_msec()
-	while _drawn("Chef set out.") and Time.get_ticks_msec() - start < NOTE_FADE_LIMIT_MSEC:
-		await _frames(1)
-	var faded: bool = not _drawn("Chef set out.")
-	await _tap(KEY_ESCAPE)
-	if not _check(faded, "a note fades a few seconds after it appears"):
 		return
 	var log: Array = _events()
 	if not _check(log.size() == 4 and str(log[0]) == "Chef set out." and log.count("Chef set out.") == 1, "the log is full with the first note's line oldest: %s" % [log]):
@@ -545,7 +544,7 @@ func _repeated_note_appears() -> void:
 	await _tap(KEY_Q)
 	if not await _until("the chef sets out again", func() -> bool: return _where("chef") == "city", 30):
 		return
-	_check(_events().count("Chef set out.") == 1 and _drawn("Chef set out."), "the repeated line shows as a new note after the first dropped out: %s %s" % [_events(), _drawn_lines()])
+	_check(_events().count("Chef set out.") == 1 and not _drawn_says("Chef set out."), "the repeated line is logged again after the first dropped out, and no note is drawn: %s %s" % [_events(), _drawn_lines()])
 
 func _start_two_players() -> void:
 	await _leave_run()
@@ -567,8 +566,7 @@ func _main_menu_quits() -> void:
 
 ## Reads the tip the last frame drew, every frame: which opened, and whether,
 ## while the run was not held, it stood whole on the screen clear of the HUD's
-## panels, every target and, over the city, the map's words. A run's tips
-## start afresh off its screen.
+## panels and every target. A run's tips start afresh off its screen.
 func _watch_tips() -> void:
 	if scene == null or scene.screen_name() != "survival":
 		run_tips.clear()
@@ -593,24 +591,16 @@ func _watch_tips() -> void:
 	var covered: Array = panels.duplicate()
 	for target: Dictionary in scene.get_meta("pointer_targets", []):
 		covered.append(target["rect"])
-	var city: bool = tip["city"]
-	var plates: Array = []
-	if city:
-		plates = scene.get_meta("map_plates", [])
-	covered.append_array(plates)
 	for other: Rect2 in covered:
 		if other.intersects(area):
 			tip_overlaps.append("%s over %s" % [text, other])
 	if not SCREEN.encloses(area):
 		tip_overlaps.append("%s off the screen at %s" % [text, area])
-	if city and not plates.is_empty():
-		tip_frames["city"] += 1
-	elif not city:
-		tip_frames["base"] += 1
+	tip_frames += 1
 
 ## Every concept's tip opened, none twice in one run, a later run opened one
-## again, and no drawn tip covered the HUD, a target or the map's words; the
-## control is that tips were drawn at base and over the city's words.
+## again, and no drawn tip covered the HUD or a target; the control is that
+## tips were drawn.
 func _tips_opened_once_each() -> bool:
 	if not _check(every_tip.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
 		return false
@@ -622,7 +612,7 @@ func _tips_opened_once_each() -> bool:
 			keyed.append(line)
 	if not _check(keyed.is_empty(), "the tips name actions and not keys: %s" % [keyed]):
 		return false
-	return _check(tip_overlaps.is_empty() and tip_frames["base"] > 0 and tip_frames["city"] > 0, "a tip covers no HUD panel, target or map word and stays on the screen: %s in %s" % [tip_overlaps.slice(0, 5), tip_frames])
+	return _check(tip_overlaps.is_empty() and tip_frames > 0, "a tip covers no HUD panel or target and stays on the screen: %s in %s" % [tip_overlaps.slice(0, 5), tip_frames])
 
 func _menus() -> void:
 	await _tap(KEY_1)
@@ -642,7 +632,7 @@ func _menus() -> void:
 		return
 	if not _check(_next().contains("Set out"), "the screen tells a new player to set out"):
 		return
-	if not _names_no_action_key("the base"):
+	if not _names_only_prompt_keys("the base"):
 		return
 	if not _check(_hud_area() < BASE_HUD_AREA_WITH_KEYS, "the base's HUD covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), BASE_HUD_AREA_WITH_KEYS]):
 		return
@@ -696,9 +686,11 @@ func _first_day() -> void:
 		return
 	if not _check(await _pause_shows_ending_goal(), "the pause screen over the city, and not the city, shows what ends the run"):
 		return
-	if not _check(_actions() == ["INVENTORY"] and _drawn("INVENTORY") and _drawn("WASD move  Shift run  Space jump  To base"), "away from a source the action button reads inventory, and the move, run and jump keys show beside the way to base: %s" % [_actions()]):
+	if not _check(_actions() == ["TO BASE"] and _drawn("TO BASE") and _drawn("[Q]") and not _drawn_says("INVENTORY") and not _drawn_says("WASD") and not _drawn_says("To base"), "away from a source the prompt offers the way to base, and no inventory button or key line shows: %s %s" % [_actions(), _drawn_lines()]):
 		return
-	if not _names_no_action_key("the first city screen"):
+	if not _hud_is_top_bar("the first city screen"):
+		return
+	if not _names_only_prompt_keys("the first city screen"):
 		return
 	if not _hud_shows_no_health_or_stamina("the first city screen"):
 		return
@@ -710,7 +702,9 @@ func _first_day() -> void:
 	if not await _until("the AI appraiser takes the shelf's kelp", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
 	var shelf: String = "SEARCH " + _place("Shop Shelf")
-	if not _check(_actions() == [shelf] and _drawn(shelf), "at a source the action button offers to search it by its name: %s" % [_actions()]):
+	if not _check(_actions() == [shelf] and _drawn(shelf) and _drawn("[R]"), "at a source the prompt offers to search it by its name beside the search key: %s" % [_actions()]):
+		return
+	if not _hud_is_top_bar("a source"):
 		return
 	if not _check(_hud_area() < CITY_HUD_AREA_WITH_KEYS, "the city's HUD at a source covers less than it did naming every key: %.0f against %.0f" % [_hud_area(), CITY_HUD_AREA_WITH_KEYS]):
 		return
@@ -1492,7 +1486,7 @@ func _two_players() -> void:
 		return
 	if not _check(_next().contains("P1: Walk ") and _next().contains("P2: Set out into the city"), "the player left at base is told to set out: %s" % _next()):
 		return
-	if not _check(_drawn("IJKL move  H run  ; jump  Set out") and not _drawn("IJKL move  H run  ; jump  To base") and _drawn("WASD move  Shift run  Space jump  To base"), "each player's keys name their own jump and U as setting out for player two at base: %s" % [_drawn_lines()]):
+	if not _check(not _drawn_says("IJKL") and not _drawn_says("WASD"), "exploration draws no key line: %s" % [_drawn_lines()]):
 		return
 	if not _text_fits("one player out and one at base"):
 		return
@@ -1511,7 +1505,7 @@ func _two_players() -> void:
 		return
 	if not _text_fits("two players in the city"):
 		return
-	if not _check(_drawn("WASD move  Shift run  Space jump  To base") and _drawn("IJKL move  H run  ; jump  To base"), "each player's row names that key set's move, run and jump keys and the way to base: %s" % [_drawn_lines()]):
+	if not _check(not _drawn_says("IJKL") and not _drawn_says("WASD") and _hud_is_top_bar("two players in the city"), "two players in the city draw no key line, only the top bar: %s" % [_drawn_lines()]):
 		return
 	if not _plates_apart("two players in the city"):
 		return
@@ -1725,7 +1719,7 @@ func _player_two_searches_and_holds_in_place() -> void:
 	await _frames(2)
 	if not _check(_actor("appraiser", "searching") >= 0 and _actions().size() == 2 and _action(1) == "CLOSE" and _action(0) != "CLOSE", "player two's button reads close while player two searches: %s" % [_actions()]):
 		return
-	if not _check(_drawn("IJKL move  H run  ; jump"), "player two's keys leave out travel while the search keeps player two in place: %s" % [_drawn_lines()]):
+	if not _check(_drawn("CLOSE") and _drawn("[P]") and _drawn("P2"), "player two's prompt tags the player and names the search key: %s" % [_drawn_lines()]):
 		return
 	if not _text_fits("player two's search"):
 		return
@@ -1733,7 +1727,7 @@ func _player_two_searches_and_holds_in_place() -> void:
 	if not await _until("player two's search closes", func() -> bool: return _actor("appraiser", "searching") == -1, COLLECT_FRAMES):
 		return
 	await _frames(2)
-	_check(_actions().size() == 2 and _action(1) == "SEARCH Tomato machine" and _drawn("IJKL move  H run  ; jump  To base"), "player two's button names its action again once the search ends: %s" % [_actions()])
+	_check(_actions().size() == 2 and _action(1) == "SEARCH Tomato machine" and _drawn("SEARCH Tomato machine"), "player two's prompt names its action again once the search ends: %s" % [_actions()])
 
 ## Sets out if at base, walks the waypoints and takes `times` items at the last.
 func _collect_along(waypoints: Array[Vector2i], times: int) -> bool:
@@ -1858,7 +1852,7 @@ func _drawn_says(words: String) -> bool:
 func _place(object: String) -> String:
 	return str(_status()["places"][object])
 
-## What each human's action button reads, the chef's first.
+## What each human's action prompt reads, the chef's first; empty while hidden.
 func _actions() -> Array:
 	return _status()["actions"]
 
@@ -1875,17 +1869,43 @@ func _hud_area() -> float:
 		area += panel.get_area()
 	return area
 
-## Whether the last frame drew no key cap, such as "[E]", and no Esc, while
-## it drew the pause chip, as the control that it drew the HUD's words.
-func _names_no_action_key(where: String) -> bool:
+## Whether the last frame drew no Esc and no key cap but the search keys of
+## the action prompts, such as "[R]", while it drew the top bar's words.
+func _names_only_prompt_keys(where: String) -> bool:
 	var keyed: Array[String] = []
 	for line: String in _drawn_lines():
-		if line.contains("[") or line.contains("Esc"):
+		if line.contains("Esc") or (line.contains("[") and not PROMPT_CAPS.has(line)):
 			keyed.append(line)
-	return _check(keyed.is_empty() and _drawn("Pause, keys"), "%s names no key but the movement keys: %s" % [where, keyed])
+	return _check(keyed.is_empty() and _top_bar_drawn(), "%s names no key but the prompts' search keys: %s" % [where, keyed])
 
-## Every place the map names has its button and its log lines among the
-## changing lines, so the measure covers each name and not only some.
+## Whether the last frame drew the day, the acid and the clock.
+func _top_bar_drawn() -> bool:
+	var day: bool = false
+	var acid: bool = false
+	var clock: bool = false
+	for line: String in _drawn_lines():
+		day = day or line.begins_with("DAY ")
+		acid = acid or line.begins_with("ACID ")
+		clock = clock or (line.length() == 5 and line[2] == ":")
+	return day and acid and clock
+
+## Whether the city's HUD, with no screen open, is the three plates in the top
+## band and one prompt below it for each human with an action, with no goal
+## panel; a notice or any other bar or cell fails it.
+func _hud_is_top_bar(where: String) -> bool:
+	var panels: Array = scene.get_meta("hud_panels", [])
+	var top: int = 0
+	var lower: int = 0
+	for panel: Rect2 in panels:
+		if panel.end.y <= TOP_BAND_END:
+			top += 1
+		elif panel.position.y >= SCREEN.size.y / 2.0:
+			lower += 1
+	var prompts: int = _actions().filter(func(action: String) -> bool: return action != "").size()
+	return _check(top == 3 and lower == prompts and panels.size() == 3 + prompts and _top_bar_drawn(), "%s draws the three plates and %d prompts and no other bar or cell: %s" % [where, prompts, panels])
+
+## Every place the map names has its prompt among the changing lines, so the
+## measure covers each name and not only some; the log is not drawn.
 func _every_place_measured() -> bool:
 	var texts: Array[String] = []
 	for line: Dictionary in _changing_text():
@@ -1894,7 +1914,7 @@ func _every_place_measured() -> bool:
 	var missing: Array[String] = []
 	for object: String in places:
 		var place: String = str(places[object])
-		var listed: bool = texts.has("SEARCH " + place) and texts.has(place + " appeared.")
+		var listed: bool = texts.has("SEARCH " + place)
 		if not listed and not missing.has(place):
 			missing.append(place)
 	return _check(not places.is_empty() and missing.is_empty(), "every place's lines are measured: %s" % [missing])
@@ -2098,17 +2118,16 @@ func _plates_clear_of_sources(where: String) -> bool:
 	return _check(counts > 0 and plates > counts and covered.is_empty(), "no map plate covers a source but its count or lies under the HUD on %s or on the way: %d plates, %d counts, %s" % [where, plates, counts, covered])
 
 ## The plates drawn, the sources' counts among them, the other plates over a
-## source, and every plate under a HUD panel or note.
+## source, and every plate under a HUD panel.
 func _plates_over_sources() -> Dictionary:
 	var plates: Array = scene.get_meta("map_plates", [])
 	var areas: Array = scene.get_meta("map_source_areas", [])
 	var count_plates: Array = scene.get_meta("map_counts", [])
 	var panels: Array = scene.get_meta("hud_panels", [])
-	var notes: Array = scene.get_meta("hud_notes", [])
 	var counts: int = 0
 	var covered: Array[String] = []
 	for plate: Rect2 in plates:
-		for area: Rect2 in panels + notes:
+		for area: Rect2 in panels:
 			if plate.intersects(area):
 				covered.append("%s under the HUD at %s" % [plate, area])
 		if count_plates.has(plate):

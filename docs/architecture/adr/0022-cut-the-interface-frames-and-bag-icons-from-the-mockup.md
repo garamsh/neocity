@@ -1,6 +1,6 @@
 # ADR 0022: Cut the interface frames and bag icons from the mockup
 
-> Status: superseded by ADR-0032 (its seven bag slots)
+> Status: superseded by ADR-0032 (its seven bag slots) and ADR-0034 (its sun and clock cuts)
 > Date: 2026-11-06
 
 Append-only: once merged, the body below is not rewritten. A changed decision means a new ADR.
