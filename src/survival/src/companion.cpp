@@ -648,7 +648,7 @@ ActorCommand decide(const CompanionConfig &config, Actor actor,
     return mutant_ahead(config, actor, command, view) ? ActorCommand{}
                                                       : command;
   }
-  case Phase::Escaped:
+  case Phase::Ended:
   case Phase::Lost:
     return {};
   }

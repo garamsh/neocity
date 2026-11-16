@@ -1,5 +1,4 @@
 #include <survival/content.hpp>
-#include <survival/escape.hpp>
 
 #include <gtest/gtest.h>
 
@@ -37,6 +36,8 @@ constexpr std::uint32_t STEP_LIMIT = 400'000;
 constexpr std::uint32_t LAST_SCANNED_DAY = 60;
 /// The share of cooking attempts that turn into a dish.
 constexpr std::uint32_t SUCCESS_PERCENT = 90;
+/// The days the supply and the AI party are checked to last.
+constexpr std::uint32_t CHECKED_DAYS = 30;
 
 /// The temporary game's features, advanced with a fresh view per actor.
 class Game {
@@ -651,12 +652,11 @@ TEST(TemporaryContent, EveryRecipeCanBeCookedFromReachableStock) {
   }
 }
 
-TEST(TemporaryContent,
-     ReachableStockCoversBurnedDishesUpToTheFirstEscapeCheck) {
+TEST(TemporaryContent, ReachableStockCoversBurnedDishesForThirtyDays) {
   const auto content = temporary_content(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
   const auto dishes = wanted_dishes(content.companion.workshop.recipes, stock);
-  EXPECT_GE(dishes * SUCCESS_PERCENT, TEMPORARY_ESCAPE.first_day * 100U)
+  EXPECT_GE(dishes * SUCCESS_PERCENT, CHECKED_DAYS * 100U)
       << dishes << " dishes";
 }
 
@@ -842,17 +842,17 @@ TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
   EXPECT_LT(long_stock, stock);
 }
 
-TEST(TemporaryContent, NeverFeedingLosesLongBeforeTheFirstEscapeCheck) {
+TEST(TemporaryContent, NeverFeedingLosesLongBeforeDayThirty) {
   Game game(temporary_content(1));
   const auto penalty = game.content().companion.unfed_penalty;
   std::uint32_t days = 0;
   while (game.simulation().snapshot().phase == Phase::Workshop &&
-         days < TEMPORARY_ESCAPE.first_day) {
+         days < CHECKED_DAYS) {
     ASSERT_EQ(game.workshop().end_day_unfed(penalty), WorkshopResult::Applied);
     ++days;
   }
   EXPECT_EQ(game.simulation().snapshot().phase, Phase::Lost);
-  EXPECT_LT(days, TEMPORARY_ESCAPE.first_day / 2);
+  EXPECT_LT(days, CHECKED_DAYS / 2);
 }
 
 TEST(TemporaryContent, TheDayBringsAWashedUpBagAndNothingElseTakesItAway) {
@@ -933,12 +933,11 @@ TEST(TemporaryContent, TheSourcesAcidOnceDestroyedNowSupplyForTheWholeRun) {
   }
 }
 
-TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToTheFirstEscapeCheck) {
+TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToDayThirty) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
     Game game(temporary_content(seed));
-    EXPECT_EQ(unfed_days(game, TEMPORARY_ESCAPE.first_day + 1), 0U)
-        << "seed " << seed;
-    EXPECT_EQ(game.simulation().snapshot().day, TEMPORARY_ESCAPE.first_day + 1)
+    EXPECT_EQ(unfed_days(game, CHECKED_DAYS + 1), 0U) << "seed " << seed;
+    EXPECT_EQ(game.simulation().snapshot().day, CHECKED_DAYS + 1)
         << "seed " << seed;
   }
 }

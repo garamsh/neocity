@@ -10,8 +10,8 @@ extends SceneTree
 const ENTRANCE_MS: int = 300
 ## A word of each concept the How to play page explains, in its order: set
 ## out, move, collect, appraise, cook, feed, a hated dish, acid,
-## and the escape.
-const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Search", "?", "cooks", "Feeding", "hated", "acid", "way out"]
+## and the ending.
+const HOW_TO_PLAY_WORDS: Array[String] = ["Set out", "jump", "Search", "?", "cooks", "Feeding", "hated", "acid", "done with"]
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}

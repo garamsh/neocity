@@ -71,7 +71,7 @@ bool due(hud::Tip tip, const hud::SurvivalFrame &frame) {
     return !view.workshop.rejected_foods.empty();
   case hud::Tip::Acid:
     return progression.acid.value > 0;
-  case hud::Tip::Escape:
+  case hud::Tip::Ending:
     return view.workshop.last_day.has_value();
   }
   std::abort();

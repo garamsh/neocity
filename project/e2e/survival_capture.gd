@@ -40,8 +40,8 @@ const HIGH_ACID: int = 84
 const DAMAGE_ACID: int = 45
 ## Half the acid that ends the run, to the nearest unfed day's rise.
 const MIDDLE_ACID: int = 48
-## Following NEXT on this seed escapes; `G` alone only ever loses.
-const ESCAPE_SEED: int = 7
+## Following NEXT on this seed ends the run satisfied; `G` alone only ever loses.
+const ENDING_SEED: int = 7
 const DAY_LIMIT: int = 120
 const STEP_FRAMES: int = 6
 const ROUTE_KEYS: Dictionary[String, Key] = {"left": KEY_A, "right": KEY_D, "up": KEY_W, "down": KEY_S}
@@ -460,7 +460,7 @@ func _run() -> void:
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
 	await _tap(KEY_1)
-	scene.pin_survival_seed(ESCAPE_SEED)
+	scene.pin_survival_seed(ENDING_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	while scene.survival_status().get("phase", "") in ["workshop", "exploration"] and _int("day") < DAY_LIMIT:

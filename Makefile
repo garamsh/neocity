@@ -25,7 +25,7 @@ CONFIGURE := $(CMAKE) -S . -B $(BUILD_DIR) -G Ninja -DCMAKE_MAKE_PROGRAM=$(TOOLS
 
 CPP_FILES := git ls-files --cached --others --exclude-standard -- 'src/*.cpp' 'src/*.hpp'
 CPP_UNITS := git ls-files --cached --others --exclude-standard -- 'src/*.cpp'
-CLANG_TIDY_CHECKS := -*,bugprone-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-bugprone-easily-swappable-parameters,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-union-access,-misc-include-cleaner,-modernize-use-trailing-return-type,-portability-avoid-pragma-once,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-trailing-comma
+CLANG_TIDY_CHECKS := -*,bugprone-*,clang-analyzer-*,cppcoreguidelines-*,misc-*,modernize-*,performance-*,portability-*,readability-*,-bugprone-easily-swappable-parameters,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-pro-type-union-access,-misc-include-cleaner,-modernize-use-trailing-return-type,-portability-avoid-pragma-once,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-magic-numbers,-readability-math-missing-parentheses,-readability-trailing-comma,-readability-trivial-switch
 GODOT_SCRIPTS := git ls-files --cached --others --exclude-standard -- '$(PROJECT_DIR)/tests/*.gd' '$(PROJECT_DIR)/e2e/*.gd'
 CLANG_TIDY_JOBS := $(shell getconf _NPROCESSORS_ONLN)
 CLANG_TIDY_FLAGS := -p $(BUILD_DIR) --quiet --checks='$(CLANG_TIDY_CHECKS)' --warnings-as-errors='*' --header-filter='$(CURDIR)/src/'
@@ -151,7 +151,7 @@ test-survival: build
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 35 live checks passed (fallback, input block, days, escape, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
 
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \

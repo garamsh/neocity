@@ -139,7 +139,7 @@ WorkshopResult moved(Result result) {
 WorkshopResult Workshop::store(Actor actor, IngredientId ingredient) {
   // The fridge is at base, open while the partner is out in the city.
   if (const auto phase = simulation.get().snapshot().phase;
-      phase == Phase::Escaped || phase == Phase::Lost) {
+      phase == Phase::Ended || phase == Phase::Lost) {
     return WorkshopResult::NotInWorkshop;
   }
   return moved(simulation.get().store(actor, ingredient));
@@ -148,7 +148,7 @@ WorkshopResult Workshop::store(Actor actor, IngredientId ingredient) {
 WorkshopResult Workshop::withdraw(Actor actor, IngredientId ingredient) {
   // The fridge is at base, open while the partner is out in the city.
   if (const auto phase = simulation.get().snapshot().phase;
-      phase == Phase::Escaped || phase == Phase::Lost) {
+      phase == Phase::Ended || phase == Phase::Lost) {
     return WorkshopResult::NotInWorkshop;
   }
   return moved(simulation.get().withdraw(actor, ingredient));
@@ -239,6 +239,9 @@ WorkshopResult Workshop::feed(FoodId food) {
   state.eaten_ingredients.insert(state.eaten_ingredients.end(),
                                  new_ingredients.begin(),
                                  new_ingredients.end());
+  if (reaction == MonsterReaction::Satisfied) {
+    ++state.satisfied_days;
+  }
   state.last_day = {.completed_day = day,
                     .reaction = reaction,
                     .score = score,

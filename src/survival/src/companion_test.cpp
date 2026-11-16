@@ -840,10 +840,10 @@ TEST(Companion, NeitherActorLeavesOrEndsTheDayWhileThePartnerHasBaseWork) {
   EXPECT_EQ(ai_action(view, Actor::Appraiser), Action{Appraise{CARROT}});
 }
 
-TEST(Companion, DoesNothingOnceEscaped) {
+TEST(Companion, DoesNothingOnceEnded) {
   auto view = base_view();
   add_source(view, SOURCE, 3);
-  view.progression.phase = Phase::Escaped;
+  view.progression.phase = Phase::Ended;
   EXPECT_EQ(ai_action(view, Actor::Chef), std::nullopt);
   EXPECT_EQ(ai_action(view, Actor::Appraiser), std::nullopt);
 }

@@ -52,7 +52,7 @@ SurvivalRules::SurvivalRules(survival::Content game)
     : content(std::move(game)), simulation(content.run), world(content.objects),
       exploration(simulation, world, content.companion.exploration),
       workshop(simulation, content.companion.workshop),
-      escape(simulation, survival::TEMPORARY_ESCAPE),
+      endings(simulation, workshop, survival::TEMPORARY_ENDING),
       companion(content.companion) {}
 
 session::SurvivalFeatures SurvivalRules::features() {
@@ -61,7 +61,7 @@ session::SurvivalFeatures SurvivalRules::features() {
           .world = world,
           .exploration = exploration,
           .workshop = workshop,
-          .escape = escape,
+          .endings = endings,
           .companion = companion};
 }
 

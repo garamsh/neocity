@@ -156,10 +156,18 @@ const char *phase_name(survival::Phase phase) {
     return "workshop";
   case survival::Phase::Exploration:
     return "exploration";
-  case survival::Phase::Escaped:
-    return "escaped";
+  case survival::Phase::Ended:
+    return "ended";
   case survival::Phase::Lost:
     return "lost";
+  }
+  std::abort();
+}
+
+const char *ending_name(survival::Ending ending) {
+  switch (ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "monster_satisfied";
   }
   std::abort();
 }
@@ -305,8 +313,8 @@ void SurvivalRun::drop_input() {
   dish_step = survival::Direction::Idle;
 }
 
-bool SurvivalRun::escaped() const {
-  return features.simulation.get().snapshot().phase == survival::Phase::Escaped;
+bool SurvivalRun::ended() const {
+  return features.simulation.get().snapshot().phase == survival::Phase::Ended;
 }
 
 bool SurvivalRun::lost() const {
@@ -399,11 +407,9 @@ void SurvivalRun::step() {
       walked_home.at(index) =
           std::holds_alternative<survival::ReturnToBase>(*command.action);
       run_action(actor, *command.action, progression.day);
-      // The roll follows the finishing command at once, before the partner's
+      // The check follows the finishing command at once, before the partner's
       // command can set out and take the party out of the workshop.
-      if (features.escape.get().check() == survival::EscapeResult::Stayed) {
-        record(hud::EscapeMissEvent{.day = progression.day});
-      }
+      (void)features.endings.get().check();
       if (over()) {
         return;
       }
@@ -713,7 +719,10 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
   status.set("eaten",
              static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
   status.set("rolls", view.workshop.rolls);
-  status.set("escape_rolls", features.escape.get().snapshot().rolls);
+  status.set("satisfied_days", view.workshop.satisfied_days);
+  if (view.progression.ending) {
+    status.set("ending", ending_name(*view.progression.ending));
+  }
   if (view.workshop.last_day) {
     status.set("reaction", reaction_name(view.workshop.last_day->reaction));
     status.set("score", view.workshop.last_day->score);
@@ -758,7 +767,7 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
                    godot::String(" / ") + row.second);
   }
   status.set("pause_keys", keys);
-  status.set("goal", hud::escape_goal());
+  status.set("goal", hud::ending_goal());
   godot::Array result;
   for (const auto &line : hud::day_result(current)) {
     result.push_back(line);

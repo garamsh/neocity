@@ -522,7 +522,7 @@ void Session::advance_run(SurvivalRun &open, double delta,
   if (opening) {
     cue(audio::Cue::MenuSelect);
   }
-  if (open.escaped()) {
+  if (open.ended()) {
     play(hud::Cinematic::Ending);
   } else if (open.lost()) {
     play(hud::Cinematic::Loss);

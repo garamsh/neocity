@@ -435,7 +435,7 @@ TEST(Workshop, DayEndsUnfedWithTheCallerPenaltyAndCreatesNothing) {
   EXPECT_EQ(simulation.enter(Actor::Chef), Result::Applied);
 }
 
-TEST(Workshop, DayOutcomeReportsDayThirtyForTheEscapeRules) {
+TEST(Workshop, DayOutcomeReportsDayThirty) {
   Simulation simulation({.exploration_budget = 10s, .seed = 3});
   Workshop workshop(simulation, balance());
   for (std::uint32_t day = 1; day <= 30; ++day) {

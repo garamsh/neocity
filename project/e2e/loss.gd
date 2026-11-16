@@ -83,7 +83,7 @@ func _never_feeding_loses() -> void:
 		await _until("the day ends", func() -> bool: return _int("day") == day + 1, 30)
 	if not _check(_str("phase") == "lost" and _int("acid") == full, "acid at full loses the run"):
 		return
-	if not _check(_int("day") - 1 == ceili(float(full) / penalty) and _int("escape_rolls") == 0, "the loss comes on the day acid fills, with no escape roll"):
+	if not _check(_int("day") - 1 == ceili(float(full) / penalty) and _str("ending") == "", "the loss comes on the day acid fills, with no ending"):
 		return
 	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback", "a missing loss scene takes the fallback card"):
 		return
@@ -168,7 +168,7 @@ func _mounted() -> bool:
 ## Compares the run's state, leaving out the event log's order of arrival.
 func _same_state(before: Dictionary) -> bool:
 	var now: Dictionary = scene.survival_status()
-	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "escape_rolls", "foods", "chef", "appraiser", "stock", "objects"]:
+	for field: String in ["day", "phase", "acid", "remaining_ms", "elapsed_ms", "rolls", "satisfied_days", "foods", "chef", "appraiser", "stock", "objects"]:
 		if now[field] != before[field]:
 			return false
 	return true

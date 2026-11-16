@@ -2,7 +2,7 @@
 
 #include "../rendering/survival.hpp"
 
-#include <survival/escape.hpp>
+#include <survival/ending.hpp>
 
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <map>
+#include <optional>
 #include <ranges>
 #include <set>
 #include <string>
@@ -1778,7 +1779,7 @@ std::vector<String> every_note(const SurvivalFrame &frame,
   const auto &view = frame.view;
   const auto &tuning = frame.content.get().companion;
   // A day number of three digits stands for any day a run reaches.
-  std::vector<Event> events{TimeUpEvent{}, EscapeMissEvent{.day = 100}};
+  std::vector<Event> events{TimeUpEvent{}};
   const auto acted = [&events](Actor actor, survival::Action action,
                                survival::ActionResult result) {
     events.emplace_back(
@@ -2054,9 +2055,9 @@ godot::Rect2 notice_button_area(const rendering::Art &drawing,
               button_width(drawing, text, INTERRUPTION_LINE_SIZE), 48.0F);
 }
 
-/// The pause screen's subtitle, with when the escape checks begin.
+/// The pause screen's subtitle, with what ends the run well.
 String pause_line(const std::array<String, 3> &text) {
-  return text.at(1) + String(" ") + escape_goal() + String(".");
+  return text.at(1) + String(" ") + ending_goal() + String(".");
 }
 
 } // namespace
@@ -2199,6 +2200,32 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
+namespace {
+
+const char *ending_title(std::optional<survival::Ending> ending) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "SATISFIED";
+  }
+  std::abort();
+}
+
+String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "The monster was satisfied after " + number(days) + String(" days.");
+  }
+  std::abort();
+}
+
+} // namespace
+
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame) {
@@ -2227,12 +2254,11 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                  24, tones.white);
     break;
   case Cinematic::Ending:
-    drawing.text(canvas, 130.0F, 170.0F, "ESCAPED", 48, tones.gold,
-                 Weight::Bold);
+    drawing.text(canvas, 130.0F, 170.0F, ending_title(progression.ending), 48,
+                 tones.gold, Weight::Bold);
     drawing.text(canvas, 130.0F, 230.0F,
-                 "The party got out of the monster after " +
-                     number(progression.day - 1) + String(" days."),
-                 24, tones.white);
+                 ending_line(progression.ending, progression.day - 1), 24,
+                 tones.white);
     break;
   case Cinematic::Loss:
     drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 48, tones.success,
@@ -2273,9 +2299,10 @@ String tip_text(Tip tip) {
     return "The monster hated that dish, and refuses that food from now on.";
   case Tip::Acid:
     return "The acid rises after a day unfed, a hated dish, or a low score.";
-  case Tip::Escape:
-    return "From day " + number(survival::TEMPORARY_ESCAPE.first_day) +
-           " each finished day may open the way out. Hold on until then.";
+  case Tip::Ending:
+    return "Days fed to satisfaction add up, in a row or not: after " +
+           number(survival::TEMPORARY_ENDING.satisfied_days) +
+           " of them the monster is done with the party.";
   }
   std::abort();
 }
@@ -2298,8 +2325,8 @@ String tip_name(Tip tip) {
     return "rejected";
   case Tip::Acid:
     return "acid";
-  case Tip::Escape:
-    return "escape";
+  case Tip::Ending:
+    return "ending";
   }
   std::abort();
 }
@@ -2382,8 +2409,8 @@ String hand_off_notice(const SurvivalFrame &frame) {
 
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
-  if (view.progression.phase == Phase::Escaped) {
-    return "The party has escaped.";
+  if (view.progression.phase == Phase::Ended) {
+    return "The monster is satisfied.";
   }
   if (view.progression.phase == Phase::Lost) {
     return "The acid has filled the mouth.";
@@ -2450,9 +2477,9 @@ String offered_forecast(const SurvivalFrame &frame) {
   return offered ? cook_forecast(frame, *offered) : String();
 }
 
-String escape_goal() {
-  return "Escape checks from day " +
-         number(survival::TEMPORARY_ESCAPE.first_day);
+String ending_goal() {
+  return "Satisfy the monster on " +
+         number(survival::TEMPORARY_ENDING.satisfied_days) + " days";
 }
 
 std::vector<String> day_result(const SurvivalFrame &frame) {
@@ -2654,8 +2681,6 @@ String describe(const GameView &view, const Event &event) {
                  String(" touched danger and was sent away.");
         } else if constexpr (std::is_same_v<Happened, TimeUpEvent>) {
           return "Time is up: everyone is back at base.";
-        } else if constexpr (std::is_same_v<Happened, EscapeMissEvent>) {
-          return "Day " + number(happened.day) + ": the way out stayed shut.";
         } else {
           const String name = rendering::place_name(view, happened.object);
           return happened.state == survival::ObjectState::Destroyed
