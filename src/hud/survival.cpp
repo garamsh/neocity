@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <map>
+#include <optional>
 #include <ranges>
 #include <set>
 #include <string>
@@ -2199,16 +2200,22 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-const char *ending_title(survival::Ending ending) {
-  switch (ending) {
+static const char *ending_title(std::optional<survival::Ending> ending) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "SATISFIED";
   }
   std::abort();
 }
 
-String ending_line(survival::Ending ending, std::uint64_t days) {
-  switch (ending) {
+static String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "The monster was satisfied after " + number(days) +
            String(" days.");
