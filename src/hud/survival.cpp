@@ -2200,7 +2200,9 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-static const char *ending_title(std::optional<survival::Ending> ending) {
+namespace {
+
+const char *ending_title(std::optional<survival::Ending> ending) {
   if (!ending.has_value()) {
     std::abort();
   }
@@ -2211,17 +2213,18 @@ static const char *ending_title(std::optional<survival::Ending> ending) {
   std::abort();
 }
 
-static String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
+String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
   if (!ending.has_value()) {
     std::abort();
   }
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
-    return "The monster was satisfied after " + number(days) +
-           String(" days.");
+    return "The monster was satisfied after " + number(days) + String(" days.");
   }
   std::abort();
 }
+
+} // namespace
 
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
