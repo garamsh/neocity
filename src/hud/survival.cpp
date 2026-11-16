@@ -2199,6 +2199,23 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
+const char *ending_title(survival::Ending ending) {
+  switch (ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "SATISFIED";
+  }
+  std::abort();
+}
+
+String ending_line(survival::Ending ending, std::uint64_t days) {
+  switch (ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "The monster was satisfied after " + number(days) +
+           String(" days.");
+  }
+  std::abort();
+}
+
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame) {
@@ -2227,16 +2244,11 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                  24, tones.white);
     break;
   case Cinematic::Ending:
-    // A new ending adds its card here, as a switch once there are two.
-    if (progression.ending != survival::Ending::MonsterSatisfied) {
-      std::abort();
-    }
-    drawing.text(canvas, 130.0F, 170.0F, "SATISFIED", 48, tones.gold,
-                 Weight::Bold);
+    drawing.text(canvas, 130.0F, 170.0F, ending_title(progression.ending), 48,
+                 tones.gold, Weight::Bold);
     drawing.text(canvas, 130.0F, 230.0F,
-                 "The monster was satisfied after " +
-                     number(progression.day - 1) + String(" days."),
-                 24, tones.white);
+                 ending_line(progression.ending, progression.day - 1), 24,
+                 tones.white);
     break;
   case Cinematic::Loss:
     drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 48, tones.success,

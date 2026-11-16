@@ -164,12 +164,12 @@ const char *phase_name(survival::Phase phase) {
   std::abort();
 }
 
-/// A new ending adds its name here, as a switch once there are two.
 const char *ending_name(survival::Ending ending) {
-  if (ending != survival::Ending::MonsterSatisfied) {
-    std::abort();
+  switch (ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "monster_satisfied";
   }
-  return "monster_satisfied";
+  std::abort();
 }
 
 const char *state_name(survival::ObjectState state) {
