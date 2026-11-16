@@ -787,66 +787,6 @@
    "depicts": "Dish icon: surf and turf"
   },
   {
-   "path": "ui/heart_full.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 2,
-   "colours": 7,
-   "depicts": "Heart, full, red"
-  },
-  {
-   "path": "ui/heart_empty.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 2,
-   "colours": 8,
-   "depicts": "Heart, empty: the full heart's shape drained to dark grey"
-  },
-  {
-   "path": "ui/icon_day.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 833,
-   "depicts": "Original mockup sun",
-   "provenance": {
-    "source": "concept_search_mockup",
-    "crop": [
-     24,
-     14,
-     32,
-     32
-    ],
-    "policy": "source colours; native screen pixels"
-   }
-  },
-  {
-   "path": "ui/icon_clock.png",
-   "size": [
-    32,
-    32
-   ],
-   "scale": 1,
-   "colours": 725,
-   "depicts": "Original mockup clock",
-   "provenance": {
-    "source": "concept_search_mockup",
-    "crop": [
-     1121,
-     14,
-     32,
-     32
-    ],
-    "policy": "source colours; native screen pixels"
-   }
-  },
-  {
    "path": "workshop/kitchen.png",
    "size": [
     1280,

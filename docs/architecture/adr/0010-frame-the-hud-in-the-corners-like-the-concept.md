@@ -1,6 +1,6 @@
 # ADR 0010: Frame the HUD in the corners like the concept
 
-> Status: accepted; code-drawn frames and accent-filled buttons superseded by ADR-0022; the key cap over a human and the Esc hint superseded by ADR-0014
+> Status: accepted; code-drawn frames and accent-filled buttons superseded by ADR-0022; the key cap over a human and the Esc hint superseded by ADR-0014; the four-corner layout, goal line, fading notes and bottom row superseded by ADR-0034
 > Date: 2026-11-03
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

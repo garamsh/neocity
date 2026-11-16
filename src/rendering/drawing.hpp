@@ -136,8 +136,6 @@ enum class Image : std::uint8_t {
   Kiosk,
   ColdStore,
   Ferry,
-  IconDay,
-  IconClock,
   IngredientTomato,
   IngredientFish,
   IngredientKelp,
@@ -181,6 +179,13 @@ enum class Image : std::uint8_t {
   HdAppraiserFall,
   HdAppraiserLand,
   HdAppraiserClimb,
+  HdHudDay,
+  HdHudAcid,
+  HdHudClock,
+  HdActionPrompt,
+  HdGaugeFill,
+  HdSun,
+  HdClock,
   RatWalk1,
   RatWalk2,
   RatWalk3,
@@ -265,6 +270,10 @@ public:
   void image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                   godot::Rect2 destination,
                   godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
+  /// Draws `image` across `area` with its first and last `edge` units at
+  /// their own size and the middle stretched between them.
+  void image_wide(godot::Node2D &canvas, Image image, godot::Rect2 area,
+                  float edge) const;
   /// Moves everything drawn on `canvas` after it by `offset`, until the next
   /// shift or look; a mirrored image keeps it.
   void shift(godot::Node2D &canvas, godot::Vector2 offset) const;

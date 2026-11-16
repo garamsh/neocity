@@ -6,33 +6,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <variant>
 
 namespace neocity::session {
 namespace {
 
 /// How long a tip shows when nothing closes it first; a temporary value.
 constexpr double TIP_SECONDS = 8.0;
-
-/// Whether a human in the city stands where its search key opens a container.
-bool human_can_search(const hud::SurvivalFrame &frame) {
-  return std::ranges::any_of(frame.offers, [](const hud::Offers &offers) {
-    return offers.search &&
-           std::holds_alternative<survival::Search>(*offers.search);
-  });
-}
-
-/// Whether a human is out in the city.
-bool human_in_city(const hud::SurvivalFrame &frame) {
-  const auto &progression = frame.view.progression;
-  const auto out = [&frame](survival::Actor actor,
-                            const survival::ActorSnapshot &state) {
-    return survival::key_set(frame.control, actor).has_value() &&
-           state.location == survival::Location::City;
-  };
-  return out(survival::Actor::Chef, progression.chef) ||
-         out(survival::Actor::Appraiser, progression.appraiser);
-}
 
 /// Whether either actor carries an ingredient nobody has identified, which
 /// the bag marks with a question mark.
@@ -54,9 +33,9 @@ bool due(hud::Tip tip, const hud::SurvivalFrame &frame) {
   case hud::Tip::SetOut:
     return at_base && progression.remaining_exploration.count() > 0;
   case hud::Tip::Move:
-    return human_in_city(frame);
   case hud::Tip::Collect:
-    return human_can_search(frame);
+    // The city shows no tip; the controls page lists these two.
+    return false;
   case hud::Tip::Appraise:
     return carries_unidentified(view);
   case hud::Tip::Cook:
@@ -84,11 +63,12 @@ void Tips::advance(const hud::SurvivalFrame &frame, double delta, bool acted) {
     if (std::isfinite(delta) && delta > 0.0) {
       shown_for += delta;
     }
-    if (acted || shown_for >= TIP_SECONDS) {
+    if (acted || shown_for >= TIP_SECONDS ||
+        frame.view.progression.phase != survival::Phase::Workshop) {
       current.reset();
     }
   }
-  if (current || survival::run_over(frame.view.progression.phase)) {
+  if (current || frame.view.progression.phase != survival::Phase::Workshop) {
     return;
   }
   for (const auto tip : hud::TIPS) {

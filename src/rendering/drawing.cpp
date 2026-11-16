@@ -110,6 +110,20 @@ const char *path(Image image) {
     return "characters/appraiser_land.png";
   case Image::AppraiserClimb:
     return "characters/appraiser_climb.png";
+  case Image::HdHudDay:
+    return "ui/hud_day.png";
+  case Image::HdHudAcid:
+    return "ui/hud_acid.png";
+  case Image::HdHudClock:
+    return "ui/hud_clock.png";
+  case Image::HdActionPrompt:
+    return "ui/action_prompt.png";
+  case Image::HdGaugeFill:
+    return "ui/gauge_fill.png";
+  case Image::HdSun:
+    return "ui/sun.png";
+  case Image::HdClock:
+    return "ui/clock.png";
   case Image::HdChefIdle:
     return "characters/chef_idle.png";
   case Image::HdChefWalk1:
@@ -206,10 +220,6 @@ const char *path(Image image) {
     return "world/cold_store.png";
   case Image::Ferry:
     return "world/ferry.png";
-  case Image::IconDay:
-    return "ui/icon_day.png";
-  case Image::IconClock:
-    return "ui/icon_clock.png";
   case Image::IngredientTomato:
     return "icons/ingredient_tomato.png";
   case Image::IngredientFish:
@@ -274,7 +284,7 @@ bool hd(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
   return folder == "backgrounds" || folder == "walkway" || folder == "world" ||
          folder == "ground" || folder == "mutants" || folder == "obstacles" ||
-         (image >= Image::HdChefIdle && image <= Image::HdAppraiserClimb);
+         (image >= Image::HdChefIdle && image <= Image::HdClock);
 }
 
 /// Native picture pixels per layout unit, before the camera and canvas. The
@@ -604,6 +614,18 @@ void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
   if (mirrored) {
     canvas.draw_set_transform_matrix(placed);
   }
+}
+
+void Art::image_wide(godot::Node2D &canvas, Image image, godot::Rect2 area,
+                     float edge) const {
+  const Vector2 whole = size(image);
+  const float inner = area.size.x - 2.0F * edge;
+  image_part(canvas, image, rect(0.0F, 0.0F, edge, whole.y),
+             rect(area.position.x, area.position.y, edge, area.size.y));
+  image_part(canvas, image, rect(edge, 0.0F, whole.x - 2.0F * edge, whole.y),
+             rect(area.position.x + edge, area.position.y, inner, area.size.y));
+  image_part(canvas, image, rect(whole.x - edge, 0.0F, edge, whole.y),
+             rect(area.get_end().x - edge, area.position.y, edge, area.size.y));
 }
 
 void Art::next_frame() { ++frame; }
