@@ -1161,18 +1161,32 @@ void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
-/// What one human's search key does now, named by its action: closing the
-/// screen it opened, or searching the container in reach; empty otherwise.
-String prompt_action(const SurvivalFrame &frame, Actor actor) {
+/// The key one human's prompt names and what it does.
+struct PromptAction {
+  PlayerKey key = PlayerKey::Search;
+  String text;
+};
+
+/// What one human's prompt offers now: the search key's action, closing the
+/// screen it opened or searching the container in reach; with none, the
+/// travel key's, named by where it goes; none while a search holds the actor.
+std::optional<PromptAction> prompt_action(const SurvivalFrame &frame,
+                                          Actor actor) {
   if (frame.screens.at(index_of(actor)).open) {
-    return "CLOSE";
+    return PromptAction{.key = PlayerKey::Search, .text = "CLOSE"};
   }
   const auto &offer = frame.offers.at(index_of(actor)).search;
   if (const auto *search =
           offer ? std::get_if<survival::Search>(&*offer) : nullptr) {
-    return "SEARCH " + rendering::place_name(frame.view, search->source);
+    return PromptAction{
+        .key = PlayerKey::Search,
+        .text = "SEARCH " + rendering::place_name(frame.view, search->source)};
   }
-  return {};
+  if (!searching_of(frame.view, actor) &&
+      state_of(frame.view, actor).location == Location::City) {
+    return PromptAction{.key = PlayerKey::Travel, .text = "TO BASE"};
+  }
+  return std::nullopt;
 }
 
 /// The movement, run and jump keys of one human.
@@ -1199,6 +1213,7 @@ struct Prompt {
   String tag;
   String cap;
   String action;
+  PlayerKey key = PlayerKey::Search;
   godot::Rect2 area;
 };
 
@@ -1211,13 +1226,19 @@ std::vector<Prompt> prompts(const rendering::Art &drawing,
   for (std::size_t place = 0; place < players.size(); ++place) {
     const auto [actor, set] = players.at(place);
     auto action = prompt_action(frame, actor);
-    if (action.is_empty()) {
+    if (!action) {
       continue;
     }
+    const auto &labels = KEY_LABELS.at(set);
     Prompt prompt{.actor = actor,
                   .tag = players.size() > 1 ? "P" + number(set + 1) : String(),
-                  .cap = "[" + from(KEY_LABELS.at(set).search) + "]",
-                  .action = std::move(action),
+                  .cap =
+                      "[" +
+                      from(action->key == PlayerKey::Travel ? labels.travel
+                                                            : labels.search) +
+                      "]",
+                  .action = std::move(action->text),
+                  .key = action->key,
                   .area = {}};
     const float words =
         drawing.text_width(prompt.tag + String("  "), PROMPT_SIZE,
@@ -2465,7 +2486,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
 std::vector<String> action_labels(const SurvivalFrame &frame) {
   std::vector<String> labels;
   for (const auto &[actor, set] : humans(frame)) {
-    labels.push_back(prompt_action(frame, actor));
+    const auto action = prompt_action(frame, actor);
+    labels.push_back(action ? action->text : String());
   }
   return labels;
 }
@@ -2524,9 +2546,9 @@ split_button(const rendering::Art &drawing, godot::Rect2 button,
 void city_targets(std::vector<Target> &targets, const rendering::Art &drawing,
                   const SurvivalFrame &frame) {
   for (const auto &prompt : prompts(drawing, frame)) {
-    targets.push_back({.area = prompt.area,
-                       .press = PlayerPress{.actor = prompt.actor,
-                                            .key = PlayerKey::Search}});
+    targets.push_back(
+        {.area = prompt.area,
+         .press = PlayerPress{.actor = prompt.actor, .key = prompt.key}});
   }
 }
 

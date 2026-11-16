@@ -116,8 +116,9 @@ const ENDING_GOAL: String = "Satisfy the monster on 7 days"
 const TIP_COUNT: int = 7
 ## The screen, where a tip must stand whole.
 const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
-## The key caps the action prompts draw: the search key of each key set.
-const PROMPT_CAPS: Array[String] = ["[R]", "[P]"]
+## The key caps the action prompts draw: the search and travel keys of each key
+## set.
+const PROMPT_CAPS: Array[String] = ["[R]", "[P]", "[Q]", "[U]"]
 ## The top band's lower edge, which holds the day, acid and clock plates alone.
 const TOP_BAND_END: float = 56.0
 ## The words of a source's kind the map once wrote beside its supply.
@@ -308,9 +309,9 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _until("a click on the set-out step sets out, as Q does", func() -> bool: return _where("chef") == "city", 30):
 		return
-	# With no container in reach no prompt shows; R opens the inventory alone,
-	# and the prompt then closes it.
-	if not _check(_target("chef_search").is_empty() and _target("pause").is_empty(), "with nothing in reach the screen has no prompt and no pause chip to click"):
+	# With no container in reach the prompt offers the way to base, and no search
+	# or pause chip; R opens the inventory alone, and the prompt then closes it.
+	if not _check(_target("chef_search").is_empty() and _target("pause").is_empty() and not _target("chef_travel").is_empty() and _actions() == ["TO BASE"] and _drawn("[Q]"), "with nothing in reach the prompt offers the way to base by its key and no search or pause chip stands: %s" % [_actions()]):
 		return
 	await _tap(KEY_R)
 	if not _check(_screen_open(0) and _actor("chef", "searching") == -1 and _actions() == ["CLOSE"], "R with nothing in reach opens the inventory alone, and its prompt reads close: %s" % [_actions()]):
@@ -375,10 +376,11 @@ func _two_players_share_the_mouse() -> void:
 		return
 	if not await _until("one click sets the whole party out", func() -> bool: return _where("chef") == "city" and _where("appraiser") == "city", 30):
 		return
-	if not _check(_target("chef_search").is_empty() and _target("appraiser_search").is_empty(), "with nothing in reach neither human has a prompt"):
+	if not _check(_target("chef_search").is_empty() and _target("appraiser_search").is_empty() and _actions() == ["TO BASE", "TO BASE"] and _drawn("[U]"), "with nothing in reach each human's prompt offers the way to base: %s" % [_actions()]):
 		return
-	await _tap(KEY_U)
-	if not await _until("player two's travel key moves only the appraiser", func() -> bool: return _where("appraiser") == "base" and _where("chef") == "city", 30):
+	if not _check(await _click("appraiser_travel"), "player two's travel prompt takes a click"):
+		return
+	if not await _until("a click on player two's travel prompt moves only the appraiser", func() -> bool: return _where("appraiser") == "base" and _where("chef") == "city", 30):
 		return
 	await _tap(KEY_Q)
 	await _until("player one comes back", func() -> bool: return _str("phase") == "workshop", 30)
@@ -684,7 +686,7 @@ func _first_day() -> void:
 		return
 	if not _check(await _pause_shows_ending_goal(), "the pause screen over the city, and not the city, shows what ends the run"):
 		return
-	if not _check(_actions() == [""] and not _drawn_says("INVENTORY") and not _drawn_says("WASD") and not _drawn_says("To base"), "away from a source no prompt, inventory button or key line shows: %s %s" % [_actions(), _drawn_lines()]):
+	if not _check(_actions() == ["TO BASE"] and _drawn("TO BASE") and _drawn("[Q]") and not _drawn_says("INVENTORY") and not _drawn_says("WASD") and not _drawn_says("To base"), "away from a source the prompt offers the way to base, and no inventory button or key line shows: %s %s" % [_actions(), _drawn_lines()]):
 		return
 	if not _hud_is_top_bar("the first city screen"):
 		return

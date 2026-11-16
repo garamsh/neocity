@@ -261,7 +261,7 @@ action_labels(const SurvivalFrame &frame);
 /// The choice of players' entries, each clicked as its number key.
 [[nodiscard]] std::vector<Target> setup_targets();
 /// What a click acts on in a survival frame: in the city each human's action
-/// prompt, which presses that human's search key, at base the task card's
+/// prompt, which presses the key it names, at base the task card's
 /// step, feed, dish choice and end of day and the appraiser's ingredients.
 [[nodiscard]] std::vector<Target>
 survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);

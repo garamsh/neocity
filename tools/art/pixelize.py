@@ -74,7 +74,6 @@ THIN_SHARE = 0.1
 CONCEPT_CUT_FOLDERS = ("backgrounds", "walkway", "world", "ground", "decor")
 CHARACTER_FRAMES = ("idle", "walk_1", "walk_2", "walk_3", "walk_4", "run_1", "run_2", "jump", "fall", "land", "climb")
 CONCEPT_INTERFACE = ("ui/frame_panel.png", "ui/frame_button.png", "ui/frame_slot.png",
-                     "ui/icon_day.png", "ui/icon_clock.png",
                      "icons/ingredient_mushroom.png", "icons/ingredient_tomato.png",
                      "icons/ingredient_fish.png", "icons/ingredient_pickles.png")
 CONCEPT_CHARACTERS = tuple(f"characters/{role}_{frame}.png"
