@@ -118,7 +118,7 @@ test-startup: build
 test-title: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 42 live checks passed (entries, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 49 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).' "$$log"
 
 	@log=$$(mktemp); data=$$(mktemp -d); trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop DisplayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
