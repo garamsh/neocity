@@ -3,21 +3,40 @@
   "decision": "https://github.com/garamsh/neocity/issues/268",
   "status": "user-selected Toxic Night direction mockups; not runtime captures; character identity comes from original sheets",
   "copied": "2026-11-18",
-  "generation": "supplied PM scratch outputs; generator model, seed and original generation inputs not independently verified by this worker",
+  "generation": {
+    "operator": "PM",
+    "tool": "Codex CLI built-in image generation",
+    "model": "gpt-6.1-sol",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "references": [
+      {
+        "name": "concept-v1 (crop)",
+        "file": "original-concept-v1.png",
+        "treatment": "character crop from concept-v1"
+      },
+      {
+        "name": "chef-sheet-v1",
+        "file": "../characters/chef-sheet-v1.png"
+      }
+    ],
+    "prompt": "prompts.txt",
+    "prompt_order": "shared prompt followed by the F direction prompt",
+    "basis": "generation details and exact prompt supplied by the PM"
+  },
   "files": [
     {
       "file": "f-street.png",
-      "source": "/home/sauce/.cache/claude-tmp/claude-1000/-home-sauce-Workspace-neocity/e85935f2-5036-4cbd-a51d-bf3a05a03aae/scratchpad/mock/F-street.png",
       "sha256": "d3eb48e80394af3e45a888d75f8fe58302460da411a9151c393e3bb91fb99b1d"
     },
     {
       "file": "f-building.png",
-      "source": "/home/sauce/.cache/claude-tmp/claude-1000/-home-sauce-Workspace-neocity/e85935f2-5036-4cbd-a51d-bf3a05a03aae/scratchpad/mock/F-building.png",
       "sha256": "1b50bd5da5f27a8447ad75dcefc294bc5d7af79bf9ff74306b29a3609f166c26"
     },
     {
       "file": "f-base.png",
-      "source": "/home/sauce/.cache/claude-tmp/claude-1000/-home-sauce-Workspace-neocity/e85935f2-5036-4cbd-a51d-bf3a05a03aae/scratchpad/mock/F-base.png",
       "sha256": "247c8124c5185d2f0d7b802917267e0e6dbb24bde8bd1502dfc40bed53d7380e"
     }
   ],
