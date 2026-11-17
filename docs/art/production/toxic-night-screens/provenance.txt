@@ -1,0 +1,67 @@
+Production asset provenance and review evidence for issue #274's Toxic Night screens.
+
+Task: https://github.com/garamsh/neocity/issues/274
+Direction: https://github.com/garamsh/neocity/issues/268
+Base: garamsh/neocity at 35a53ee444965e50eba276c823cbf8273ba47d53.
+Status: implementation of the selected direction; creative acceptance and runtime
+screen review remain with the PM bundle review. These boards are asset studies,
+not game captures or proof of live interaction, text fitting or animation.
+
+Generation
+- Built-in image_gen.imagegen, two calls on 2026-11-18; no paid-credit service,
+  API fallback, image attachment, external host or upload was used.
+- Exact prompts: prompts.json. Model identifier, seed and quality were not exposed.
+- Inspected f-base.png and f-street.png and the replaced title/kitchen before
+  generation. Their palette, material and light direction are descriptive prompt
+  inputs; no concept pixels were cut into either new production background.
+- title-source.png: unmodified 1672x941 RGBA returned file.
+- base-source.png: unmodified 1717x916 RGBA returned file.
+- Both sources and every exported background/comparison were visually inspected.
+  Hard stair-step edges, discrete clusters and local neon remain; soft/painterly
+  substitutions were rejected in the prompts. No smooth resampling was used.
+
+Export
+- Requires Pillow 13.0.0; run from any working directory:
+  /tmp/w274-venv/bin/python docs/art/production/toxic-night-screens/export.py
+- The script exports the title once to 1920x1080 with nearest sampling. Its logo
+  is embedded in the key art. It contains no baked characters; title HUD overlays
+  the unchanged #272 HD idle frames at native pixel density.
+- The base is exported once, nearest, to width 1920 (height 1024), with a 56-pixel
+  dark bottom pad beneath the deck. Width-preserving scale puts the generated
+  walked-on floor near the existing runtime baseline; no kitchen pixels are
+  painted or moved independently. Bundle capture must judge the final contact.
+- Runtime destinations: art_hd/title/key_art.png and art_hd/base/kitchen.png.
+  Existing import identities are retained. art_hd/manifest.json records source
+  and output SHA256 digests, dimensions and processing instructions.
+- Existing HD ingredient/dish icon files are reused byte-for-byte from #222;
+  their original generation and source cuts remain in the environment manifest.
+  HUD now loads them at 84 canvas pixels / 56 layout units. World source icons
+  and their shared rendering loader are outside this task and are unchanged.
+- The HUD owns the base composition here to use the unchanged HD characters
+  without editing src/rendering/. The previous rendering::paint_workshop entry
+  remains in that out-of-scope folder; no common contract is changed.
+
+Review boards
+- title-comparison.png: f-street direction reference beside new key art and
+  unchanged HD character idles, with illustrative menu areas. It omits the
+  runtime foot panel and does not reproduce every frame/rivet/animation.
+- base-comparison.png: f-base reference beside the new background, HD idles,
+  pixel crane and sample day-two result/TIP/deck areas. Quantities and scores
+  are illustrative. Header reservations show result and TIP placement; the
+  real runtime retains its own prompts, base notice, progress and click targets.
+- hud-comparison.png: f-base reference beside the existing 18 HD item icons,
+  day/clock icons and illustrative quantity badges. No gameplay stacking is added.
+- title-before-after.png and base-before-after.png compare assets from the full
+  base revision above with exported replacements. No screen capture is implied.
+- TIP reserves one header row; a transfer overlay can hide it, never relocate it.
+  The result starts below that row, above workers and clear of the feed crane.
+- READY RECIPES n/m explicitly counts recipes cookable now out of all recipes.
+  APPRAISE badges count available ingredients across both bags and the fridge.
+  COOK badges count available ingredients, or one reserved item per occupied
+  cooking slot. Transfer slots contain one item each, with a separate w-prefixed
+  weight and an identification question mark when applicable.
+
+Verification boundary
+- Logs and command outcomes are recorded in the prepared PR body after checks.
+- No display server, game window, private kwin, live screen capture or e2e play
+  was started by this worker. Runtime comparison and full make ci are PM work.
