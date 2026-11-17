@@ -15,7 +15,7 @@ const SEARCH_ATTEMPTS: int = 12
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
 ## On this seed a party following NEXT alone ends the run satisfied.
-const LONG_RUN_SEED: int = 44
+const LONG_RUN_SEED: int = 50
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
@@ -921,6 +921,26 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 		return
 	_check(line.begins_with("Feed "), "a dish to feed comes before the AI chef cooking another: %s" % line)
 
+## The chef and the appraiser stand on the kitchen floor and the feed crane
+## hangs over the monster's mouth with the stored dish on it: the base draws
+## both over the kitchen picture.
+func _base_figures_drawn() -> bool:
+	var figures: Array = scene.get_meta("workshop_figures", [])
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
+	if not _check(figures.size() == 2, "the base draws the appraiser and the chef: %d figures" % figures.size()):
+		return false
+	for figure: Rect2 in figures:
+		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
+			return false
+	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
+
+
+## How far down the feed crane's hook and dish hang.
+func _crane_height() -> float:
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
+	return crane.size.y
+
+
 func _workshop_day_one() -> void:
 	if not await _until("AI appraises the finds", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 300):
 		return
@@ -933,10 +953,15 @@ func _workshop_day_one() -> void:
 		return
 	if not _text_fits("the workshop"):
 		return
+	if not _base_figures_drawn():
+		return
 	var fed: String = _stored()[0]
 	if not _check(_lines("day_result").is_empty(), "the workshop shows no result until a day has ended"):
 		return
+	var resting: float = _crane_height()
 	await _tap(KEY_F)
+	if not await _until("the feed crane lowers its dish", func() -> bool: return _crane_height() > resting + 20.0, 30):
+		return
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
 		return
 	if not _check(_result_says("Day 1: " + fed) and _result_says("Satisfied"), "the result names the dish and the reaction"):

@@ -1577,9 +1577,26 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
   }
 }
 
+/// How far the feed crane has lowered its dish: 0 at rest, 1 at the monster's
+/// mouth, rising and falling over the reaction to a dish that was fed.
+float crane_lowering(const std::vector<rendering::Burst> &bursts) {
+  float lowering = 0.0F;
+  for (const auto &burst : bursts) {
+    if (burst.kind != rendering::Flourish::Delight &&
+        burst.kind != rendering::Flourish::Disgust) {
+      continue;
+    }
+    const float done = burst.age / rendering::lifetime(burst.kind);
+    lowering = std::max(lowering, 1.0F - std::abs(2.0F * done - 1.0F));
+  }
+  return lowering;
+}
+
 void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
-                           const SurvivalFrame &frame) {
-  rendering::paint_workshop(canvas, drawing);
+                           const SurvivalFrame &frame,
+                           const std::vector<rendering::Burst> &bursts) {
+  rendering::paint_workshop(canvas, drawing, !frame.view.workshop.foods.empty(),
+                            crane_lowering(bursts));
   paint_day_result(canvas, drawing, frame);
   paint_appraise(canvas, drawing, frame);
   paint_cook(canvas, drawing, frame);
@@ -2050,7 +2067,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_prompts(canvas, drawing, frame);
     paint_goal(canvas, drawing, {}, hand_off_notice(frame));
   } else {
-    paint_workshop_screen(canvas, drawing, frame);
+    paint_workshop_screen(canvas, drawing, frame, bursts);
     rendering::paint_workshop_bursts(canvas, drawing, bursts);
     // The task card names the step at base; the notice line says what the
     // keys cannot do there.
