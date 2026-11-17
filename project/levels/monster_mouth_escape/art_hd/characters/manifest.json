@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "issue": "https://github.com/garamsh/neocity/issues/211",
+  "version": 2,
+  "issue": "https://github.com/garamsh/neocity/issues/269",
   "screen_reference": [
     1920,
     1080
@@ -17,8 +17,8 @@
   "facing": "right",
   "sampling": "nearest",
   "alpha": "binary",
-  "status": "connected to city rendering by issue #212; creative acceptance pending",
-  "provenance": "docs/art/production/characters-hd-provenance.txt",
+  "status": "Toxic Night identity redraw; creative acceptance pending",
+  "provenance": "docs/art/production/characters-toxic-night-provenance.txt",
   "frames": [
     {
       "file": "chef_idle.png",
@@ -34,30 +34,37 @@
         204
       ],
       "visible_bounds": [
-        131,
+        126,
         172,
-        70,
+        65,
         32
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         0,
         0,
         384,
-        341
+        335
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        94,
+        11,
+        329,
+        333
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        126,
+        172
       ],
       "placement": [
-        20,
-        26
+        65,
+        32
       ],
-      "sha256": "46d83285a00d9fa60b702a97a0b28db49f69fa76ec68e9dfda87d4760153d57c"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "2fc73cf57042a35c4e1a4fa380904c31fc5f53d1213cc5281d8b4989ce5cc767"
     },
     {
       "file": "chef_walk_1.png",
@@ -73,30 +80,37 @@
         204
       ],
       "visible_bounds": [
-        134,
+        121,
         171,
-        66,
+        68,
         33
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         384,
         0,
         384,
-        341
+        335
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        76,
+        14,
+        303,
+        334
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        121,
+        171
       ],
       "placement": [
-        20,
-        27
+        68,
+        33
       ],
-      "sha256": "d3f41fb873c9a135db65ff7d1f9c46557cb95afbae4e4814fe00cca88ac4a2d3"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "3a3f7e49c99bed2817b31d78fa20fb056353e216f27e4c06c35f10b9e7fe4507"
     },
     {
       "file": "chef_walk_2.png",
@@ -112,30 +126,37 @@
         204
       ],
       "visible_bounds": [
-        122,
-        171,
-        77,
-        33
+        115,
+        170,
+        71,
+        34
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         768,
         0,
         384,
-        341
+        335
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        76,
+        13,
+        291,
+        332
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        115,
+        170
       ],
       "placement": [
-        20,
-        27
+        71,
+        34
       ],
-      "sha256": "8efc015cc4d16bcd5ff88145a9ae28cd1f8512c9887bca5fc6c0e37f12a5015c"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "4916c418aff04feebdcab5ce7d10f905ba56bcc424aa35a5b49024c7f7760308"
     },
     {
       "file": "chef_walk_3.png",
@@ -151,30 +172,37 @@
         204
       ],
       "visible_bounds": [
-        127,
-        171,
-        74,
-        33
+        128,
+        170,
+        64,
+        34
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         1152,
         0,
         384,
-        341
+        335
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        48,
+        14,
+        287,
+        333
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        128,
+        170
       ],
       "placement": [
-        20,
-        27
+        64,
+        34
       ],
-      "sha256": "c4a8a69bd29d0841587fa81adaf7379976e8eec45ddbf61b34cc495437561c28"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "bee73abf4eb28496c9f0b72a13e49b157f9747c0580af5ca7274ecc1acaa3840"
     },
     {
       "file": "chef_walk_4.png",
@@ -190,30 +218,37 @@
         204
       ],
       "visible_bounds": [
-        125,
+        112,
         170,
-        74,
+        72,
         34
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         0,
-        341,
+        342,
         384,
-        341
+        332
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        117,
+        8,
+        326,
+        326
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        112,
+        170
       ],
       "placement": [
-        20,
-        27
+        72,
+        34
       ],
-      "sha256": "26470a4eb17629c40d3ee763c85056f49c65269ee671a95c8d87eb0e5d41655c"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "1d55914e2155ec1e3c17c68cd7b2d91937bba6c32142faffbb725bbd273c9c98"
     },
     {
       "file": "chef_run_1.png",
@@ -229,30 +264,37 @@
         204
       ],
       "visible_bounds": [
-        155,
-        169,
-        50,
-        35
+        151,
+        168,
+        53,
+        36
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         384,
-        341,
+        342,
         384,
-        341
+        332
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        37,
+        12,
+        320,
+        327
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        151,
+        168
       ],
       "placement": [
-        20,
-        27
+        53,
+        36
       ],
-      "sha256": "66dd1769f338cf8af09cd9fc671b67e9258a9d093678ae56770190a5f84eee5f"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "fcd8ee52391394b05c7377ee85f1c780aa8c926543d61d151b87f32b77512ac3"
     },
     {
       "file": "chef_run_2.png",
@@ -268,30 +310,37 @@
         204
       ],
       "visible_bounds": [
-        138,
-        172,
-        69,
-        32
+        147,
+        146,
+        55,
+        58
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-correction-source.png",
-      "source_sha256": "86761148d5a99706a3ceef195a072aaa7301df7df7b07157464955d6adc1b95c",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         768,
-        341,
+        342,
         384,
-        341
+        332
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        32,
+        13,
+        308,
+        286
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        147,
+        146
       ],
       "placement": [
-        20,
-        24
+        55,
+        58
       ],
-      "sha256": "de0a13219fccb2f9eb9a42473325f8781bd8eb300a0f969a5101b42c3a87bacc"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "910d027ff383e97b083b1387d4f4e322490fbc6db3f349f750bbbc485b5fc573"
     },
     {
       "file": "chef_jump.png",
@@ -307,30 +356,37 @@
         204
       ],
       "visible_bounds": [
-        138,
-        158,
-        63,
-        28
+        144,
+        154,
+        56,
+        32
       ],
       "lowest_pixel_exclusive_y": 186,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         1152,
-        341,
+        342,
         384,
-        341
+        332
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        17,
+        0,
+        286,
+        288
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        144,
+        154
       ],
       "placement": [
-        20,
-        24
+        56,
+        32
       ],
-      "sha256": "d1707cb77b05781408a9ca0dd8be000b66778cbfb172e5751a9e972ed043a61a"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "e8928e16689bdd6dfe6a43a9ef3a0adbdcdc6f223f9aa2a2164d6c805e58b7e4"
     },
     {
       "file": "chef_fall.png",
@@ -347,29 +403,36 @@
       ],
       "visible_bounds": [
         151,
-        175,
+        176,
         53,
-        21
+        20
       ],
       "lowest_pixel_exclusive_y": 196,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         0,
-        682,
+        675,
         384,
-        341
+        349
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        37,
+        8,
+        320,
+        338
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        151,
+        176
       ],
       "placement": [
-        20,
-        15
+        53,
+        20
       ],
-      "sha256": "6d29373617f12c6d115aaf357519e7096f5b114d2ead0f44c65c69c0c0cc814b"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "0812039484be72b5d5e690498bcebef25a2a3e894b8c2cc0d43ff60358b432f1"
     },
     {
       "file": "chef_land.png",
@@ -385,30 +448,37 @@
         204
       ],
       "visible_bounds": [
-        157,
-        164,
+        159,
+        161,
         49,
-        40
+        43
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         384,
-        682,
+        675,
         384,
-        341
+        349
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        26,
+        30,
+        323,
+        331
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        159,
+        161
       ],
       "placement": [
-        20,
-        21
+        49,
+        43
       ],
-      "sha256": "d4eec3e6a7adcbb4f61244749d872cb6b9129936551386459678e75b14b1fdf7"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "41d7a9816d17c51998f2190d00443bc171a62c76f461e5a062319c7e4b56a2b5"
     },
     {
       "file": "chef_climb.png",
@@ -424,30 +494,37 @@
         204
       ],
       "visible_bounds": [
-        136,
-        177,
-        49,
-        27
+        147,
+        179,
+        55,
+        25
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-chef-source.png",
-      "source_sha256": "cce4c3058a60290e02a304b12e018df28f0121059fafe19f6c436f1782f77a4b",
+      "source": "docs/art/production/characters-toxic-night-chef-source.png",
+      "source_sha256": "98ec7fb205a9edc3e00ff67ef4fb6f5ecbda3b702c387375bb9a529c42774704",
       "source_crop": [
         768,
-        682,
+        675,
         384,
-        341
+        349
       ],
-      "source_scale": 0.5602605863192183,
+      "source_visible_bounds": [
+        31,
+        1,
+        306,
+        336
+      ],
+      "source_scale": 0.5341614906832298,
       "resize_pixels": [
-        215,
-        191
+        147,
+        179
       ],
       "placement": [
-        20,
-        21
+        55,
+        25
       ],
-      "sha256": "717f25d52190e93ddd816b890cbcf4ac1a0baff998360ff817385f7ba64f95cb"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette",
+      "sha256": "bd469259c3c693224763f117fa31a96c97145e47218ca44d4d4dc0e280015288"
     },
     {
       "file": "appraiser_idle.png",
@@ -463,30 +540,37 @@
         204
       ],
       "visible_bounds": [
-        97,
-        108,
-        82,
-        96
+        158,
+        166,
+        49,
+        38
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         0,
         0,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        38,
+        16,
+        336,
+        329
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        158,
+        166
       ],
       "placement": [
-        52,
-        86
+        49,
+        38
       ],
-      "sha256": "fba6e01c15e30e660f9ccbe6903ec0fb8da70f6bfebc9f9b6f4201f5ae2db903"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "c44883b8b47677ee439add4691aa2bca3eabb20f3dcb1eeb9d8620fccb2a72b7"
     },
     {
       "file": "appraiser_walk_1.png",
@@ -502,30 +586,37 @@
         204
       ],
       "visible_bounds": [
-        101,
-        108,
-        79,
-        96
+        160,
+        169,
+        48,
+        35
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         384,
         0,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        34,
+        16,
+        335,
+        334
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        160,
+        169
       ],
       "placement": [
-        52,
-        86
+        48,
+        35
       ],
-      "sha256": "49b3c724f545e6bab8deda48f535855e9a9ffa3491b96e3e5f6332e2c7204444"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "f9f5dc816dea4ac02854d56f7b6e5b7cfa251e2a97139a7e183d2d3eca8b492a"
     },
     {
       "file": "appraiser_walk_2.png",
@@ -541,30 +632,37 @@
         204
       ],
       "visible_bounds": [
-        96,
-        108,
-        84,
-        96
+        149,
+        168,
+        54,
+        36
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         768,
         0,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        55,
+        17,
+        336,
+        334
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        149,
+        168
       ],
       "placement": [
-        52,
-        86
+        54,
+        36
       ],
-      "sha256": "869c58a1f625535e85073c951659694f2267656ddb90ffa2b065066b6c81005e"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "5b0797c3ae9b40148b0705f365c86236284c94143f4cef3ec17c8652f913259d"
     },
     {
       "file": "appraiser_walk_3.png",
@@ -580,30 +678,37 @@
         204
       ],
       "visible_bounds": [
-        99,
-        108,
-        82,
-        96
+        150,
+        165,
+        53,
+        39
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         1152,
         0,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        54,
+        18,
+        337,
+        329
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        150,
+        165
       ],
       "placement": [
-        52,
-        86
+        53,
+        39
       ],
-      "sha256": "b0f51d33663901a30060d3c75ac2ba43a9bd2d08e728ad8229382690976cb8d2"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "a12684bb8a41cfddfc85d884c03f66259fbd612453dbeedf4f4f7031c870b9a0"
     },
     {
       "file": "appraiser_walk_4.png",
@@ -619,30 +724,37 @@
         204
       ],
       "visible_bounds": [
-        95,
-        109,
-        86,
-        95
+        153,
+        166,
+        52,
+        38
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         0,
         341,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        53,
+        17,
+        341,
+        330
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        153,
+        166
       ],
       "placement": [
         52,
-        86
+        38
       ],
-      "sha256": "3c4f6ad81bbeb9a15857f32a4db13a98604eeed9405b9deedfca1d429a2df0b9"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "238684907948bf7dcc9da5bcd2f9f54fc1a5f06eb24c5558285528d5bfc90056"
     },
     {
       "file": "appraiser_run_1.png",
@@ -658,30 +770,37 @@
         204
       ],
       "visible_bounds": [
-        113,
-        107,
-        75,
-        97
+        181,
+        163,
+        38,
+        41
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         384,
         341,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        15,
+        20,
+        356,
+        328
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        181,
+        163
       ],
       "placement": [
-        52,
-        86
+        38,
+        41
       ],
-      "sha256": "1edaf1511899c2aa35dfc88454c71f0c54b9869a85328e6cb8a6602068f0248b"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "1cf318521519beb1d272897fd1ba23a253964daa0008e4129720758f0de0d35d"
     },
     {
       "file": "appraiser_run_2.png",
@@ -697,30 +816,37 @@
         204
       ],
       "visible_bounds": [
-        112,
-        112,
-        64,
-        92
+        165,
+        154,
+        46,
+        50
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-correction-source.png",
-      "source_sha256": "b357cb60ac81c20437febfe598fbc5b3fb852828e33a71f45326d3312cfae83f",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         768,
         341,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        48,
+        20,
+        359,
+        311
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        165,
+        154
       ],
       "placement": [
-        52,
-        80
+        46,
+        50
       ],
-      "sha256": "fa36ccad3bb35d82eccc412b5dbbeaa203500a5e056cbab6fa2150232c7d7ee0"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "3dd7f4bbf8ce7267f7777a7250f5adff35607a0aed781d7a9487dfebb3d68199"
     },
     {
       "file": "appraiser_jump.png",
@@ -736,30 +862,37 @@
         204
       ],
       "visible_bounds": [
-        102,
-        106,
-        80,
-        80
+        171,
+        143,
+        43,
+        43
       ],
       "lowest_pixel_exclusive_y": 186,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         1152,
         341,
         384,
         341
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        24,
+        13,
+        346,
+        283
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        171,
+        143
       ],
       "placement": [
-        52,
-        78
+        43,
+        43
       ],
-      "sha256": "7d338fe4bf1d92034f42b705168db9695934c339095572712eb6fc3686a75587"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "72fde93436a519021228052702882e50187f644b7215f28a098d1fede4548f25"
     },
     {
       "file": "appraiser_fall.png",
@@ -775,30 +908,37 @@
         204
       ],
       "visible_bounds": [
-        110,
-        110,
-        71,
-        86
+        178,
+        164,
+        39,
+        32
       ],
       "lowest_pixel_exclusive_y": 196,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         0,
         682,
         384,
-        341
+        342
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        16,
+        17,
+        351,
+        327
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        178,
+        164
       ],
       "placement": [
-        52,
-        75
+        39,
+        32
       ],
-      "sha256": "0515baeed93097a7c1774bfa78f8630d229e03cf1d961794a31b3e378e6024ae"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "ce4705edff5be895e9cc340297bb451bb83455a76cc3ce247544d61c903c7d3f"
     },
     {
       "file": "appraiser_land.png",
@@ -814,30 +954,37 @@
         204
       ],
       "visible_bounds": [
-        111,
-        98,
-        71,
-        106
+        169,
+        139,
+        44,
+        65
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-source.png",
-      "source_sha256": "95148be17e3ded8dd0f1d9990158ed626033e0618aec2052f724fa4deeb064f0",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         384,
         682,
         384,
-        341
+        342
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        32,
+        59,
+        351,
+        322
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        169,
+        139
       ],
       "placement": [
-        52,
-        80
+        44,
+        65
       ],
-      "sha256": "8af8d7776beab245b292042973d88e536d54695676f523591e21763c2320022f"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "413fa76bdd9a1964b2cacfe5b96fd54ae3b60a39d2ded7aad159893dcadd8550"
     },
     {
       "file": "appraiser_climb.png",
@@ -853,30 +1000,37 @@
         204
       ],
       "visible_bounds": [
-        108,
-        116,
-        69,
-        88
+        182,
+        174,
+        37,
+        30
       ],
       "lowest_pixel_exclusive_y": 204,
-      "source": "docs/art/production/characters-hd-appraiser-correction-source.png",
-      "source_sha256": "b357cb60ac81c20437febfe598fbc5b3fb852828e33a71f45326d3312cfae83f",
+      "source": "docs/art/production/characters-toxic-night-appraiser-source.png",
+      "source_sha256": "7cc0a3050f3a98dcb7be7a22fe7675e20fe557241fa9714954055de30060fee9",
       "source_crop": [
         768,
         682,
         384,
-        341
+        342
       ],
-      "source_scale": 0.39705882352941174,
+      "source_visible_bounds": [
+        22,
+        2,
+        365,
+        331
+      ],
+      "source_scale": 0.5303514376996805,
       "resize_pixels": [
-        152,
-        135
+        182,
+        174
       ],
       "placement": [
-        52,
-        80
+        37,
+        30
       ],
-      "sha256": "d2ac375e04d317fa36f3475566bfa4d04cd4ef067f31874f258e3ea27fb70a0b"
+      "alpha_cleanup": "threshold 128; largest 4-connected silhouette; erode 1 source pixel to remove white matte fringe",
+      "sha256": "e3ec4c17ed397c4ec8bbcffec7ffc4002180c4e6591b67d7aaa44b9bfd423c2a"
     }
   ]
 }
