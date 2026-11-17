@@ -948,7 +948,8 @@ public:
                        .to = MapId::Aquarium,
                        .arrival = HALL_ARRIVAL}},
             .interiors = {{.building = SHOP,
-                           .area = {.x = 5, .y = 0, .width = 2, .height = 1}}},
+                           .area = {.x = 5, .y = 0, .width = 2, .height = 1},
+                           .floors = {}}},
             .sources = {stock(HALL_SOURCE, 2), stock(EXIT_SOURCE, 2)},
             .obstacles = {},
             .patrols = {}};
@@ -1129,6 +1130,34 @@ TEST(Exploration, TheSnapshotShowsWhichBuildingAnActorIsInside) {
   EXPECT_FALSE(travel.explorer(Actor::Appraiser).interior.has_value());
   travel.walk_to(Actor::Chef, 8);
   EXPECT_FALSE(travel.explorer(Actor::Chef).interior.has_value());
+}
+
+TEST(Exploration, InteriorZonesBelongToTheirMap) {
+  auto config = Travel::config();
+  config.interiors = {
+      {.building = SHOP, .area = {.x = 2, .width = 2}, .floors = {}},
+      {.building = HALL_FLOOR,
+       .area = {.x = 2, .width = 2},
+       .map = MapId::Aquarium,
+       .floors = {}}};
+  Simulation simulation({.exploration_budget = 60s, .seed = 0});
+  World world(Travel::objects());
+  Exploration exploration(simulation, world, config);
+  ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  ASSERT_EQ(exploration.enter(Actor::Appraiser), Result::Applied);
+  for (int tick = 0; tick < 3; ++tick) {
+    ASSERT_EQ(exploration.advance(100ms, WALK), Result::Applied);
+  }
+  ASSERT_EQ(at(exploration.snapshot().chef).x, 2);
+  EXPECT_EQ(exploration.snapshot().chef.interior, SHOP);
+  for (int tick = 0; tick < 25 && exploration.snapshot().map == MapId::Street;
+       ++tick) {
+    ASSERT_EQ(exploration.advance(100ms, WALK), Result::Applied);
+  }
+  ASSERT_EQ(exploration.snapshot().map, MapId::Aquarium);
+  ASSERT_EQ(at(exploration.snapshot().chef), HALL_ARRIVAL);
+  EXPECT_EQ(exploration.snapshot().chef.interior, HALL_FLOOR);
+  EXPECT_EQ(exploration.snapshot().appraiser.interior, HALL_FLOOR);
 }
 
 TEST(Exploration, AnExitNeedsASafeArrivalOnADifferentMap) {
