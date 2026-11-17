@@ -38,6 +38,21 @@ void panel(godot::Node2D &canvas, godot::Rect2 area);
 void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
 /// Draws a dark slot sunk into a panel, filling `area`.
 void inset(godot::Node2D &canvas, godot::Rect2 area);
+
+/// The neon line a kit panel is edged with.
+enum class Accent : std::uint8_t { Cyan, Magenta, Gold, Green };
+/// The colour of `accent`.
+godot::Color accent_colour(Accent accent);
+/// Draws an opaque panel of the UI kit filling `area`: navy, a steel rim with
+/// rivets in its corners, a neon `accent` line inside the rim and a slime drip
+/// off the top edge when `drip`.
+void kit_panel(godot::Node2D &canvas, godot::Rect2 area, Accent accent,
+               bool drip);
+/// Draws a kit slot filling `area`, ringed in gold when `marked`.
+void kit_slot(godot::Node2D &canvas, godot::Rect2 area, bool marked);
+/// Draws a kit bar filling `area`, `fill` of it (0 to 1) lit in `tint`.
+void kit_bar(godot::Node2D &canvas, godot::Rect2 area, float fill,
+             godot::Color tint);
 /// The one name the screen gives a city object, so the map, the goal line,
 /// the action button and the log agree: a source by what it holds and what it
 /// is, "Fish cart", anything else by `survival::object_name`; see
@@ -205,6 +220,7 @@ enum class Image : std::uint8_t {
   SpanWreck,
   KioskRuined,
   FireEscape,
+  BaseKitchen,
   TitleKeyArt,
   TitleLogo
 };

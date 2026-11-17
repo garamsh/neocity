@@ -15,7 +15,7 @@ const SEARCH_ATTEMPTS: int = 12
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
 ## On this seed a party following NEXT alone ends the run satisfied.
-const LONG_RUN_SEED: int = 44
+const LONG_RUN_SEED: int = 50
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
@@ -83,9 +83,9 @@ const APART: float = 480.0
 ## so its partner can come up and a jump is never mistaken for a snag.
 const SCREEN_LOCK: int = 384
 const LOCK_WAIT: int = 320
-## Where the workshop draws the ingredients waiting for appraisal, over the
-## appraiser's head.
-const APPRAISER_HEAD: Vector2 = Vector2(216, 166)
+## Where the workshop draws the first ingredient waiting for appraisal, in the
+## appraise panel's first slot.
+const APPRAISER_HEAD: Vector2 = Vector2(62, 622)
 ## The screen pixels the HUD's panels and chips covered while it named every
 ## key, measured by `_hud_area` at commit d72f34c55a70c3d212f0eb9b0e51dbb4b2f6712f on the
 ## same seeded states: day one at base, and the chef at the Vendor Cart, the
@@ -96,7 +96,7 @@ const CITY_HUD_AREA_WITH_KEYS: float = 152779.0
 ## How far left of a volume row's first block its name is drawn.
 const VOLUME_NAME_OFFSET: float = 200.0
 ## The screen's middle height: the kitchen's people stand above it and the
-## task card sits below it.
+## deck's panels sit below it.
 const SCREEN_MIDDLE: float = 360.0
 ## What the chef says at base while the inventory is open: the screen takes the
 ## interact key, so cooking waits for it to close.
@@ -221,6 +221,8 @@ func _run() -> void:
 	if not failed:
 		await _repeated_note_appears()
 	if not failed:
+		await _a_timed_cook_draws_its_bar()
+	if not failed:
 		await _main_menu_quits()
 
 ## At base the chef's commands by mouse: the dish line chooses as S does, the
@@ -259,15 +261,15 @@ func _base_state() -> String:
 		parts.append("%s@%s[%s]" % [target["press"], target["rect"], target["refusal"]])
 	return "offered=%s chosen=%s foods=%s next=%s targets=%s" % [_str("dish_offered"), _str("dish_chosen"), _stored(), _next(), parts]
 
-## A click on the task card's step, when the step is the chef's cooking, cooks
+## A click on the cook panel's step, when the step is the chef's cooking, cooks
 ## the dish it names, as E does.
 func _a_click_on_the_step_cooks() -> bool:
 	var step: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y > SCREEN_MIDDLE)
-	if not _check(not step.is_empty() and str(step["refusal"]) == "" and _next().contains("Cook"), "setup: the task card's step is the chef's cooking: %s" % [_base_state()]):
+	if not _check(not step.is_empty() and str(step["refusal"]) == "" and _next().contains("Cook"), "setup: the cook panel's step is the chef's cooking: %s" % [_base_state()]):
 		return false
 	var chosen: String = _str("dish_offered")
 	var foods: int = _int("foods")
-	return _check(await _click_on(step) and ((_int("foods") == foods + 1 and _next_event_has(chosen + " cooked.")) or _next_event_has(chosen + " burned")), "a click on the task card's step cooks the offered dish, as E does: %s" % [_base_state()])
+	return _check(await _click_on(step) and ((_int("foods") == foods + 1 and _next_event_has(chosen + " cooked.")) or _next_event_has(chosen + " burned")), "a click on the cook panel's step cooks the offered dish, as E does: %s" % [_base_state()])
 
 ## A click on a refused target presses nothing: with one dish left to cook the
 ## dish line refuses and the choice stays unset, while S, the press the line
@@ -289,7 +291,7 @@ func _a_refused_click_presses_nothing() -> bool:
 
 ## A click on the chef standing in the kitchen cooks the offered dish, as E does.
 func _a_click_on_the_chef_cooks() -> bool:
-	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < SCREEN_MIDDLE)
+	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
 	if not _check(not chef.is_empty() and str(chef["refusal"]) == "" and _str("dish_offered") != "", "setup: the chef in the kitchen can cook: %s" % [_base_state()]):
 		return false
 	var chosen: String = _str("dish_offered")
@@ -919,6 +921,26 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 		return
 	_check(line.begins_with("Feed "), "a dish to feed comes before the AI chef cooking another: %s" % line)
 
+## The chef and the appraiser stand on the kitchen floor and the feed crane
+## hangs over the monster's mouth with the stored dish on it: the base draws
+## both over the kitchen picture.
+func _base_figures_drawn() -> bool:
+	var figures: Array = scene.get_meta("workshop_figures", [])
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
+	if not _check(figures.size() == 2, "the base draws the appraiser and the chef: %d figures" % figures.size()):
+		return false
+	for figure: Rect2 in figures:
+		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
+			return false
+	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
+
+
+## How far down the feed crane's hook and dish hang.
+func _crane_height() -> float:
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
+	return crane.size.y
+
+
 func _workshop_day_one() -> void:
 	if not await _until("AI appraises the finds", func() -> bool: return _int("identified") >= 2 and not _next().contains("identifying"), 300):
 		return
@@ -931,10 +953,15 @@ func _workshop_day_one() -> void:
 		return
 	if not _text_fits("the workshop"):
 		return
+	if not _base_figures_drawn():
+		return
 	var fed: String = _stored()[0]
 	if not _check(_lines("day_result").is_empty(), "the workshop shows no result until a day has ended"):
 		return
+	var resting: float = _crane_height()
 	await _tap(KEY_F)
+	if not await _until("the feed crane lowers its dish", func() -> bool: return _crane_height() > resting + 20.0, 30):
+		return
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
 		return
 	if not _check(_result_says("Day 1: " + fed) and _result_says("Satisfied"), "the result names the dish and the reaction"):
@@ -1142,7 +1169,7 @@ func _set_out_before_feeding() -> void:
 		return
 	if not _check(_int("remaining_ms") > 0 and _next().contains("Set out"), "with time and stock left the screen sets out before feeding"):
 		return
-	if not _check(_drawn_says("Feed " + str(_stored()[0]) + ": this ends the day."), "the task card keeps feeding the stored dish in view: %s" % [_drawn_lines()]):
+	if not _check(_drawn_says("SERVE") and _drawn_says("NEEDS 100") and not _target("chef_feed").is_empty(), "the feed panel keeps the stored dish and its serve button in view: %s" % [_drawn_lines()]):
 		return
 	await _tap(KEY_Q)
 
@@ -1662,14 +1689,14 @@ func _search_screen_and_fridge() -> void:
 	# while it is open the chef refuses a click until it is closed.
 	if not _check(await _click("chef_search") and _screen_open(0), "a click on the chef's fridge button opens the inventory and the fridge at base"):
 		return
-	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < SCREEN_MIDDLE)
+	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
 	if not _check(not kitchen_chef.is_empty() and str(kitchen_chef["refusal"]) == CLOSE_FIRST, "with the fridge open a click on the chef is refused with the close step: %s" % [_base_state()]):
 		return
 	if not _check(await _click("chef_other_%d" % fridge) and _int("fridge") == fridge and _actor("chef", "ingredients") == 1, "a click on a fridge slot withdraws the item into the pack"):
 		return
 	if not _check(await _click("chef_mine_0") and _int("fridge") == fridge + 1 and _actor("chef", "ingredients") == 0, "a click on a pack slot stores the item in the fridge"):
 		return
-	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < SCREEN_MIDDLE).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
+	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
 		return
 	var day: int = _int("day")
 	await _tap(KEY_G)
@@ -1785,6 +1812,85 @@ func _loss_clears_the_offer() -> void:
 		days += 1
 		await _tap(KEY_G)
 	_check(_str("phase") == "lost" and _str("dish_offered") == "", "a lost party is offered no dish")
+
+## With a clock on the base and a cook that takes time, the top bar shows the
+## base's time and the cook panel draws the running cook: its name, COOKING
+## with a percentage that follows the snapshot, the bar's panel, and a second
+## cook refused with the cooking message and not the fridge's.
+func _a_timed_cook_draws_its_bar() -> void:
+	await _leave_run()
+	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	if not await _until("the timed run's day ends", func() -> bool: return _int("remaining_ms") == 0 and _str("phase") == "workshop", DAY_FRAMES):
+		_restore_clocks()
+		return
+	if not await _until("AI appraises the timed run's finds", func() -> bool: return _str("dish_offered") != "" and not _next().contains("identifying"), 300):
+		_restore_clocks()
+		return
+	var shown: String = _clock_drawn()
+	var remaining: int = _int("base_remaining_ms")
+	var left: int = roundi(remaining / 1000.0)
+	var seen: int = _clock_seconds(shown)
+	if not _check(_flag("base_timed") and seen >= 0 and absi(seen - left) <= 2, "the top bar shows the base's own time: %s against %s s" % [shown, left]):
+		_restore_clocks()
+		return
+	var attempts: int = 0
+	while not _flag("cooking") and attempts < 6:
+		attempts += 1
+		await _tap(KEY_E)
+	if not _check(_flag("cooking") and _drawn_says("COOKING"), "a timed cook is drawn as COOKING on the cook panel: %s" % [_drawn_lines()]):
+		_restore_clocks()
+		return
+	await _frames(120)
+	var progress: float = _float("cooking_progress")
+	var percent: int = roundi(progress * 100.0)
+	var drawn_percent: int = _cooking_percent()
+	if not _check(progress > 0.0 and progress < 1.0 and absi(drawn_percent - percent) <= 3, "the cook panel's percentage follows the snapshot: %s against %s" % [drawn_percent, percent]):
+		_restore_clocks()
+		return
+	if not _check(_drawn_says(str(_status()["cooking_food"])), "the cook panel names the dish being cooked: %s" % [_drawn_lines()]):
+		_restore_clocks()
+		return
+	var foods: int = _int("foods")
+	await _tap(KEY_E)
+	_check(_int("foods") == foods and _flag("cooking"), "a second cook is refused while one runs")
+	_restore_clocks()
+
+func _flag(field: String) -> bool:
+	var value: bool = _status()[field]
+	return value
+
+func _float(field: String) -> float:
+	var value: float = _status()[field]
+	return value
+
+func _restore_clocks() -> void:
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
+
+## The top bar's clock as drawn, the one line of two digits, a colon and two
+## digits; empty when none was drawn.
+func _clock_drawn() -> String:
+	for line: String in _drawn_lines():
+		if line.length() == 5 and line[2] == ":":
+			return line
+	return ""
+
+func _clock_seconds(clock: String) -> int:
+	if clock.is_empty():
+		return -1
+	return int(clock.substr(0, 2)) * 60 + int(clock.substr(3, 2))
+
+## The percentage the cook panel's COOKING line drew, -1 when none.
+func _cooking_percent() -> int:
+	for line: String in _drawn_lines():
+		if line.begins_with("COOKING ") and line.ends_with("%"):
+			return int(line.substr(8, line.length() - 9))
+	return -1
 
 func _mutants() -> Array:
 	return _status()["mutants"]
