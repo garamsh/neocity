@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iterator>
+#include <map>
 #include <numbers>
 #include <optional>
 #include <span>
@@ -805,18 +806,20 @@ void paint_room(godot::Node2D &canvas, const Art &art, Image image,
 void paint_interiors(godot::Node2D &canvas, const Art &art,
                      const survival::Content &content,
                      const survival::GameView &view) {
-  constexpr std::array PICTURES{Image::InteriorKitchen, Image::InteriorNoodle,
-                                Image::InteriorColdStore};
+  static const std::map<std::string_view, Image> PICTURES{
+      {"Kitchen Shop", Image::InteriorKitchen},
+      {"Noodle Shop", Image::InteriorNoodle},
+      {"Cold Store", Image::InteriorColdStore},
+      {"Aquarium Service Room", Image::InteriorService}};
   const auto &interiors = content.companion.exploration.interiors;
   godot::Array rooms;
-  for (std::size_t index = 0; index < interiors.size(); ++index) {
-    const auto &interior = interiors.at(index);
+  for (const auto &interior : interiors) {
     if (interior.map != view.exploration.map ||
         (view.exploration.chef.interior != interior.building &&
          view.exploration.appraiser.interior != interior.building)) {
       continue;
     }
-    const Image image = PICTURES.at(std::min(index, PICTURES.size() - 1));
+    const Image image = PICTURES.at(survival::object_name(interior.building));
     const auto box = area_rect(interior.area);
     if (interior.floors.empty()) {
       const Vector2 size = art.size(image);

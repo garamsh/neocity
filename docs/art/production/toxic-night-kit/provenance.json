@@ -1,0 +1,26 @@
+{
+  "issue": 276,
+  "goal": 268,
+  "tool": "Built-in image_gen tool; model not reported",
+  "inputs": "Text prompts only; the Worker separately inspected the selected F street/building references",
+  "references": {
+    "revision": "35a53ee444965e50eba276c823cbf8273ba47d53",
+    "street": "docs/art/concept-art/toxic-night/f-street.png",
+    "building": "docs/art/concept-art/toxic-night/f-building.png"
+  },
+  "sources": [
+    {
+      "path": "source.png",
+      "sha256": "d3feaf1522d63d146856affaf3a329523a34c0da283739a7ba7d7bfdb903e655"
+    },
+    {
+      "path": "backdrop-source.png",
+      "sha256": "aa72bc848d436e218d13762afa6ead0219f4adf673c0fc250d7f7c63c223a0d1"
+    }
+  ],
+  "selection": "source.png supplies foreground modules; backdrop-source.png supplies only its middle skyline strip. Its throat and acid panels are unused.",
+  "authoring": "Native Aseprite 1.3.18.6 sources; atlas preparation crops and nearest-only composition, deck faces darkened below the twelve-pixel rim, prop key alpha thresholded to 0/255",
+  "export": "python3 tools/art/toxic_night.py",
+  "prepare": "python3 tools/art/toxic_night.py --prepare",
+  "status": "Candidate production kit under selected Toxic Night direction; creative review pending"
+}

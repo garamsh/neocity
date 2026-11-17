@@ -40,24 +40,13 @@
         1920,
         735
       ],
-      "scale": 1,
-      "role": "Ruined city skyline, viaduct and flesh hills; transparent sky",
-      "sha256": "23a3335b3341763039730106e1bc05b25661f2aaaa1fb1e67573c49c3e6c830b",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-city.png",
-        "source_sha256": "04a0f5ee66ad87b587dc0f289ca21b37bd387cfbddb2b5dfba97a808d33704ca",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/city.png",
-      "source_sha256": "b6030c642c0bc8f6877d85c917c2bbff11a33b5989a4b694b661767c83bbb893",
-      "crop": null,
-      "resize": "1920x735!",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Toxic Night ruined skyline and derailed viaduct",
+      "sha256": "995b2c51a031942d6cf739e584915d642f5e6d8798c2ef03d9aba195b09771db",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/backgrounds-city.aseprite",
+      "source_sha256": "78f16d96957ffb956c669fb13a0a7567d896917490ca0a2c6eb6d22644c9de4a",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "backgrounds/acid.png",
@@ -84,18 +73,13 @@
         96,
         96
       ],
-      "scale": 1,
-      "role": "One vertically repeating iron ladder cell with amber rungs.",
-      "sha256": "eb25fe1b9fa9c0b2f40ef0d6ebb4667ba7200f4b37777e117ca1b49aad6f45ee",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      }
+      "role": "One repeating corroded iron ladder cell",
+      "sha256": "22c90e92479f8fce3992f8365e0300766d107977832bfd4b1b8709ca056b83cd",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-ladder.aseprite",
+      "source_sha256": "ebfc4eab85fdf5e544c03013e910e5c9c0971082b732fceda8be5f8733d5d547",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/ladder_broken.png",
@@ -122,18 +106,13 @@
         96,
         192
       ],
-      "scale": 1,
-      "role": "Closed steel door with yellow-black hazard stripes.",
-      "sha256": "12ad19154098c55d176c4f69f3b66fb674304784bc0d21964a81242fc285038f",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      }
+      "role": "Steel shutter passage with hazard-marked jambs",
+      "sha256": "633325e78a8c70095cc682354e0ef1f1f9295eb0483c179d6a0357ad87219221",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-door_cold_store.aseprite",
+      "source_sha256": "1957d0c4baa2cca8631c64fa2d17c6fca92e3e83338dcafea5a5265b9d2ef38f",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/door_broken.png",
@@ -160,32 +139,13 @@
         1920,
         396
       ],
-      "scale": 1,
-      "role": "Four ruined building-wall bands",
-      "sha256": "633ecaa5365672a1dd6a3ad45fc5277e814a59931626579b703d846d4e561256",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-deck.png",
-        "source_sha256": "2b3335109c9859b432990ac7900ea4251338574db4c48caecb9200a47c20dcce",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "tile_period_x": 1920,
-      "cell_width": 96,
-      "band_heights": [
-        96,
-        96,
-        96,
-        108
-      ],
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/building_wall.png",
-      "source_sha256": "76371e84b0d1ea26e84ba4ee4ad51df78fd3950139a8c3c4eb6454235f759c03",
-      "crop": null,
-      "resize": "bands [[0, 95], [96, 191], [192, 287], [288, 395]]",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Four twenty-cell violet masonry and window bands",
+      "sha256": "34561c39cb851b9d95dff191e60d87ca7f633dba723ec9b4927f9212e88f89bf",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-building_wall.aseprite",
+      "source_sha256": "f346674a1dd6671b8454d3f25e1c3f373b33500d24a9a4019e4e875ebd41395b",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/vending_machine.png",
@@ -193,24 +153,13 @@
         144,
         177
       ],
-      "scale": 1,
-      "role": "Smashed vending machine",
-      "sha256": "0e264577e1ac43672211f9d5908e7912b7abf72e3df2fdbeb546f12cdf9febd1",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/vending_machine.png",
-      "source_sha256": "ef7e4344cca32193e904544b3dd3a7e8a68b5922389dbc27b326e9ef84678c96",
-      "crop": "trim",
-      "resize": "fit into 136x177+4+0",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Broken red vending machine with neon rim",
+      "sha256": "1b471f0617597c5aac0ef6ff4a8db0f8c028abe59d8e83f8c890bd13b99e2135",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-vending_machine.aseprite",
+      "source_sha256": "9248945a93f3f6fcd4d9f47383721ca528bf2e1c9cf424025be5e0a48650de0a",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/shop.png",
@@ -218,28 +167,13 @@
         1920,
         384
       ],
-      "scale": 1,
-      "role": "Ruined kitchen shop front at left and stall at right",
-      "sha256": "9bedfe555300a989aab3e8a9f3395051f9dc9ec11ecefa214c49bb19ffcad195",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-shops.png",
-        "source_sha256": "15336609fe0173d4130865748f4f446a7cdebc2e278d03af9533fb03a7cdad84",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "band_heights": [
-        192,
-        192
-      ],
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/shop.png",
-      "source_sha256": "0bfa241eb25da1f546e92a4d6f51e62a3debf2db0c654c14bf8908538217998e",
-      "crop": null,
-      "resize": "1920x384!",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Two twenty-cell lit kitchen and noodle frontage bands",
+      "sha256": "627dbc14b3bf86dfe103dc75413cce37e978ea35e7a43a5a913d566b8f96d629",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-shop.aseprite",
+      "source_sha256": "47873eb8e58f6e179350775cebaac108c7d64e8ec4bf98c7e2dc25a7119fea9d",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/vendor_cart.png",
@@ -247,24 +181,13 @@
         192,
         96
       ],
-      "scale": 1,
-      "role": "Burned vendor cart",
-      "sha256": "70c000ce985b471213e81c8d444bc192072eb11fa001f414c5a0bb97db7f7b4c",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/vendor_cart.png",
-      "source_sha256": "8207dcb7ec1912fd0a76f8d975fef8ebb0cd450e5faecfcbe5d3d028041e88a4",
-      "crop": "trim",
-      "resize": "fit into 101x96+45+0",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Corroded noodle counter and boiler",
+      "sha256": "558d636b65393f61238e1d602af97fe960e0c4cf9f0b6d1bcbcb56f1d0e2ca4c",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-vendor_cart.aseprite",
+      "source_sha256": "8499d68b6884152a49c327903f1fd0ec94afd0dfe18026ba18e7e9be48293716",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/noodle_vendor.png",
@@ -291,24 +214,13 @@
         96,
         96
       ],
-      "scale": 1,
-      "role": "Battered street kiosk",
-      "sha256": "628ae3b730ed052ac223fc2d93e423233db99cd8d3fb1f53d3db4bd8ee3710e9",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": true,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/kiosk.png",
-      "source_sha256": "1d86759a20d43204cf6bbe0f0d7df6afd39179116e61ad1f164884ea80c6a87d",
-      "crop": "trim",
-      "resize": "fit into 96x83+0+6",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Battered kiosk with awning and warm work lights",
+      "sha256": "2a918c2dfaa571b80cba6a2ddfcdb3499f038630eb2a80f9b4cbdc0fb3bc43d3",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-kiosk.aseprite",
+      "source_sha256": "6c3d8e12cc6075316ffdafadaafefdc83ed6975949f39113520de1aad5d8162a",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/ferry.png",
@@ -316,24 +228,13 @@
         384,
         150
       ],
-      "scale": 1,
-      "role": "Wrecked rail car",
-      "sha256": "1cadacf4b4b4d8d2eed4e0eafb96b3992a9e1360e4c3711cff760ba1f91871ec",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/ferry.png",
-      "source_sha256": "87d3d8df701fabaad39573b3f382a3f56a25e9a1158f66a3c122adbddcc5b474",
-      "crop": "trim",
-      "resize": "fit into 268x150+58+0",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Wrecked passenger rail carriage",
+      "sha256": "e0949459bec6ce4af0dc051be8295751acf48bff09742f915fd011b62c1caeca",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-ferry.aseprite",
+      "source_sha256": "de13eba63c5aa4241df9e9ae14367387b985257b3fe6f8926e89b4aa8e2e5c91",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/bag_washed_up.png",
@@ -360,24 +261,13 @@
         288,
         288
       ],
-      "scale": 1,
-      "role": "Ruined cold-store front",
-      "sha256": "5a7bf47d7809f881f4d8234700456c01c7a3d14b6609353130dd123ff59e7976",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-props.png",
-        "source_sha256": "73bb70dd06e225b263c64983bd9a656f776c3550f979d1c6c7c43e4478a79089",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/cold_store.png",
-      "source_sha256": "9ffca9c7346cf312e181a23776e431d6f21c26d8f9c2109d186927d668b138f6",
-      "crop": "trim",
-      "resize": "fit into 285x221+1+33",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Cold-store shutter with hazard-marked jambs",
+      "sha256": "0c0f83036da415cf8f662c455f8bc54a68be46aca6720c19600399270da3a2dc",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-cold_store.aseprite",
+      "source_sha256": "ff0eb9c5bea10d20282f5b5996f246f0ccba34a077081f7a0f1ab825aa0c1103",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/acid_drip.png",
@@ -404,34 +294,13 @@
         1920,
         504
       ],
-      "scale": 1,
-      "role": "Six ruined walkway deck bands",
-      "sha256": "9af4b44a366eff6f9923dedfd4fa63f51bd8a5a6fda569aa6846d6a9368e8ac0",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-deck.png",
-        "source_sha256": "2b3335109c9859b432990ac7900ea4251338574db4c48caecb9200a47c20dcce",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      },
-      "tile_period_x": 1920,
-      "cell_width": 96,
-      "band_heights": [
-        84,
-        84,
-        84,
-        84,
-        84,
-        84
-      ],
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/deck.png",
-      "source_sha256": "139a39d3a879ba2e6b15b3fdf3f9d33fed5ca10d3e5ecea81979cc94436d50c0",
-      "crop": null,
-      "resize": "bands [[5, 86], [98, 179], [190, 271], [282, 357], [366, 442], [453, 503]]",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "role": "Six twenty-cell deck bands; flat contact at row zero",
+      "sha256": "3896f4e94eb45801b207041da8a443159b9ecc9c07b5093b43bf4803b9c53338",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/walkway-deck.aseprite",
+      "source_sha256": "97bd1d70a09d6f64a58f4e260324319e55e33cf50f5df2fd380c21ae3fd01781",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "ground/rubble.png",
@@ -2377,14 +2246,13 @@
         2304,
         1152
       ],
-      "role": "Ruined ferry terminal scenery behind the fixed floors",
-      "sha256": "1f90b632b112f4996e9d85ae25faa380a686b01293a0f5b525db8774dfc0f6b5",
-      "source": "docs/art/production/street-art-251-sources/terminal.png",
-      "source_sha256": "5cbd7a9e0cd75e56049333ef3d8de77311684f8dca02e013fbf8b62e0e7c96e3",
-      "crop": null,
-      "resize": "2304x1152!",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels",
-      "issue": 251
+      "role": "Toxic Night terminal skyline behind eastern floors",
+      "sha256": "54465080f13536a4ad1e3fe89d551847aab2ec8ffeb6e3b2eb4b68d1ba9323a6",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-terminal.aseprite",
+      "source_sha256": "aae9c3a694ae684dea8ce62384a1d592ae462cae25cb13309e3684e1069f4256",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/interior_kitchen.png",
@@ -2392,13 +2260,13 @@
         576,
         192
       ],
-      "role": "Occupied kitchen loft background",
-      "sha256": "025eb215358cd85600330e4590657cc278c2d8a0474588a8a355224a76a42286",
-      "source": "docs/art/production/map-hd-sources/interiors.png",
-      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
-      "crop": "1717x295+0+0",
-      "resize": "576x192!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "Kitchen stove and ingredient shelves",
+      "sha256": "48e6bad9a3ec254dece0bae664f86c1539f7b336fe00e6fcc7dcb24e4e996a31",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-interior_kitchen.aseprite",
+      "source_sha256": "514288cad70dd3bd6ae1ae2d976e2365db508aecae5b9dcf823d01edf65b237c",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/interior_noodle.png",
@@ -2406,13 +2274,13 @@
         576,
         192
       ],
-      "role": "Occupied noodle loft background",
-      "sha256": "8fa807a9156e71a8ba91c793e191336f6c8a77ab94b01f3c12a6faac0b9cdbd7",
-      "source": "docs/art/production/map-hd-sources/interiors.png",
-      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
-      "crop": "1717x300+0+306",
-      "resize": "576x192!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "Noodle boiler, bowls and exhaust hood",
+      "sha256": "66dd7a0021dd039bc7499ea86034ba4a14303c2aa9fd8b6287529a4f8c5e57bd",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-interior_noodle.aseprite",
+      "source_sha256": "1c7aeb80f2ed49df519ba929dd88f846024f32afb32ca01543927f3c524f835d",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/interior_cold_store.png",
@@ -2420,13 +2288,13 @@
         288,
         288
       ],
-      "role": "Occupied cold store background",
-      "sha256": "1d0ef3e40b6e5f36221456019c809137f94448e4a0b3455ee6f77803371d0c93",
-      "source": "docs/art/production/map-hd-sources/interiors.png",
-      "source_sha256": "0fe31da10df1a167fea49b9ca53947dc58fe2a0d0f63971e6fca6777db62851d",
-      "crop": "576x288+550+615",
-      "resize": "288x288!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "Cold-store refrigeration lockers and pipes",
+      "sha256": "6d848246066bf16d9b05d4b8cb4d9b72c4f634f4692ea02f4801851e96c4d82c",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-interior_cold_store.aseprite",
+      "source_sha256": "94bfacb3f4dc768a8ccebc0624f55f88df66d5e9763eac40dc80835b058ac744",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "walkway/aquarium_deck.png",
@@ -2462,14 +2330,13 @@
         288,
         144
       ],
-      "role": "Collapsed kiosk heap",
-      "sha256": "726d6912045342a4dbc7caf83b586e8d66de29bd140f46d8cca059a844ed11d0",
-      "source": "docs/art/production/street-art-251-sources/kiosk_ruined.png",
-      "source_sha256": "fa50e73bc9484a4d2225d0c4581e4a4ff0d3e16dac4b9c19c5d827ef26293a0f",
-      "crop": "trim",
-      "resize": "fit into 283x137+3+3",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels",
-      "issue": 251
+      "role": "Collapsed kiosk and broken pink sign",
+      "sha256": "264e9040ef6bd6fa1d4d9beee83ac65d0a9ae4816ff3c8d10e40f30f1ecf6aef",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-kiosk_ruined.aseprite",
+      "source_sha256": "c8355124239e4badebe46799911df984ee41f5c8a056884363a2d635b6543f28",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "world/fire_escape.png",
@@ -2477,13 +2344,13 @@
         96,
         96
       ],
-      "role": "Day-five fire escape repeating ladder segment",
-      "sha256": "961e06bf9935add15aac3a0a72e663a3a261bfdc65bd8633fb8604b34d5e4834",
-      "source": "docs/art/production/map-hd-sources/structures.png",
-      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
-      "crop": "92x96+1106+572",
-      "resize": "96x96!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "One repeating corroded fire-escape ladder cell",
+      "sha256": "22c90e92479f8fce3992f8365e0300766d107977832bfd4b1b8709ca056b83cd",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-fire_escape.aseprite",
+      "source_sha256": "ebfc4eab85fdf5e544c03013e910e5c9c0971082b732fceda8be5f8733d5d547",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     },
     {
       "path": "base/kitchen.png",
@@ -2499,6 +2366,20 @@
       "crop": null,
       "resize": "1920x1080!",
       "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+    },
+    {
+      "path": "world/interior_service.png",
+      "size": [
+        288,
+        288
+      ],
+      "role": "Aquarium service pumps and glass tanks",
+      "sha256": "ed6645fe32c9f9a80bdcc6b200060b73df05ca50fcb1a16196066b5d1ef7a704",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/world-interior_service.aseprite",
+      "source_sha256": "ee9cc28ee6696366c8ef69a6bf58159c2227a6ec3eb21e66928236dfe89d221e",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py"
     }
   ],
   "system_assets": {
@@ -2519,5 +2400,12 @@
       84
     ],
     "sampling": "nearest"
+  },
+  "map_kit": {
+    "issue": 276,
+    "source": "docs/art/production/toxic-night-kit/",
+    "grid": "96 native pixels per cell; one canvas pixel per native pixel at close zoom",
+    "sampling": "nearest",
+    "status": "first kit; creative review pending"
   }
 }

@@ -127,7 +127,7 @@ func _map_art_tour() -> void:
 			if not await _tour_move(target):
 				return
 			if target == Vector2i(39, 4):
-				if not await _tour_interior("271-cold-store-day-%d" % day, 3):
+				if not await _tour_interior("271-cold-store-day-%d" % day, 3, "world/interior_cold_store.png"):
 					return
 			if day == 1 and target == Vector2i(11, 9):
 				if not await _tour_collect():
@@ -143,7 +143,7 @@ func _map_art_tour() -> void:
 			if not await _tour_move(target):
 				return
 			if target == Vector2i(6, 7):
-				if not await _tour_interior("271-service-room-day-%d" % day, 2):
+				if not await _tour_interior("271-service-room-day-%d" % day, 2, "world/interior_service.png"):
 					return
 			if day == 1 and target == Vector2i(7, 10):
 				if not await _tour_collect():
@@ -183,7 +183,7 @@ func _map_art_tour() -> void:
 	quit(0)
 
 ## Checks that all room bands end at their collision floors and the outside darkens.
-func _tour_interior(name: String, count: int) -> bool:
+func _tour_interior(name: String, count: int, picture: String) -> bool:
 	if not await _tour_shot(name):
 		return false
 	var world: Node = scene.get_node("World")
@@ -194,7 +194,7 @@ func _tour_interior(name: String, count: int) -> bool:
 	var fragments: Array = []
 	for fragment: Dictionary in world.get_meta("foreground_layers", []):
 		var texture: Texture2D = fragment["texture"]
-		if texture.resource_path.ends_with("world/interior_cold_store.png"):
+		if texture.resource_path.ends_with(picture):
 			fragments.append(fragment)
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	for room: Dictionary in rooms:
