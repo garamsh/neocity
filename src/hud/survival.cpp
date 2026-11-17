@@ -999,7 +999,7 @@ void paint_slots(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto &carry = frame.content.get().companion.exploration.carry;
   for (std::size_t index = 0; index < capacity; ++index) {
     const auto area = slot_area(origin, index);
-    rendering::inset(canvas, area);
+    rendering::kit_slot(canvas, area, false);
     if (index < items.size()) {
       const auto item = items.at(index);
       paint_item(canvas, drawing, survival::ingredient_name(item),
@@ -1060,7 +1060,8 @@ void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   godot::Array drawn;
   for (const auto &view : transfers(frame)) {
-    hud_panel(canvas, view.panel);
+    rendering::kit_panel(canvas, view.panel, rendering::Accent::Cyan, false);
+    cover(canvas, view.panel);
     const auto &state = state_of(frame.view, view.actor);
     const float x = view.panel.position.x + INSET;
     if (view.has_other) {

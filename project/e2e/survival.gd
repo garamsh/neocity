@@ -221,6 +221,8 @@ func _run() -> void:
 	if not failed:
 		await _repeated_note_appears()
 	if not failed:
+		await _a_timed_cook_draws_its_bar()
+	if not failed:
 		await _main_menu_quits()
 
 ## At base the chef's commands by mouse: the dish line chooses as S does, the
@@ -1785,6 +1787,85 @@ func _loss_clears_the_offer() -> void:
 		days += 1
 		await _tap(KEY_G)
 	_check(_str("phase") == "lost" and _str("dish_offered") == "", "a lost party is offered no dish")
+
+## With a clock on the base and a cook that takes time, the top bar shows the
+## base's time and the cook panel draws the running cook: its name, COOKING
+## with a percentage that follows the snapshot, the bar's panel, and a second
+## cook refused with the cooking message and not the fridge's.
+func _a_timed_cook_draws_its_bar() -> void:
+	await _leave_run()
+	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	if not await _until("the timed run's day ends", func() -> bool: return _int("remaining_ms") == 0 and _str("phase") == "workshop", DAY_FRAMES):
+		_restore_clocks()
+		return
+	if not await _until("AI appraises the timed run's finds", func() -> bool: return _str("dish_offered") != "" and not _next().contains("identifying"), 300):
+		_restore_clocks()
+		return
+	var shown: String = _clock_drawn()
+	var remaining: int = _int("base_remaining_ms")
+	var left: int = roundi(remaining / 1000.0)
+	var seen: int = _clock_seconds(shown)
+	if not _check(_flag("base_timed") and seen >= 0 and absi(seen - left) <= 2, "the top bar shows the base's own time: %s against %s s" % [shown, left]):
+		_restore_clocks()
+		return
+	var attempts: int = 0
+	while not _flag("cooking") and attempts < 6:
+		attempts += 1
+		await _tap(KEY_E)
+	if not _check(_flag("cooking") and _drawn_says("COOKING"), "a timed cook is drawn as COOKING on the cook panel: %s" % [_drawn_lines()]):
+		_restore_clocks()
+		return
+	await _frames(120)
+	var progress: float = _float("cooking_progress")
+	var percent: int = roundi(progress * 100.0)
+	var drawn_percent: int = _cooking_percent()
+	if not _check(progress > 0.0 and progress < 1.0 and absi(drawn_percent - percent) <= 3, "the cook panel's percentage follows the snapshot: %s against %s" % [drawn_percent, percent]):
+		_restore_clocks()
+		return
+	if not _check(_drawn_says(str(_status()["cooking_food"])), "the cook panel names the dish being cooked: %s" % [_drawn_lines()]):
+		_restore_clocks()
+		return
+	var foods: int = _int("foods")
+	await _tap(KEY_E)
+	_check(_int("foods") == foods and _flag("cooking"), "a second cook is refused while one runs")
+	_restore_clocks()
+
+func _flag(field: String) -> bool:
+	var value: bool = _status()[field]
+	return value
+
+func _float(field: String) -> float:
+	var value: float = _status()[field]
+	return value
+
+func _restore_clocks() -> void:
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
+
+## The top bar's clock as drawn, the one line of two digits, a colon and two
+## digits; empty when none was drawn.
+func _clock_drawn() -> String:
+	for line: String in _drawn_lines():
+		if line.length() == 5 and line[2] == ":":
+			return line
+	return ""
+
+func _clock_seconds(clock: String) -> int:
+	if clock.is_empty():
+		return -1
+	return int(clock.substr(0, 2)) * 60 + int(clock.substr(3, 2))
+
+## The percentage the cook panel's COOKING line drew, -1 when none.
+func _cooking_percent() -> int:
+	for line: String in _drawn_lines():
+		if line.begins_with("COOKING ") and line.ends_with("%"):
+			return int(line.substr(8, line.length() - 9))
+	return -1
 
 func _mutants() -> Array:
 	return _status()["mutants"]

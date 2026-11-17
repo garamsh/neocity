@@ -274,6 +274,11 @@ func _run() -> void:
 	scene = current_scene as MainScene
 	scene.get_node("World").set_meta("measure_art", true)
 	scene.set_meta("measure_art", true)
+	# The days of this run are the Godot checks' own: 18 seconds, no base clock
+	# and instant cooking, which the capture's steps and frame counts assume.
+	OS.set_environment("NEOCITY_EXPLORATION_SECONDS", "18")
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
 	process_frame.connect(_tick)
@@ -458,6 +463,8 @@ func _run() -> void:
 		_fail("the second day's base holds %d finds in the packs and fridge on day %d" % [held, _int("day")])
 		return
 	await _save("32-workshop-appraisal-and-result")
+	if not await _timed_cook_capture():
+		return
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
 	await _tap(KEY_1)
@@ -490,6 +497,37 @@ func _run() -> void:
 	print("Capture: ", ProjectSettings.globalize_path("user://survival"))
 	_finish("pass")
 	quit(0)
+
+## A run with a clock on the base and a cook that takes time, saved with the
+## cook half done and with the fridge open at base, which show the cook bar,
+## the base clock and the deck of the three panels. Leaves the clocks as they
+## were and the one-player run open for the caller to leave.
+func _timed_cook_capture() -> bool:
+	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
+	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	await _until_phase("workshop")
+	await _until_next("Cook", 900)
+	for attempt: int in range(6):
+		if scene.survival_status().get("cooking", false):
+			break
+		await _tap(KEY_E)
+	await _frames(120)
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
+	if not scene.survival_status().get("cooking", false) or not scene.survival_status().get("base_timed", false):
+		_fail("34-workshop-cooking: no timed cook runs at a timed base")
+		return false
+	await _save("34-workshop-cooking")
+	await _tap(KEY_R)
+	await _save("35-workshop-fridge")
+	await _tap(KEY_R)
+	return true
 
 ## Checks full screen and several window sizes against fractional canvas scaling.
 func _scales_canvas() -> bool:
@@ -750,10 +788,9 @@ func _save(screen: String) -> Image:
 	frame.resize(SCREEN.x, SCREEN.y, Image.INTERPOLATE_NEAREST)
 	return frame
 
-## The three top plates stand where the HUD says, each the size of its #222
-## art at 48 pixels tall and drawn over the frame, not left blank.
+## The three top plates stand where the HUD says, each a kit panel 48 pixels
+## tall and wide enough for its words, drawn over the frame and not left blank.
 func _top_plates(frame: Image, screen: String) -> bool:
-	var art: Array[String] = ["hud_day", "hud_acid", "hud_clock"]
 	var areas: Array[Rect2] = []
 	for area: Rect2 in scene.get_meta("hud_panels", []):
 		if area.end.y <= 56.0:
@@ -763,11 +800,9 @@ func _top_plates(frame: Image, screen: String) -> bool:
 		_fail("%s: %d top plates stand, not three" % [screen, areas.size()])
 		return false
 	for index: int in range(3):
-		var path: String = "res://levels/monster_mouth_escape/art_hd/ui/%s.png" % art[index]
-		var image: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
 		var area: Rect2 = areas[index]
-		if image == null or not is_equal_approx(area.size.y, 48.0) or absf(area.size.x - 48.0 * image.get_width() / image.get_height()) > 1.0:
-			_fail("%s: top plate %d is %s, not %s at 48 pixels tall" % [screen, index, area.size, art[index]])
+		if not is_equal_approx(area.size.y, 48.0) or area.size.x < 96.0:
+			_fail("%s: top plate %d is %s, not a kit panel 48 pixels tall" % [screen, index, area.size])
 			return false
 		var colors: Dictionary = {}
 		for y: int in range(int(area.position.y), int(area.end.y), 6):
