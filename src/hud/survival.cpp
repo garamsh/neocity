@@ -1,6 +1,7 @@
 #include "survival.hpp"
 
 #include "../rendering/survival.hpp"
+#include "title.hpp"
 
 #include <survival/ending.hpp>
 
@@ -325,6 +326,15 @@ String corner_clock(std::chrono::microseconds remaining) {
   const auto seconds = std::chrono::ceil<std::chrono::seconds>(remaining);
   const auto whole = static_cast<std::uint64_t>(seconds.count());
   return two_digits(whole / 60) + ":" + two_digits(whole % 60);
+}
+
+/// The clock of the top bar: the base's own time at base while it has a
+/// clock, and the day's exploration time otherwise.
+String top_clock(const GameView &view) {
+  const auto &base = view.workshop.remaining_base;
+  return corner_clock(base && view.progression.phase == Phase::Workshop
+                          ? *base
+                          : view.progression.remaining_exploration);
 }
 
 bool identified(const GameView &view, IngredientId ingredient) {
@@ -779,8 +789,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.image(canvas, rendering::Image::HdClock,
                 Vector2(TIME_X + PLATE_ICON_X, BAND_Y + PLATE_ICON_Y));
   drawing.text(canvas, TIME_X + PLATE_WORDS_X, BAND_BASELINE,
-               corner_clock(progression.remaining_exploration), BIG_SIZE,
-               tones.white, Weight::Bold);
+               top_clock(frame.view), BIG_SIZE, tones.white, Weight::Bold);
 }
 
 /// The notice line under the acid, sized to its words, with a hand-off notice
@@ -1277,6 +1286,20 @@ String ready_note(const SurvivalFrame &frame) {
          number(frame.content.get().companion.workshop.recipes.size());
 }
 
+/// How many ingredient slots the cook panel draws for a dish of `needed`
+/// ingredients: the kitchen's own, and at least three.
+std::size_t cook_slots(const SurvivalFrame &frame, std::size_t needed) {
+  return std::max<std::size_t>(
+      {static_cast<std::size_t>(frame.view.workshop.ingredient_slots), needed,
+       3});
+}
+
+/// The words over the cook bar: how far the cook has come.
+String cooking_note(float fill) {
+  return "COOKING " +
+         number(static_cast<std::uint64_t>(std::lround(fill * 100.0F))) + "%";
+}
+
 /// The ingredients not yet identified, in the pack.
 std::vector<IngredientId> unidentified(const SurvivalFrame &frame) {
   std::vector<IngredientId> unknown;
@@ -1420,8 +1443,11 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const float left = panel.position.x + DECK_PAD;
   const float top = panel.position.y + DECK_SLOTS_Y;
-  const auto ingredients = offered_ingredients(frame);
-  const auto count = std::max<std::size_t>(ingredients.size(), 3);
+  const auto &cooking = frame.view.workshop.cooking;
+  // The slots hold the ingredients being cooked, or those of the dish on offer.
+  const auto ingredients =
+      cooking ? cooking->slots : offered_ingredients(frame);
+  const auto count = cook_slots(frame, ingredients.size());
   for (std::size_t index = 0; index < count; ++index) {
     const auto area =
         rect(left + static_cast<float>(index) * (DECK_SLOT + 4.0F), top,
@@ -1436,12 +1462,26 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
   const float column =
       left + static_cast<float>(count) * (DECK_SLOT + 4.0F) + 8.0F;
   const auto offered = offered_dish(frame);
-  drawing.text(canvas, column, top + 22.0F,
-               offered ? from(survival::food_name(*offered))
-                       : String(NO_DISH_OFFERED),
-               DECK_SIZE, offered ? tones.white : tones.faint, CHANGING);
-  drawing.text(canvas, column, top + 46.0F, ready_note(frame), DECK_SIZE,
-               tones.muted, CHANGING);
+  String name = NO_DISH_OFFERED;
+  if (cooking) {
+    name = from(survival::food_name(cooking->food));
+  } else if (offered) {
+    name = from(survival::food_name(*offered));
+  }
+  drawing.text(canvas, column, top + 22.0F, name, DECK_SIZE,
+               cooking || offered ? tones.white : tones.faint, CHANGING);
+  if (cooking) {
+    const float fill = std::clamp(survival::progress_of(*cooking), 0.0F, 1.0F);
+    drawing.text(canvas, column, top + 40.0F, cooking_note(fill), DECK_SIZE,
+                 tones.gold, CHANGING);
+    rendering::kit_bar(
+        canvas,
+        rect(column, top + 44.0F, panel.get_end().x - DECK_PAD - column, 8.0F),
+        fill, tones.gold);
+  } else {
+    drawing.text(canvas, column, top + 46.0F, ready_note(frame), DECK_SIZE,
+                 tones.muted, CHANGING);
+  }
   float y = panel.position.y + DECK_NOTE_Y + 4.0F;
   for (const auto &line : halves(next_step(frame))) {
     drawing.text(canvas, left, y, line, DECK_SIZE, tones.white, CHANGING);
@@ -1604,7 +1644,7 @@ String refusal_text(survival::CollectionResult result) {
   std::abort();
 }
 
-String refusal_text(survival::WorkshopResult result) {
+String refusal_text(survival::WorkshopResult result, const GameView &view) {
   switch (result) {
   case survival::WorkshopResult::Applied:
   case survival::WorkshopResult::Failed:
@@ -1616,7 +1656,8 @@ String refusal_text(survival::WorkshopResult result) {
   case survival::WorkshopResult::NoFood:
     return "No dish is stored.";
   case survival::WorkshopResult::Full:
-    return "The fridge is full.";
+    return view.workshop.cooking ? "A dish is still cooking."
+                                 : "The fridge is full.";
   case survival::WorkshopResult::WrongRole:
   case survival::WorkshopResult::AlreadyIdentified:
   case survival::WorkshopResult::NotIdentified:
@@ -1758,9 +1799,7 @@ godot::Rect2 setup_area(std::size_t index) {
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected) {
   const auto tones = rendering::palette();
-  drawing.image(canvas, rendering::Image::TitleKeyArt, Vector2());
-  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
-                   color(9, 10, 20, 0.55F));
+  paint_title_art(canvas, 0.55F);
   drawing.text(canvas, SETUP_X, 120.0F, "Who is playing?", 40, tones.white,
                Weight::Bold);
   const auto chosen_at = static_cast<float>(
@@ -1768,11 +1807,10 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
   const float cursor =
       SETUP_Y + drawing.glide("setup_cursor", chosen_at) * SETUP_PITCH;
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
-    rendering::panel(canvas, setup_area(index));
+    kit_panel(canvas, setup_area(index));
   }
   // The highlight slides to the cursor's entry.
-  rendering::button(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT),
-                    true);
+  kit_button(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT), true);
   float y = SETUP_Y;
   std::size_t number_key = 1;
   for (const SetupEntry entry : SETUP_ENTRIES) {
@@ -1798,8 +1836,8 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
     y += SETUP_PITCH;
     ++number_key;
   }
-  rendering::panel(canvas, rect(MARGIN, 600.0F, SCREEN_WIDTH - 2.0F * MARGIN,
-                                SCREEN_HEIGHT - MARGIN - 600.0F));
+  kit_panel(canvas, rect(MARGIN, 600.0F, SCREEN_WIDTH - 2.0F * MARGIN,
+                         SCREEN_HEIGHT - MARGIN - 600.0F));
   drawing.text(canvas, 30.0F, 642.0F,
                "Gather by day, appraise and cook at base, and feed the monster "
                "before the acid wrecks the city.",
@@ -2465,12 +2503,13 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   lines.push_back(fitted(ready_note(frame), DECK_SIZE, DECK_INNER / 2.0F));
   lines.push_back(fitted(NO_DISH, DECK_SIZE, DECK_INNER));
   lines.push_back(fitted(NO_DISH_OFFERED, DECK_SIZE, DECK_INNER / 2.0F));
+  lines.push_back(fitted(cooking_note(1.0F), DECK_SIZE, DECK_INNER / 2.0F));
   lines.push_back(fitted(NOTHING_TO_APPRAISE, DECK_SIZE, DECK_INNER));
   lines.push_back(fitted(AI_APPRAISES, DECK_SIZE, DECK_INNER));
   const auto &tuning = frame.content.get().companion.workshop;
   for (const auto &recipe : tuning.recipes) {
     // The dish's name stands right of its slots on the cook panel.
-    const auto slots = std::max<std::size_t>(recipe.ingredients.size(), 3);
+    const auto slots = cook_slots(frame, recipe.ingredients.size());
     lines.push_back(fitted(
         from(survival::food_name(recipe.food)), DECK_SIZE,
         DECK_INNER - static_cast<float>(slots) * (DECK_SLOT + 4.0F) - 8.0F));
@@ -2533,9 +2572,16 @@ String describe(const GameView &view, const Event &event) {
       [&view](const auto &happened) -> String {
         using Happened = std::decay_t<decltype(happened)>;
         if constexpr (std::is_same_v<Happened, ActionEvent>) {
-          const String refusal =
-              std::visit([](auto result) { return refusal_text(result); },
-                         happened.result);
+          const String refusal = std::visit(
+              [&view](auto result) -> String {
+                if constexpr (std::is_same_v<decltype(result),
+                                             survival::WorkshopResult>) {
+                  return refusal_text(result, view);
+                } else {
+                  return refusal_text(result);
+                }
+              },
+              happened.result);
           return refusal.is_empty() ? done_text(view, happened) : refusal;
         } else if constexpr (std::is_same_v<Happened, FallEvent>) {
           return String(actor_name(happened.actor)) +
