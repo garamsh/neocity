@@ -551,6 +551,14 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
   }
   const auto beside = landing_cell(view, partner);
   if (follows(control, actor)) {
+    // Stranded beyond the leash with no way back inside it, it would hold a
+    // human at the screen lock for good: it goes home and enters again, which
+    // lands it beside its partner.
+    if (controller_of(control, partner) == Controller::Human &&
+        std::abs(beside.x - from.x) > LEASH &&
+        !company_route(config, view, from, beside, beside)) {
+      return {.action = ReturnToBase{}};
+    }
     // A partner in an exit zone is going through it: no errand holds the party.
     if (exit_zone_at(config, view, beside) != nullptr) {
       return keep_company(config, view, body, beside);

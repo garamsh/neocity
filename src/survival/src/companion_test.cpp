@@ -1366,6 +1366,40 @@ TEST(Companion, AFollowerBeyondTheLeashClosesInOnAPartnerFarAlongTheStreet) {
   EXPECT_FALSE(command.action.has_value());
 }
 
+/// A forty-cell street at y 3 with the chef on a platform over x 20 to 39 that
+/// no ladder reaches, and the appraiser on the street at x 5: a follower
+/// stranded below with no climb anywhere within the leash of its partner.
+GameView view_with_a_stranded_follower(std::int32_t chef) {
+  auto view = wide_view(chef, 5);
+  view.world.objects.front().area.y = 3;
+  auto platform = object_of(ObjectId{2}, ObjectKind::Terrain, 20);
+  platform.area.width = 20;
+  platform.traversable = true;
+  view.world.objects.push_back(platform);
+  view.exploration.chef.body.position = standing_in({.x = chef});
+  view.exploration.appraiser.body.position = standing_in({.x = 5, .y = 3});
+  add_source(view, SOURCE, 3);
+  view.world.objects.back().area.y = 3;
+  return view;
+}
+
+TEST(Companion, AFollowerStrandedBeyondTheLeashRejoinsItsHumanPartner) {
+  const auto view = view_with_a_stranded_follower(30);
+  const auto companion = companion_with();
+  const auto control = single_player(Actor::Chef);
+  const auto command =
+      companion.command(Actor::Appraiser, control, NO_INPUT, view);
+  EXPECT_TRUE(command.action &&
+              std::holds_alternative<ReturnToBase>(*command.action));
+}
+
+TEST(Companion, AFollowerWithinTheLeashIsNotMovedToItsPartner) {
+  const auto view = view_with_a_stranded_follower(14);
+  const auto command = companion_with().command(
+      Actor::Appraiser, single_player(Actor::Chef), NO_INPUT, view);
+  EXPECT_FALSE(command.action.has_value());
+}
+
 /// A forty-cell street under a platform that only a ladder at x 30 reaches,
 /// the chef on the platform at x 9 and the appraiser on the street at x 1,
 /// with a source on the platform at x 20.
