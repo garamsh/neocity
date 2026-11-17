@@ -4,7 +4,6 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <cstdlib>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -111,27 +110,6 @@ constexpr ObjectId KEEPER_CART{97};
 constexpr ObjectId GIFT_SHELF{98};
 constexpr ObjectId JELLY_MACHINE{99};
 constexpr ObjectId TANK_LOCKER{100};
-
-/// One day's exploration time and base time, and how long a cook takes.
-constexpr auto DAY = 5min;
-constexpr auto BASE_DAY = 5min;
-constexpr auto COOK = 8s;
-
-/// The seconds `name` holds in the environment, or nothing when it is unset or
-/// not a whole number of seconds. The test runs set these three lengths so
-/// that a check need not wait out a whole day; a run played by hand sets none.
-std::optional<std::chrono::seconds> seconds_in_environment(const char *name) {
-  const char *text = std::getenv(name);
-  if (text == nullptr) {
-    return std::nullopt;
-  }
-  char *end = nullptr;
-  const auto seconds = std::strtol(text, &end, 10);
-  if (end == text || *end != '\0' || seconds < 0) {
-    return std::nullopt;
-  }
-  return std::chrono::seconds{seconds};
-}
 
 /// The days the damage stages after the first begin on.
 constexpr std::uint32_t CRACKED_DAY = STAGE_FIRST_DAY.at(1);
@@ -858,17 +836,11 @@ std::vector<Flavor> flavors() {
 
 } // namespace
 
-Content temporary_content(std::uint32_t seed) {
-  const auto day =
-      seconds_in_environment("NEOCITY_EXPLORATION_SECONDS")
-          .value_or(std::chrono::duration_cast<std::chrono::seconds>(DAY));
+Content temporary_content(std::uint32_t seed, const DayLengths &lengths) {
+  const auto day = lengths.exploration;
   // A base of zero seconds has no clock.
-  const auto base =
-      seconds_in_environment("NEOCITY_BASE_SECONDS")
-          .value_or(std::chrono::duration_cast<std::chrono::seconds>(BASE_DAY));
-  const auto cook =
-      seconds_in_environment("NEOCITY_COOK_SECONDS")
-          .value_or(std::chrono::duration_cast<std::chrono::seconds>(COOK));
+  const auto base = lengths.base;
+  const auto cook = lengths.cook;
   auto objects = city();
   auto sources = stocked(stock(), objects);
   auto street_cells = street_ground(objects);

@@ -270,7 +270,10 @@ void MainScene::pin_display_size(godot::Vector2i size) { pinned_screen = size; }
 session::SurvivalFeatures MainScene::start_survival() {
   const auto seed = pinned_seed.value_or(
       static_cast<std::uint32_t>(godot::UtilityFunctions::randi()));
-  return survival_rules.emplace(survival::temporary_content(seed)).features();
+  return survival_rules
+      .emplace(survival::temporary_content(
+          seed, session::day_lengths_from_environment()))
+      .features();
 }
 
 bool MainScene::play_cinematic(const godot::String &scene) {

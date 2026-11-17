@@ -26,6 +26,12 @@ namespace {
 
 using namespace std::chrono_literals;
 
+/// The temporary game with the short days of the checks: 18 seconds of
+/// exploration, no base clock and an instant cook.
+Content short_days(std::uint32_t seed) {
+  return temporary_content(seed, {.exploration = 18s, .base = 0s, .cook = 0s});
+}
+
 constexpr ControlMap ALL_AI{.chef = Controller::Ai,
                             .appraiser = Controller::Ai};
 constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
@@ -337,7 +343,7 @@ ObjectSnapshot object_named(const WorldSnapshot &world, std::string_view name) {
 }
 
 TEST(TemporaryContent, APlaceHasTheSameNameOnEveryMap) {
-  const Game game(temporary_content(7));
+  const Game game(short_days(7));
   const auto street = game.view();
   ASSERT_EQ(street.exploration.map, MapId::Street);
   auto aquarium = street;
@@ -366,7 +372,7 @@ TEST(TemporaryContent, APlaceHasTheSameNameOnEveryMap) {
 }
 
 TEST(TemporaryContent, ConstructsEveryFeatureWithinItsMap) {
-  Game game(temporary_content(7));
+  Game game(short_days(7));
   EXPECT_EQ(game.simulation().snapshot().seed, 7U);
   for (const auto &object : game.content().objects) {
     const auto &map = map_of(game.content(), object.map);
@@ -401,7 +407,7 @@ ground_of(const MapContent &map) {
 }
 
 TEST(TemporaryContent, GroundNamesTheSurfaceOfEveryTerrainCellAndNoOther) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   for (const auto &map : content.maps) {
     std::set<std::pair<std::int32_t, std::int32_t>> terrain;
     for (const auto &object : content.objects) {
@@ -418,7 +424,7 @@ TEST(TemporaryContent, GroundNamesTheSurfaceOfEveryTerrainCellAndNoOther) {
 }
 
 TEST(TemporaryContent, RubbleBlocksItsCellForTheWholeRun) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto ground = ground_of(street_of(content));
   World world(content.objects);
   const auto rubble_blocks = [&] {
@@ -440,7 +446,7 @@ TEST(TemporaryContent, RubbleBlocksItsCellForTheWholeRun) {
 }
 
 TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
-  const auto ground = ground_of(street_of(temporary_content(1)));
+  const auto ground = ground_of(street_of(short_days(1)));
   std::size_t ends = 0;
   for (const auto &[cell, kind] : ground) {
     const auto [x, y] = cell;
@@ -457,7 +463,7 @@ TEST(TemporaryContent, ABrokenRoadEndsWhereItsGroundStops) {
 }
 
 TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   std::size_t walkways = 0;
   for (const auto &object : content.objects) {
     if (object.kind == ObjectKind::Terrain) {
@@ -476,7 +482,7 @@ TEST(TemporaryContent, EveryWalkwayIsOneRowWithOpenAirAboveIt) {
 }
 
 TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const World world(content.objects);
   const auto every_way = cells_reached(content, world.snapshot());
   const auto walking =
@@ -499,7 +505,7 @@ TEST(TemporaryContent, FloorsMeetOnlyByLadderStairsRampOrJump) {
 
 TEST(TemporaryContent,
      NoStraightRunOfGroundIsLongerThanAThirdOfTheStreetOrHalfTheAquarium) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   for (const auto &map : content.maps) {
     const auto ground = ground_of(map);
     // The aquarium is wider per floor, so its floors may run half its width.
@@ -515,7 +521,7 @@ TEST(TemporaryContent,
 }
 
 TEST(TemporaryContent, EveryDecorationKindStandsInsideItsMap) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   std::set<DecorationKind> kinds;
   for (const auto &map : content.maps) {
     for (const auto &decoration : map.decorations) {
@@ -530,7 +536,7 @@ TEST(TemporaryContent, EveryDecorationKindStandsInsideItsMap) {
 }
 
 TEST(TemporaryContent, EveryLandmarkPictureMarksOneObjectThatCanShowIt) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   std::map<LandmarkKind, std::uint32_t> pictures;
   std::set<std::uint32_t> marked;
   for (const auto &map : content.maps) {
@@ -563,7 +569,7 @@ TEST(TemporaryContent, EveryNameLookupRefusesAnIdentityItNeverIssued) {
 }
 
 TEST(TemporaryContent, EveryRecipeIngredientHasASource) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto supplies = [&](auto member, auto id) {
     return std::ranges::any_of(content.objects, [&](const auto &object) {
       return std::invoke(member, object) == std::optional{id};
@@ -578,7 +584,7 @@ TEST(TemporaryContent, EveryRecipeIngredientHasASource) {
 }
 
 TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto reached = sources_ever_reached(content);
   for (const auto &stock : content.companion.exploration.sources) {
     EXPECT_TRUE(reached.contains(stock.id.value)) << object_name(stock.id);
@@ -586,7 +592,7 @@ TEST(TemporaryContent, EveryStockedSourceCanBeReachedWhileItSupplies) {
 }
 
 TEST(TemporaryContent, EveryDayBagsLandOnBothSidesOfTheCity) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   World world(content.objects);
   std::set<std::uint32_t> seen;
   for (std::uint32_t day = 2; day <= 40; ++day) {
@@ -607,7 +613,7 @@ TEST(TemporaryContent, EveryDayBagsLandOnBothSidesOfTheCity) {
 }
 
 TEST(TemporaryContent, NoTwoSourcesShareACellOfAMapWhileEitherIsOnIt) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   World world(content.objects);
   for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
     ASSERT_EQ(world.update(day), WorldUpdateResult::Applied);
@@ -627,7 +633,7 @@ TEST(TemporaryContent, NoTwoSourcesShareACellOfAMapWhileEitherIsOnIt) {
 }
 
 TEST(TemporaryContent, TheCrackedStageBringsTheFerryAndItsStock) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto before = on_day(content, STAGE_FIRST_DAY.at(1) - 1);
   EXPECT_EQ(object_named(before, "Drifted Ferry").state, ObjectState::Dormant);
   EXPECT_FALSE(object_named(before, "Ferry Bag").material_available);
@@ -637,7 +643,7 @@ TEST(TemporaryContent, TheCrackedStageBringsTheFerryAndItsStock) {
 }
 
 TEST(TemporaryContent, EveryRecipeCanBeCookedFromReachableStock) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
   for (const auto &recipe : content.companion.workshop.recipes) {
     std::map<std::uint32_t, std::uint32_t> needed;
@@ -653,7 +659,7 @@ TEST(TemporaryContent, EveryRecipeCanBeCookedFromReachableStock) {
 }
 
 TEST(TemporaryContent, ReachableStockCoversBurnedDishesForThirtyDays) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto stock = stock_in(content, sources_ever_reached(content));
   const auto dishes = wanted_dishes(content.companion.workshop.recipes, stock);
   EXPECT_GE(dishes * SUCCESS_PERCENT, CHECKED_DAYS * 100U)
@@ -661,7 +667,7 @@ TEST(TemporaryContent, ReachableStockCoversBurnedDishesForThirtyDays) {
 }
 
 TEST(TemporaryContent, ContainersHoldTwoToSixSlotsAndEnoughStandOnEachMap) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   std::map<MapId, int> per_map;
   for (const auto &source : content.companion.exploration.sources) {
     EXPECT_GE(source.capacity, 2U);
@@ -680,7 +686,7 @@ TEST(TemporaryContent, ContainersHoldTwoToSixSlotsAndEnoughStandOnEachMap) {
 }
 
 TEST(TemporaryContent, TheCarryRulesAndSlotCountsAreThePmsTemporaryNumbers) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &carry = content.companion.exploration.carry;
   EXPECT_EQ(content.run.inventory_slots, 12U);
   EXPECT_EQ(content.run.fridge_slots, 30U);
@@ -697,7 +703,7 @@ TEST(TemporaryContent, TheCarryRulesAndSlotCountsAreThePmsTemporaryNumbers) {
 }
 
 TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
-  Game game(temporary_content(1));
+  Game game(short_days(1));
   const auto world = game.world().snapshot();
   std::set<SourceKind> kinds;
   for (const auto &stock : game.exploration().snapshot().sources) {
@@ -714,7 +720,7 @@ TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
 
 TEST(TemporaryContent, OnFiveSeedsAnAiPartyReachesDayThirtyWithAcidLeft) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
-    Game game(temporary_content(seed));
+    Game game(short_days(seed));
     EXPECT_EQ(play_days(game, 30), 30U) << "seed " << seed;
     const auto state = game.simulation().snapshot();
     EXPECT_EQ(state.phase == Phase::Lost, false) << "seed " << seed;
@@ -724,7 +730,7 @@ TEST(TemporaryContent, OnFiveSeedsAnAiPartyReachesDayThirtyWithAcidLeft) {
 
 TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
   for (const std::uint32_t seed : {1U, 2U, 3U}) {
-    Game game(temporary_content(seed));
+    Game game(short_days(seed));
     ASSERT_EQ(play_days(game, 15), 15U) << "seed " << seed;
     const auto before = game.exploration().snapshot().sources;
     ASSERT_EQ(play_days(game, 25), 25U) << "seed " << seed;
@@ -740,7 +746,7 @@ TEST(TemporaryContent, AnAiPartyStillCollectsAfterDayFourteen) {
 }
 
 TEST(TemporaryContent, TheOldAcidDripIsAnObstacleOnTheStreet) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &drawn = street_of(content).obstacles;
   ASSERT_EQ(drawn.size(), 3U);
   const auto cells = obstacle_cells(content, MapId::Street);
@@ -752,7 +758,7 @@ TEST(TemporaryContent, TheOldAcidDripIsAnObstacleOnTheStreet) {
 }
 
 TEST(TemporaryContent, EveryMapHasEnoughMutantsAndObstacles) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &config = content.companion.exploration;
   const auto count = [](const auto &list, MapId map) {
     return std::ranges::count(
@@ -765,7 +771,7 @@ TEST(TemporaryContent, EveryMapHasEnoughMutantsAndObstacles) {
 }
 
 TEST(TemporaryContent, EveryPatrolAndObstacleStandsOnAFloorOnEveryDay) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &config = content.companion.exploration;
   for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
     const auto world = on_day(content, day);
@@ -787,12 +793,12 @@ TEST(TemporaryContent, EveryPatrolAndObstacleStandsOnAFloorOnEveryDay) {
 }
 
 TEST(TemporaryContent, TheAcidGaugeFillsAtAValueOfTheRules) {
-  EXPECT_EQ(temporary_content(1).run.full_acid, AcidLevel{100});
+  EXPECT_EQ(short_days(1).run.full_acid, AcidLevel{100});
 }
 
 TEST(TemporaryContent,
      OnlyAVeryTastyFineRepeatSatisfiesAndEveryWantedNewDishCanWhenCookedFine) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &work = content.companion.workshop;
   std::uint32_t fine_repeats = 0;
   std::uint32_t short_repeats = 0;
@@ -832,7 +838,7 @@ TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
                                            source.items.size());
                         })};
   };
-  auto content = temporary_content(1);
+  auto content = short_days(1);
   const auto [left, stock] = first_day(content);
   EXPECT_EQ(left, 0us);
   EXPECT_GT(stock, 0U);
@@ -843,7 +849,7 @@ TEST(TemporaryContent, TheFirstDayEndsByTimeWhileStockRemains) {
 }
 
 TEST(TemporaryContent, NeverFeedingLosesLongBeforeDayThirty) {
-  Game game(temporary_content(1));
+  Game game(short_days(1));
   const auto penalty = game.content().companion.unfed_penalty;
   std::uint32_t days = 0;
   while (game.simulation().snapshot().phase == Phase::Workshop &&
@@ -856,7 +862,7 @@ TEST(TemporaryContent, NeverFeedingLosesLongBeforeDayThirty) {
 }
 
 TEST(TemporaryContent, TheDayBringsAWashedUpBagAndNothingElseTakesItAway) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   EXPECT_EQ(object_named(on_day(content, 1), "Washed-up Bag 1").state,
             ObjectState::Dormant);
   EXPECT_TRUE(
@@ -866,7 +872,7 @@ TEST(TemporaryContent, TheDayBringsAWashedUpBagAndNothingElseTakesItAway) {
 }
 
 TEST(TemporaryContent, TheTideTakesAnUncollectedBagBackAfterFiveDays) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto before = on_day(content, 6);
   EXPECT_TRUE(object_named(before, "Washed-up Bag 1").material_available);
   const auto after = on_day(content, 7);
@@ -876,7 +882,7 @@ TEST(TemporaryContent, TheTideTakesAnUncollectedBagBackAfterFiveDays) {
 }
 
 TEST(TemporaryContent, ThreeBagsLandWithEachDayFromTheSecond) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto bags = [](const WorldSnapshot &world) {
     return std::ranges::count_if(
         world.objects, [](const ObjectSnapshot &object) {
@@ -890,7 +896,7 @@ TEST(TemporaryContent, ThreeBagsLandWithEachDayFromTheSecond) {
 }
 
 TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
-  Game game(temporary_content(1));
+  Game game(short_days(1));
   const std::array<ExplorationInput, 2> idle{};
   const auto end_days = [&](std::uint32_t days) {
     for (std::uint32_t day = 0; day < days; ++day) {
@@ -915,7 +921,7 @@ TEST(TemporaryContent, BagsLandOnScheduleForAPartyThatNeverSetsOut) {
 }
 
 TEST(TemporaryContent, TheSourcesAcidOnceDestroyedNowSupplyForTheWholeRun) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   for (const auto *name :
        {"Shallows", "Tomato Machine", "Lost Basket", "Pickle Machine",
         "Noodle Vendor", "Kitchen Shop", "Cold Store Door"}) {
@@ -935,7 +941,7 @@ TEST(TemporaryContent, TheSourcesAcidOnceDestroyedNowSupplyForTheWholeRun) {
 
 TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToDayThirty) {
   for (const std::uint32_t seed : {1U, 2U, 3U, 4U, 5U}) {
-    Game game(temporary_content(seed));
+    Game game(short_days(seed));
     EXPECT_EQ(unfed_days(game, CHECKED_DAYS + 1), 0U) << "seed " << seed;
     EXPECT_EQ(game.simulation().snapshot().day, CHECKED_DAYS + 1)
         << "seed " << seed;
@@ -943,7 +949,7 @@ TEST(TemporaryContent, OnFiveSeedsAnAiPartyFeedsEveryDayToDayThirty) {
 }
 
 TEST(TemporaryContent, AnAiPartyFeedsTheMonsterAndSatisfiesIt) {
-  Game game(temporary_content(1));
+  Game game(short_days(1));
   bool satisfied = false;
   for (std::uint32_t step = 0;
        step < STEP_LIMIT && game.simulation().snapshot().day < 6; ++step) {
@@ -957,7 +963,7 @@ TEST(TemporaryContent, AnAiPartyFeedsTheMonsterAndSatisfiesIt) {
 }
 
 TEST(TemporaryContent, TheDayDamagesTheCityAndBringsTheFerryInThreeStages) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto standing = on_day(content, 1);
   ASSERT_EQ(object_named(standing, "Noodle Vendor").state, ObjectState::Intact);
   ASSERT_EQ(object_named(standing, "Roof Ladder").state, ObjectState::Intact);
@@ -985,7 +991,7 @@ TEST(TemporaryContent, TheDayDamagesTheCityAndBringsTheFerryInThreeStages) {
 }
 
 TEST(TemporaryContent, AnAiRunsWorldFollowsItsDays) {
-  Game game(temporary_content(1));
+  Game game(short_days(1));
   ASSERT_EQ(play_days(game, STAGE_FIRST_DAY.at(1)), STAGE_FIRST_DAY.at(1));
   ASSERT_EQ(game.exploration().advance(0us, {}), Result::Applied);
   EXPECT_EQ(game.world().snapshot().day, STAGE_FIRST_DAY.at(1));
@@ -994,7 +1000,7 @@ TEST(TemporaryContent, AnAiRunsWorldFollowsItsDays) {
 }
 
 TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto after = on_day(content, STAGE_FIRST_DAY.at(2));
   ASSERT_EQ(object_named(after, "Rotten Bridge").state, ObjectState::Destroyed);
   const auto floor = object_named(after, "Cold Store Floor");
@@ -1008,7 +1014,7 @@ TEST(TemporaryContent, TheFerryReopensTheEastAfterTheBridgeFalls) {
 }
 
 TEST(TemporaryContent, TheFireEscapeCarriesTheRoofOnceTheLadderBreaks) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto before = on_day(content, 1);
   ASSERT_TRUE(reachable(content, before, object_named(before, "Roof Bag")));
 
@@ -1065,7 +1071,7 @@ PlayerInput walk_to_zone(const Game &game, const WorldArea &zone) {
 
 TEST(TemporaryContent,
      AnAiPartnerFollowsAHumanThroughTheStreetExitToTheAquarium) {
-  auto content = temporary_content(7);
+  auto content = short_days(7);
   // The walk waits for the AI's collections, which a day's budget may not.
   content.run.exploration_budget = 120s;
   // The walk steers around obstacles only, so no mutant is on its way.
@@ -1091,8 +1097,8 @@ TEST(TemporaryContent,
 }
 
 TEST(TemporaryContent, TwoSeedsGiveTheSameMapsAndTheSameSupply) {
-  const auto first = temporary_content(1);
-  const auto second = temporary_content(98765);
+  const auto first = short_days(1);
+  const auto second = short_days(98765);
   ASSERT_NE(first.run.seed, second.run.seed);
   EXPECT_EQ(World(first.objects).snapshot(), World(second.objects).snapshot());
   EXPECT_EQ(on_day(first, 20), on_day(second, 20));
@@ -1115,7 +1121,7 @@ TEST(TemporaryContent, TwoSeedsGiveTheSameMapsAndTheSameSupply) {
 }
 
 TEST(TemporaryContent, TheStreetIsThreeScreensWideAndTheAquariumTwo) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   constexpr std::int32_t SCREEN = 20;
   ASSERT_EQ(content.maps.size(), 2U);
   EXPECT_GE(street_of(content).size.width, 3 * SCREEN);
@@ -1124,7 +1130,7 @@ TEST(TemporaryContent, TheStreetIsThreeScreensWideAndTheAquariumTwo) {
 
 TEST(TemporaryContent,
      TheStreetHasTwoEntrancesTwoShopsWithAnInsideAndThreeFloors) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   const auto &config = content.companion.exploration;
   const auto world = World(content.objects).snapshot();
   // The base entrance is the street entry; the aquarium entrance is the exit
@@ -1179,7 +1185,7 @@ std::vector<Cell> cells_on(const Content &content, MapId map,
 }
 
 TEST(TemporaryContent, EachDamageStageChangesCellsOnEveryMapAndOnlyAtItsDay) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   for (const auto map : {MapId::Street, MapId::Aquarium}) {
     const auto standing = cells_on(content, map, 1);
     const auto cracked = cells_on(content, map, STAGE_FIRST_DAY.at(1));
@@ -1200,7 +1206,7 @@ TEST(TemporaryContent, EachDamageStageChangesCellsOnEveryMapAndOnlyAtItsDay) {
 }
 
 TEST(TemporaryContent, EveryMapReachesEverySourceExitAndInteriorAtEveryStage) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   World world(content.objects);
   for (std::uint32_t day = 1; day <= LAST_SCANNED_DAY; ++day) {
     ASSERT_EQ(world.update(day), WorldUpdateResult::Applied);
@@ -1211,7 +1217,7 @@ TEST(TemporaryContent, EveryMapReachesEverySourceExitAndInteriorAtEveryStage) {
 }
 
 TEST(TemporaryContent, ThePathCheckNamesWhatACutPassageStrandsOnEachStage) {
-  const auto content = temporary_content(1);
+  const auto content = short_days(1);
   struct Cut {
     std::uint32_t day;
     std::string_view cut;

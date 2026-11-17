@@ -3,11 +3,12 @@ GODOT_VERSION := 4.7.2.stable.official.ed1daf0bf
 PYTHON ?= python3
 
 # The Godot checks play an 18 second day with no base clock and instant cooking
-# (src/survival/src/content.cpp reads these); a run played by hand has 5 minutes
-# of each and a cook of seconds.
-export NEOCITY_EXPLORATION_SECONDS := 18
-export NEOCITY_BASE_SECONDS := 0
-export NEOCITY_COOK_SECONDS := 0
+# (src/session/survival_run.cpp reads these); `run` gets none, so a run played
+# by hand has 5 minutes of each and a cook of seconds.
+GODOT_CHECKS := test-startup test-title test-timing test-survival test-escape test-loss test-audio
+$(GODOT_CHECKS): export NEOCITY_EXPLORATION_SECONDS := 18
+$(GODOT_CHECKS): export NEOCITY_BASE_SECONDS := 0
+$(GODOT_CHECKS): export NEOCITY_COOK_SECONDS := 0
 
 # C++ tools are hash-pinned PyPI wheels installed into ignored .tools/cpp; one
 # line per tool, with a hash for each supported platform (macOS x86_64/arm64,

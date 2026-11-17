@@ -17,7 +17,7 @@ Alternatives considered:
 - Give a cook that refuses while another runs its own `WorkshopResult::Busy`. Rejected for now: `src/hud/survival.cpp` switches over `WorkshopResult` with no default, so a new enumerator breaks a file this issue does not own. `Full` is used, and a later change that owns the HUD can split it.
 - Let a cook that is still running when the day ends carry over. Rejected: its ingredients were spent for a day the monster is already past, and a carried cook would let a player cook through the unfed penalty.
 - Roll the cook's success when the cook starts. Rejected: the roll then precedes the wait it decides, and a failed dish would be known at the start; the roll is made when the cook ends, with the ingredients spent at the start.
-- Change the length of the days in the Godot checks' scripts. Rejected: the checks are other workers' files and assert the 18 second budget; the content reads three environment variables instead, and the Makefile and the unit tests set the short values.
+- Change the length of the days in the Godot checks' scripts. Rejected: the checks are other workers' files and assert the 18 second budget; the session reads three environment variables instead and the Makefile sets the short values for the checks only. The survival library reads no environment: `temporary_content` takes the lengths as `DayLengths`, and the unit tests pass the short ones.
 
 ## Decision
 
@@ -25,13 +25,13 @@ A feeding that satisfies the monster lowers acid by `WorkshopConfig::satisfied_a
 
 `Workshop` keeps the base clock and the cook, and the session advances it on the same 100ms unit as exploration. `survival_status()` reports `cooking`, `cooking_progress` (0 to 1), `cooking_food`, `ingredient_slots`, `ingredient_slot_count`, `base_timed` and `base_remaining_ms` for the screen to draw.
 
-`temporary_content` reads `NEOCITY_EXPLORATION_SECONDS`, `NEOCITY_BASE_SECONDS` (0 for no clock) and `NEOCITY_COOK_SECONDS`. The Makefile exports 18, 0 and 0 and the unit tests register the same, so the existing checks keep their days.
+`temporary_content` takes `DayLengths` (5 minutes, 5 minutes, 8 seconds by default). The session reads `NEOCITY_EXPLORATION_SECONDS`, `NEOCITY_BASE_SECONDS` (0 for no clock) and `NEOCITY_COOK_SECONDS` into it; the Makefile sets 18, 0 and 0 on the Godot check targets and not on `run`, and `content_test.cpp` passes the same, so the existing checks keep their days.
 
 ## Consequences
 
 Easier: a run can recover by feeding well; the screen can draw a cook and the base clock from the session; the AI-only content tests and the Godot checks run short days without a change of their own.
 
-Harder: a refusal for a running cook reads as a full fridge on the screen until the HUD gives it its own result; the AI chef keeps asking to cook while one runs and is refused each time, rather than waiting; the content now has two day lengths, the default and the checks'; and a run launched without the environment sees 10 minute days.
+Harder: a refusal for a running cook reads as a full fridge on the screen until the HUD gives it its own result; the AI chef keeps asking to cook while one runs and is refused each time, rather than waiting; the content now has two day lengths, the default and the checks'; and a run played by hand sees the 5 minute days.
 
 Ruled out: a base with no limit in the game itself, and a cook that outlives its day.
 

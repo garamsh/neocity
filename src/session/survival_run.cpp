@@ -17,6 +17,22 @@
 namespace neocity::session {
 namespace {
 
+/// The whole seconds `name` holds in the environment, or `fallback` when it is
+/// unset or not a number of seconds.
+std::chrono::seconds seconds_in_environment(const char *name,
+                                            std::chrono::seconds fallback) {
+  const char *text = std::getenv(name);
+  if (text == nullptr) {
+    return fallback;
+  }
+  char *end = nullptr;
+  const auto seconds = std::strtol(text, &end, 10);
+  if (end == text || *end != '\0' || seconds < 0) {
+    return fallback;
+  }
+  return std::chrono::seconds{seconds};
+}
+
 using namespace std::chrono_literals;
 using survival::Actor;
 using survival::GameView;
@@ -251,6 +267,15 @@ godot::Dictionary actor_status(const GameView &view,
 }
 
 } // namespace
+
+survival::DayLengths day_lengths_from_environment() {
+  const survival::DayLengths defaults;
+  return {.exploration = seconds_in_environment("NEOCITY_EXPLORATION_SECONDS",
+                                                defaults.exploration),
+          .base = seconds_in_environment("NEOCITY_BASE_SECONDS", defaults.base),
+          .cook =
+              seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook)};
+}
 
 SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
                          std::uint64_t first_event)
