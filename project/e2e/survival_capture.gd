@@ -233,6 +233,7 @@ var teeth_frames: int = 0
 var teeth_control_checked: bool = false
 var support_frames: int = 0
 var lit_frames: int = 0
+var transfer_saved: bool = false
 ## The throat picture, which the World layer draws where its `throat_at` meta
 ## says, beside mirrored copies.
 var throat: Image = Image.load_from_file(ProjectSettings.globalize_path("res://levels/monster_mouth_escape/art_hd/backgrounds/throat.png"))
@@ -571,6 +572,14 @@ func _follow_next() -> void:
 	elif line.begins_with("Search "):
 		await _tap(KEY_R)
 	elif line.begins_with("Searching "):
+		if not transfer_saved:
+			transfer_saved = true
+			var screens: Array = scene.survival_status()["screens"]
+			var chef: Dictionary = scene.survival_status()["chef"]
+			if chef["searching"] < 0 or not screens[0]["open"]:
+				_fail("33-city-search-transfer: no search transfer screen is open")
+				return
+			await _save("33-city-search-transfer")
 		await _tap(KEY_E)
 		await _tap(KEY_R)
 	elif _names_interact(line):
