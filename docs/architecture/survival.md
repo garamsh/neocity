@@ -68,22 +68,26 @@ The following are temporary values that make the prototype playable and are not 
 
 ### Endings
 
-- An ending is a value of `Ending`, today only `MonsterSatisfied`, and a judgment is a function from the `Workshop` snapshot and the `EndingConfig` to whether that ending is reached. `Endings` holds the rules as a table pairing each `Ending` with its judgment, so a new ending is one enumerator, one judgment and one presentation in the HUD, as [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) decides.
-- `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. `check()` applies only in the workshop phase, so it waits while the party is in the city and draws nothing after the run is over. The first judgment reached ends the run through `Simulation::end`, which sets `Phase::Ended` and `Snapshot::ending`, and `check()` returns the ending. The host checks after every command.
-- `Phase::Ended` means the run reached an ending, and `Snapshot::ending` holds which one exactly then. A loss is `Phase::Lost`, never an ending.
+- An ending is a value of `Ending`: `MonsterSatisfied` or `VomitedOut`. `Endings` holds an ordered table pairing each ending with its judgment, reading the public progression and workshop snapshots and `EndingConfig`. [ADR 0038](adr/0038-end-day-thirty-by-vomiting-and-illustrate-the-three-outcomes.md) extends [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) with the day limit and progression input.
+- `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. It judges only in the workshop, waits while the party is in the city and changes nothing after the run is over. The host checks after commands and after base time advances, including an automatic end of day.
+- The first judgment reached sets `Phase::Ended` and `Snapshot::ending`. Satisfaction takes precedence over vomiting when both hold. Full acid is already `Phase::Lost` before the check, and cannot be replaced by either ending.
+- Satisfaction, vomiting and acid failure each show one Toxic Night image and a caption on the ending or loss card. Acid failure remains a loss with no `Ending` value. The existing cinematic skip and return contract still applies.
 
 #### Monster satisfied
 
-- `MonsterSatisfied` is reached when the days the monster was fed to satisfaction total `EndingConfig::satisfied_days`. `WorkshopSnapshot::satisfied_days` counts them: a feeding whose score reaches `WorkshopConfig::satisfying_score` is `MonsterReaction::Satisfied` and adds one. The days need not follow each other, and an unfed, disliked or unsatisfied day neither adds nor resets the count.
+- `MonsterSatisfied` is reached when the days fed to satisfaction total `EndingConfig::satisfied_days`. `WorkshopSnapshot::satisfied_days` counts them: a feeding whose score reaches `WorkshopConfig::satisfying_score` is `MonsterReaction::Satisfied` and adds one. The days need not follow each other, and an unfed, disliked or unsatisfied day neither adds nor resets the count.
 - The run ends when the day that adds the last one ends, because feeding finishes the day and the host checks at once.
-- A satisfied feeding raises no acid, so such a day cannot also fill it; the loss-first rule below is reachable only when an earlier unfed or unsatisfied day filled the acid before the check.
+- A satisfied feeding lowers acid, so that feeding cannot fill it.
 
-#### Temporary ending values
+#### Vomited out
 
-These make the ending reachable and are not final balance confirmed by the user.
+- `VomitedOut` is reached after day thirty finishes, if the run has not already ended. The next-day counter is then 31; opening day thirty is not sufficient.
+- The limit is deterministic, with no random escape draw. Satisfaction on the last day still wins, and acid filling on that day still loses.
 
-- The monster is satisfied on 7 days. The value is `TEMPORARY_ENDING` in `ending.hpp`. The satisfying score stays `WorkshopConfig::satisfying_score`.
-- The random escape after day 30 is gone: there is no draw and no day on which the run may end by chance.
+#### Ending values
+
+- The monster is satisfied on 7 days, a temporary balance value in `TEMPORARY_ENDING`, not final balance confirmed by the user. The satisfying score stays `WorkshopConfig::satisfying_score`.
+- `EndingConfig::vomited_out_day` is 30, the chosen completed-day limit rather than a random chance or an additional satisfied-day requirement.
 
 ### Loss
 

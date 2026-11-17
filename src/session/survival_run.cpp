@@ -184,6 +184,8 @@ const char *ending_name(survival::Ending ending) {
   switch (ending) {
   case survival::Ending::MonsterSatisfied:
     return "monster_satisfied";
+  case survival::Ending::VomitedOut:
+    return "vomited_out";
   }
   std::abort();
 }
@@ -451,6 +453,7 @@ void SurvivalRun::step() {
   // step that sends the party out or brings it home spends it on one side.
   if (progression.phase == survival::Phase::Workshop) {
     features.workshop.get().advance(STEP);
+    (void)features.endings.get().check();
   }
   report_returns(progression, touches, walked_home);
   report_world_changes(city);

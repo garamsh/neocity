@@ -5,6 +5,9 @@
 
 #include <survival/ending.hpp>
 
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -2150,6 +2153,8 @@ const char *ending_title(std::optional<survival::Ending> ending) {
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "SATISFIED";
+  case survival::Ending::VomitedOut:
+    return "VOMITED OUT";
   }
   std::abort();
 }
@@ -2161,8 +2166,35 @@ String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "The monster was satisfied after " + number(days) + String(" days.");
+  case survival::Ending::VomitedOut:
+    return "After " + number(days) +
+           String(" days, the monster spat the party back into the night.");
   }
   std::abort();
+}
+
+const char *ending_image(std::optional<survival::Ending> ending) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "res://levels/monster_mouth_escape/art_hd/endings/satisfied.png";
+  case survival::Ending::VomitedOut:
+    return "res://levels/monster_mouth_escape/art_hd/endings/vomited_out.png";
+  }
+  std::abort();
+}
+
+void paint_ending_art(godot::Node2D &canvas, const char *path) {
+  const godot::Ref<godot::Texture2D> art =
+      godot::ResourceLoader::get_singleton()->load(path);
+  CRASH_COND_MSG(art.is_null(), "Ending art must load");
+  // Keep the texture alive until Godot renders the canvas commands.
+  canvas.set_meta("ending_art", art);
+  const auto screen = rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
+  canvas.draw_texture_rect(art, screen, false);
+  canvas.set_meta("ending_image", path);
 }
 
 } // namespace
@@ -2177,15 +2209,24 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
-                         rendering::whole_scene());
   drawing.shift(canvas, {});
-  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
-                   color(14, 12, 26, 0.6F));
-  drawing.image(canvas, rendering::Image::ChefIdle,
-                godot::Vector2(130.0F, 300.0F), 2.0F);
-  drawing.image(canvas, rendering::Image::AppraiserIdle,
-                godot::Vector2(280.0F, 300.0F), 2.0F);
+  if (cinematic == Cinematic::Intro) {
+    rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
+                           rendering::whole_scene());
+    drawing.shift(canvas, {});
+    canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                     color(14, 12, 26, 0.6F));
+    drawing.image(canvas, rendering::Image::ChefIdle,
+                  godot::Vector2(130.0F, 300.0F), 2.0F);
+    drawing.image(canvas, rendering::Image::AppraiserIdle,
+                  godot::Vector2(280.0F, 300.0F), 2.0F);
+  } else {
+    paint_ending_art(canvas, cinematic == Cinematic::Loss
+                                 ? "res://levels/monster_mouth_escape/art_hd/"
+                                   "endings/acid_failure.png"
+                                 : ending_image(progression.ending));
+    rendering::panel(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
+  }
   switch (cinematic) {
   case Cinematic::Intro:
     drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
@@ -2195,23 +2236,25 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                  24, tones.white);
     break;
   case Cinematic::Ending:
-    drawing.text(canvas, 130.0F, 170.0F, ending_title(progression.ending), 48,
+    drawing.text(canvas, 130.0F, 492.0F, ending_title(progression.ending), 48,
                  tones.gold, Weight::Bold);
-    drawing.text(canvas, 130.0F, 230.0F,
+    drawing.text(canvas, 130.0F, 536.0F,
                  ending_line(progression.ending, progression.day - 1), 24,
                  tones.white);
     break;
   case Cinematic::Loss:
-    drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 48, tones.success,
+    drawing.text(canvas, 130.0F, 492.0F, "DISSOLVED", 48, tones.success,
                  Weight::Bold);
-    drawing.text(canvas, 130.0F, 230.0F,
+    drawing.text(canvas, 130.0F, 536.0F,
                  "The acid filled the monster's mouth after " +
                      number(progression.day - 1) + String(" days."),
                  24, tones.white);
     break;
   }
-  drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
-               24, tones.muted);
+  if (cinematic == Cinematic::Intro) {
+    drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
+                 24, tones.muted);
+  }
   paint_button(canvas, drawing, card_button(drawing), CARD_BUTTON,
                INTERRUPTION_LINE_SIZE, false);
 }
@@ -2351,7 +2394,7 @@ String hand_off_notice(const SurvivalFrame &frame) {
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   if (view.progression.phase == Phase::Ended) {
-    return "The monster is satisfied.";
+    return ending_line(view.progression.ending, view.progression.day - 1);
   }
   if (view.progression.phase == Phase::Lost) {
     return "The acid has filled the mouth.";

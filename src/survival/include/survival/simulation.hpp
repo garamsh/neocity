@@ -13,7 +13,7 @@ namespace neocity::survival {
 enum class Actor : std::uint8_t { Chef, Appraiser };
 
 /// How a run can end well; each is judged in `ending.hpp`.
-enum class Ending : std::uint8_t { MonsterSatisfied };
+enum class Ending : std::uint8_t { MonsterSatisfied, VomitedOut };
 
 /// Workshop includes the base and untimed appraisal, cooking and feeding.
 /// Ended and Lost each end the run.
