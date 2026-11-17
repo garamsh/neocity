@@ -58,6 +58,7 @@ add_library(
     src/hud/menus.cpp
     src/hud/pointer.cpp
     src/hud/survival.cpp
+    src/hud/title.cpp
     src/input/menu.cpp
     src/input/survival.cpp
     src/register_types.cpp
