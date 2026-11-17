@@ -24,6 +24,8 @@ ART = ROOT / 'project/levels/monster_mouth_escape/art_hd'
 KEY = ['-fuzz', '5%', '-transparent', '#303030']
 THRESHOLD = ['-channel', 'A', '-threshold', '50%', '+channel']
 RIM = 20
+# The capture check wants walkway faces at least 0.06 darker than the city backdrop; the deck body is dimmed to this percent.
+DECK_BODY_BRIGHTNESS = 72
 SEAM = 48
 
 OPAQUE = [
@@ -46,9 +48,9 @@ SPRITES = [
 # source, (top, bottom) source rows of every band, runtime band heights, destination, role
 BANDS = [
     ('deck.png', [(5, 86), (98, 179), (190, 271), (282, 357), (366, 442), (453, 503)], [84] * 6,
-     'walkway/deck.png', 'Six ruined walkway deck bands'),
+     'walkway/deck.png', 'Six ruined walkway deck bands', DECK_BODY_BRIGHTNESS),
     ('building_wall.png', [(0, 95), (96, 191), (192, 287), (288, 395)], [96, 96, 96, 108],
-     'world/building_wall.png', 'Four ruined building-wall bands'),
+     'world/building_wall.png', 'Four ruined building-wall bands', 100),
 ]
 
 
@@ -80,7 +82,7 @@ def sprite(source, canvas, box, target):
             '-depth', '8', f'PNG32:{target}')
 
 
-def bands(source, rows, heights, target):
+def bands(source, rows, heights, target, brightness=100):
     with tempfile.TemporaryDirectory() as work:
         work = pathlib.Path(work)
         width = int(identify(source, '%w'))
@@ -91,7 +93,7 @@ def bands(source, rows, heights, target):
             run('magick', source, '-crop', f'{width}x{bottom - top + 1}+0+{top}', '+repage', f'PNG24:{band}')
             body = work / f'body{index}.png'
             run('magick', band, '-crop', f'{width}x{bottom - top + 1 - rim}+0+{rim}', '+repage', '-filter', 'Lanczos',
-                '-resize', f'{width}x{height - rim}!', f'PNG24:{body}')
+                '-resize', f'{width}x{height - rim}!', '-modulate', str(brightness), f'PNG24:{body}')
             top_rim = work / f'rim{index}.png'
             run('magick', band, '-crop', f'{width}x{rim}+0+0', '+repage', f'PNG24:{top_rim}')
             piece = work / f'piece{index}.png'
@@ -144,8 +146,8 @@ def main():
     for source, canvas, box, destination, role in SPRITES:
         sprite(SOURCE / source, canvas, box, ART / destination)
         made.append(entry(source, destination, role, 'fit into %dx%d+%d+%d' % box, 'trim'))
-    for source, spans, heights, destination, role in BANDS:
-        bands(SOURCE / source, spans, heights, ART / destination)
+    for source, spans, heights, destination, role, brightness in BANDS:
+        bands(SOURCE / source, spans, heights, ART / destination, brightness)
         made.append(entry(source, destination, role, 'bands ' + json.dumps(spans), None))
     for new in made:
         for index, row in enumerate(rows):

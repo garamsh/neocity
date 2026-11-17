@@ -42,7 +42,7 @@
       ],
       "scale": 1,
       "role": "Ruined city skyline, viaduct and flesh hills; transparent sky",
-      "sha256": "cf1f787b62bb5b129e16c5bfde965d90a156049c861b6c1e8db16dbe6cf60041",
+      "sha256": "23a3335b3341763039730106e1bc05b25661f2aaaa1fb1e67573c49c3e6c830b",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-city.png",
@@ -162,7 +162,7 @@
       ],
       "scale": 1,
       "role": "Four ruined building-wall bands",
-      "sha256": "e249311403bd9ed1bb95312da610f0a7af2e5dcf87fb861b8433b63f144f8695",
+      "sha256": "633ecaa5365672a1dd6a3ad45fc5277e814a59931626579b703d846d4e561256",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-deck.png",
@@ -195,7 +195,7 @@
       ],
       "scale": 1,
       "role": "Smashed vending machine",
-      "sha256": "da81326fcd2046234f133615b0dc2644e6efbd09ea516028b3944c412249070a",
+      "sha256": "0e264577e1ac43672211f9d5908e7912b7abf72e3df2fdbeb546f12cdf9febd1",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -220,7 +220,7 @@
       ],
       "scale": 1,
       "role": "Ruined kitchen shop front at left and stall at right",
-      "sha256": "a7d92b9dd81bf9cab43ec00c9a6a4730ec1ecee715871cda61f0f7c145b9eccf",
+      "sha256": "9bedfe555300a989aab3e8a9f3395051f9dc9ec11ecefa214c49bb19ffcad195",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-shops.png",
@@ -249,7 +249,7 @@
       ],
       "scale": 1,
       "role": "Burned vendor cart",
-      "sha256": "64db75e2a25e62bc56aa55e33b7864d2337579e2d14372e4c69621e823413ee3",
+      "sha256": "70c000ce985b471213e81c8d444bc192072eb11fa001f414c5a0bb97db7f7b4c",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -293,7 +293,7 @@
       ],
       "scale": 1,
       "role": "Battered street kiosk",
-      "sha256": "18a9dc434144992cf519a3588dc987eaa181cacfbe8780a774108004ee350acd",
+      "sha256": "628ae3b730ed052ac223fc2d93e423233db99cd8d3fb1f53d3db4bd8ee3710e9",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -318,7 +318,7 @@
       ],
       "scale": 1,
       "role": "Wrecked rail car",
-      "sha256": "f7d8b3873c5664a41e1f65f38dfc389e96a74c83adc0f0985cb647f63b8f2b58",
+      "sha256": "1cadacf4b4b4d8d2eed4e0eafb96b3992a9e1360e4c3711cff760ba1f91871ec",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -362,7 +362,7 @@
       ],
       "scale": 1,
       "role": "Ruined cold-store front",
-      "sha256": "1e563f27aa7ce9f19e5a5d88046cf3ef701856d1712ab7be3265e6dd002910a2",
+      "sha256": "5a7bf47d7809f881f4d8234700456c01c7a3d14b6609353130dd123ff59e7976",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -406,7 +406,7 @@
       ],
       "scale": 1,
       "role": "Six ruined walkway deck bands",
-      "sha256": "e786c925292afcc894c8953e7d1e4eb6f7c40e35bcd75734738b7f7b0e72125e",
+      "sha256": "9af4b44a366eff6f9923dedfd4fa63f51bd8a5a6fda569aa6846d6a9368e8ac0",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-deck.png",
@@ -2378,7 +2378,7 @@
         1152
       ],
       "role": "Ruined ferry terminal scenery behind the fixed floors",
-      "sha256": "f29b482caf0dae6476b85469d8774c2fb004065dc54a8d50eba5d6c089796b83",
+      "sha256": "1f90b632b112f4996e9d85ae25faa380a686b01293a0f5b525db8774dfc0f6b5",
       "source": "docs/art/production/street-art-251-sources/terminal.png",
       "source_sha256": "5cbd7a9e0cd75e56049333ef3d8de77311684f8dca02e013fbf8b62e0e7c96e3",
       "crop": null,
@@ -2463,7 +2463,7 @@
         144
       ],
       "role": "Collapsed kiosk heap",
-      "sha256": "ff6fa6964ea17b5c47cc7a7f1b23161b8feb821c64a98f7cbff51363bcd590cb",
+      "sha256": "726d6912045342a4dbc7caf83b586e8d66de29bd140f46d8cca059a844ed11d0",
       "source": "docs/art/production/street-art-251-sources/kiosk_ruined.png",
       "source_sha256": "fa50e73bc9484a4d2225d0c4581e4a4ff0d3e16dac4b9c19c5d827ef26293a0f",
       "crop": "trim",
@@ -2492,7 +2492,7 @@
         1080
       ],
       "role": "Base kitchen background without characters, fridge, crane or interface",
-      "sha256": "416066ac25f009d55d64fa2da0905ba05e51ee6346bf440618afca5f748c5ee4",
+      "sha256": "7dbdc69ed890ee96b014758a99e07aab2f707a1fe508e7bc0568df631011ea49",
       "issue": 251,
       "source": "docs/art/production/street-art-251-sources/kitchen.png",
       "source_sha256": "3d2242569e3a7c7dcdaafc8af5a16262ee0a4a1264619edf23a7787c6d1f622e",
