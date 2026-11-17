@@ -1733,31 +1733,9 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   canvas.set_meta("map_heading", transform(shot.heading));
 }
 
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready) {
+void paint_workshop(godot::Node2D &canvas, const Art &art) {
   canvas.set_meta("character_layers", godot::Array());
-  art.image_part(canvas, Image::Kitchen,
-                 rect(0.0F, KITCHEN_SOURCE_Y, SCREEN_WIDTH, KITCHEN_HEIGHT),
-                 rect(0.0F, KITCHEN_Y, SCREEN_WIDTH, KITCHEN_HEIGHT));
-  const float figure_top =
-      KITCHEN_FLOOR - art.size(Image::ChefIdle).y * WORKSHOP_SCALE;
-  art.image(canvas, Image::AppraiserIdle, Vector2(150.0F, figure_top),
-            WORKSHOP_SCALE);
-  art.image(canvas, Image::ChefIdle, Vector2(560.0F, figure_top),
-            WORKSHOP_SCALE);
-  if (dish_ready) {
-    canvas.draw_circle(FEED_BUCKET, 18.0F, color(255, 142, 72, 1.0F));
-    canvas.draw_circle(FEED_BUCKET + Vector2(-20.0F, -26.0F), 7.0F,
-                       color(240, 240, 240, 0.5F));
-    canvas.draw_circle(FEED_BUCKET + Vector2(18.0F, -36.0F), 9.0F,
-                       color(240, 240, 240, 0.4F));
-  }
-  const godot::String feed = "MONSTER FEED";
-  paint_plate(canvas, art,
-              {.box = plate_box(art, Vector2(1110.0F, 300.0F), feed, 18),
-               .text = feed,
-               .size = 18,
-               .tint = palette().gold,
-               .mark = {}});
+  art.image(canvas, Image::BaseKitchen, Vector2(0.0F, 0.0F), 1.0F);
 }
 
 } // namespace neocity::rendering

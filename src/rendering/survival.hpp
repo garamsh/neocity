@@ -91,8 +91,8 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered);
-/// Draws the base kitchen with the chef and the appraiser, and the monster's
-/// feeding bucket, steaming once `dish_ready`.
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready);
+/// Draws the base: the kitchen art over the whole screen, with the chef, the
+/// appraiser and the feed crane in it.
+void paint_workshop(godot::Node2D &canvas, const Art &art);
 
 } // namespace neocity::rendering

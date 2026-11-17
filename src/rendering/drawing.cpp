@@ -262,6 +262,8 @@ const char *path(Image image) {
     return "ui/frame_button.png";
   case Image::FrameSlot:
     return "ui/frame_slot.png";
+  case Image::BaseKitchen:
+    return "base/kitchen.png";
   case Image::TitleKeyArt:
     return "title/key_art.png";
   case Image::TitleLogo:
@@ -282,8 +284,9 @@ std::size_t slot(Image image) { return static_cast<std::size_t>(image); }
 /// HD counterparts keep the old layout size while retiring the canvas upscale.
 bool hd(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
-  return folder == "backgrounds" || folder == "walkway" || folder == "world" ||
-         folder == "ground" || folder == "mutants" || folder == "obstacles" ||
+  return folder == "base" || folder == "backgrounds" || folder == "walkway" ||
+         folder == "world" || folder == "ground" || folder == "mutants" ||
+         folder == "obstacles" ||
          (image >= Image::HdChefIdle && image <= Image::HdClock);
 }
 
@@ -419,6 +422,69 @@ void inset(godot::Node2D &canvas, godot::Rect2 area) {
   notched(canvas, area, 1.0F, tones.outline);
   canvas.draw_rect(area.grow_individual(-2.0F, -2.0F, -1.0F, -1.0F).round(),
                    tones.background);
+}
+
+godot::Color accent_colour(Accent accent) {
+  switch (accent) {
+  case Accent::Cyan:
+    return color(91, 226, 238, 1.0F);
+  case Accent::Magenta:
+    return color(255, 92, 190, 1.0F);
+  case Accent::Gold:
+    return color(255, 196, 70, 1.0F);
+  case Accent::Green:
+    return color(140, 235, 92, 1.0F);
+  }
+  std::abort();
+}
+
+void kit_panel(godot::Node2D &canvas, godot::Rect2 area, Accent accent,
+               bool drip) {
+  const godot::Rect2 whole(area.position.round(), area.size.round());
+  const auto steel = color(74, 86, 128, 1.0F);
+  const auto rivet = color(168, 180, 214, 1.0F);
+  const auto neon = accent_colour(accent);
+  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
+  canvas.draw_rect(whole.grow(-2.0F), color(16, 22, 52, 1.0F));
+  canvas.draw_rect(whole, steel, false, 2.0F);
+  canvas.draw_rect(whole.grow(-5.0F), neon, false, 1.0F);
+  const Vector2 far = whole.get_end();
+  for (const float x : {whole.position.x + 2.0F, far.x - 5.0F}) {
+    for (const float y : {whole.position.y + 2.0F, far.y - 5.0F}) {
+      canvas.draw_rect(rect(x, y, 3.0F, 3.0F), rivet);
+    }
+  }
+  if (drip) {
+    const float x = whole.position.x + 18.0F;
+    canvas.draw_rect(rect(x, whole.position.y - 1.0F, 8.0F, 9.0F),
+                     accent_colour(Accent::Magenta));
+    canvas.draw_rect(rect(x + 1.0F, whole.position.y + 8.0F, 6.0F, 3.0F),
+                     accent_colour(Accent::Magenta));
+  }
+}
+
+void kit_slot(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
+  const godot::Rect2 whole(area.position.round(), area.size.round());
+  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
+  canvas.draw_rect(whole.grow(-1.0F), color(28, 36, 78, 1.0F));
+  canvas.draw_rect(whole.grow(-2.0F), color(12, 16, 38, 1.0F));
+  if (marked) {
+    canvas.draw_rect(whole, palette().gold, false, 2.0F);
+  }
+}
+
+void kit_bar(godot::Node2D &canvas, godot::Rect2 area, float fill,
+             godot::Color tint) {
+  const godot::Rect2 whole(area.position.round(), area.size.round());
+  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
+  canvas.draw_rect(whole, color(74, 86, 128, 1.0F), false, 1.0F);
+  const float width =
+      std::round((whole.size.x - 4.0F) * std::clamp(fill, 0.0F, 1.0F));
+  if (width > 0.0F) {
+    canvas.draw_rect(rect(whole.position.x + 2.0F, whole.position.y + 2.0F,
+                          width, whole.size.y - 4.0F),
+                     tint);
+  }
 }
 
 godot::String place_name(const survival::GameView &view,
