@@ -41,8 +41,8 @@
         735
       ],
       "scale": 1,
-      "role": "Transparent middle layer: tilted indigo towers, amber windows, elevated rail and two trains sunk in pink tissue.",
-      "sha256": "7b9e0e9e90c101d5cda3b3df5953de301340db19fd9278fb1f3283896860b19b",
+      "role": "Ruined city skyline, viaduct and flesh hills; transparent sky",
+      "sha256": "cf1f787b62bb5b129e16c5bfde965d90a156049c861b6c1e8db16dbe6cf60041",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-city.png",
@@ -51,7 +51,13 @@
         "manual_retouch": false,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/city.png",
+      "source_sha256": "b6030c642c0bc8f6877d85c917c2bbff11a33b5989a4b694b661767c83bbb893",
+      "crop": null,
+      "resize": "1920x735!",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "backgrounds/acid.png",
@@ -155,8 +161,8 @@
         396
       ],
       "scale": 1,
-      "role": "Four stacked masonry wall bands: kitchen front, tower upper front, tower lower front, loft underside; heights 96, 96, 96, 108.",
-      "sha256": "b2289763ea3f8b8d30ee5da00c72376dd9c087f4efae727d146a46cd60ebee59",
+      "role": "Four ruined building-wall bands",
+      "sha256": "e249311403bd9ed1bb95312da610f0a7af2e5dcf87fb861b8433b63f144f8695",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-deck.png",
@@ -173,7 +179,13 @@
         96,
         96,
         108
-      ]
+      ],
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/building_wall.png",
+      "source_sha256": "76371e84b0d1ea26e84ba4ee4ad51df78fd3950139a8c3c4eb6454235f759c03",
+      "crop": null,
+      "resize": "bands [[0, 95], [96, 191], [192, 287], [288, 395]]",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/vending_machine.png",
@@ -182,8 +194,8 @@
         177
       ],
       "scale": 1,
-      "role": "Red vending machine with cracked glass, cans and amber controls.",
-      "sha256": "c9fc86e42d3f0608ea5ba9f6eeae9291786cc057dcda2795efe695d86261c0d1",
+      "role": "Smashed vending machine",
+      "sha256": "da81326fcd2046234f133615b0dc2644e6efbd09ea516028b3944c412249070a",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -192,7 +204,13 @@
         "manual_retouch": false,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/vending_machine.png",
+      "source_sha256": "ef7e4344cca32193e904544b3dd3a7e8a68b5922389dbc27b326e9ef84678c96",
+      "crop": "trim",
+      "resize": "fit into 136x177+4+0",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/shop.png",
@@ -201,8 +219,8 @@
         384
       ],
       "scale": 1,
-      "role": "Two stacked 192px bands: amber kitchen front at left, amber tower shop front at right; transparent elsewhere.",
-      "sha256": "11d744eca1e5e27a0f9d573ea60ebaa670aacfbc0242074c61225bc168607494",
+      "role": "Ruined kitchen shop front at left and stall at right",
+      "sha256": "a7d92b9dd81bf9cab43ec00c9a6a4730ec1ecee715871cda61f0f7c145b9eccf",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-shops.png",
@@ -215,7 +233,13 @@
       "band_heights": [
         192,
         192
-      ]
+      ],
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/shop.png",
+      "source_sha256": "0bfa241eb25da1f546e92a4d6f51e62a3debf2db0c654c14bf8908538217998e",
+      "crop": null,
+      "resize": "1920x384!",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/vendor_cart.png",
@@ -224,8 +248,8 @@
         96
       ],
       "scale": 1,
-      "role": "Wheeled vegetable-and-pot street vendor cart with fabric awning.",
-      "sha256": "3ac3475280f1b8cc79d275b0abaa382c841fac631156614ab904f2ed0bd2e366",
+      "role": "Burned vendor cart",
+      "sha256": "64db75e2a25e62bc56aa55e33b7864d2337579e2d14372e4c69621e823413ee3",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -234,7 +258,13 @@
         "manual_retouch": false,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/vendor_cart.png",
+      "source_sha256": "8207dcb7ec1912fd0a76f8d975fef8ebb0cd450e5faecfcbe5d3d028041e88a4",
+      "crop": "trim",
+      "resize": "fit into 101x96+45+0",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/noodle_vendor.png",
@@ -262,8 +292,8 @@
         96
       ],
       "scale": 1,
-      "role": "Wall-mounted rusty terminal with amber abstract indicator bars and no text.",
-      "sha256": "f33c19f9920dd3ae64528e5c0953572ce23e5a1c4fc299291310228e8d3d200a",
+      "role": "Battered street kiosk",
+      "sha256": "18a9dc434144992cf519a3588dc987eaa181cacfbe8780a774108004ee350acd",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -272,7 +302,13 @@
         "manual_retouch": true,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/kiosk.png",
+      "source_sha256": "1d86759a20d43204cf6bbe0f0d7df6afd39179116e61ad1f164884ea80c6a87d",
+      "crop": "trim",
+      "resize": "fit into 96x83+0+6",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/ferry.png",
@@ -281,8 +317,8 @@
         150
       ],
       "scale": 1,
-      "role": "Complete indigo subway car with amber windows, isolated for the drifting ferry role.",
-      "sha256": "8a8034994a657d9032b9ebf1125752b3950c2608bce9b59a5fc41c559ee9a24e",
+      "role": "Wrecked rail car",
+      "sha256": "f7d8b3873c5664a41e1f65f38dfc389e96a74c83adc0f0985cb647f63b8f2b58",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -291,7 +327,13 @@
         "manual_retouch": false,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/ferry.png",
+      "source_sha256": "87d3d8df701fabaad39573b3f382a3f56a25e9a1158f66a3c122adbddcc5b474",
+      "crop": "trim",
+      "resize": "fit into 268x150+58+0",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/bag_washed_up.png",
@@ -319,8 +361,8 @@
         288
       ],
       "scale": 1,
-      "role": "Amber open-front cold-store room with produce crates and supply shelves.",
-      "sha256": "237099971479ffdca992abac44a7d8f75efe3ea97ec515d8efc095a540502279",
+      "role": "Ruined cold-store front",
+      "sha256": "1e563f27aa7ce9f19e5a5d88046cf3ef701856d1712ab7be3265e6dd002910a2",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-props.png",
@@ -329,7 +371,13 @@
         "manual_retouch": false,
         "processing_record": "docs/art/production/day-one-hd-provenance.txt",
         "human_retouch": false
-      }
+      },
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/cold_store.png",
+      "source_sha256": "9ffca9c7346cf312e181a23776e431d6f21c26d8f9c2109d186927d668b138f6",
+      "crop": "trim",
+      "resize": "fit into 285x221+1+33",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "world/acid_drip.png",
@@ -357,8 +405,8 @@
         504
       ],
       "scale": 1,
-      "role": "Six stacked 84px bands: kitchen roof, tower roof, kitchen loft, upper walkway, lower walkway, plain pier.",
-      "sha256": "d0d6206189958b9246932344f88a77a00f0bb4d8c56b0222d45c4864ab2caf34",
+      "role": "Six ruined walkway deck bands",
+      "sha256": "e786c925292afcc894c8953e7d1e4eb6f7c40e35bcd75734738b7f7b0e72125e",
       "provenance": {
         "tool": "image_gen.imagegen (built-in)",
         "source": "docs/art/production/day-one-hd-source-deck.png",
@@ -377,7 +425,13 @@
         84,
         84,
         84
-      ]
+      ],
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/deck.png",
+      "source_sha256": "139a39d3a879ba2e6b15b3fdf3f9d33fed5ca10d3e5ecea81979cc94436d50c0",
+      "crop": null,
+      "resize": "bands [[5, 86], [98, 179], [190, 271], [282, 357], [366, 442], [453, 503]]",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     },
     {
       "path": "ground/rubble.png",
@@ -2323,13 +2377,14 @@
         2304,
         1152
       ],
-      "role": "Street terminal scenery behind the fixed floors",
-      "sha256": "9b7598c0779b9e1bb2a23bd8aa5704824071a612335dfc10d8d538b2d52cd321",
-      "source": "docs/art/production/map-hd-sources/terminal.png",
-      "source_sha256": "b112b570f23e7f2e371fe4ec93a399a8a14c48e825b6db9ff51c6ffb4af7dca4",
+      "role": "Ruined ferry terminal scenery behind the fixed floors",
+      "sha256": "f29b482caf0dae6476b85469d8774c2fb004065dc54a8d50eba5d6c089796b83",
+      "source": "docs/art/production/street-art-251-sources/terminal.png",
+      "source_sha256": "5cbd7a9e0cd75e56049333ef3d8de77311684f8dca02e013fbf8b62e0e7c96e3",
       "crop": null,
       "resize": "2304x1152!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels",
+      "issue": 251
     },
     {
       "path": "world/interior_kitchen.png",
@@ -2407,13 +2462,14 @@
         288,
         144
       ],
-      "role": "Day-ten collapsed kiosk",
-      "sha256": "3a0b7129699234ec66416f86f90cac67b1152bb8b466bd8937b713171e29c978",
-      "source": "docs/art/production/map-hd-sources/structures.png",
-      "source_sha256": "cedb9c0b3ad800754b902762cb39da83a87b6f00acf28522cf562f49f12f2f2f",
-      "crop": "750x335+10+620",
-      "resize": "288x144!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "Collapsed kiosk heap",
+      "sha256": "ff6fa6964ea17b5c47cc7a7f1b23161b8feb821c64a98f7cbff51363bcd590cb",
+      "source": "docs/art/production/street-art-251-sources/kiosk_ruined.png",
+      "source_sha256": "fa50e73bc9484a4d2225d0c4581e4a4ff0d3e16dac4b9c19c5d827ef26293a0f",
+      "crop": "trim",
+      "resize": "fit into 283x137+3+3",
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels",
+      "issue": 251
     },
     {
       "path": "world/fire_escape.png",
@@ -2436,13 +2492,13 @@
         1080
       ],
       "role": "Base kitchen background without characters, fridge, crane or interface",
-      "sha256": "48df7a05527d49c01f05673029a010412172644452186c10fbcb5061578a126a",
+      "sha256": "416066ac25f009d55d64fa2da0905ba05e51ee6346bf440618afca5f748c5ee4",
       "issue": 251,
       "source": "docs/art/production/street-art-251-sources/kitchen.png",
       "source_sha256": "3d2242569e3a7c7dcdaafc8af5a16262ee0a4a1264619edf23a7787c6d1f622e",
       "crop": null,
       "resize": "1920x1080!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
     }
   ],
   "system_assets": {
