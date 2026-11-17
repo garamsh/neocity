@@ -736,5 +736,147 @@ TEST(Workshop, TheFridgeIsOpenWhileThePartnerIsOutButNotAfterTheRunEnds) {
   EXPECT_EQ(workshop.withdraw(Actor::Chef, RICE), WorkshopResult::Applied);
 }
 
+WorkshopConfig timed() {
+  auto config = balance();
+  config.satisfied_acid_drop = AcidLevel{4};
+  config.cook_time = 6s;
+  config.base_time = 20s;
+  config.timeout_acid_rise = AcidLevel{9};
+  return config;
+}
+
+TEST(Workshop, FeedingASatisfiedDishLowersAcidByTheConfiguredDrop) {
+  auto simulation = carrying(lucky_seed(), {RICE});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{10}), Result::Applied);
+  auto config = balance();
+  config.satisfied_acid_drop = AcidLevel{4};
+  Workshop workshop(simulation, config);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(workshop).reaction, MonsterReaction::Satisfied);
+  EXPECT_EQ(last_day(workshop).acid_drop, AcidLevel{4});
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{6});
+}
+
+TEST(Workshop, TheAcidDropStopsAtZeroAndADislikedDishDropsNothing) {
+  auto simulation = carrying(lucky_seed(), {RICE});
+  auto config = balance();
+  config.satisfied_acid_drop = AcidLevel{4};
+  Workshop workshop(simulation, config);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.feed(PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{});
+
+  auto disliked = carrying(lucky_seed(), {CHILI});
+  Workshop other(disliked, config);
+  ASSERT_EQ(other.appraise(Actor::Appraiser, CHILI), WorkshopResult::Applied);
+  ASSERT_EQ(other.cook(Actor::Chef, CURRY), WorkshopResult::Applied);
+  ASSERT_EQ(other.feed(CURRY), WorkshopResult::Applied);
+  EXPECT_EQ(last_day(other).acid_drop, AcidLevel{});
+  EXPECT_EQ(disliked.snapshot().acid, AcidLevel{7});
+}
+
+TEST(Workshop, ACookHoldsItsDishUntilTheCookTimeOfBaseTimePasses) {
+  auto simulation = carrying(lucky_seed(), {RICE, EGG});
+  Workshop workshop(simulation, timed());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, EGG), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, OMELET), WorkshopResult::Applied);
+  const auto started = workshop.snapshot();
+  ASSERT_TRUE(started.cooking.has_value());
+  const auto cooking = started.cooking.value_or(Cooking{});
+  EXPECT_EQ(cooking.slots, (std::vector<IngredientId>{RICE, EGG}));
+  EXPECT_EQ(started.ingredient_slots, 2U);
+  EXPECT_FLOAT_EQ(progress_of(cooking), 0.0F);
+  EXPECT_TRUE(started.foods.empty());
+  EXPECT_TRUE(simulation.snapshot().chef.inventory.empty());
+
+  workshop.advance(3s);
+  EXPECT_FLOAT_EQ(progress_of(workshop.snapshot().cooking.value_or(Cooking{})),
+                  0.5F);
+  EXPECT_TRUE(workshop.snapshot().foods.empty());
+
+  workshop.advance(3s);
+  EXPECT_FALSE(workshop.snapshot().cooking.has_value());
+  EXPECT_EQ(stored(workshop), (std::vector<FoodId>{OMELET}));
+}
+
+TEST(Workshop, ACookInProgressRefusesAnotherCookWithoutSpendingAnything) {
+  auto simulation = carrying(lucky_seed(), {RICE, RICE});
+  Workshop workshop(simulation, timed());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  const auto before = simulation.snapshot();
+  EXPECT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Full);
+  EXPECT_EQ(simulation.snapshot(), before);
+}
+
+TEST(Workshop, TheCookingRollIsDrawnWhenTheCookEndsAndCanFail) {
+  auto simulation = carrying(seed_for_cook_roll(90), {RICE});
+  Workshop workshop(simulation, timed());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  EXPECT_EQ(workshop.snapshot().rolls, 1U);
+  workshop.advance(6s);
+  EXPECT_EQ(workshop.snapshot().rolls, 2U);
+  EXPECT_TRUE(workshop.snapshot().foods.empty());
+  EXPECT_FALSE(workshop.snapshot().cooking.has_value());
+}
+
+TEST(Workshop, AnUnfinishedCookIsLostWhenTheDayEnds) {
+  auto simulation = carrying(lucky_seed(), {RICE, RICE});
+  Workshop workshop(simulation, timed());
+  ASSERT_EQ(workshop.appraise(Actor::Appraiser, RICE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.cook(Actor::Chef, PORRIDGE), WorkshopResult::Applied);
+  ASSERT_EQ(workshop.end_day_unfed(AcidLevel{1}), WorkshopResult::Applied);
+  EXPECT_FALSE(workshop.snapshot().cooking.has_value());
+  workshop.advance(6s);
+  EXPECT_TRUE(workshop.snapshot().foods.empty());
+}
+
+TEST(Workshop, BaseTimeRunsOnlyAtBaseAndEndsTheDayUnfedWhenSpent) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 3});
+  Workshop workshop(simulation, timed());
+  EXPECT_EQ(workshop.snapshot().remaining_base, 20s);
+  workshop.advance(5s);
+  EXPECT_EQ(workshop.snapshot().remaining_base, 15s);
+
+  // Base time stands still while a partner is out exploring.
+  ASSERT_EQ(simulation.enter(Actor::Chef), Result::Applied);
+  workshop.advance(100s);
+  EXPECT_EQ(workshop.snapshot().remaining_base, 15s);
+  ASSERT_EQ(simulation.return_to_base(Actor::Chef), Result::Applied);
+
+  workshop.advance(15s);
+  EXPECT_EQ(simulation.snapshot().day, 2U);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{9});
+  EXPECT_EQ(workshop.snapshot().last_day,
+            (DayOutcome{.completed_day = 1,
+                        .reaction = MonsterReaction::Unfed,
+                        .score = 0,
+                        .acid_rise = AcidLevel{9}}));
+  EXPECT_EQ(workshop.snapshot().remaining_base, 20s);
+}
+
+TEST(Workshop, ABaseWithoutAClockNeverEndsTheDay) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 3});
+  Workshop workshop(simulation, balance());
+  EXPECT_FALSE(workshop.snapshot().remaining_base.has_value());
+  workshop.advance(1000s);
+  EXPECT_EQ(simulation.snapshot().day, 1U);
+}
+
+TEST(Workshop, ARejectedCookOrBaseTimeIsAnInvalidConfiguration) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 3});
+  auto negative = balance();
+  negative.cook_time = -1s;
+  EXPECT_THROW(Workshop(simulation, negative), std::invalid_argument);
+  auto zero = balance();
+  zero.base_time = 0s;
+  EXPECT_THROW(Workshop(simulation, zero), std::invalid_argument);
+}
+
 } // namespace
 } // namespace neocity::survival

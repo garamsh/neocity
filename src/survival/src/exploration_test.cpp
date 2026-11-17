@@ -422,8 +422,10 @@ TEST(Exploration, ManualReturnClearsPositionAndPartialMovementOnly) {
   EXPECT_EQ(simulation.snapshot().remaining_exploration, 4850ms);
   EXPECT_EQ(world.snapshot(), persistent_world);
   ASSERT_EQ(exploration.enter(Actor::Chef), Result::Applied);
+  // The partner is out in the city, so the chef comes in beside it.
+  EXPECT_EQ(at(exploration.snapshot().chef),
+            at(exploration.snapshot().appraiser));
   ASSERT_EQ(exploration.advance(50ms, WALK), Result::Applied);
-  EXPECT_EQ(at(exploration.snapshot().chef), ENTRY);
   EXPECT_EQ(at(exploration.snapshot().appraiser), (GridPosition{.x = 2}));
   EXPECT_EQ(collect(exploration, Actor::Chef, SOURCE),
             CollectionResult::MissingItem);
@@ -1033,6 +1035,25 @@ TEST(Exploration, AnActorStoppedByTheScreenLockMovesOnOnceTheOtherCatchesUp) {
   EXPECT_LE(travel.explorer(Actor::Chef).body.position.x -
                 travel.explorer(Actor::Appraiser).body.position.x,
             SCREEN_LOCK);
+}
+
+TEST(Exploration, AnActorThatEntersTheCityArrivesBesideItsPartnerInTheLock) {
+  Travel travel;
+  travel.both_enter();
+  travel.push_east(Actor::Chef, 400);
+  const auto chef = travel.explorer(Actor::Chef).body;
+  // The chef stands at the lock, a lock's length from the entry where the
+  // appraiser still stands: the control, so that arriving at the entry would
+  // leave the pair at the lock's edge.
+  ASSERT_EQ(at(travel.explorer(Actor::Appraiser)), ENTRY);
+  ASSERT_GT(chef.position.x - travel.explorer(Actor::Appraiser).body.position.x,
+            SCREEN_LOCK - PHYSICS.walk);
+  ASSERT_EQ(travel.exploring().return_to_base(Actor::Appraiser),
+            Result::Applied);
+  ASSERT_EQ(travel.exploring().enter(Actor::Appraiser), Result::Applied);
+  EXPECT_EQ(travel.explorer(Actor::Appraiser).body.position, chef.position);
+  travel.push_east(Actor::Chef, 4);
+  EXPECT_GT(travel.explorer(Actor::Chef).body.position.x, chef.position.x);
 }
 
 TEST(Exploration, TheScreenLockStopsOnlyTheSidewaysMotion) {

@@ -123,10 +123,12 @@ public:
   /// Removes every listed ingredient from the two inventories, the chef's
   /// first, then the fridge, or removes none.
   [[nodiscard]] Result consume(std::span<const IngredientId> ingredients);
-  /// Raises acid, stopping at full, passes the day's unspent time on the run's
-  /// clock, and starts the next day with a full exploration budget. Full acid
-  /// ends the run as lost, before anything can act on the new day.
-  [[nodiscard]] Result finish_day(AcidLevel acid_rise);
+  /// Raises acid by `acid_rise` and lowers it by `acid_drop`, stopping at full
+  /// and at zero, passes the day's unspent time on the run's clock, and starts
+  /// the next day with a full exploration budget. Full acid ends the run as
+  /// lost, before anything can act on the new day.
+  [[nodiscard]] Result finish_day(AcidLevel acid_rise,
+                                  AcidLevel acid_drop = {});
   /// Ends the run with `ending` from the workshop; every later command leaves
   /// the snapshot unchanged.
   [[nodiscard]] Result end(Ending ending);
