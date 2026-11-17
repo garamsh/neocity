@@ -17,6 +17,22 @@
 namespace neocity::session {
 namespace {
 
+/// The whole seconds `name` holds in the environment, or `fallback` when it is
+/// unset or not a number of seconds.
+std::chrono::seconds seconds_in_environment(const char *name,
+                                            std::chrono::seconds fallback) {
+  const char *text = std::getenv(name);
+  if (text == nullptr) {
+    return fallback;
+  }
+  char *end = nullptr;
+  const auto seconds = std::strtol(text, &end, 10);
+  if (end == text || *end != '\0' || seconds < 0) {
+    return fallback;
+  }
+  return std::chrono::seconds{seconds};
+}
+
 using namespace std::chrono_literals;
 using survival::Actor;
 using survival::GameView;
@@ -252,6 +268,15 @@ godot::Dictionary actor_status(const GameView &view,
 
 } // namespace
 
+survival::DayLengths day_lengths_from_environment() {
+  const survival::DayLengths defaults;
+  return {.exploration = seconds_in_environment("NEOCITY_EXPLORATION_SECONDS",
+                                                defaults.exploration),
+          .base = seconds_in_environment("NEOCITY_BASE_SECONDS", defaults.base),
+          .cook =
+              seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook)};
+}
+
 SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
                          std::uint64_t first_event)
     : features(rules), controllers(players),
@@ -422,11 +447,17 @@ void SurvivalRun::step() {
     // time
     std::abort();
   }
+  // Base time passes only on a step that began in the workshop phase, so the
+  // step that sends the party out or brings it home spends it on one side.
+  if (progression.phase == survival::Phase::Workshop) {
+    features.workshop.get().advance(STEP);
+  }
   report_returns(progression, touches, walked_home);
   report_world_changes(city);
   if (simulation.snapshot().day != progression.day) {
     last_day_map_changes = map_changes;
     map_changes = 0;
+    chosen_dish.reset();
   }
   for (std::size_t index = 0; index < ACTORS.size(); ++index) {
     interact_hold.at(index) = moved(ACTORS.at(index))
@@ -720,6 +751,27 @@ godot::Dictionary SurvivalRun::status(const hud::SurvivalFrame &current) const {
              static_cast<std::int64_t>(view.workshop.eaten_foods.size()));
   status.set("rolls", view.workshop.rolls);
   status.set("satisfied_days", view.workshop.satisfied_days);
+  const auto &cooking = view.workshop.cooking;
+  status.set("cooking", cooking.has_value());
+  status.set("cooking_progress",
+             cooking ? survival::progress_of(*cooking) : 0.0F);
+  status.set("cooking_food", cooking ? from(survival::food_name(cooking->food))
+                                     : godot::String());
+  godot::Array slots;
+  if (cooking) {
+    for (const auto ingredient : cooking->slots) {
+      slots.push_back(from(survival::ingredient_name(ingredient)));
+    }
+  }
+  status.set("ingredient_slots", slots);
+  status.set("ingredient_slot_count", view.workshop.ingredient_slots);
+  const auto &base = view.workshop.remaining_base;
+  status.set("base_timed", base.has_value());
+  status.set(
+      "base_remaining_ms",
+      base
+          ? std::chrono::duration_cast<std::chrono::milliseconds>(*base).count()
+          : 0);
   if (view.progression.ending) {
     status.set("ending", ending_name(*view.progression.ending));
   }

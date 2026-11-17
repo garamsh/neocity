@@ -2,6 +2,7 @@
 
 #include <survival/simulation.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -41,7 +42,11 @@ struct Recipe {
 
 /// Temporary caller-supplied balance values, with no production default.
 /// An ingredient with no `flavors` entry adds no taste, and `fine_dish_score`
-/// is what a fine dish adds over a plain one.
+/// is what a fine dish adds over a plain one. A day fed to satisfaction lowers
+/// acid by `satisfied_acid_drop`. `cook_time` is how long a cook takes, with
+/// none the dish is done at once. `base_time` is the base's time each day, and
+/// with none the base has no clock; when it runs out the day ends unfed at
+/// `timeout_acid_rise`.
 struct WorkshopConfig {
   std::vector<Recipe> recipes;
   std::uint32_t new_food_score;
@@ -51,6 +56,10 @@ struct WorkshopConfig {
   AcidLevel unsatisfied_acid_rise;
   std::vector<Flavor> flavors;
   std::uint32_t fine_dish_score = 0;
+  AcidLevel satisfied_acid_drop{};
+  std::chrono::microseconds cook_time{};
+  std::optional<std::chrono::microseconds> base_time = std::nullopt;
+  AcidLevel timeout_acid_rise{};
 };
 
 /// What a recipe's ingredients add to a dish's score, whoever cooks it.
@@ -91,15 +100,31 @@ struct DayOutcome {
   MonsterReaction reaction = MonsterReaction::Unfed;
   std::uint64_t score = 0;
   AcidLevel acid_rise;
+  AcidLevel acid_drop{};
   /// Empty on a day ended unfed.
   std::optional<FedDish> fed = std::nullopt;
   friend bool operator==(const DayOutcome &, const DayOutcome &) = default;
 };
 
+/// A cook in progress. `slots` are the ingredients in the cooking slots, in
+/// recipe order; the dish is done when `elapsed` reaches `duration`.
+struct Cooking {
+  FoodId food;
+  std::vector<IngredientId> slots;
+  std::chrono::microseconds elapsed{};
+  std::chrono::microseconds duration{};
+  friend bool operator==(const Cooking &, const Cooking &) = default;
+};
+
+/// How far `cooking` has come, from 0 to 1.
+[[nodiscard]] float progress_of(const Cooking &cooking);
+
 /// Read-only values for a renderer or companion controller. `rejected_foods`
 /// are the fed foods the monster disliked, `satisfied_days` counts the days it
 /// was fed to satisfaction, and `rolls` counts the random draws consumed so
-/// far.
+/// far. `cooking` is set while a cook is in progress, and `ingredient_slots`
+/// is how many ingredients its slots hold at most. `remaining_base` is the
+/// base's time left today, and is empty when the base has no clock.
 struct WorkshopSnapshot {
   std::vector<IngredientId> identified;
   std::vector<Dish> foods;
@@ -109,6 +134,9 @@ struct WorkshopSnapshot {
   std::optional<DayOutcome> last_day;
   std::uint32_t satisfied_days = 0;
   std::uint64_t rolls = 0;
+  std::optional<Cooking> cooking;
+  std::uint32_t ingredient_slots = 0;
+  std::optional<std::chrono::microseconds> remaining_base;
   friend bool operator==(const WorkshopSnapshot &,
                          const WorkshopSnapshot &) = default;
 };
@@ -120,7 +148,8 @@ dish_score(const Dish &dish, const WorkshopSnapshot &workshop,
            const WorkshopConfig &config);
 
 /// Failed is a spent attempt; every other non-Applied value is a refusal that
-/// leaves all state and the random sequence unchanged.
+/// leaves all state and the random sequence unchanged. Full also refuses a cook
+/// while the cooking slots are in use.
 enum class WorkshopResult : std::uint8_t {
   Applied,
   Failed,
@@ -140,7 +169,8 @@ enum class WorkshopResult : std::uint8_t {
 /// outlive this instance.
 class Workshop {
 public:
-  /// Throws std::invalid_argument for an empty recipe or a repeated food.
+  /// Throws std::invalid_argument for an empty recipe, a repeated food, a
+  /// negative cook time or a nonpositive base time.
   Workshop(Simulation &progression, WorkshopConfig settings);
   /// The appraiser records a carried ingredient as identified on success.
   [[nodiscard]] WorkshopResult appraise(Actor actor, IngredientId ingredient);
@@ -150,12 +180,19 @@ public:
   /// Moves one `ingredient` out of the fridge into the actor's inventory;
   /// `Full` with no free inventory slot, `NotCarried` if the fridge lacks it.
   [[nodiscard]] WorkshopResult withdraw(Actor actor, IngredientId ingredient);
-  /// The chef spends the identified ingredients; failure produces no dish, and
-  /// the same roll decides whether a dish is fine.
+  /// The chef puts the identified ingredients into the cooking slots and the
+  /// dish is done after `cook_time` of base time; `Full` while a cook is in
+  /// progress. The ingredients are spent at once. Failure produces no dish, and
+  /// the roll made when the cook ends decides whether a dish is fine.
   [[nodiscard]] WorkshopResult cook(Actor actor, FoodId food);
+  /// Passes `elapsed` of base time, which only runs in the workshop phase: it
+  /// moves a cook on and, when the day's base time is spent, ends the day
+  /// unfed at `timeout_acid_rise`. A negative time passes nothing.
+  void advance(std::chrono::microseconds elapsed);
   /// Feeds one stored dish, then starts the next day. The score adds novelty,
   /// the ingredients' taste and the dish's quality: at the satisfying score
-  /// acid holds, and below it acid rises with the shortfall.
+  /// acid falls by `satisfied_acid_drop`, and below it acid rises with the
+  /// shortfall. A cook in progress is lost with the day.
   [[nodiscard]] WorkshopResult feed(FoodId food);
   /// Starts the next day with no dish at the caller's acid penalty.
   [[nodiscard]] WorkshopResult end_day_unfed(AcidLevel acid_penalty);
@@ -165,6 +202,10 @@ public:
 private:
   [[nodiscard]] bool in_workshop() const;
   std::uint32_t roll();
+  /// Ends the cook in progress with its roll: `Failed` or a stored dish.
+  WorkshopResult finish_cooking(FoodId food);
+  /// Starts the next day's base time and drops a cook left unfinished.
+  void start_day();
 
   std::reference_wrapper<Simulation> simulation;
   WorkshopConfig config;

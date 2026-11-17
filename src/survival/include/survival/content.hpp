@@ -2,6 +2,7 @@
 
 #include <survival/companion.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -102,8 +103,18 @@ struct Content {
 /// The data of `id`; throws std::out_of_range for a map the content lacks.
 [[nodiscard]] const MapContent &map_of(const Content &content, MapId id);
 
+/// The temporary lengths of a day: its exploration, its base time (zero for a
+/// base with no clock) and a cook. A check that need not wait out a whole day
+/// passes shorter ones.
+struct DayLengths {
+  std::chrono::seconds exploration = std::chrono::minutes{5};
+  std::chrono::seconds base = std::chrono::minutes{5};
+  std::chrono::seconds cook = std::chrono::seconds{8};
+};
+
 /// Builds the temporary game for one run seed.
-[[nodiscard]] Content temporary_content(std::uint32_t seed);
+[[nodiscard]] Content temporary_content(std::uint32_t seed,
+                                        const DayLengths &lengths = {});
 
 /// Display names of the temporary data; an unknown identity throws
 /// std::out_of_range, since only this module issues them.
