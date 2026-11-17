@@ -85,10 +85,19 @@ func _never_feeding_loses() -> void:
 		return
 	if not _check(_int("day") - 1 == ceili(float(full) / penalty) and _str("ending") == "", "the loss comes on the day acid fills, with no ending"):
 		return
-	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback", "a missing loss scene takes the fallback card"):
+	var art: Texture2D = scene.get_meta("ending_art", null)
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback" and art != null and art.resource_path.ends_with("/endings/acid_failure.png") and lines.has("DISSOLVED"), "a missing loss scene takes the illustrated acid failure card"):
 		return
 	if not _check(_str("next").contains("acid"), "the screen names the loss"):
 		return
+	if DisplayServer.get_name() != "headless":
+		var image: Image = root.get_texture().get_image()
+		if not _check(image != null and not image.is_empty(), "the private display rendered acid failure"):
+			return
+		DirAccess.make_dir_recursive_absolute("user://w270-endings")
+		if not _check(image.save_png("user://w270-endings/acid_failure.png") == OK, "the acid failure screenshot is saved"):
+			return
 	var before: Dictionary = scene.survival_status()
 	await _tap(KEY_Q)
 	await _tap(KEY_G)

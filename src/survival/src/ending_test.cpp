@@ -66,6 +66,57 @@ TEST(Ending, TemporaryValueIsSevenSatisfiedDays) {
   EXPECT_EQ(TEMPORARY_ENDING.satisfied_days, 7U);
 }
 
+TEST(Ending, ThirtyCompletedDaysVomitThePartyOutAndNotBefore) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  Workshop workshop(simulation, balance());
+  Endings endings(simulation, workshop, SEVEN);
+  EXPECT_EQ(TEMPORARY_ENDING.vomited_out_day, 30U);
+  for (std::uint32_t day = 1; day <= 29; ++day) {
+    ASSERT_EQ(workshop.end_day_unfed(AcidLevel{0}), WorkshopResult::Applied);
+    ASSERT_EQ(simulation.snapshot().day, day + 1);
+    EXPECT_EQ(endings.check(), std::nullopt);
+  }
+  ASSERT_EQ(simulation.snapshot().day, 30U);
+  ASSERT_EQ(workshop.end_day_unfed(AcidLevel{0}), WorkshopResult::Applied);
+  ASSERT_EQ(simulation.snapshot().day, 31U);
+  EXPECT_EQ(endings.check(), Ending::VomitedOut);
+  EXPECT_EQ(simulation.snapshot().phase, Phase::Ended);
+  EXPECT_EQ(simulation.snapshot().ending, Ending::VomitedOut);
+  const auto ended = simulation.snapshot();
+  EXPECT_EQ(endings.check(), std::nullopt);
+  EXPECT_EQ(workshop.end_day_unfed(AcidLevel{0}),
+            WorkshopResult::NotInWorkshop);
+  EXPECT_EQ(simulation.enter(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(simulation.snapshot(), ended);
+}
+
+TEST(Ending, SatisfactionTakesPrecedenceWhenBothJudgmentsHold) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  Workshop workshop(simulation, balance());
+  Endings endings(simulation, workshop,
+                  {.satisfied_days = 1, .vomited_out_day = 1});
+  feed_to_satisfaction(simulation, workshop);
+  ASSERT_EQ(simulation.snapshot().day, 2U);
+  ASSERT_EQ(workshop.snapshot().satisfied_days, 1U);
+  EXPECT_EQ(endings.check(), Ending::MonsterSatisfied);
+}
+
+TEST(Ending, AcidFillingOnDayThirtyStillLosesBeforeVomiting) {
+  Simulation simulation(
+      {.exploration_budget = 10s, .seed = 1, .full_acid = ACID});
+  Workshop workshop(simulation, balance());
+  Endings endings(simulation, workshop, SEVEN);
+  for (std::uint32_t day = 1; day <= 29; ++day) {
+    ASSERT_EQ(workshop.end_day_unfed(AcidLevel{0}), WorkshopResult::Applied);
+  }
+  ASSERT_EQ(simulation.snapshot().day, 30U);
+  ASSERT_EQ(workshop.end_day_unfed(ACID), WorkshopResult::Applied);
+  ASSERT_EQ(simulation.snapshot().day, 31U);
+  ASSERT_EQ(simulation.snapshot().phase, Phase::Lost);
+  EXPECT_EQ(endings.check(), std::nullopt);
+  EXPECT_EQ(simulation.snapshot().ending, std::nullopt);
+}
+
 TEST(Ending, SixSatisfiedDaysAreNoEndingAndTheSeventhIsMonsterSatisfied) {
   Simulation simulation({.exploration_budget = 10s, .seed = 1});
   Workshop workshop(simulation, balance());

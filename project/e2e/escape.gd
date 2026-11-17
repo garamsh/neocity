@@ -110,7 +110,8 @@ func _play_to_the_ending() -> void:
 	_check(_str("ending") == "monster_satisfied" and _int("satisfied_days") >= 7, "the run ends as monster satisfied on at least seven satisfied days")
 
 func _fallback_ending() -> void:
-	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the fallback card"):
+	var has_art: bool = await _check_ending_art("satisfied", "SATISFIED")
+	if not _check(has_art and _str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the illustrated satisfaction card"):
 		return
 	if not _check(_str("dish_offered") == "", "an ended run is offered no dish"):
 		return
@@ -307,6 +308,8 @@ func _follow_next() -> void:
 		await _tap(KEY_G)
 	elif line.begins_with("Search "):
 		await _tap(KEY_R)
+	elif line.begins_with("Inventory open"):
+		await _tap(KEY_R)
 	elif line.begins_with("Searching "):
 		await _tap(KEY_E)
 		await _tap(KEY_R)
@@ -440,3 +443,22 @@ func _card_names_no_key() -> bool:
 		if line.contains("E:") or line.contains("M:"):
 			keyed.append(line)
 	return lines.has(CARD_BUTTON) and keyed.is_empty()
+
+## Checks the texture and words actually submitted by the HUD, and saves the
+## rendered screen when a private display supplies a viewport image.
+func _check_ending_art(name: String, title: String) -> bool:
+	await _frames(2)
+	var path: String = "res://levels/monster_mouth_escape/art_hd/endings/%s.png" % name
+	var texture: Texture2D = scene.get_meta("ending_art", null)
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var drawn_path: String = scene.get_meta("ending_image", "")
+	if drawn_path != path or texture == null or texture.resource_path != path or not lines.has(title):
+		return false
+	if DisplayServer.get_name() == "headless":
+		return true
+	var image: Image = root.get_texture().get_image()
+	if not _check(image != null and not image.is_empty(), "the private display rendered the ending"):
+		return false
+	var directory: String = "user://w270-endings"
+	DirAccess.make_dir_recursive_absolute(directory)
+	return _check(image.save_png(directory.path_join(name + ".png")) == OK, "the ending screenshot is saved")
