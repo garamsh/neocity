@@ -559,6 +559,48 @@ TEST(Companion, SettingOutIsWorthItOnlyForStockThatCanBeReached) {
   EXPECT_FALSE(worth_entering(config, view));
 }
 
+/// A human chef out in the city east of a wall too tall to cross, the appraiser
+/// at base, and a stocked source west of the wall that the entrance reaches.
+GameView human_behind_a_wall() {
+  auto view = city_view({.x = 8});
+  view.progression.appraiser.location = Location::Base;
+  view.exploration.appraiser.body.position = standing_in(BASE);
+  auto wall = object_of(WALL, ObjectKind::Building, 5);
+  wall.area.y = -6;
+  wall.area.height = 7;
+  view.world.objects.push_back(wall);
+  add_source(view, SOURCE, 3);
+  return view;
+}
+
+TEST(Companion, DoesNotSetOutToReturnWhenNothingIsReachableBesideItsPartner) {
+  const auto view = human_behind_a_wall();
+  const auto control = single_player(Actor::Chef);
+  EXPECT_EQ(ai_action(view, Actor::Appraiser, control), std::nullopt);
+  const CompanionConfig config{.exploration = tuning({}),
+                               .workshop = kitchen(),
+                               .unfed_penalty = UNFED_PENALTY};
+  EXPECT_FALSE(worth_entering(config, view));
+  // The control: with the partner at base it arrives at the entry, which
+  // reaches the source, so setting out is worth it.
+  auto partner_home = view;
+  partner_home.progression.chef.location = Location::Base;
+  partner_home.exploration.chef.body.position = standing_in(BASE);
+  EXPECT_TRUE(worth_entering(config, partner_home));
+}
+
+TEST(Companion, ArrivingBesideAPartnerWithNothingToReachIsNotRepeated) {
+  auto view = human_behind_a_wall();
+  view.progression.appraiser.location = Location::City;
+  view.exploration.appraiser.body.position = standing_in({.x = 8});
+  ASSERT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
+            Action{ReturnToBase{}});
+  view.progression.appraiser.location = Location::Base;
+  view.exploration.appraiser.body.position = standing_in(BASE);
+  EXPECT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
+            std::nullopt);
+}
+
 TEST(Companion, ADormantPassageDoesNotBlockItsCell) {
   Game game({floor_of(5),
              {.id = DOOR,
@@ -1361,6 +1403,7 @@ TEST(Companion, ASetOutWaitsWhileThePartnerIsOutOnAnotherMap) {
   auto view = base_view();
   view.progression.phase = Phase::Exploration;
   view.progression.chef.location = Location::City;
+  view.exploration.chef.body.position = standing_in(ENTRY);
   view.exploration.map = MapId::Aquarium;
   add_source(view, SOURCE, 3);
   EXPECT_EQ(ai_action(view, Actor::Appraiser, single_player(Actor::Chef)),
