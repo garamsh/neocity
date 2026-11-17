@@ -2428,6 +2428,21 @@
       "crop": "92x96+1106+572",
       "resize": "96x96!",
       "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+    },
+    {
+      "path": "base/kitchen.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "role": "Base kitchen background without characters, fridge, crane or interface",
+      "sha256": "48df7a05527d49c01f05673029a010412172644452186c10fbcb5061578a126a",
+      "issue": 251,
+      "source": "docs/art/production/street-art-251-sources/kitchen.png",
+      "source_sha256": "3d2242569e3a7c7dcdaafc8af5a16262ee0a4a1264619edf23a7787c6d1f622e",
+      "crop": null,
+      "resize": "1920x1080!",
+      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
     }
   ],
   "system_assets": {
