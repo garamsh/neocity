@@ -111,6 +111,29 @@ constexpr ObjectId GIFT_SHELF{98};
 constexpr ObjectId JELLY_MACHINE{99};
 constexpr ObjectId TANK_LOCKER{100};
 
+constexpr ObjectId COLD_HALL{300};
+constexpr ObjectId COLD_MIDDLE{301};
+constexpr ObjectId COLD_UPPER{302};
+constexpr ObjectId COLD_ROOF{303};
+constexpr ObjectId COLD_STAIR{304};
+constexpr ObjectId COLD_UPPER_LADDER{305};
+constexpr ObjectId COLD_ROOF_LADDER{306};
+constexpr ObjectId ROOF_DIP_WEST{307};
+constexpr ObjectId ROOF_DIP{308};
+constexpr ObjectId ROOF_DIP_EAST{309};
+constexpr ObjectId ROOF_LINK{310};
+constexpr ObjectId COLD_MIDDLE_SHELF{311};
+constexpr ObjectId COLD_UPPER_SHELF{312};
+constexpr ObjectId COLD_ROOF_CRATE{313};
+constexpr ObjectId SERVICE_ROOM{314};
+constexpr ObjectId SERVICE_DOOR{315};
+constexpr ObjectId SERVICE_UPPER{316};
+constexpr ObjectId SERVICE_ROOF{317};
+constexpr ObjectId SERVICE_LADDER{318};
+constexpr ObjectId SERVICE_ROOF_LADDER{319};
+constexpr ObjectId SERVICE_SHELF{320};
+constexpr ObjectId SERVICE_ROOF_CRATE{321};
+
 /// The days the damage stages after the first begin on.
 constexpr std::uint32_t CRACKED_DAY = STAGE_FIRST_DAY.at(1);
 constexpr std::uint32_t RUINED_DAY = STAGE_FIRST_DAY.at(2);
@@ -253,6 +276,32 @@ constexpr std::array FOOD_NAMES{
 };
 
 constexpr std::array OBJECT_NAMES{
+    Named<ObjectId>{.id = COLD_HALL, .name = "Cold Store Hall"},
+    Named<ObjectId>{.id = COLD_MIDDLE, .name = "Cold Store Middle Floor"},
+    Named<ObjectId>{.id = COLD_UPPER, .name = "Cold Store Upper Floor"},
+    Named<ObjectId>{.id = COLD_ROOF, .name = "Cold Store Roof"},
+    Named<ObjectId>{.id = COLD_STAIR, .name = "Cold Store Stair"},
+    Named<ObjectId>{.id = COLD_UPPER_LADDER, .name = "Cold Store Upper Ladder"},
+    Named<ObjectId>{.id = COLD_ROOF_LADDER, .name = "Cold Store Roof Ladder"},
+    Named<ObjectId>{.id = ROOF_DIP_WEST, .name = "Roof Route West Step"},
+    Named<ObjectId>{.id = ROOF_DIP, .name = "Roof Route Dip"},
+    Named<ObjectId>{.id = ROOF_DIP_EAST, .name = "Roof Route East Step"},
+    Named<ObjectId>{.id = ROOF_LINK, .name = "Roof Route Link"},
+    Named<ObjectId>{.id = COLD_MIDDLE_SHELF, .name = "Cold Store Middle Shelf"},
+    Named<ObjectId>{.id = COLD_UPPER_SHELF, .name = "Cold Store Upper Shelf"},
+    Named<ObjectId>{.id = COLD_ROOF_CRATE, .name = "Cold Store Roof Crate"},
+    Named<ObjectId>{.id = SERVICE_ROOM, .name = "Aquarium Service Room"},
+    Named<ObjectId>{.id = SERVICE_DOOR, .name = "Aquarium Service Door"},
+    Named<ObjectId>{.id = SERVICE_UPPER,
+                    .name = "Aquarium Service Upper Floor"},
+    Named<ObjectId>{.id = SERVICE_ROOF, .name = "Aquarium Service Roof"},
+    Named<ObjectId>{.id = SERVICE_LADDER, .name = "Aquarium Service Ladder"},
+    Named<ObjectId>{.id = SERVICE_ROOF_LADDER,
+                    .name = "Aquarium Service Roof Ladder"},
+    Named<ObjectId>{.id = SERVICE_SHELF, .name = "Aquarium Service Shelf"},
+    Named<ObjectId>{.id = SERVICE_ROOF_CRATE,
+                    .name = "Aquarium Service Roof Crate"},
+
     Named<ObjectId>{.id = UPPER_WALKWAY, .name = "Upper Walkway"},
     Named<ObjectId>{.id = LOWER_WALKWAY, .name = "Lower Walkway"},
     Named<ObjectId>{.id = ROPE_BRIDGE, .name = "Rope Bridge"},
@@ -443,7 +492,23 @@ std::vector<ObjectDefinition> street() {
       gone_from(terrain(ROTTEN_BRIDGE, {.x = 32, .y = 9, .width = 4}),
                 RUINED_DAY),
       terrain(COLD_STORE_FLOOR, {.x = 36, .y = 8, .width = 4}),
-      building(COLD_STORE, {.x = 37, .y = 6, .width = 3, .height = 3}),
+      building(COLD_STORE, {.x = 37, .y = 3, .width = 12, .height = 6}),
+      entrance(COLD_HALL, {.x = 37, .y = 3, .width = 12, .height = 6}),
+      terrain(COLD_MIDDLE, {.x = 41, .y = 6, .width = 8}),
+      terrain(COLD_UPPER, {.x = 37, .y = 4, .width = 12}),
+      terrain(COLD_ROOF, {.x = 37, .y = 2, .width = 12}),
+      terrain(COLD_STAIR, {.x = 40, .y = 7}),
+      ladder(COLD_UPPER_LADDER, {.x = 47, .y = 4, .height = 3}),
+      ladder(COLD_ROOF_LADDER, {.x = 42, .y = 2, .height = 3}),
+      terrain(ROOF_DIP_WEST, {.x = 49, .y = 3}),
+      terrain(ROOF_DIP, {.x = 50, .y = 4}),
+      terrain(ROOF_DIP_EAST, {.x = 51, .y = 3}),
+      terrain(ROOF_LINK, {.x = 52, .y = 2}),
+      owned(ingredient_source(COLD_MIDDLE_SHELF, {.x = 44, .y = 6}, FISH),
+            COLD_STORE),
+      owned(ingredient_source(COLD_UPPER_SHELF, {.x = 39, .y = 4}, PICKLES),
+            COLD_STORE),
+      ingredient_source(COLD_ROOF_CRATE, {.x = 46, .y = 2}, TOMATO),
       entrance(COLD_STORE_DOOR, {.x = 37, .y = 8, .width = 3}),
       ladder(PIER_LADDER, {.x = 36, .y = 8, .height = 5}),
       terrain(PIER, {.x = 36, .y = 12, .width = 4}),
@@ -464,7 +529,7 @@ std::vector<ObjectDefinition> street() {
       from_day(owned(ingredient_source(FERRY_BAG, {.x = 30, .y = 13}, KELP),
                      DRIFTED_FERRY),
                CRACKED_DAY),
-      terrain(TERMINAL_ROAD, {.x = 40, .y = 8, .width = 10}),
+      terrain(TERMINAL_ROAD, {.x = 42, .y = 8, .width = 8}),
       terrain(TERMINAL_STAIR, {.x = 50, .y = 7}),
       terrain(TERMINAL_STAIR_TOP, {.x = 51, .y = 6}),
       terrain(UPPER_DECK, {.x = 52, .y = 5, .width = 9}),
@@ -492,6 +557,15 @@ std::vector<ObjectDefinition> aquarium() {
   std::vector<ObjectDefinition> objects{
       terrain(LOBBY_FLOOR, {.x = 0, .y = 10, .width = 12}),
       terrain(LOBBY_STAIR, {.x = 12, .y = 9}),
+      building(SERVICE_ROOM, {.x = 2, .y = 5, .width = 9, .height = 6}),
+      entrance(SERVICE_DOOR, {.x = 2, .y = 5, .width = 9, .height = 6}),
+      terrain(SERVICE_UPPER, {.x = 2, .y = 7, .width = 9}),
+      terrain(SERVICE_ROOF, {.x = 2, .y = 4, .width = 9}),
+      ladder(SERVICE_LADDER, {.x = 9, .y = 7, .height = 4}),
+      ladder(SERVICE_ROOF_LADDER, {.x = 4, .y = 4, .height = 4}),
+      owned(ingredient_source(SERVICE_SHELF, {.x = 6, .y = 7}, KELP),
+            SERVICE_ROOM),
+      ingredient_source(SERVICE_ROOF_CRATE, {.x = 8, .y = 4}, PICKLES),
       terrain(WEST_CATWALK, {.x = 13, .y = 8, .width = 5}),
       gone_from(terrain(UPPER_SPAN, {.x = 18, .y = 8, .width = 4}),
                 CRACKED_DAY),
@@ -619,10 +693,11 @@ street_ground(const std::vector<ObjectDefinition> &objects) {
       }
     }
   }
-  const auto terminal =
-      ground_of_terrain(objects, MapId::Street,
-                        static_cast<std::int32_t>(GROUND_ROWS.front().size()));
-  cells.insert(cells.end(), terminal.begin(), terminal.end());
+  for (const auto &cell : ground_of_terrain(objects, MapId::Street, 0)) {
+    if (std::ranges::find(cells, cell.cell, &GroundCell::cell) == cells.end()) {
+      cells.push_back(cell);
+    }
+  }
   return cells;
 }
 
@@ -690,6 +765,12 @@ std::vector<Landmark> street_landmarks() {
 std::vector<SourceStock> stock() {
   using enum SourceKind;
   std::vector<SourceStock> sources{
+      {.id = COLD_MIDDLE_SHELF, .kind = Shelf, .capacity = 2, .items = {}},
+      {.id = COLD_UPPER_SHELF, .kind = Shelf, .capacity = 2, .items = {}},
+      {.id = COLD_ROOF_CRATE, .kind = Shelf, .capacity = 2, .items = {}},
+      {.id = SERVICE_SHELF, .kind = Shelf, .capacity = 2, .items = {}},
+      {.id = SERVICE_ROOF_CRATE, .kind = Shelf, .capacity = 2, .items = {}},
+
       {.id = TOMATO_MACHINE, .kind = Locker, .capacity = 6, .items = {}},
       {.id = VENDOR_CART, .kind = Crates, .capacity = 4, .items = {}},
       {.id = SHOP_SHELF, .kind = Shelf, .capacity = 3, .items = {}},
@@ -754,13 +835,35 @@ std::vector<MapExit> exits() {
            .arrival = {.x = 58, .y = 11}}};
 }
 
-/// The floors inside the street's three shops: the kitchen loft, the noodle
-/// loft and the cold store.
+/// Occupied rooms, with named route targets for every new floor and roof.
 std::vector<Interior> interiors() {
-  return {{.building = KITCHEN_SHOP, .area = {.x = 0, .y = 6, .width = 6}},
-          {.building = NOODLE_SHOP, .area = {.x = 20, .y = 6, .width = 6}},
-          {.building = COLD_STORE,
-           .area = {.x = 37, .y = 6, .width = 3, .height = 3}}};
+  return {
+      {.building = KITCHEN_SHOP,
+       .area = {.x = 0, .y = 6, .width = 6},
+       .floors = {}},
+      {.building = NOODLE_SHOP,
+       .area = {.x = 20, .y = 6, .width = 6},
+       .floors = {}},
+      {.building = COLD_STORE,
+       .area = {.x = 37, .y = 3, .width = 12, .height = 6},
+       .floors = {{.name = "Cold Store ground floor",
+                   .area = {.x = 38, .y = 8, .width = 2}},
+                  {.name = "Cold Store middle floor",
+                   .area = {.x = 43, .y = 6, .width = 3}},
+                  {.name = "Cold Store upper floor",
+                   .area = {.x = 38, .y = 4, .width = 3}},
+                  {.name = "Cold Store roof",
+                   .area = {.x = 45, .y = 2, .width = 3}},
+                  {.name = "Terminal roof route", .area = {.x = 50, .y = 4}}}},
+      {.building = SERVICE_ROOM,
+       .area = {.x = 2, .y = 5, .width = 9, .height = 6},
+       .map = MapId::Aquarium,
+       .floors = {
+           {.name = "Service ground floor",
+            .area = {.x = 6, .y = 10, .width = 3}},
+           {.name = "Service upper floor",
+            .area = {.x = 5, .y = 7, .width = 3}},
+           {.name = "Service roof", .area = {.x = 7, .y = 4, .width = 3}}}}};
 }
 
 /// The fixed obstacles, each at the end of a spur no route needs: the old acid

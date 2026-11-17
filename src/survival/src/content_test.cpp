@@ -236,12 +236,19 @@ std::vector<std::string> path_problems(const Content &content,
                            " is out of reach");
       }
     }
-    if (map.id == MapId::Street) {
-      for (const auto &interior : config.interiors) {
-        if (!within_reach(reached, interior.area, 0)) {
-          problems.push_back(std::string(map.name) + ": the inside of " +
-                             std::string(object_name(interior.building)) +
-                             " is out of reach");
+    for (const auto &interior : config.interiors) {
+      if (interior.map != map.id) {
+        continue;
+      }
+      if (!within_reach(reached, interior.area, 0)) {
+        problems.push_back(std::string(map.name) + ": the inside of " +
+                           std::string(object_name(interior.building)) +
+                           " is out of reach");
+      }
+      for (const auto &floor : interior.floors) {
+        if (!within_reach(reached, floor.area, 0)) {
+          problems.push_back(std::string(map.name) + ": " +
+                             std::string(floor.name) + " is out of reach");
         }
       }
     }
@@ -1148,7 +1155,7 @@ TEST(TemporaryContent,
   for (const auto &interior : config.interiors) {
     const auto building = object_of(world, interior.building);
     EXPECT_EQ(building.kind, ObjectKind::Building);
-    EXPECT_EQ(building.map, MapId::Street);
+    EXPECT_EQ(building.map, interior.map);
   }
   for (const auto map : {MapId::Street, MapId::Aquarium}) {
     std::set<std::int32_t> rows;
@@ -1216,6 +1223,85 @@ TEST(TemporaryContent, EveryMapReachesEverySourceExitAndInteriorAtEveryStage) {
   }
 }
 
+TEST(TemporaryContent, NewInteriorFloorsAndRoofsHaveSearchableStock) {
+  const auto content = short_days(1);
+  const auto world = World(content.objects).snapshot();
+  std::size_t floors = 0;
+  for (const auto &interior : content.companion.exploration.interiors) {
+    for (const auto &floor : interior.floors) {
+      if (floor.name == "Terminal roof route") {
+        continue;
+      }
+      ++floors;
+      EXPECT_TRUE(std::ranges::any_of(
+          content.companion.exploration.sources,
+          [&](const SourceStock &stock) {
+            const auto object = object_of(world, stock.id);
+            return object.map == interior.map && !stock.items.empty() &&
+                   distance({.x = object.area.x, .y = object.area.y},
+                            floor.area) == 0;
+          }))
+          << floor.name;
+    }
+  }
+  EXPECT_EQ(floors, 7U);
+}
+
+TEST(TemporaryContent, AnAiPartySearchesEveryColdStoreFloorAndRoof) {
+  auto content = temporary_content(1);
+  content.companion.exploration.entry = {.x = 38, .y = 8};
+  auto &sources = content.companion.exploration.sources;
+  std::erase_if(sources, [](const SourceStock &source) {
+    const auto name = object_name(source.id);
+    return name != "Cold Locker" && name != "Cold Store Middle Shelf" &&
+           name != "Cold Store Upper Shelf" && name != "Cold Store Roof Crate";
+  });
+  ASSERT_EQ(sources.size(), 4U);
+  Game game(content);
+  game.step(ALL_AI);
+  ASSERT_EQ(game.simulation().snapshot().phase, Phase::Exploration);
+  for (int step = 0;
+       step < 2000 && game.simulation().snapshot().phase == Phase::Exploration;
+       ++step) {
+    game.step(ALL_AI);
+  }
+  for (const auto &source : game.exploration().snapshot().sources) {
+    EXPECT_TRUE(source.items.empty()) << object_name(source.id);
+  }
+  EXPECT_EQ(game.simulation().snapshot().phase, Phase::Workshop);
+}
+
+TEST(TemporaryContent, TwoActorsWalkTheNewFloorsAndRoofRouteTogether) {
+  auto content = temporary_content(1);
+  content.companion.exploration.entry = {.x = 38, .y = 8};
+  Game game(content);
+  constexpr ControlMap HUMANS{.chef = Controller::Human,
+                              .appraiser = Controller::Human};
+  game.step(HUMANS, {PlayerInput{.travel = true}, PlayerInput{.travel = true}});
+  for (const auto target :
+       {GridPosition{.x = 44, .y = 6}, GridPosition{.x = 39, .y = 4},
+        GridPosition{.x = 46, .y = 2}, GridPosition{.x = 50, .y = 4},
+        GridPosition{.x = 53, .y = 2}}) {
+    const WorldArea zone{.x = target.x, .y = target.y};
+    for (int step = 0;
+         step < 500 &&
+         cell_of(game.exploration().snapshot().chef.body.position) != target;
+         ++step) {
+      const auto input = walk_to_zone(game, zone);
+      game.step(HUMANS, {input, input});
+      const auto view = game.view();
+      ASSERT_EQ(view.progression.chef.location, Location::City);
+      ASSERT_LE(std::abs(view.exploration.chef.body.position.x -
+                         view.exploration.appraiser.body.position.x),
+                SCREEN_LOCK);
+    }
+    EXPECT_EQ(cell_of(game.exploration().snapshot().chef.body.position),
+              target);
+    EXPECT_EQ(cell_of(game.exploration().snapshot().appraiser.body.position),
+              target);
+  }
+}
+
 TEST(TemporaryContent, ThePathCheckNamesWhatACutPassageStrandsOnEachStage) {
   const auto content = short_days(1);
   struct Cut {
@@ -1223,7 +1309,16 @@ TEST(TemporaryContent, ThePathCheckNamesWhatACutPassageStrandsOnEachStage) {
     std::string_view cut;
     std::string_view stranded;
   };
-  const std::array<Cut, 4> cuts{
+  const std::array cuts{
+      Cut{.day = 1,
+          .cut = "Aquarium Service Ladder",
+          .stranded = "Aquarium: Service upper floor is out of reach"},
+      Cut{.day = STAGE_FIRST_DAY.at(1),
+          .cut = "Aquarium Service Roof Ladder",
+          .stranded = "Aquarium: Service roof is out of reach"},
+      Cut{.day = STAGE_FIRST_DAY.at(2),
+          .cut = "Aquarium Service Ladder",
+          .stranded = "Aquarium: Service upper floor is out of reach"},
       Cut{.day = 1,
           .cut = "Roof Ladder",
           .stranded = "Street: Roof Bag is out of reach"},

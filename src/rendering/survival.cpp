@@ -781,24 +781,76 @@ void paint_building(godot::Node2D &canvas, const Art &art,
   }
 }
 
-/// Replaces an occupied building's background without changing its floor or
-/// applying a veil.
+/// Tiles an interior picture at native density inside one floor's room.
+void paint_room(godot::Node2D &canvas, const Art &art, Image image,
+                const godot::Rect2 &room) {
+  const Vector2 size = art.size(image);
+  canvas.draw_rect(room, palette().background);
+  for (std::int32_t row = 0; static_cast<float>(row) * size.y < room.size.y;
+       ++row) {
+    const float y = static_cast<float>(row) * size.y;
+    const float height = std::min(size.y, room.size.y - y);
+    for (std::int32_t column = 0;
+         static_cast<float>(column) * size.x < room.size.x; ++column) {
+      const float x = static_cast<float>(column) * size.x;
+      const float width = std::min(size.x, room.size.x - x);
+      art.image_part(
+          canvas, image, rect(0, size.y - height, width, height),
+          rect(room.position.x + x, room.position.y + y, width, height));
+    }
+  }
+}
+
+/// Replaces occupied building fronts with rooms aligned to their real floors.
 void paint_interiors(godot::Node2D &canvas, const Art &art,
                      const survival::Content &content,
                      const survival::GameView &view) {
   constexpr std::array PICTURES{Image::InteriorKitchen, Image::InteriorNoodle,
                                 Image::InteriorColdStore};
   const auto &interiors = content.companion.exploration.interiors;
+  godot::Array rooms;
   for (std::size_t index = 0; index < interiors.size(); ++index) {
     const auto &interior = interiors.at(index);
-    if (view.exploration.chef.interior == interior.building ||
-        view.exploration.appraiser.interior == interior.building) {
-      const Image image = PICTURES.at(index);
-      const auto box = area_rect(interior.area);
+    if (interior.map != view.exploration.map ||
+        (view.exploration.chef.interior != interior.building &&
+         view.exploration.appraiser.interior != interior.building)) {
+      continue;
+    }
+    const Image image = PICTURES.at(std::min(index, PICTURES.size() - 1));
+    const auto box = area_rect(interior.area);
+    if (interior.floors.empty()) {
       const Vector2 size = art.size(image);
       art.image(canvas, image,
                 Vector2(box.position.x, box.position.y + box.size.y - size.y));
+      continue;
     }
+    for (const auto &floor : interior.floors) {
+      if (survival::distance({.x = floor.area.x, .y = floor.area.y},
+                             interior.area) != 0) {
+        continue;
+      }
+      auto ceiling = interior.area.y;
+      for (const auto &above : interior.floors) {
+        if (above.area.y < floor.area.y) {
+          ceiling = std::max(ceiling, above.area.y + 1);
+        }
+      }
+      const auto room = area_rect({.x = interior.area.x,
+                                   .y = ceiling,
+                                   .width = interior.area.width,
+                                   .height = floor.area.y + 1 - ceiling});
+      paint_room(canvas, art, image, room);
+      if (canvas.has_meta("measure_art")) {
+        godot::Dictionary drawn;
+        drawn.set("name", from(floor.name));
+        drawn.set("area", room);
+        drawn.set("floor_y", cell_y(floor.area.y + 1));
+        rooms.push_back(drawn);
+      }
+    }
+  }
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("interior_rooms", rooms);
   }
 }
 
@@ -808,11 +860,15 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
 /// any: the outside is only darkened while nobody is out in it.
 void paint_interior_veils(
     godot::Node2D &canvas, const Art &art, const survival::Content &content,
-    const std::vector<std::optional<survival::ObjectId>> &present) {
+    const std::vector<std::optional<survival::ObjectId>> &present,
+    survival::MapId map) {
   const auto &interiors = content.companion.exploration.interiors;
   float darkest = 0.0F;
   for (std::size_t index = 0; index < interiors.size(); ++index) {
     const auto &interior = interiors.at(index);
+    if (interior.map != map) {
+      continue;
+    }
     const bool occupied =
         std::ranges::any_of(
             present,
@@ -1636,7 +1692,10 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_structure(canvas, art, content);
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
-      paint_building(canvas, art, content, object, front);
+      if (view.exploration.chef.interior != object.id &&
+          view.exploration.appraiser.interior != object.id) {
+        paint_building(canvas, art, content, object, front);
+      }
     });
   };
   paint_buildings(false);
@@ -1676,7 +1735,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   if (party.appraiser_out) {
     present.push_back(view.exploration.appraiser.interior);
   }
-  paint_interior_veils(canvas, art, everything, present);
+  paint_interior_veils(canvas, art, everything, present, view.exploration.map);
 }
 
 std::optional<Image> item_icon(std::string_view name) {
