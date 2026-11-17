@@ -299,6 +299,15 @@ TEST(Simulation, AcidStopsAtFull) {
   EXPECT_EQ(simulation.snapshot().phase, Phase::Lost);
 }
 
+TEST(Simulation, AFinishedDayLowersAcidByTheDropAfterTheRise) {
+  Simulation simulation({.exploration_budget = 10s, .seed = 1});
+  ASSERT_EQ(simulation.finish_day(AcidLevel{10}), Result::Applied);
+  ASSERT_EQ(simulation.finish_day(AcidLevel{3}, AcidLevel{5}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{8});
+  ASSERT_EQ(simulation.finish_day({}, AcidLevel{100}), Result::Applied);
+  EXPECT_EQ(simulation.snapshot().acid, AcidLevel{});
+}
+
 TEST(Simulation, NoCommandChangesTheSnapshotAfterALoss) {
   const std::vector<IngredientId> ingredients{RICE};
   Simulation simulation(

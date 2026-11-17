@@ -3,7 +3,8 @@ extends SceneTree
 ## Drives the title screen with real key events: each entry by cursor and by
 ## number, the controls page and back, the How to play page and back, the
 ## choice of players by cursor, the controls page against the pause screen's
-## keys, a new game, the same entries with real mouse events, and quitting.
+## keys, a new game, the same entries with real mouse events, and quitting. It
+## also reads back the frames of the UI kit the title and its pages note.
 
 ## How long, in milliseconds of the real clock, a panel takes to rise into
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
@@ -25,12 +26,14 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Title: ", checks, " live checks passed (entries, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).")
+		print("Title: ", checks, " live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).")
 
 func _run() -> void:
 	await _frames(2)
 	scene = current_scene as MainScene
 	if not _check(scene != null and scene.screen_name() == "main", "the game opens on the title screen"):
+		return
+	if not await _title_draws_the_kit():
 		return
 	if not await _cursor_chooses_each_entry():
 		return
@@ -47,6 +50,47 @@ func _run() -> void:
 	if not await _mouse_drives_the_menus():
 		return
 	await _quit_ends_the_game()
+
+## The title notes each frame of the UI kit it draws: the picture, the menu
+## panel and the foot panel, an idle button on each entry's own area and the gold
+## one on the marked entry, which follows the cursor. A page notes its panel
+## and its way back. Starts and ends on the title with New game marked.
+func _title_draws_the_kit() -> bool:
+	if not _check(_frames_of("art") == [Rect2(0.0, 0.0, 1280.0, 720.0)], "the title draws its picture across the screen: %s" % [_frames_of("art")]):
+		return false
+	var panels: Array[Rect2] = _frames_of("panel")
+	if not _check(panels.size() == 2 and panels[0].position.x > 640.0 and panels[1].end.y > 700.0, "the title draws the menu panel at the right and the foot panel along the bottom: %s" % [panels]):
+		return false
+	var buttons: Array[Rect2] = _frames_of("button")
+	var entries: Array[Rect2] = []
+	for number: int in range(1, 6):
+		entries.append(_target("option_%d" % number)["rect"])
+	if not _check(buttons == entries, "an idle button stands on each of the five entries: %s against %s" % [buttons, entries]):
+		return false
+	if not _check(_frames_of("selected") == [entries[0]], "the gold button stands on New game: %s" % [_frames_of("selected")]):
+		return false
+	await _tap(KEY_W)
+	OS.delay_msec(ENTRANCE_MS)
+	await _frames(2)
+	if not _check(_frames_of("selected") == [entries[4]] and _frames_of("button") == entries, "the gold button follows the cursor to Settings"):
+		return false
+	await _tap(KEY_S)
+	await _tap(KEY_2)
+	var page: Array[Rect2] = _frames_of("panel")
+	var way_back: Rect2 = _target("menu")["rect"]
+	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no gold button: %s" % [page]):
+		return false
+	await _tap(KEY_ESCAPE)
+	return _check(scene.screen_name() == "main", "setup: the title is back with the cursor on New game")
+
+## The frames of the kit the last frame noted, of one `kind`.
+func _frames_of(kind: String) -> Array[Rect2]:
+	var areas: Array[Rect2] = []
+	var noted: Array = scene.get_meta("title_frames", [])
+	for frame: Dictionary in noted:
+		if frame["kind"] == kind:
+			areas.append(frame["area"])
+	return areas
 
 func _cursor_chooses_each_entry() -> bool:
 	if not _names_no_key("the title screen", "Click an entry to choose it. Controls lists every key."):

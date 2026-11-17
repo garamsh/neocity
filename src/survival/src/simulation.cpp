@@ -143,12 +143,13 @@ Result Simulation::consume(std::span<const IngredientId> ingredients) {
   return Result::Applied;
 }
 
-Result Simulation::finish_day(AcidLevel acid_rise) {
+Result Simulation::finish_day(AcidLevel acid_rise, AcidLevel acid_drop) {
   if (world.phase != Phase::Workshop) {
     return Result::NotInWorkshop;
   }
   world.acid.value +=
       std::min(acid_rise.value, full_acid.value - world.acid.value);
+  world.acid.value -= std::min(acid_drop.value, world.acid.value);
   ++world.day;
   world.world_time += world.remaining_exploration;
   world.remaining_exploration = daily_budget;

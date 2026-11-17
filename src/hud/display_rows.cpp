@@ -1,5 +1,7 @@
 #include "display_rows.hpp"
 
+#include "title.hpp"
+
 #include <cstddef>
 
 namespace neocity::hud {
@@ -42,7 +44,7 @@ void paint_display_rows(godot::Node2D &canvas, const rendering::Art &drawing,
                  row.marked ? tones.gold : tones.white);
     for (const bool forward : {false, true}) {
       const auto area = arrow(left, y, forward);
-      rendering::button(canvas, area, false);
+      kit_button(canvas, area, false);
       drawing.text(canvas, area.position.x + 10.0F, y - 1.0F,
                    forward ? ">" : "<", ROW_SIZE, tones.white);
     }

@@ -4,7 +4,6 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <cstdlib>
 #include <iterator>
 #include <optional>
 #include <span>
@@ -111,9 +110,6 @@ constexpr ObjectId KEEPER_CART{97};
 constexpr ObjectId GIFT_SHELF{98};
 constexpr ObjectId JELLY_MACHINE{99};
 constexpr ObjectId TANK_LOCKER{100};
-
-/// One exploration day's length.
-constexpr auto DAY = 18s;
 
 /// The days the damage stages after the first begin on.
 constexpr std::uint32_t CRACKED_DAY = STAGE_FIRST_DAY.at(1);
@@ -840,39 +836,51 @@ std::vector<Flavor> flavors() {
 
 } // namespace
 
-Content temporary_content(std::uint32_t seed) {
+Content temporary_content(std::uint32_t seed, const DayLengths &lengths) {
+  const auto day = lengths.exploration;
+  // A base of zero seconds has no clock.
+  const auto base = lengths.base;
+  const auto cook = lengths.cook;
   auto objects = city();
   auto sources = stocked(stock(), objects);
   auto street_cells = street_ground(objects);
   auto aquarium_cells = ground_of_terrain(objects, MapId::Aquarium, 0);
   return {
-      .run = {.exploration_budget = DAY,
+      .run = {.exploration_budget = day,
               .seed = seed,
               .full_acid = AcidLevel{100},
               .inventory_slots = 12,
               .fridge_slots = 30},
       .objects = std::move(objects),
-      .companion = {.exploration = {.base = {.x = 1, .y = 8},
-                                    .entry = {.x = 5, .y = 8},
-                                    .exits = exits(),
-                                    .interiors = interiors(),
-                                    .collection_distance = 1,
-                                    .sources = std::move(sources),
-                                    .carry = {.weights = weights(),
-                                              .max_weight = 20,
-                                              .overweight_percent = 60},
-                                    .obstacles = obstacles(),
-                                    .patrols = patrols(),
-                                    .absence = 10s},
-                    .workshop = {.recipes = recipes(),
-                                 .new_food_score = 50,
-                                 .new_ingredient_score = 5,
-                                 .satisfying_score = 100,
-                                 .disliked_acid_rise = AcidLevel{15},
-                                 .unsatisfied_acid_rise = AcidLevel{10},
-                                 .flavors = flavors(),
-                                 .fine_dish_score = 30},
-                    .unfed_penalty = AcidLevel{12}},
+      .companion =
+          {.exploration = {.base = {.x = 1, .y = 8},
+                           .entry = {.x = 5, .y = 8},
+                           .exits = exits(),
+                           .interiors = interiors(),
+                           .collection_distance = 1,
+                           .sources = std::move(sources),
+                           .carry = {.weights = weights(),
+                                     .max_weight = 20,
+                                     .overweight_percent = 60},
+                           .obstacles = obstacles(),
+                           .patrols = patrols(),
+                           .absence = 10s},
+           .workshop = {.recipes = recipes(),
+                        .new_food_score = 50,
+                        .new_ingredient_score = 5,
+                        .satisfying_score = 100,
+                        .disliked_acid_rise = AcidLevel{15},
+                        .unsatisfied_acid_rise = AcidLevel{10},
+                        .flavors = flavors(),
+                        .fine_dish_score = 30,
+                        .satisfied_acid_drop = AcidLevel{8},
+                        .cook_time = cook,
+                        .base_time =
+                            base > 0s
+                                ? std::optional<std::chrono::microseconds>{base}
+                                : std::nullopt,
+                        .timeout_acid_rise = AcidLevel{12}},
+           .unfed_penalty = AcidLevel{12}},
       .maps = {{.id = MapId::Street,
                 .name = "Street",
                 .size = {.width = 64, .height = 16},
