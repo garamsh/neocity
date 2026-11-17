@@ -53,6 +53,12 @@ AcidLevel acid_rise(MonsterReaction reaction, std::uint64_t score,
   std::abort();
 }
 
+/// What a feeding takes off the acid: only a satisfied monster eases it.
+AcidLevel acid_drop(MonsterReaction reaction, const WorkshopConfig &config) {
+  return reaction == MonsterReaction::Satisfied ? config.satisfied_acid_drop
+                                                : AcidLevel{};
+}
+
 std::vector<IngredientId> first_eaten(const Recipe &recipe,
                                       const WorkshopSnapshot &workshop) {
   std::vector<IngredientId> fresh;
@@ -67,6 +73,14 @@ std::vector<IngredientId> first_eaten(const Recipe &recipe,
 }
 
 } // namespace
+
+float progress_of(const Cooking &cooking) {
+  if (cooking.duration <= std::chrono::microseconds::zero()) {
+    return 1.0F;
+  }
+  return std::min(1.0F, static_cast<float>(cooking.elapsed.count()) /
+                            static_cast<float>(cooking.duration.count()));
+}
 
 std::uint64_t taste_of(const Recipe &recipe, const WorkshopConfig &config) {
   std::uint64_t taste = 0;
@@ -89,7 +103,17 @@ Workshop::Workshop(Simulation &progression, WorkshopConfig settings)
           "recipes require ingredients and unique foods");
     }
     foods.push_back(recipe.food);
+    state.ingredient_slots =
+        std::max(state.ingredient_slots,
+                 static_cast<std::uint32_t>(recipe.ingredients.size()));
   }
+  if (config.cook_time < std::chrono::microseconds::zero() ||
+      (config.base_time &&
+       *config.base_time <= std::chrono::microseconds::zero())) {
+    throw std::invalid_argument(
+        "cook time must not be negative and base time must be positive");
+  }
+  state.remaining_base = config.base_time;
 }
 
 WorkshopResult Workshop::appraise(Actor actor, IngredientId ingredient) {
@@ -172,10 +196,26 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
   if (!std::ranges::all_of(recipe->ingredients, is_identified)) {
     return WorkshopResult::NotIdentified;
   }
-  // Consume before rolling: a refusal must leave the random sequence untouched.
+  if (state.cooking) {
+    return WorkshopResult::Full;
+  }
   if (simulation.get().consume(recipe->ingredients) != Result::Applied) {
     return WorkshopResult::NotCarried;
   }
+  state.cooking = Cooking{.food = food,
+                          .slots = recipe->ingredients,
+                          .elapsed = {},
+                          .duration = config.cook_time};
+  if (config.cook_time == std::chrono::microseconds::zero()) {
+    return finish_cooking(food);
+  }
+  return WorkshopResult::Applied;
+}
+
+// The roll is made when the cook ends, so a refusal never touches the random
+// sequence and the ingredients are spent before it.
+WorkshopResult Workshop::finish_cooking(FoodId food) {
+  state.cooking.reset();
   const auto result = roll();
   if (result >= SUCCESS_PERCENT) {
     return WorkshopResult::Failed;
@@ -185,6 +225,34 @@ WorkshopResult Workshop::cook(Actor actor, FoodId food) {
                                         ? DishQuality::Fine
                                         : DishQuality::Plain});
   return WorkshopResult::Applied;
+}
+
+void Workshop::advance(std::chrono::microseconds elapsed) {
+  if (!in_workshop() || elapsed <= std::chrono::microseconds::zero()) {
+    return;
+  }
+  const auto spent =
+      state.remaining_base ? std::min(elapsed, *state.remaining_base) : elapsed;
+  if (state.cooking) {
+    state.cooking->elapsed += spent;
+    if (state.cooking->elapsed >= state.cooking->duration) {
+      (void)finish_cooking(state.cooking->food);
+    }
+  }
+  if (state.remaining_base) {
+    *state.remaining_base -= spent;
+    if (*state.remaining_base == std::chrono::microseconds::zero() &&
+        end_day_unfed(config.timeout_acid_rise) != WorkshopResult::Applied) {
+      // unreachable: the workshop phase was checked above and nothing since
+      // has left it
+      std::abort();
+    }
+  }
+}
+
+void Workshop::start_day() {
+  state.cooking.reset();
+  state.remaining_base = config.base_time;
 }
 
 std::optional<DishScore> dish_score(const Dish &dish,
@@ -225,10 +293,12 @@ WorkshopResult Workshop::feed(FoodId food) {
   const auto score = fed.score.total;
   const auto reaction = react(recipe, score, config.satisfying_score);
   const auto rise = acid_rise(reaction, score, config);
+  const auto drop = acid_drop(reaction, config);
   const auto day = simulation.get().snapshot().day;
-  if (simulation.get().finish_day(rise) != Result::Applied) {
+  if (simulation.get().finish_day(rise, drop) != Result::Applied) {
     return WorkshopResult::NotInWorkshop;
   }
+  start_day();
   state.foods.erase(stored);
   state.eaten_foods.push_back(food);
   if (reaction == MonsterReaction::Disliked &&
@@ -246,6 +316,7 @@ WorkshopResult Workshop::feed(FoodId food) {
                     .reaction = reaction,
                     .score = score,
                     .acid_rise = rise,
+                    .acid_drop = drop,
                     .fed = fed};
   return WorkshopResult::Applied;
 }
@@ -255,6 +326,7 @@ WorkshopResult Workshop::end_day_unfed(AcidLevel acid_penalty) {
   if (simulation.get().finish_day(acid_penalty) != Result::Applied) {
     return WorkshopResult::NotInWorkshop;
   }
+  start_day();
   state.last_day = {.completed_day = day,
                     .reaction = MonsterReaction::Unfed,
                     .score = 0,

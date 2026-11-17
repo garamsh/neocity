@@ -26,4 +26,11 @@ target_compile_options(survival_test PRIVATE ${NEOCITY_WARNINGS})
 set_target_properties(survival_test PROPERTIES COMPILE_WARNING_AS_ERROR ON)
 
 include(GoogleTest)
-gtest_discover_tests(survival_test)
+# The content's day lengths: 18 seconds of exploration, no base clock, instant
+# cooking (content.cpp reads these), as the Godot checks run in the Makefile.
+gtest_discover_tests(
+    survival_test
+    PROPERTIES
+        ENVIRONMENT
+            "NEOCITY_EXPLORATION_SECONDS=18;NEOCITY_BASE_SECONDS=0;NEOCITY_COOK_SECONDS=0"
+)
