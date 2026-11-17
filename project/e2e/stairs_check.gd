@@ -86,6 +86,10 @@ func _run() -> void:
 
 ## Plays two humans through both maps at every drawn damage stage.
 func _map_art_tour() -> void:
+	# An untimed base and an instant cook: the first meal is cooked by hand at
+	# once, as before the cook took base time, while the day length stays default.
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
 	await _tap(KEY_1)
 	await _tap(KEY_3)
 	await _tap(KEY_E)
