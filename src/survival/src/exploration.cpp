@@ -568,10 +568,17 @@ Result Exploration::enter(Actor actor) {
   if (!stands_on(cells(), config.entry)) {
     return Result::NotExploring;
   }
+  // A partner already out in the city is where the screen lock keeps this
+  // actor, so it arrives beside it; at the entry it would be a street's length
+  // behind a partner the lock then holds still until it walked back.
+  const auto joins = actor_state(simulation.get().snapshot(), other).location ==
+                         Location::City &&
+                     !explorer(other).state.absent;
+  const auto arrival = joins ? explorer(other).state.body
+                             : Body{.position = standing_in(config.entry)};
   const auto result = simulation.get().enter(actor);
   if (result == Result::Applied) {
-    explorer(actor) = {
-        .state = {.body = {.position = standing_in(config.entry)}}};
+    explorer(actor) = {.state = {.body = arrival}};
   }
   return result;
 }

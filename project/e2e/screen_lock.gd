@@ -44,6 +44,11 @@ const VEIL_HOLD_FRAMES: int = 10
 ## The frames a map fade is watched for: it lasts 0.6 seconds of frame time (36
 ## frames at 60 a second), and the day has no time to spare.
 const FADE_FRAMES: int = 40
+## The frames player one walks on after the late entrant arrives, and the least
+## it must gain in sub-cells: the lock's room is a full lock's length, so a
+## chef held at the lock by a partner left at the entry gains nothing.
+const LATE_FRAMES: int = 30
+const LATE_PROGRESS: int = 80
 
 var scene: MainScene
 var checks: int = 0
@@ -70,10 +75,13 @@ func _run() -> void:
 	await _jump_lifts_a_stopped_actor()
 	if failed:
 		return
+	await _late_entrant_arrives_beside_its_partner()
+	if failed:
+		return
 	await _both_actors_change_the_map()
 	if failed:
 		return
-	print("Screen lock: ", checks, " live checks passed (building entry, lone actor, jump, joint travel and fade there and back).")
+	print("Screen lock: ", checks, " live checks passed (building entry, lone actor, jump, late entrant, joint travel and fade there and back).")
 	quit(0)
 
 func _start() -> void:
@@ -171,11 +179,39 @@ func _jump_lifts_a_stopped_actor() -> void:
 	_check(_stance("chef") == "standing" and _actor("chef", "sub_y") == floor_y, "the chef lands where it jumped from: from %d to %d, %s" % [floor_y, _actor("chef", "sub_y"), _stance("chef")])
 	_check(widest <= SCREEN_LOCK, "the gap holds through the jump: widest %d" % widest)
 
+## Player two goes home and sets out again while player one stands at the lock,
+## a street's length from the entry. Player two comes in beside player one, so
+## player one, pressing right and jumping as a player does, walks on at once
+## instead of waiting at the lock for a partner to walk the street back.
+func _late_entrant_arrives_beside_its_partner() -> void:
+	await _tap("survival_2_travel")
+	await _frames(6)
+	_check(_where("appraiser") == "base", "player two goes home with the travel key")
+	await _tap("survival_2_travel")
+	await _frames(6)
+	_check(_where("appraiser") == "city", "player two sets out again with the travel key")
+	_check(_gap() <= RUN_UNIT, "player two arrives beside player one, not at the entry: gap %d" % _gap())
+	var chef_x: int = _actor("chef", "sub_x")
+	Input.action_press("survival_1_right")
+	var jumped: bool = false
+	for frame: int in range(LATE_FRAMES):
+		if frame % 20 == 5:
+			Input.action_press("survival_1_jump")
+		if frame % 20 == 7:
+			Input.action_release("survival_1_jump")
+		await process_frame
+		jumped = jumped or _stance("chef") == "airborne"
+	Input.action_release("survival_1_right")
+	Input.action_release("survival_1_jump")
+	_check(jumped, "the jump key lifts player one on the street")
+	_check(_actor("chef", "sub_x") - chef_x >= LATE_PROGRESS, "player one walks on after player two arrives: from %d to %d" % [chef_x, _actor("chef", "sub_x")])
+	_check(_gap() <= SCREEN_LOCK, "the gap holds: %d" % _gap())
+
 ## Both walk the street to its exit zone, the one ahead waiting at the lock, and
 ## the map changes once both stand in the zone.
 func _both_actors_change_the_map() -> void:
 	var street_size: Vector2 = _map_size()
-	var moved: bool = await _drive([ROUTE.slice(4), ROUTE.slice(2)], 2400, true)
+	var moved: bool = await _drive([ROUTE.slice(4), ROUTE.slice(4)], 2400, true)
 	if failed:
 		return
 	_check(moved, "both actors walking to the exit zone change the map")
