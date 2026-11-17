@@ -765,9 +765,18 @@ ActionResult apply(Exploration &exploration, Workshop &workshop, Actor actor,
 
 bool worth_entering(const CompanionConfig &config, const GameView &view) {
   const auto entry = config.exploration.entry;
+  const CellMap map(view.world, view.exploration.obstacles);
+  // Judged from where `Exploration::enter` puts the actor: beside a partner
+  // out in the city, else at the entry.
+  constexpr std::array ACTORS{Actor::Chef, Actor::Appraiser};
+  const auto *const out = std::ranges::find_if(ACTORS, [&](Actor actor) {
+    return state_of(view, actor).location == Location::City &&
+           !explorer_of(view, actor).absent;
+  });
+  const auto arrival = out != ACTORS.end() ? landing_cell(view, *out) : entry;
   return view.progression.remaining_exploration.count() > 0 &&
-         stands_on(CellMap(view.world, view.exploration.obstacles), entry) &&
-         next_errand(config, view, entry).has_value();
+         stands_on(map, entry) &&
+         next_errand(config, view, arrival).has_value();
 }
 
 Companion::Companion(CompanionConfig settings) : config(std::move(settings)) {}

@@ -149,7 +149,8 @@ struct Errand {
 };
 
 /// Whether setting out now gives an errand, by the search `errand` runs, from
-/// the entrance.
+/// where the actor would arrive: beside a partner out in the city, else at the
+/// entrance.
 [[nodiscard]] bool worth_entering(const CompanionConfig &config,
                                   const GameView &view);
 
