@@ -114,10 +114,21 @@ func _map_art_tour() -> void:
 			route.append(Vector2i(34, 13))
 			route.append(Vector2i(36, 12))
 			route.append(Vector2i(36, 8))
-		route.append_array([Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)])
+		route.append_array([
+			Vector2i(38, 8), Vector2i(40, 7), Vector2i(44, 6),
+			Vector2i(47, 6), Vector2i(47, 4), Vector2i(39, 4),
+			Vector2i(42, 4), Vector2i(42, 2), Vector2i(46, 2),
+			Vector2i(48, 2), Vector2i(49, 3), Vector2i(50, 4),
+			Vector2i(51, 3), Vector2i(52, 2), Vector2i(53, 2),
+			Vector2i(52, 2), Vector2i(51, 3), Vector2i(50, 4),
+			Vector2i(49, 3), Vector2i(48, 2), Vector2i(42, 2), Vector2i(42, 4), Vector2i(47, 4), Vector2i(47, 6),
+			Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)])
 		for target: Vector2i in route:
 			if not await _tour_move(target):
 				return
+			if target == Vector2i(39, 4):
+				if not await _tour_interior("271-cold-store-day-%d" % day, 3):
+					return
 			if day == 1 and target == Vector2i(11, 9):
 				if not await _tour_collect():
 					return
@@ -128,9 +139,12 @@ func _map_art_tour() -> void:
 			_tour_fail("paired exit did not place both humans at aquarium arrival (4,10): " + _tour_status(state))
 			return
 		print("Stairs: paired travel day %d: Aquarium arrival (4,10), two human key sets 0/1." % day)
-		for target: Vector2i in [Vector2i(7, 10), Vector2i(11, 10), Vector2i(12, 9), Vector2i(13, 8), Vector2i(17, 8)]:
+		for target: Vector2i in [Vector2i(9, 10), Vector2i(9, 7), Vector2i(6, 7), Vector2i(4, 7), Vector2i(4, 4), Vector2i(8, 4), Vector2i(4, 4), Vector2i(4, 7), Vector2i(9, 7), Vector2i(9, 10), Vector2i(7, 10), Vector2i(11, 10), Vector2i(12, 9), Vector2i(13, 8), Vector2i(17, 8)]:
 			if not await _tour_move(target):
 				return
+			if target == Vector2i(6, 7):
+				if not await _tour_interior("271-service-room-day-%d" % day, 2):
+					return
 			if day == 1 and target == Vector2i(7, 10):
 				if not await _tour_collect():
 					return
@@ -167,6 +181,33 @@ func _map_art_tour() -> void:
 		return
 	print("Stairs: finished: pass; both maps on days 1,5,10, paired human travel, native evidence and floor lines.")
 	quit(0)
+
+## Checks that all room bands end at their collision floors and the outside darkens.
+func _tour_interior(name: String, count: int) -> bool:
+	if not await _tour_shot(name):
+		return false
+	var world: Node = scene.get_node("World")
+	var rooms: Array = world.get_meta("interior_rooms", [])
+	if rooms.size() != count or world.get_meta("interior_veil", 0.0) < 0.5:
+		_tour_fail("the occupied cut-away lacks its rooms or outside veil: " + name)
+		return false
+	var fragments: Array = []
+	for fragment: Dictionary in world.get_meta("foreground_layers", []):
+		var texture: Texture2D = fragment["texture"]
+		if texture.resource_path.ends_with("world/interior_cold_store.png"):
+			fragments.append(fragment)
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	for room: Dictionary in rooms:
+		var area: Rect2 = room["area"]
+		var floor_y: float = room["floor_y"]
+		if not _stone_layers(view * Vector2(area.position.x + 16.0, area.end.y - 16.0), fragments, pixels):
+			_tour_fail("the room has no opaque interior artwork above its floor: " + str(room["name"]))
+			return false
+		if not is_equal_approx(area.end.y, floor_y):
+			_tour_fail("the room background ends away from its floor: " + str(room["name"]))
+			return false
+	print("Stairs: cut-away %s: %d floor-aligned rooms, outside veil=%s." % [name, rooms.size(), world.get_meta("interior_veil")])
+	return true
 
 func _tour_move(target: Vector2i) -> bool:
 	var last: Dictionary[String, int] = {}
