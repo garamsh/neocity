@@ -34,6 +34,23 @@ ASSETS = {
     'world/ferry.png': 'Wrecked passenger rail carriage',
     'world/kiosk_ruined.png': 'Collapsed kiosk and broken pink sign',
     'world/vendor_cart.png': 'Corroded noodle counter and boiler',
+    'walkway/aquarium_deck.png': 'Four-cell teal grating with flat top, lit vents and corroded braces',
+    'walkway/structure.png': 'Support sheet with amber lamp, broken piers, cable, chain and warning ticks',
+    'world/ladder_broken.png': 'Broken iron ladder with surviving amber rungs and flesh growth',
+    'world/door_broken.png': 'Torn violet shutter passage with amber lamp and rubble',
+    'world/noodle_vendor.png': 'Side-facing noodle vendor with cap, apron and bowl',
+    'world/bag_washed_up.png': 'Wet ochre backpack with straps and corroded clasps',
+    'world/acid_drip.png': 'Magenta attachment and vertical lime acid droplets',
+    'ground/rubble.png': 'Violet concrete rubble and bent rusty rebar',
+    'world/span_wreck.png': 'Collapsed teal span end with snapped girder and wires',
+    'containers/crates_closed.png': 'Closed stacked food crates with corroded iron corners',
+    'containers/crates_open.png': 'Matching crate stack with upper lid raised',
+    'containers/locker_closed.png': 'Closed oxidized teal supply locker',
+    'containers/locker_open.png': 'Matching teal locker with door open and empty shelves',
+    'containers/shelf_closed.png': 'Closed violet supply cabinet with roller shutters',
+    'containers/shelf_open.png': 'Matching supply cabinet with raised shutters and food tins',
+    'obstacles/acid_vent.png': 'Riveted vent with amber lights and luminous lime acid bubbles',
+    'obstacles/flesh_spikes.png': 'Three ivory spikes growing from a magenta tendon mound',
 }
 BACKGROUND_SIZES = {'throat': '1517x1034!', 'acid': '2880x761!',
                     'aquarium': '2880x1620!'}
@@ -128,6 +145,7 @@ def prepare():
                  '-trim', '+repage', '-filter', 'Point', '-resize', fit,
                  '-gravity', 'south', '-background', 'none', '-extent', canvas)
     prepare_backgrounds()
+    prepare_props()
 
 
 def prepare_backgrounds():
@@ -152,11 +170,48 @@ def prepare_backgrounds():
                 source_path(f'backgrounds/{name}.png'))
 
 
+def prepare_props():
+    """Rebuild the remaining static map pieces at their recorded normalized anchors."""
+    layout = json.loads((KIT / 'hd-sources/props-layout.json').read_text())
+    with tempfile.TemporaryDirectory(prefix='w276-props-') as temporary:
+        work = pathlib.Path(temporary)
+        for destination, asset in layout['assets'].items():
+            canvas = work / 'canvas.png'
+            run('magick', '-size', 'x'.join(map(str, asset['size'])), 'xc:none',
+                '-colorspace', 'sRGB', '-type', 'TrueColorAlpha', 'PNG32:' + str(canvas))
+            for index, part in enumerate(asset['parts']):
+                module = work / f'part-{index}.png'
+                x, y, width, height = part['bounds']
+                command = ['magick', KIT / 'hd-sources' / part['source'],
+                           '-crop', part['crop'], '+repage',
+                           '-channel', 'A', '-threshold', '50%', '+channel',
+                           '-trim', '+repage']
+                if part.get('flop'):
+                    command.append('-flop')
+                run(*command, '-filter', 'Point', '-resize', f'{width}x{height}!', module)
+                run('magick', canvas, module, '-geometry', f'+{x}+{y}', '-composite', canvas)
+            if destination == 'walkway/aquarium_deck.png':
+                # Repeat a reflected half-period; both outer columns and the contact row meet.
+                half = work / 'half.png'
+                mirror = work / 'mirror.png'
+                run('magick', canvas, '-crop', '288x126+0+0', '+repage', half)
+                run('magick', half, '-flop', mirror)
+                run('magick', half, mirror, '+append', canvas)
+                run('magick', canvas, '-fill', '#88afae',
+                    '-draw', 'rectangle 0,0 575,1', canvas)
+            run('magick', canvas, '+dither', '-colors', '96',
+                '-channel', 'A', '-threshold', '50%', '+channel',
+                '-strip', '-depth', '8', 'PNG32:' + str(canvas))
+            run('aseprite', '--batch', canvas, '--save-as', source_path(destination))
+    print(f"Prepared {len(layout['assets'])} static map sources selected by props-layout.json.")
+
+
 def export():
     """Export each native source and record its sole owner in the HD manifest."""
     manifest_path = ART / 'manifest.json'
     manifest = json.loads(manifest_path.read_text())
     entries = {entry['path']: entry for entry in manifest['files']}
+    props = json.loads((KIT / 'hd-sources/props-layout.json').read_text())['assets']
     for destination, role in ASSETS.items():
         source = source_path(destination)
         target = ART / destination
@@ -170,14 +225,79 @@ def export():
                  'export': 'python3 tools/art/toxic_night.py',
                  'retouch': '144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export',
                  'pixels_per_cell': 144}
+        if destination in props:
+            entry.update(props[destination].get('anchors', {}))
+            entry['preparation'] = 'docs/art/production/toxic-night-kit/hd-sources/props-layout.json'
         entries[destination] = entry
     manifest['files'] = list(entries.values())
     manifest['map_kit'] = {'issue': 276, 'source': 'docs/art/production/toxic-night-kit/',
                            'grid': '144 authored pixels per cell; destination world areas owned by #281',
-                           'sampling': 'nearest', 'status': 'interiors, street and three backgrounds redrawn; supports, other props, containers and hazards pending',
+                           'sampling': 'nearest', 'status': 'all static map art redrawn; mutant animation frames retain their prior sources',
                            'hd_paths': list(ASSETS)}
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
     print(f'Exported {len(ASSETS)} native Aseprite map assets selected by ASSETS.')
+
+
+def check():
+    """Verify native-source round trips, static sprite alpha and normalized floor contracts."""
+    from pixelize import read_png
+
+    manifest = json.loads((ART / 'manifest.json').read_text())
+    entries = {entry['path']: entry for entry in manifest['files']}
+    layout = json.loads((KIT / 'hd-sources/props-layout.json').read_text())
+    baseline = json.loads(subprocess.check_output([
+        'git', 'show', layout['baseline'] +
+        ':project/levels/monster_mouth_escape/art_hd/manifest.json'
+    ], cwd=ROOT))
+    earlier = {entry['path']: entry for entry in baseline['files']}
+    with tempfile.TemporaryDirectory(prefix='w276-check-') as temporary:
+        target = pathlib.Path(temporary) / 'export.png'
+        for destination in ASSETS:
+            entry = entries[destination]
+            source = source_path(destination)
+            if hashlib.sha256(source.read_bytes()).hexdigest() != entry['source_sha256']:
+                raise ValueError(f'{destination}: native source digest differs')
+            run('aseprite', '--batch', source, '--save-as', target)
+            if target.read_bytes() != (ART / destination).read_bytes():
+                raise ValueError(f'{destination}: native source export differs')
+        for destination, asset in layout['assets'].items():
+            entry = entries[destination]
+            width, height, rows = read_png(ART / destination)
+            if [width, height] != asset['size']:
+                raise ValueError(f'{destination}: canvas differs from recorded layout')
+            occupied = [y + 1 for y, row in enumerate(rows) if any(pixel[3] for pixel in row)]
+            if not occupied or any(pixel[3] not in (0, 255) for row in rows for pixel in row):
+                raise ValueError(f'{destination}: empty sprite or translucent pixel')
+            bottom = max(occupied)
+            expected = max(part['bounds'][1] + part['bounds'][3] for part in asset['parts'])
+            if abs(bottom - expected) > 1:
+                raise ValueError(f'{destination}: visible bottom anchor moved')
+            previous_png = pathlib.Path(temporary) / 'previous.png'
+            previous_png.write_bytes(subprocess.check_output([
+                'git', 'show', layout['baseline'] +
+                ':project/levels/monster_mouth_escape/art_hd/' + destination
+            ], cwd=ROOT))
+            _, _, old_rows = read_png(previous_png)
+            previous_bottom = max(y + 1 for y, row in enumerate(old_rows)
+                                  if any(pixel[3] >= 128 for pixel in row))
+            if abs(bottom - previous_bottom * 1.5) > 1:
+                raise ValueError(f'{destination}: normalized historical floor anchor moved')
+            old = earlier[destination]
+            if abs(width - old['size'][0] * 1.5) > 0.5 or abs(height - old['size'][1] * 1.5) > 0.5:
+                raise ValueError(f'{destination}: canvas no longer follows the 1.5x grid')
+            for key in ('pivot', 'baseline_y'):
+                if key in old:
+                    values = zip(entry[key], old[key]) if key == 'pivot' else [(entry[key], old[key])]
+                    if any(abs(new - previous * 1.5) > 0.5 for new, previous in values):
+                        raise ValueError(f'{destination}: normalized {key} moved')
+            if destination == 'walkway/aquarium_deck.png':
+                if any(pixel[3] != 255 for pixel in rows[0]):
+                    raise ValueError('aquarium deck: top contact row has a hole')
+                if any(row[0] != row[-1] for row in rows):
+                    raise ValueError('aquarium deck: outer repeat columns differ')
+    print(f'Checked {len(ASSETS)} native PNG round trips and source digests; '
+          f"{len(layout['assets'])} static canvases, hard-alpha sprites and floor anchors; "
+          'container/hazard pivots and aquarium deck contact/repeat columns pass.')
 
 
 if __name__ == '__main__':
@@ -185,9 +305,17 @@ if __name__ == '__main__':
     parser.add_argument('--prepare', action='store_true', help='replace native sources from the recorded HD images')
     parser.add_argument('--prepare-backgrounds', action='store_true',
                         help='replace only the three native background sources')
+    parser.add_argument('--prepare-props', action='store_true',
+                        help='replace only the seventeen static prop, support and aquarium-deck sources')
+    parser.add_argument('--check', action='store_true', help='check native exports and static floor contracts')
     args = parser.parse_args()
+    if args.check:
+        check()
+        raise SystemExit(0)
     if args.prepare:
         prepare()
     elif args.prepare_backgrounds:
         prepare_backgrounds()
+    elif args.prepare_props:
+        prepare_props()
     export()

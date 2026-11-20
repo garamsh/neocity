@@ -14,8 +14,8 @@ const SEARCH_ATTEMPTS: int = 12
 ## Frames the AI partner stands still before the camera is read: a search of a
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
-## On this seed a party following NEXT alone ends the run satisfied.
-const LONG_RUN_SEED: int = 50
+## On this seed a party following NEXT alone meets a hated dish, then ends the run satisfied.
+const LONG_RUN_SEED: int = 18
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
