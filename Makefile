@@ -91,11 +91,10 @@ GODOT_IMPORT_LIMIT := 60
 build: $(TOOLS_STAMP)
 	$(CONFIGURE)
 	$(CMAKE) --build $(BUILD_DIR)
-	@data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$data"' EXIT HUP INT TERM; \
-	test "$$(XDG_DATA_HOME="$$data" "$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
+	@test "$$("$(GODOT)" --version)" = "$(GODOT_VERSION)" || { echo "Expected Godot $(GODOT_VERSION)" >&2; exit 1; }
 	mkdir -p $(PROJECT_DIR)/.godot
 	printf '%s\n' 'res://bin/neocity.gdextension' > $(PROJECT_DIR)/.godot/extension_list.cfg
-	@data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$data"' EXIT HUP INT TERM; \
+	@data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" $(PYTHON) -c "$$GODOT_IMPORT_WITH_LIMIT" $(GODOT_IMPORT_LIMIT) "$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
 test: test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio
@@ -115,77 +114,77 @@ test-unit: build
 test-startup: build
 	@files=$$($(GODOT_SCRIPTS)); count=$$(printf '%s\n' $$files | grep -c .) || true; \
 	test "$$count" -gt 0 || { echo "no GDScript harness was read" >&2; exit 1; }; \
-	log=$$(mktemp /tmp/w278-log-XXXXXX); data=; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	log=$$(mktemp); data=; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	for file in $$files; do \
-		data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; \
+		data=$$(mktemp -d) || exit 1; \
 		XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --script "res://$${file#$(PROJECT_DIR)/}" --check-only > "$$log" 2>&1 || { \
 			cat "$$log"; echo "GDScript parse check failed: $$file" >&2; exit 1; }; \
 		rm -rf "$$data"; \
 	done; \
 	echo "Godot parse-checked $$count GDScript files, selected by: $(GODOT_SCRIPTS)"
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
 
 test-title: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 55 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop DisplayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Display: 56 live checks passed (defaults, full screen refusal, settings keys, display size limit, settings mouse at (1280, 1024), pause screen, file, reopened scene, oversize file, failed save, bad file).' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop KeyCoverageCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Keys: 18 live checks passed (survival player one, survival player two).' "$$log"
 
 test-timing: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 480 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 63 integration checks passed.' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 19 integration checks passed.' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalTimingCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival timing: 15 integration checks passed.' "$$log"
 
 test-survival: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 294 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, obstacle, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalScreenLockCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Screen lock: 37 live checks passed (building entry, lone actor, jump, late entrant, joint travel and fade there and back).' "$$log"
 
 test-escape: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape slow frames: 4 live checks passed.' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape real frames: 4 live checks passed.' "$$log"
 
 test-loss: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss: 29 live checks passed (acid, loss, input block, card, skip, click, scene, broken asset, menu, instant finish).' "$$log"
 
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Loss slow frames: 2 live checks passed.' "$$log"
 
 test-audio: build
-	@log=$$(mktemp /tmp/w278-log-XXXXXX); data=$$(mktemp -d /tmp/w278-data-XXXXXX) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop AudioFeedbackCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Audio: 29 live checks passed (menus, music, tension, walking, collecting, travel, workshop, feeding, new day, acid, fall, flourishes, effects off, music off).' "$$log"
 
