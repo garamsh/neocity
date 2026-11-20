@@ -14,11 +14,14 @@ namespace neocity::rendering {
 /// Where the scene, in its own pixels, falls on the screen: `centre` is drawn
 /// at the middle of the play area between the top bar and the cards, `zoom`
 /// times its size. `rest` is the centre in the middle of where the camera may
-/// go at that zoom.
+/// go at that zoom. `inside` is set while the view shows only the inside of
+/// one building, whose whole extent in the scene is `room`.
 struct View {
   godot::Vector2 centre;
   float zoom = 1.0F;
   godot::Vector2 rest;
+  bool inside = false;
+  godot::Rect2 room = godot::Rect2();
 };
 
 /// The screen position of the scene's origin, on a whole pixel.
@@ -38,13 +41,16 @@ struct View {
 /// own size once they do not, which the screen lock keeps from happening
 /// sideways. With nobody in the city it rests on the base entrance. It never
 /// shows past the map's left and right edges or the scene's top and bottom, and
-/// centres on the map when the view is wider than it.
+/// centres on the map when the view is wider than it. While every actor in the
+/// city is inside one building it frames the rooms they stand in at the
+/// largest whole zoom that fits them on the play area, and never shows past the
+/// building's sides.
 [[nodiscard]] View aim(const survival::Content &content,
                        const survival::GameView &view);
 
 /// The camera easing from where it last was toward `heading` on the real
-/// clock, inside the same bounds as `aim`; its zoom steps between the two
-/// once the eased zoom passes halfway, and is never between them.
+/// clock, inside the same bounds as `aim`; its zoom is always a whole number,
+/// stepping once the eased zoom passes halfway between two.
 [[nodiscard]] View follow(const Art &art, const survival::MapContent &content,
                           const View &heading);
 
