@@ -1,8 +1,11 @@
-# Day-one HD environment art
+# HD environment art
 
-The native 1920×1080 environment assets and reference composite for [issue #210](https://github.com/garamsh/neocity/issues/210), under [goal #207](https://github.com/garamsh/neocity/issues/207).
+The HD environment asset contracts, ownership and verification for Monster Mouth Escape.
 
 ## Status and source
+
+- #276's [current interior and street kit](../../../../docs/art/production/toxic-night-kit/README.md) redraws eighteen assets on a proposed 144-pixel cell grid. Its editable Aseprite sources, exact generation prompts, provenance and comparison boards live together. Run `python3 tools/art/toxic_night.py` to export them; `--prepare` replaces native edits from the new recorded sources.
+- This is a partial density migration. The manifest's `map_kit.hd_paths` identifies the eighteen replacements; remaining map assets and all characters, UI, title, icons and base assets retain their previous density. #281 owns world-area rendering and runtime verification. The old source-size renderer does not establish the new exports' destination size.
 
 - Connected to the city renderer by #212 under [ADR 0025](../../../../docs/architecture/adr/0025-draw-the-city-with-native-hd-art.md). The kitchen, interface, icons and non-city figures retain their existing `art/` resources. Creative acceptance remains the PM/user decision.
 - Newly drawn with built-in ImageGen. The search mockup at `241124d5ba2dcef937c904623f1e5e3cb03fbcf5` supplies style, palette, shapes and lighting only; none of its pixels is adopted into an asset.
@@ -13,21 +16,21 @@ The native 1920×1080 environment assets and reference composite for [issue #210
 
 | Resource | Contract |
 |---|---|
-| `backgrounds/` | Throat 1011×689; city 1920×735; acid 1920×507. Transparent city sky and lake skyline keep the layers separate. |
-| `walkway/deck.png` | Six full-width 1920×84 bands in the existing role order: kitchen roof, tower roof, loft, upper walkway, lower walkway, pier. |
-| `world/building_wall.png` | Four full-width bands, heights 96, 96, 96 and 108. |
-| `world/shop.png` | Two full-width 192px bands, kitchen front at left and tower front at right. |
+| `backgrounds/` | Throat 1011×689; city 2880×1103; acid 1920×507. Transparent city sky and lake skyline keep the layers separate. |
+| `walkway/deck.png` | Six full-width 2880×126 bands in the existing role order: kitchen roof, tower roof, loft, upper walkway, lower walkway, pier. |
+| `world/building_wall.png` | Four 2880px-wide bands, heights 144, 144, 144 and 162. |
+| `world/shop.png` | Two full-width 2880×288 bands, kitchen front at left and tower front at right. |
 | `walkway/structure.png` | 1920×549 support layer; target origin (0, 292). |
-| Other `world/` and `ground/` PNGs | Original filenames and roles, native dimensions 1.5× the old set. See the manifest for individual dimensions. |
+| Other `world/` and `ground/` PNGs | Original filenames and roles; the manifest records each canvas and its owning source. |
 
-- Draw at native pixels with nearest sampling; a map cell is 96 picture pixels at this target density. Deck and wall bands repeat horizontally across their full 1920px period. Their outer columns match through reflected source strips; the cells inside a band are contiguous portions, not independent repeating tiles.
-- Prop canvases retain padding and centered silhouettes. The ferry's complete silhouette fits inside its 384×150 canvas without enlargement. The ladder repeats vertically; the other props do not repeat.
+- Use nearest sampling. The redrawn street kit uses 144 authored pixels per cell and a 2880px band period; unchanged environment pieces retain their earlier 96px-cell source layout. Their outer columns match through reflected source strips; the cells inside a band are contiguous portions, not independent repeating tiles.
+- Prop canvases retain padding and centered silhouettes. The redrawn ferry's complete silhouette fits inside its 576×225 canvas. The ladder repeats vertically; the other props do not repeat.
 - PNG import metadata uses lossless compression with mipmaps disabled. No gameplay, layout, font or runtime binding is changed here.
 - Images contain no text except the ACID marking on the support pillar. The kiosk display uses abstract bars.
 
 ## Runtime checks
 
-- The renderer converts backgrounds to layout units with `1 / ART_SCALE`, and cell art and city actors with `1 / (2 * ART_SCALE)`. The close camera and canvas restore one native picture pixel per 1080p pixel. Other output sizes follow Godot’s fractional canvas scale.
+- Before #281 integration, the baseline renderer converts backgrounds to layout units with `1 / ART_SCALE`, and cell art and city actors with `1 / (2 * ART_SCALE)`. That conversion describes the earlier 96px-cell assets; #281 must map the new exports by destination world area. Other output sizes follow Godot’s fractional canvas scale.
 - `python3 tools/art/pixelize.py check project/levels/monster_mouth_escape/art_hd` checks both manifests for dimensions, hashes and native fine-edge detail. The same check runs after the legacy set in `make test`. Generated HD art keeps its own colours and is not subject to the legacy palette or mockup-source requirements.
 - Street bands retain their twenty-column repeat and exposed deck contours; the aquarium has its own four-cell band. Terrain decks draw level surfaces at their collision floors.
 
@@ -64,16 +67,17 @@ The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) ar
 | Resource | Contract |
 |---|---|
 | `backgrounds/aquarium.png` | 1920×1080 teal flooded-tank background, drawn in screen space behind the aquarium floors. |
-| `world/terminal.png` | 2304×1152 transparent terminal scenery behind street columns 40–63, beginning at row 1. |
-| `world/interior_{kitchen,noodle}.png` | 576×192 backgrounds for the two six-cell loft interiors, bottom edge at their collision floor. |
-| `world/interior_cold_store.png` | 288×288 cold-store background covering its existing three-cell interior. |
+| `world/terminal.png` | 3456×1728 transparent terminal scenery behind street columns 40–63, beginning at row 1. |
+| `world/interior_{kitchen,noodle}.png` | 864×288 enclosed floor panels for the two six-cell loft interiors, bottom edge at their collision floor. |
+| `world/interior_cold_store.png` | 432×432 enclosed cold-store floor panel, reusable per floor. |
+| `world/interior_service.png` | 432×432 enclosed aquarium service floor panel, reusable per floor. |
 | `walkway/aquarium_deck.png` | 384×84 band, four 96px cells, opaque level top at source row zero. |
 | `world/span_wreck.png` | 96×96 torn span end; reflected at the opposite end without bridging the gap. |
-| `world/kiosk_ruined.png` | 288×144 collapsed kiosk for the ruined stage. |
-| `world/fire_escape.png` | 96×96 repeating ladder segment for the replacement fire escape. |
+| `world/kiosk_ruined.png` | 432×216 collapsed kiosk for the ruined stage. |
+| `world/fire_escape.png` | 144×144 repeating ladder segment for the replacement fire escape. |
 
-- All nine images contain no text. The root manifest owns their dimensions, hashes, roles, source identities and crops.
-- `python3 tools/art/map_hd.py` regenerates them from [recorded sources](../../../../docs/art/production/map-hd-sources/) with ImageMagick. The [exact prompts](../../../../docs/art/production/map-hd-prompts.json) record built-in ImageGen use; no credit-charging service was used. Sources are resampled once with Lanczos to the runtime contract; sprite alpha is thresholded to remove translucent generation halos.
+- These map images contain no text. The root manifest owns their dimensions, hashes, roles, source identities and crops.
+- `python3 tools/art/map_hd.py` regenerates only entries whose manifest owner remains [recorded sources](../../../../docs/art/production/map-hd-sources/) with ImageMagick. The [exact prompts](../../../../docs/art/production/map-hd-prompts.json) record built-in ImageGen use; no credit-charging service was used. The remaining legacy cuts use Lanczos; the current kit uses nearest resampling and Aseprite export; sprite alpha is thresholded to remove translucent generation halos.
 - The rules supply all geometry, map selection and damage states. Interior art appears when either actor occupies the existing zone; #224 owns darkening and fades. Creative acceptance remains with the user.
 
 - #230 runtime evidence: [street](../../../../docs/architecture/evidence/survival/230-street-1080.png), [occupied kitchen](../../../../docs/architecture/evidence/survival/230-interior-1080.png), [day-seven damage](../../../../docs/architecture/evidence/survival/230-damage-day-7-1080.png), and [day-ten damage](../../../../docs/architecture/evidence/survival/230-damage-day-10-1080.png), each 1920×1080. The [comparison](../../../../docs/architecture/evidence/survival/230-mockup-beside-street.png) places the normalized mockup on the left and the native street capture on the right.
@@ -83,6 +87,6 @@ The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) ar
 
 - `backgrounds/city.png`, `world/terminal.png`, `world/shop.png`, `world/building_wall.png`, `walkway/deck.png`, `world/vending_machine.png`, `world/vendor_cart.png`, `world/kiosk.png`, `world/kiosk_ruined.png`, `world/cold_store.png` and `world/ferry.png` are repainted as ruined cyberpunk at their previous sizes and transparent regions; sprites keep their previous opaque box and bottom edge.
 - `base/kitchen.png` is new: 1920×1080, opaque, with no characters, refrigerator, crane or interface; the right of the platform is empty for the fridge and the cooking crane.
-- `docs/art/production/street_art_251.py` regenerates all twelve from [`street-art-251-sources/`](../../../../docs/art/production/street-art-251-sources/) and rewrites their manifest entries. It supersedes the `terminal.png` row of `tools/art/map_hd.py`, which would restore the earlier terminal.
-- `walkway/deck.png` and `world/building_wall.png` keep their band heights; their right edges are crossfaded into the mirrored left edges so the strips repeat.
+- The earlier `docs/art/production/street_art_251.py` rebuilds its twelve source-era images from [`street-art-251-sources/`](../../../../docs/art/production/street-art-251-sources/) and rewrites their manifest entries. Do not run it over the current kit: the manifest now assigns its eleven street destinations to the Aseprite kit. `tools/art/map_hd.py` already selects only its own remaining manifest entries.
+- The current kit replaces those deck and wall bands with the 144px-cell contract above and reflected half-periods.
 - Provenance and approved concepts: [docs/art/README.md](../../../../docs/art/README.md).

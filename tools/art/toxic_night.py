@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export the Toxic Night Aseprite kit; --prepare rebuilds sources from its atlas."""
+"""Export the Toxic Night Aseprite kit; --prepare rebuilds it from the HD sources."""
 import argparse
 import hashlib
 import json
@@ -11,17 +11,17 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 KIT = ROOT / 'docs/art/production/toxic-night-kit'
 ART = ROOT / 'project/levels/monster_mouth_escape/art_hd'
-# Native canvases retain the renderer's existing band layout and cell density.
+# Band proportions stay fixed while the authored cell grows to 144 pixels.
 ASSETS = {
     'backgrounds/city.png': 'Toxic Night ruined skyline and derailed viaduct',
     'world/terminal.png': 'Toxic Night terminal skyline behind eastern floors',
     'walkway/deck.png': 'Six twenty-cell deck bands; flat contact at row zero',
     'world/building_wall.png': 'Four twenty-cell violet masonry and window bands',
     'world/shop.png': 'Two twenty-cell lit kitchen and noodle frontage bands',
-    'world/interior_kitchen.png': 'Kitchen stove and ingredient shelves',
-    'world/interior_noodle.png': 'Noodle boiler, bowls and exhaust hood',
-    'world/interior_cold_store.png': 'Cold-store refrigeration lockers and pipes',
-    'world/interior_service.png': 'Aquarium service pumps and glass tanks',
+    'world/interior_kitchen.png': 'Enclosed kitchen floor with door, preparation benches and ladder',
+    'world/interior_noodle.png': 'Enclosed noodle dining floor with counter, boiler, doors and ladder',
+    'world/interior_cold_store.png': 'Enclosed cold-store floor with personnel door, food lockers and ladder',
+    'world/interior_service.png': 'Enclosed aquarium service floor with door, tanks, pumps and ladder',
     'world/ladder.png': 'One repeating corroded iron ladder cell',
     'world/fire_escape.png': 'One repeating corroded fire-escape ladder cell',
     'world/vending_machine.png': 'Broken red vending machine with neon rim',
@@ -44,93 +44,84 @@ def source_path(destination):
 
 
 def prepare():
-    """Assemble native sources once; later edits belong in the Aseprite files."""
+    """Replace native sources from the recorded HD redraws, discarding native edits."""
     with tempfile.TemporaryDirectory(prefix='w276-kit-') as temporary:
         work = pathlib.Path(temporary)
-        source = KIT / 'source.png'
+        sources = KIT / 'hd-sources'
 
         def crop(name, box):
             target = work / (name + '.png')
-            run('aseprite', '--batch', source, '--crop', box, '--save-as', target)
+            run('magick', sources / 'street-atlas.png',
+                '-crop', box, '+repage', target)
             return target
 
         def save(destination, *command):
             target = work / 'assembled.png'
-            run('magick', *command, '-strip', 'PNG32:' + str(target))
+            run('magick', *command, '+dither', '-colors', '96',
+                '-channel', 'A', '-threshold', '50%', '+channel',
+                '-strip', '-depth', '8', 'PNG32:' + str(target))
             run('aseprite', '--batch', target, '--save-as', source_path(destination))
 
-        skyline = work / 'skyline.png'
-        run('aseprite', '--batch', KIT / 'backdrop-source.png',
-            '--crop', '0,304,1717,299', '--save-as', skyline)
-        for destination, size in [('backgrounds/city.png', '1920x735!'),
-                                  ('world/terminal.png', '2304x1152!')]:
-            save(destination, skyline, '-fuzz', '8%', '-transparent', '#303030',
-                 '-filter', 'Point', '-resize', size,
-                 '-channel', 'A', '-threshold', '50%', '+channel')
-        deck = crop('deck', '0,25,1536,216')
-        wall = crop('wall', '0,256,1536,248')
-        kitchen = crop('kitchen', '0,516,256,240')
-        noodle = crop('noodle', '256,516,256,240')
-        cold = crop('cold', '512,516,256,240')
-        service = crop('service', '1024,516,256,240')
+        def strip(module, height, name):
+            piece = work / (name + '.png')
+            run('magick', module, '-filter', 'Point', '-resize', f'288x{height}!', piece)
+            mirror = work / (name + '-mirror.png')
+            run('magick', piece, '-flop', mirror)
+            period = work / (name + '-period.png')
+            run('magick', piece, mirror, '+append', period)
+            target = work / (name + '-strip.png')
+            run('magick', '-size', f'2880x{height}', 'tile:' + str(period), target)
+            return target
+
+        save('backgrounds/city.png', sources / 'city.png', '-fuzz', '8%',
+             '-transparent', '#303030', '-filter', 'Point', '-resize', '2880x1103!')
+        skyline = work / 'terminal-skyline.png'
+        run('magick', sources / 'city.png', '-fuzz', '8%', '-transparent', '#303030',
+            '-filter', 'Point', '-resize', '1728x864!', skyline)
+        mirror = work / 'terminal-mirror.png'
+        run('magick', skyline, '-flop', mirror)
+        save('world/terminal.png', skyline, mirror, '+append', '-gravity', 'south',
+             '-background', 'none', '-extent', '3456x1728')
         bands = []
-        for index in range(6):
-            piece = work / f'deck{index}.png'
-            run('magick', deck, '-crop', f'384x84+{(index % 4) * 384}+0',
-                '+repage', '-write', str(piece), '+delete', '-size', '1920x84',
-                'tile:' + str(piece), str(piece))
-            bands.append(piece)
-        stacked = work / 'deck-stacked.png'
-        run('magick', *bands, '-append', str(stacked))
-        # Recess the face below the untouched twelve-pixel contact rim.
-        for row in range(6):
-            run('magick', stacked, '-region', f'1920x72+0+{row * 84 + 12}',
-                '-modulate', '55', '+region', str(stacked))
-        save('walkway/deck.png', stacked)
+        for index, x in enumerate([8, 270, 515, 770, 1030, 1140]):
+            module = crop(f'deck{index}', f'384x126+{x}+34')
+            band = strip(module, 126, f'deck{index}')
+            run('magick', band, '-region', '2880x18+0+0',
+                '-modulate', '150', '+region', band)
+            run('magick', band, '-region', '2880x108+0+18',
+                '-modulate', '50', '+region', band)
+            bands.append(band)
+        save('walkway/deck.png', *bands, '-append')
         bands = []
-        for index, height in enumerate([96, 96, 96, 108]):
-            piece = work / f'wall{index}.png'
-            run('magick', wall, '-crop', f'384x{height}+{index * 384}+{index * 40}',
-                '+repage', '-write', str(piece), '+delete', '-size', f'1920x{height}',
-                'tile:' + str(piece), str(piece))
-            bands.append(piece)
+        for index, (x, height) in enumerate(zip([8, 390, 775, 1144], [144, 144, 144, 162])):
+            module = crop(f'wall{index}', f'384x168+{x}+164')
+            bands.append(strip(module, height, f'wall{index}'))
         save('world/building_wall.png', *bands, '-append')
         bands = []
-        for index, module in enumerate([kitchen, noodle]):
-            piece = work / f'shop{index}.png'
-            run('magick', module, '-filter', 'Point', '-resize', '384x192!',
-                '-write', str(piece), '+delete', '-size', '1920x192',
-                'tile:' + str(piece), str(piece))
-            bands.append(piece)
+        for name, box in [('kitchen', '640x180+352+348'),
+                          ('noodle', '470x180+1050+348')]:
+            bands.append(strip(crop(name, box), 288, name))
         save('world/shop.png', *bands, '-append')
-        for name, module, size in [('kitchen', kitchen, '576x192!'),
-                                   ('noodle', noodle, '576x192!'),
-                                   ('cold_store', cold, '288x288!'),
-                                   ('service', service, '288x288!')]:
-            save(f'world/interior_{name}.png', module, '-filter', 'Point', '-resize', size)
+        for name, size in [('kitchen', '864x288!'), ('noodle', '864x288!'),
+                           ('cold_store', '432x432!'), ('service', '432x432!')]:
+            save(f'world/interior_{name}.png', sources / (name + '.png'),
+                 '-filter', 'Point', '-resize', size)
         props = [
-            ('world/ladder.png', '96,770,68,96', '96x96!'),
-            ('world/fire_escape.png', '96,770,68,96', '96x96!'),
-            ('world/vending_machine.png', '290,790,162,225', '136x177'),
-            ('world/kiosk.png', '522,782,237,234', '96x83'),
-            ('world/cold_store.png', '781,799,230,216', '285x221'),
-            ('world/door_cold_store.png', '781,799,230,216', '96x192!'),
-            ('world/ferry.png', '1027,813,250,202', '268x150'),
-            ('world/kiosk_ruined.png', '1294,800,234,215', '283x137'),
+            ('world/ladder.png', '108x206+146+550', '144x144!', '144x144'),
+            ('world/fire_escape.png', '108x206+146+550', '144x144!', '144x144'),
+            ('world/vending_machine.png', '184x207+474+550', '204x266', '216x266'),
+            ('world/kiosk.png', '280x207+810+548', '144x125', '144x144'),
+            ('world/cold_store.png', '315x214+1190+543', '428x332', '432x432'),
+            ('world/door_cold_store.png', '315x214+1190+543', '144x288!', '144x288'),
+            ('world/ferry.png', '425x199+20+794', '402x225', '576x225'),
+            ('world/kiosk_ruined.png', '290x206+472+791', '425x206', '432x216'),
+            ('world/vendor_cart.png', '294x209+820+790', '192x144', '288x144'),
         ]
-        canvases = {'world/ladder.png': '96x96', 'world/fire_escape.png': '96x96',
-                    'world/vending_machine.png': '144x177', 'world/kiosk.png': '96x96',
-                    'world/cold_store.png': '288x288', 'world/door_cold_store.png': '96x192',
-                    'world/ferry.png': '384x150', 'world/kiosk_ruined.png': '288x144'}
-        for destination, box, fit in props:
+        for destination, box, fit, canvas in props:
             module = crop(destination.replace('/', '-'), box)
             save(destination, module, '-fuzz', '8%', '-transparent', '#303030',
-                 '-filter', 'Point', '-resize', fit, '-gravity', 'south',
-                 '-background', 'none', '-extent', canvases[destination],
-                 '-channel', 'A', '-threshold', '50%', '+channel')
-        save('world/vendor_cart.png', noodle, '-crop', '256x120+0+120', '+repage',
-             '-filter', 'Point', '-resize', '128x96!', '-gravity', 'south',
-             '-background', 'none', '-extent', '192x96')
+                 '-trim', '+repage', '-filter', 'Point', '-resize', fit,
+                 '-gravity', 'south', '-background', 'none', '-extent', canvas)
 
 
 def export():
@@ -149,19 +140,21 @@ def export():
                  'issue': 276, 'source': str(source.relative_to(ROOT)),
                  'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
                  'export': 'python3 tools/art/toxic_night.py',
-                 'retouch': 'Aseprite 1.3 batch export; nearest-only atlas assembly recorded in tools/art/toxic_night.py'}
+                 'retouch': '144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export',
+                 'pixels_per_cell': 144}
         entries[destination] = entry
     manifest['files'] = list(entries.values())
     manifest['map_kit'] = {'issue': 276, 'source': 'docs/art/production/toxic-night-kit/',
-                           'grid': '96 native pixels per cell; one canvas pixel per native pixel at close zoom',
-                           'sampling': 'nearest', 'status': 'first kit; creative review pending'}
+                           'grid': '144 authored pixels per cell; destination world areas owned by #281',
+                           'sampling': 'nearest', 'status': 'interiors and street redrawn; remaining map assets pending',
+                           'hd_paths': list(ASSETS)}
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
     print(f'Exported {len(ASSETS)} native Aseprite map assets selected by ASSETS.')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--prepare', action='store_true', help='replace native sources from the recorded atlas')
+    parser.add_argument('--prepare', action='store_true', help='replace native sources from the recorded HD images')
     args = parser.parse_args()
     if args.prepare:
         prepare()
