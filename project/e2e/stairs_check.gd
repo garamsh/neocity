@@ -32,11 +32,14 @@ func _run() -> void:
 	scene.get_node("World").set_meta("measure_art", true)
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
-	if OS.get_cmdline_user_args().has("--map-art-tour"):
+	if OS.get_cmdline_user_args().has("--map-art-tour") or OS.get_cmdline_user_args().has("--kit-interiors"):
 		if not await _fixed_rate():
 			_tour_fail("the tour steers by frames and a day ends by the frame's delta, so run it with --fixed-fps 60: a loaded machine's longer frames make a day end before the humans arrive")
 			return
-		await _map_art_tour()
+		if OS.get_cmdline_user_args().has("--kit-interiors"):
+			await _kit_interiors()
+		else:
+			await _map_art_tour()
 		return
 	await _tap(KEY_1)
 	await _tap(KEY_1)
@@ -84,6 +87,27 @@ func _run() -> void:
 	print("Stairs: finished: %s; %d/4 direction/cell readings, %d failures." % ["pass" if enough and failures == 0 else "fail", measured.size(), failures])
 	quit(0 if enough and failures == 0 else 1)
 
+## Captures both single-floor shops through their actual ladder routes.
+func _kit_interiors() -> void:
+	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
+	await _tap(KEY_1)
+	await _tap(KEY_3)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+	await _tap(KEY_U)
+	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
+		if not await _tour_move(target):
+			return
+	if not await _shop_interior("276-interior-kitchen", "world/interior_kitchen.png"):
+		return
+	for target: Vector2i in [Vector2i(3, 8), Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(23, 8), Vector2i(23, 6)]:
+		if not await _tour_move(target):
+			return
+	if not await _shop_interior("276-interior-noodle", "world/interior_noodle.png"):
+		return
+	print("Stairs: finished: pass; kitchen and noodle shop use their own pictures after paired ladder travel.")
+	quit(0)
+
 ## Plays two humans through both maps at every drawn damage stage.
 func _map_art_tour() -> void:
 	# An untimed base and an instant cook: the first meal is cooked by hand at
@@ -127,7 +151,7 @@ func _map_art_tour() -> void:
 			if not await _tour_move(target):
 				return
 			if target == Vector2i(39, 4):
-				if not await _tour_interior("271-cold-store-day-%d" % day, 3):
+				if not await _tour_interior("271-cold-store-day-%d" % day, 3, "world/interior_cold_store.png"):
 					return
 			if day == 1 and target == Vector2i(11, 9):
 				if not await _tour_collect():
@@ -143,7 +167,7 @@ func _map_art_tour() -> void:
 			if not await _tour_move(target):
 				return
 			if target == Vector2i(6, 7):
-				if not await _tour_interior("271-service-room-day-%d" % day, 2):
+				if not await _tour_interior("271-service-room-day-%d" % day, 2, "world/interior_service.png"):
 					return
 			if day == 1 and target == Vector2i(7, 10):
 				if not await _tour_collect():
@@ -170,20 +194,25 @@ func _map_art_tour() -> void:
 	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
 		if not await _tour_move(target):
 			return
-	if not await _tour_shot("230-interior-kitchen"):
-		return
-	var inside: bool = false
-	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):
-		var texture: Texture2D = layer["texture"]
-		inside = inside or texture.resource_path.ends_with("world/interior_kitchen.png")
-	if not inside:
-		_tour_fail("the occupied kitchen did not draw its interior background")
+	if not await _shop_interior("230-interior-kitchen", "world/interior_kitchen.png"):
 		return
 	print("Stairs: finished: pass; both maps on days 1,5,10, paired human travel, native evidence and floor lines.")
 	quit(0)
 
+## Checks the occupied shop's actual draw commands select its own picture.
+func _shop_interior(name: String, picture: String) -> bool:
+	if not await _tour_shot(name):
+		return false
+	var inside: bool = false
+	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):
+		var texture: Texture2D = layer["texture"]
+		inside = inside or texture.resource_path.ends_with(picture)
+	if not inside:
+		_tour_fail("the occupied shop did not draw " + picture)
+	return inside
+
 ## Checks that all room bands end at their collision floors and the outside darkens.
-func _tour_interior(name: String, count: int) -> bool:
+func _tour_interior(name: String, count: int, picture: String) -> bool:
 	if not await _tour_shot(name):
 		return false
 	var world: Node = scene.get_node("World")
@@ -194,7 +223,7 @@ func _tour_interior(name: String, count: int) -> bool:
 	var fragments: Array = []
 	for fragment: Dictionary in world.get_meta("foreground_layers", []):
 		var texture: Texture2D = fragment["texture"]
-		if texture.resource_path.ends_with("world/interior_cold_store.png"):
+		if texture.resource_path.ends_with(picture):
 			fragments.append(fragment)
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	for room: Dictionary in rooms:

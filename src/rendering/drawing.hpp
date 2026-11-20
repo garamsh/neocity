@@ -217,6 +217,7 @@ enum class Image : std::uint8_t {
   InteriorKitchen,
   InteriorNoodle,
   InteriorColdStore,
+  InteriorService,
   SpanWreck,
   KioskRuined,
   FireEscape,

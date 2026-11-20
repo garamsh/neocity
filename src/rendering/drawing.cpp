@@ -52,6 +52,8 @@ const char *path(Image image) {
     return "world/interior_noodle.png";
   case Image::InteriorColdStore:
     return "world/interior_cold_store.png";
+  case Image::InteriorService:
+    return "world/interior_service.png";
   case Image::SpanWreck:
     return "world/span_wreck.png";
   case Image::KioskRuined:
