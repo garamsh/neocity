@@ -23,7 +23,6 @@ Author each interior picture as one independently usable enclosed floor, with fu
 - Individual floor panels can be placed independently without cutting through furniture in a building-wide image. The cold-store and service-room panels are reusable across their respective floors; distinct floor variants are not delivered in this pass.
 - Preserve fine source pixels when a panoramic canvas is larger than its source: the terminal panorama joins a reflected skyline pair above its bottom anchor, leaving transparent space above, rather than enlarging every source pixel into a coarse block.
 - No camera, collision, movement, UI or character density changes here. Asset boards show artwork only; #281 and bundle QA must establish runtime placement, light and contact lines.
-- Before this proposal lands, the PM must pair it with the affected presentation responsibility document and add it to the architecture index. Those paths are outside this Worker's allowance.
 
 ## Signs the decision was wrong
 
