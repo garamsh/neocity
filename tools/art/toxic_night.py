@@ -13,6 +13,9 @@ KIT = ROOT / 'docs/art/production/toxic-night-kit'
 ART = ROOT / 'project/levels/monster_mouth_escape/art_hd'
 # Band proportions stay fixed while the authored cell grows to 144 pixels.
 ASSETS = {
+    'backgrounds/throat.png': 'Opaque Toxic Night magenta palate, cream fangs and red uvula',
+    'backgrounds/acid.png': 'Toxic Night luminous acid lake and drowned trains; transparent above ruins',
+    'backgrounds/aquarium.png': 'Toxic Night teal aquarium tanks, broken glass and amber work lights',
     'backgrounds/city.png': 'Toxic Night ruined skyline and derailed viaduct',
     'world/terminal.png': 'Toxic Night terminal skyline behind eastern floors',
     'walkway/deck.png': 'Six twenty-cell deck bands; flat contact at row zero',
@@ -32,6 +35,8 @@ ASSETS = {
     'world/kiosk_ruined.png': 'Collapsed kiosk and broken pink sign',
     'world/vendor_cart.png': 'Corroded noodle counter and boiler',
 }
+BACKGROUND_SIZES = {'throat': '1517x1034!', 'acid': '2880x761!',
+                    'aquarium': '2880x1620!'}
 
 
 def run(*args):
@@ -122,6 +127,29 @@ def prepare():
             save(destination, module, '-fuzz', '8%', '-transparent', '#303030',
                  '-trim', '+repage', '-filter', 'Point', '-resize', fit,
                  '-gravity', 'south', '-background', 'none', '-extent', canvas)
+    prepare_backgrounds()
+
+
+def prepare_backgrounds():
+    """Build native background canvases from the recorded redraws."""
+    with tempfile.TemporaryDirectory(prefix='w276-backgrounds-') as temporary:
+        target = pathlib.Path(temporary) / 'assembled.png'
+        for name, size in BACKGROUND_SIZES.items():
+            source = KIT / 'hd-sources' / (name + '.png')
+            if name == 'acid':
+                source = pathlib.Path(temporary) / 'anchored-acid.png'
+                original = KIT / 'hd-sources/acid.png'
+                # Keep the earlier lake's far waterline at one third of its canvas.
+                run('magick', '(', original, '-crop', '2103x300+0+0', '+repage',
+                    '-filter', 'Point', '-resize', '2880x250!', ')',
+                    '(', original, '-crop', '2103x448+0+300', '+repage',
+                    '-filter', 'Point', '-resize', '2880x511!', ')', '-append', source)
+            run('magick', source, '-filter', 'Point', '-resize', size,
+                '+dither', '-colors', '96',
+                '-channel', 'A', '-threshold', '50%', '+channel',
+                '-strip', '-depth', '8', 'PNG32:' + str(target))
+            run('aseprite', '--batch', target, '--save-as',
+                source_path(f'backgrounds/{name}.png'))
 
 
 def export():
@@ -146,7 +174,7 @@ def export():
     manifest['files'] = list(entries.values())
     manifest['map_kit'] = {'issue': 276, 'source': 'docs/art/production/toxic-night-kit/',
                            'grid': '144 authored pixels per cell; destination world areas owned by #281',
-                           'sampling': 'nearest', 'status': 'interiors and street redrawn; remaining map assets pending',
+                           'sampling': 'nearest', 'status': 'interiors, street and three backgrounds redrawn; supports, other props, containers and hazards pending',
                            'hd_paths': list(ASSETS)}
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
     print(f'Exported {len(ASSETS)} native Aseprite map assets selected by ASSETS.')
@@ -155,7 +183,11 @@ def export():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--prepare', action='store_true', help='replace native sources from the recorded HD images')
+    parser.add_argument('--prepare-backgrounds', action='store_true',
+                        help='replace only the three native background sources')
     args = parser.parse_args()
     if args.prepare:
         prepare()
+    elif args.prepare_backgrounds:
+        prepare_backgrounds()
     export()

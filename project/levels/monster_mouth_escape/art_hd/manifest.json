@@ -18,21 +18,17 @@
     {
       "path": "backgrounds/throat.png",
       "size": [
-        1011,
-        689
+        1517,
+        1034
       ],
-      "scale": 1,
-      "role": "Opaque back layer: wet magenta palate, cream fangs, luminous throat and hanging red uvula.",
-      "sha256": "6c6ba2441296474238439dd86997bc9a169186ca66a6c57264a3a0ba40863ea4",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-throat.png",
-        "source_sha256": "411921a13e092ffed6582c67f8d2663cdf3b93db40e32a9e09a76b84b85dbcd5",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      }
+      "role": "Opaque Toxic Night magenta palate, cream fangs and red uvula",
+      "sha256": "881c5a523d2221dc5f66c37470d16283e1cf9e3ee0aab07aee6d61a3ffbc133b",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/backgrounds-throat.aseprite",
+      "source_sha256": "6f583fd5b6748b149bd6aa20b86644dce793d030ecbc227e2e0725ba7db3f3d2",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "pixels_per_cell": 144
     },
     {
       "path": "backgrounds/city.png",
@@ -52,21 +48,17 @@
     {
       "path": "backgrounds/acid.png",
       "size": [
-        1920,
-        507
+        2880,
+        761
       ],
-      "scale": 1,
-      "role": "Lake layer: glowing green foam and reflections, drowned train cars, ruined pillars and far shore; transparent above skyline.",
-      "sha256": "9402ebe96cdedb66a85de94fd12ad316ba0c077c5b6627b5f78387820c84b6d2",
-      "provenance": {
-        "tool": "image_gen.imagegen (built-in)",
-        "source": "docs/art/production/day-one-hd-source-acid.png",
-        "source_sha256": "34f2c6adb7c6add2e33ab0e376f2fefa6b92fc0698593b9d8162e9d1f8073502",
-        "input": "search-mockup-v1.png at 241124d5ba2dcef937c904623f1e5e3cb03fbcf5, style reference only; no source pixels adopted",
-        "manual_retouch": false,
-        "processing_record": "docs/art/production/day-one-hd-provenance.txt",
-        "human_retouch": false
-      }
+      "role": "Toxic Night luminous acid lake and drowned trains; transparent above ruins",
+      "sha256": "bb4607cb8ca4cb19f0196d3bc13167a31ef86d466682958726079b6dd56a0aac",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/backgrounds-acid.aseprite",
+      "source_sha256": "76e9633a9e4b69f5dced7efe631d9cf1a0585094a0328c8f399e22bd8b3eeda3",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "pixels_per_cell": 144
     },
     {
       "path": "world/ladder.png",
@@ -2240,16 +2232,17 @@
     {
       "path": "backgrounds/aquarium.png",
       "size": [
-        1920,
-        1080
+        2880,
+        1620
       ],
-      "role": "Aquarium wall and flooded tanks",
-      "sha256": "04bd87333cc56f5c32779e200bde2bf593d5ad9956de92b99f5173232e812c57",
-      "source": "docs/art/production/map-hd-sources/aquarium.png",
-      "source_sha256": "29ecc3ca29bf42622596f2bb66a9f8925104b7dec0b7658de1f695422000bfe8",
-      "crop": null,
-      "resize": "1920x1080!",
-      "retouch": "ImageMagick crop and one Lanczos resample; no painted pixels"
+      "role": "Toxic Night teal aquarium tanks, broken glass and amber work lights",
+      "sha256": "c9fe33f53d0ca2ac23ec53e87eed5a0323ba4b9f26c974176f6a7c4b5277cc4a",
+      "issue": 276,
+      "source": "docs/art/production/toxic-night-kit/backgrounds-aquarium.aseprite",
+      "source_sha256": "5f13fffab578f987b436fc7fcf4bb1ab8ff90ada66903b2f4b5730c8805bcf1b",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "pixels_per_cell": 144
     },
     {
       "path": "world/terminal.png",
@@ -2424,8 +2417,11 @@
     "source": "docs/art/production/toxic-night-kit/",
     "grid": "144 authored pixels per cell; destination world areas owned by #281",
     "sampling": "nearest",
-    "status": "interiors and street redrawn; remaining map assets pending",
+    "status": "interiors, street and three backgrounds redrawn; supports, other props, containers and hazards pending",
     "hd_paths": [
+      "backgrounds/throat.png",
+      "backgrounds/acid.png",
+      "backgrounds/aquarium.png",
       "backgrounds/city.png",
       "world/terminal.png",
       "walkway/deck.png",

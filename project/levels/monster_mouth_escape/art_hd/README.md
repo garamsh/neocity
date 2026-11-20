@@ -4,8 +4,8 @@ The HD environment asset contracts, ownership and verification for Monster Mouth
 
 ## Status and source
 
-- #276's [current interior and street kit](../../../../docs/art/production/toxic-night-kit/README.md) redraws eighteen assets on a proposed 144-pixel cell grid. Its editable Aseprite sources, exact generation prompts, provenance and comparison boards live together. Run `python3 tools/art/toxic_night.py` to export them; `--prepare` replaces native edits from the new recorded sources.
-- This is a partial density migration. The manifest's `map_kit.hd_paths` identifies the eighteen replacements; remaining map assets and all characters, UI, title, icons and base assets retain their previous density. #281 owns world-area rendering and runtime verification. The old source-size renderer does not establish the new exports' destination size.
+- #276's [current interior and street kit](../../../../docs/art/production/toxic-night-kit/README.md) redraws twenty-one assets on the 144-pixel cell grid, including the throat, acid lake and aquarium backgrounds. Its editable Aseprite sources, exact generation prompts, provenance and comparison boards live together. Run `python3 tools/art/toxic_night.py` to export them; `--prepare` replaces native edits from the new recorded sources.
+- This is a partial density migration. The manifest's `map_kit.hd_paths` identifies the twenty-one replacements; remaining map assets and all characters, UI, title, icons and base assets retain their previous density. #281 owns world-area rendering and runtime verification. The old source-size renderer does not establish the new exports' destination size.
 
 - Connected to the city renderer by #212 under [ADR 0025](../../../../docs/architecture/adr/0025-draw-the-city-with-native-hd-art.md). The kitchen, interface, icons and non-city figures retain their existing `art/` resources. Creative acceptance remains the PM/user decision.
 - Newly drawn with built-in ImageGen. The search mockup at `241124d5ba2dcef937c904623f1e5e3cb03fbcf5` supplies style, palette, shapes and lighting only; none of its pixels is adopted into an asset.
@@ -16,14 +16,14 @@ The HD environment asset contracts, ownership and verification for Monster Mouth
 
 | Resource | Contract |
 |---|---|
-| `backgrounds/` | Throat 1011×689; city 2880×1103; acid 1920×507. Transparent city sky and lake skyline keep the layers separate. |
+| `backgrounds/` | Throat 1517×1034; city 2880×1103; acid 2880×761. Transparent city sky and lake skyline keep the layers separate. |
 | `walkway/deck.png` | Six full-width 2880×126 bands in the existing role order: kitchen roof, tower roof, loft, upper walkway, lower walkway, pier. |
 | `world/building_wall.png` | Four 2880px-wide bands, heights 144, 144, 144 and 162. |
 | `world/shop.png` | Two full-width 2880×288 bands, kitchen front at left and tower front at right. |
 | `walkway/structure.png` | 1920×549 support layer; target origin (0, 292). |
 | Other `world/` and `ground/` PNGs | Original filenames and roles; the manifest records each canvas and its owning source. |
 
-- Use nearest sampling. The redrawn street kit uses 144 authored pixels per cell and a 2880px band period; unchanged environment pieces retain their earlier 96px-cell source layout. Their outer columns match through reflected source strips; the cells inside a band are contiguous portions, not independent repeating tiles.
+- Use nearest sampling. The redrawn street kit uses 144 authored pixels per cell and a 2880px band period; unchanged environment pieces retain their earlier 96px-cell source layout. Band outer columns match through reflected source strips; the cells inside a band are contiguous portions, not independent repeating tiles. The three redrawn backgrounds retain their earlier aspect ratios within one output pixel; the acid far waterline remains at about one third of its canvas. `--prepare-backgrounds` replaces only those three native sources.
 - Prop canvases retain padding and centered silhouettes. The redrawn ferry's complete silhouette fits inside its 576×225 canvas. The ladder repeats vertically; the other props do not repeat.
 - PNG import metadata uses lossless compression with mipmaps disabled. No gameplay, layout, font or runtime binding is changed here.
 - Images contain no text except the ACID marking on the support pillar. The kiosk display uses abstract bars.
@@ -66,7 +66,7 @@ The resources for [issue #222](https://github.com/garamsh/neocity/issues/222) ar
 
 | Resource | Contract |
 |---|---|
-| `backgrounds/aquarium.png` | 1920×1080 teal flooded-tank background, drawn in screen space behind the aquarium floors. |
+| `backgrounds/aquarium.png` | 2880×1620 teal flooded-tank background, drawn in screen space behind the aquarium floors. |
 | `world/terminal.png` | 3456×1728 transparent terminal scenery behind street columns 40–63, beginning at row 1. |
 | `world/interior_{kitchen,noodle}.png` | 864×288 enclosed floor panels for the two six-cell loft interiors, bottom edge at their collision floor. |
 | `world/interior_cold_store.png` | 432×432 enclosed cold-store floor panel, reusable per floor. |
