@@ -22,6 +22,12 @@ constexpr float PLAY_HEIGHT = 478.0F;
 /// picture pixel stays a whole square of screen pixels.
 constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
+/// The largest zoom inside a building, which a small shop's room fills the
+/// screen with.
+constexpr float MOST = 6.0F;
+/// How far past a building's rooms, up and down, the camera may look, which
+/// the screen shows as darkness.
+constexpr float OVERLOOK = 4000.0F;
 /// How far ahead of a lone actor the camera looks, in scene pixels.
 constexpr float LOOK_AHEAD = 80.0F;
 /// How far above its feet the camera aims at an actor, so one on the upper
@@ -71,6 +77,12 @@ godot::Rect2 bounds_of(const survival::MapContent &map) {
   return {corner.x, 0.0F, far_corner.x - corner.x, SCREEN_HEIGHT};
 }
 
+/// Where the camera may look inside a building: its sides, and any height.
+godot::Rect2 bounds_inside(const godot::Rect2 &room) {
+  return {room.position.x, room.position.y - OVERLOOK, room.size.x,
+          room.size.y + 2.0F * OVERLOOK};
+}
+
 /// `centre` and `zoom` kept inside `bounds`, with where they rest.
 View placed(Vector2 centre, float zoom, godot::Rect2 bounds) {
   return {.centre = clamp_centre(centre, zoom, bounds),
@@ -114,6 +126,16 @@ View aim(const survival::Content &content, const survival::GameView &view) {
         {.feet = map_point(body.position),
          .facing = body.heading == survival::Direction::Left ? -1.0F : 1.0F});
   }
+  if (const auto inside = inside_of(content, view)) {
+    const auto fit = std::min((SCREEN_WIDTH / inside->frame.size.x),
+                              (PLAY_HEIGHT / inside->frame.size.y));
+    auto camera = placed(inside->frame.get_center(),
+                         std::clamp(std::floor(fit), FAR, MOST),
+                         bounds_inside(inside->extent));
+    camera.inside = true;
+    camera.room = inside->extent;
+    return camera;
+  }
   Vector2 target;
   float zoom = CLOSE;
   if (subjects.empty()) {
@@ -142,9 +164,14 @@ View follow(const Art &art, const survival::MapContent &content,
   // The zoom steps once the eased value passes halfway, so a step wanted for
   // only a moment is never drawn.
   const float easing = art.glide("camera_zoom", heading.zoom);
-  return placed(Vector2(art.glide("camera_x", heading.centre.x),
-                        art.glide("camera_y", heading.centre.y)),
-                easing * 2.0F > CLOSE + FAR ? CLOSE : FAR, bounds_of(content));
+  auto camera =
+      placed(Vector2(art.glide("camera_x", heading.centre.x),
+                     art.glide("camera_y", heading.centre.y)),
+             std::clamp(std::floor(easing + 0.5F), FAR, MOST),
+             heading.inside ? bounds_inside(heading.room) : bounds_of(content));
+  camera.inside = heading.inside;
+  camera.room = heading.room;
+  return camera;
 }
 
 Vector2 drift(const View &camera, float depth) {

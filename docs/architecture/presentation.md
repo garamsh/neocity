@@ -46,7 +46,9 @@ How the GDExtension presents the title screen and the survival game through inpu
 
 [ADR 0025](adr/0025-draw-the-city-with-native-hd-art.md) replaces the city source cuts with the native HD environment and character set while retaining the interface cuts, map and canvas contracts.
 
-[ADR 0039](adr/0039-connect-multi-floor-interiors-to-a-rooftop-route.md) extends interior presentation to multiple floor bands and the aquarium. The map tour in `project/e2e/stairs_check.gd` walks both humans through the cold-store floors, roof connection and service room on days 1, 5 and 10, captures the occupied cut-aways, and checks their drawn room count, floor alignment and outside veil.
+[ADR 0039](adr/0039-connect-multi-floor-interiors-to-a-rooftop-route.md) extends interior presentation to multiple floor bands and the aquarium. The map tour in `project/e2e/stairs_check.gd` walks both humans through the cold-store floors, roof connection and service room on days 1, 5 and 10, captures the occupied buildings, and checks their drawn room count, floor alignment, that only the inside is on screen and that only the standing floor is bright.
+
+[ADR 0042](adr/0042-explore-building-interiors-from-inside.md) replaces the cut-away display of ADR 0039 and the outside veil of ADR 0031. While every actor in the city is inside one building the screen draws only that building: `rendering::inside_of` makes the camera frame the lit floors at the largest whole zoom, `paint_mouth` and `paint_glow` leave the backdrop and the glow out, `paint_city` hides everything beyond the building's extent and covers every floor nobody stands on, and the labels leave out pointers and names off the room. With one actor outside the street is drawn as usual and only the rooms actors stand on are lit. Map art is sized by the world area its picture covers, so a finer replacement keeps its size.
 
 [ADR 0040](adr/0040-author-map-pieces-in-an-aseprite-kit.md) records native Aseprite source ownership and explicit per-building interior artwork for the first Toxic Night map kit.
 

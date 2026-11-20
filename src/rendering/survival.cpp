@@ -127,11 +127,16 @@ constexpr int HALO_RINGS = 6;
 constexpr float OBSTACLE_GLOW = 30.0F;
 constexpr float OBSTACLE_LIGHT = 0.06F;
 
-/// How dark the outside of a building goes, from 0 to 1, while an actor is
-/// inside it, and how far past its interior the veil reaches, which covers
-/// whatever the camera shows of the map.
-constexpr float INTERIOR_VEIL = 0.65F;
-constexpr float VEIL_REACH = 4000.0F;
+/// How dark a floor goes, from 0 to 1, while nobody stands on it: dim enough
+/// to read as not yet reached when the whole screen is its building, solid
+/// where the building is seen from the street.
+constexpr float COVER_INSIDE = 0.88F;
+constexpr float COVER_OUTSIDE = 1.0F;
+/// How far past a building's extent the mask reaches, which covers whatever
+/// the camera shows of the map.
+constexpr float MASK_REACH = 4000.0F;
+/// The rows of a floorless interior's picture: the zone's row and one above.
+constexpr std::int32_t PICTURE_ROWS = 2;
 
 /// The throat breathes over this many seconds, lifting this many pixels and
 /// brightening by this share as it draws in.
@@ -802,52 +807,172 @@ void paint_room(godot::Node2D &canvas, const Art &art, Image image,
   }
 }
 
-/// Replaces occupied building fronts with rooms aligned to their real floors.
-void paint_interiors(godot::Node2D &canvas, const Art &art,
-                     const survival::Content &content,
-                     const survival::GameView &view) {
+/// The sub-cell rows of the feet of every actor in the city inside `building`.
+std::vector<float> feet_in(const survival::GameView &view,
+                           survival::ObjectId building) {
+  std::vector<float> feet;
+  const auto add = [&](const survival::ActorSnapshot &state,
+                       const survival::ExplorerSnapshot &explorer) {
+    if (state.location == survival::Location::City && !explorer.absent &&
+        explorer.interior == building) {
+      feet.push_back(map_point(explorer.body.position).y);
+    }
+  };
+  add(view.progression.chef, view.exploration.chef);
+  add(view.progression.appraiser, view.exploration.appraiser);
+  return feet;
+}
+
+/// The room of `floor`, from the ceiling the floor above leaves to the floor's
+/// own row.
+godot::Rect2 room_of(const survival::Interior &interior,
+                     const survival::InteriorFloor &floor) {
+  auto ceiling = interior.area.y;
+  for (const auto &above : interior.floors) {
+    if (above.area.y < floor.area.y) {
+      ceiling = std::max(ceiling, above.area.y + 1);
+    }
+  }
+  return area_rect({.x = interior.area.x,
+                    .y = ceiling,
+                    .width = interior.area.width,
+                    .height = floor.area.y + 1 - ceiling});
+}
+
+/// The floors of `interior` that count, in order from the top.
+std::vector<const survival::InteriorFloor *>
+floors_of(const survival::Interior &interior) {
+  std::vector<const survival::InteriorFloor *> floors;
+  for (const auto &floor : interior.floors) {
+    if (survival::distance({.x = floor.area.x, .y = floor.area.y},
+                           interior.area) == 0) {
+      floors.push_back(&floor);
+    }
+  }
+  std::ranges::sort(floors, {},
+                    [](const auto *floor) { return floor->area.y; });
+  return floors;
+}
+
+/// `interior` as the actors whose feet are on the rows `feet` see it: an
+/// actor stands on the highest floor whose line is at or below its feet.
+Inside inside_building(const survival::Interior &interior,
+                       const std::vector<float> &feet) {
+  Inside inside{.extent = area_rect(interior.area), .rooms = {}, .frame = {}};
+  const auto floors = floors_of(interior);
+  if (floors.empty()) {
+    // A shop is one room: its zone's row and the one above it.
+    const auto zone = inside.extent;
+    inside.extent =
+        rect(zone.position.x, zone.get_end().y - CELL * PICTURE_ROWS,
+             zone.size.x, CELL * PICTURE_ROWS);
+    inside.rooms.push_back({.area = inside.extent, .lit = true});
+    inside.frame = inside.extent;
+    return inside;
+  }
+  std::vector<bool> stood(floors.size(), false);
+  for (const float row : feet) {
+    std::size_t at = floors.size() - 1;
+    for (std::size_t index = 0; index < floors.size(); ++index) {
+      if (floor_y(floors.at(index)->area.y) >= row - 1.0F) {
+        at = index;
+        break;
+      }
+    }
+    stood.at(at) = true;
+  }
+  bool framed = false;
+  for (std::size_t index = 0; index < floors.size(); ++index) {
+    const auto area = room_of(interior, *floors.at(index));
+    inside.rooms.push_back({.area = area, .lit = stood.at(index)});
+    inside.extent = inside.extent.merge(area);
+    if (stood.at(index)) {
+      inside.frame = framed ? inside.frame.merge(area) : area;
+      framed = true;
+    }
+  }
+  return inside;
+}
+
+/// The interior of `building` on `map`, if it has one.
+const survival::Interior *interior_of(const survival::Content &content,
+                                      survival::MapId map,
+                                      survival::ObjectId building) {
+  const auto &interiors = content.companion.exploration.interiors;
+  const auto found = std::ranges::find_if(interiors, [&](const auto &one) {
+    return one.map == map && one.building == building;
+  });
+  return found == interiors.end() ? nullptr : &*found;
+}
+
+/// The picture of each interior of the map that has an actor in it.
+const std::map<std::string_view, Image> &interior_pictures() {
   static const std::map<std::string_view, Image> PICTURES{
       {"Kitchen Shop", Image::InteriorKitchen},
       {"Noodle Shop", Image::InteriorNoodle},
       {"Cold Store", Image::InteriorColdStore},
       {"Aquarium Service Room", Image::InteriorService}};
-  const auto &interiors = content.companion.exploration.interiors;
-  godot::Array rooms;
-  for (const auto &interior : interiors) {
-    if (interior.map != view.exploration.map ||
-        (view.exploration.chef.interior != interior.building &&
-         view.exploration.appraiser.interior != interior.building)) {
+  return PICTURES;
+}
+
+/// Draws the picture of every building an actor is in, floor by floor aligned
+/// to the real floors.
+void paint_interiors(godot::Node2D &canvas, const Art &art,
+                     const survival::Content &content,
+                     const survival::GameView &view) {
+  for (const auto &interior : content.companion.exploration.interiors) {
+    const auto feet = feet_in(view, interior.building);
+    if (interior.map != view.exploration.map || feet.empty()) {
       continue;
     }
-    const Image image = PICTURES.at(survival::object_name(interior.building));
-    const auto box = area_rect(interior.area);
+    const Image image =
+        interior_pictures().at(survival::object_name(interior.building));
     if (interior.floors.empty()) {
       const Vector2 size = art.size(image);
+      const auto box = area_rect(interior.area);
       art.image(canvas, image,
                 Vector2(box.position.x, box.position.y + box.size.y - size.y));
       continue;
     }
-    for (const auto &floor : interior.floors) {
-      if (survival::distance({.x = floor.area.x, .y = floor.area.y},
-                             interior.area) != 0) {
-        continue;
+    for (const auto &room : inside_building(interior, feet).rooms) {
+      paint_room(canvas, art, image, room.area);
+    }
+  }
+}
+
+/// Darkens, over everything drawn in them, the floors of every building an
+/// actor is in that nobody stands on: partly while the screen is only that
+/// building, wholly where it is seen from the street. The covers ease in and
+/// out as actors move between floors.
+void paint_interior_covers(godot::Node2D &canvas, const Art &art,
+                           const survival::Content &content,
+                           const survival::GameView &view, bool only_inside) {
+  godot::Array rooms;
+  for (const auto &interior : content.companion.exploration.interiors) {
+    const auto feet = feet_in(view, interior.building);
+    if (interior.map != view.exploration.map || feet.empty() ||
+        interior.floors.empty()) {
+      continue;
+    }
+    const auto floors = floors_of(interior);
+    const auto inside = inside_building(interior, feet);
+    for (std::size_t index = 0; index < inside.rooms.size(); ++index) {
+      const auto &room = inside.rooms.at(index);
+      auto tone = palette().background;
+      tone.a = art.glide(
+          "interior_cover_" + from(survival::object_name(interior.building)) +
+              "_" + godot::String::num_int64(static_cast<std::int64_t>(index)),
+          room.lit ? 0.0F : (only_inside ? COVER_INSIDE : COVER_OUTSIDE));
+      if (tone.a > 0.001F) {
+        canvas.draw_rect(room.area, tone);
       }
-      auto ceiling = interior.area.y;
-      for (const auto &above : interior.floors) {
-        if (above.area.y < floor.area.y) {
-          ceiling = std::max(ceiling, above.area.y + 1);
-        }
-      }
-      const auto room = area_rect({.x = interior.area.x,
-                                   .y = ceiling,
-                                   .width = interior.area.width,
-                                   .height = floor.area.y + 1 - ceiling});
-      paint_room(canvas, art, image, room);
       if (canvas.has_meta("measure_art")) {
         godot::Dictionary drawn;
-        drawn.set("name", from(floor.name));
-        drawn.set("area", room);
-        drawn.set("floor_y", cell_y(floor.area.y + 1));
+        drawn.set("name", from(floors.at(index)->name));
+        drawn.set("area", room.area);
+        drawn.set("floor_y", floor_y(floors.at(index)->area.y));
+        drawn.set("lit", room.lit);
+        drawn.set("cover", tone.a);
         rooms.push_back(drawn);
       }
     }
@@ -857,55 +982,22 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
   }
 }
 
-/// Darkens everything outside an occupied building's interior, easing in as
-/// an actor enters and out as the last one leaves; the interior stays lit.
-/// `present` holds the building each actor drawn in the city is inside, if
-/// any: the outside is only darkened while nobody is out in it.
-void paint_interior_veils(
-    godot::Node2D &canvas, const Art &art, const survival::Content &content,
-    const std::vector<std::optional<survival::ObjectId>> &present,
-    survival::MapId map) {
-  const auto &interiors = content.companion.exploration.interiors;
-  float darkest = 0.0F;
-  for (std::size_t index = 0; index < interiors.size(); ++index) {
-    const auto &interior = interiors.at(index);
-    if (interior.map != map) {
-      continue;
-    }
-    const bool occupied =
-        std::ranges::any_of(
-            present,
-            [&](const auto &inside) { return inside == interior.building; }) &&
-        std::ranges::none_of(
-            present, [](const auto &inside) { return !inside.has_value(); });
-    const float level =
-        art.glide("interior_veil_" +
-                      godot::String::num_int64(static_cast<int64_t>(index)),
-                  occupied ? INTERIOR_VEIL : 0.0F);
-    darkest = std::max(darkest, level);
-    if (level < 0.001F) {
-      continue;
-    }
-    auto tone = palette().background;
-    tone.a = level;
-    const auto box = area_rect(interior.area);
-    const auto reach = VEIL_REACH;
-    canvas.draw_rect(rect(box.position.x - reach, box.position.y - reach,
-                          box.size.x + 2.0F * reach, reach),
-                     tone);
-    canvas.draw_rect(rect(box.position.x - reach, box.position.y + box.size.y,
-                          box.size.x + 2.0F * reach, reach),
-                     tone);
-    canvas.draw_rect(
-        rect(box.position.x - reach, box.position.y, reach, box.size.y), tone);
-    canvas.draw_rect(
-        rect(box.position.x + box.size.x, box.position.y, reach, box.size.y),
-        tone);
-  }
-  // The measuring checks read how dark the outside is this frame.
-  if (canvas.has_meta("measure_art")) {
-    canvas.set_meta("interior_veil", darkest);
-  }
+/// Hides everything outside `extent` while the screen is only the inside of
+/// one building.
+void paint_interior_mask(godot::Node2D &canvas, const godot::Rect2 &extent) {
+  const auto tone = palette().background;
+  const auto reach = MASK_REACH;
+  const auto box = extent;
+  canvas.draw_rect(rect(box.position.x - reach, box.position.y - reach,
+                        box.size.x + 2.0F * reach, reach),
+                   tone);
+  canvas.draw_rect(rect(box.position.x - reach, box.get_end().y,
+                        box.size.x + 2.0F * reach, reach),
+                   tone);
+  canvas.draw_rect(
+      rect(box.position.x - reach, box.position.y, reach, box.size.y), tone);
+  canvas.draw_rect(rect(box.get_end().x, box.position.y, reach, box.size.y),
+                   tone);
 }
 
 void paint_passage(godot::Node2D &canvas, const Art &art,
@@ -1331,7 +1423,9 @@ Labels label_city(const Art &art, const survival::GameView &view,
     return to_screen(camera, area_rect(area));
   };
   Labels labels{.plates = {},
-                .pointers = pointers_to(view, shot.goals, camera),
+                .pointers = camera.inside
+                                ? std::vector<Pointer>()
+                                : pointers_to(view, shot.goals, camera),
                 .labelled = {},
                 .counts = {}};
   auto &plates = labels.plates;
@@ -1395,7 +1489,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
     plates.add(art, pointer.at + Vector2(side, 5.0F), pointer.name, NAME_SIZE,
                tones.cyan);
   }
-  for (const auto goal : shot.goals) {
+  for (const auto goal :
+       camera.inside ? std::vector<survival::ObjectId>() : shot.goals) {
     const auto object =
         std::ranges::find(view.world.objects, goal, &ObjectSnapshot::id);
     if (object == view.world.objects.end()) {
@@ -1421,7 +1516,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
   for (const auto &object : view.world.objects) {
     const bool passage = object.kind == ObjectKind::Ladder ||
                          object.kind == ObjectKind::Entrance;
-    if (visible(object) && passage && object.state == ObjectState::Destroyed) {
+    if (!camera.inside && visible(object) && passage &&
+        object.state == ObjectState::Destroyed) {
       const auto box = on_screen(object.area);
       plates.add(art, Vector2(box.position.x + 36.0F, box.position.y + 21.0F),
                  "BROKEN", 13, red);
@@ -1597,8 +1693,43 @@ Vector2 map_point(survival::Position position) {
           MAP_Y + static_cast<float>(position.y) * PIXELS};
 }
 
+std::optional<Inside> inside_of(const survival::Content &content,
+                                const survival::GameView &view) {
+  const auto party = party_of(view);
+  std::vector<survival::ObjectId> buildings;
+  const auto note = [&](bool out, const survival::ExplorerSnapshot &explorer) {
+    if (out && explorer.interior) {
+      buildings.push_back(*explorer.interior);
+    }
+  };
+  note(party.chef_out, view.exploration.chef);
+  note(party.appraiser_out, view.exploration.appraiser);
+  const auto out = (party.chef_out ? 1U : 0U) + (party.appraiser_out ? 1U : 0U);
+  if (out == 0 || buildings.size() != out ||
+      std::ranges::any_of(buildings, [&](const auto building) {
+        return building != buildings.front();
+      })) {
+    return std::nullopt;
+  }
+  const auto *interior =
+      interior_of(content, view.exploration.map, buildings.front());
+  if (interior == nullptr) {
+    return std::nullopt;
+  }
+  return inside_building(*interior, feet_in(view, buildings.front()));
+}
+
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
                  const View &camera) {
+  if (camera.inside) {
+    // Only the building's inside is on the screen: no throat, city or acid.
+    art.look(canvas, Vector2(), 1.0F);
+    canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                     palette().background);
+    canvas.set_meta("backdrop_layers", godot::Array());
+    art.look(canvas, origin(camera), camera.zoom);
+    return;
+  }
   const Vector2 throat(drift(camera, THROAT_DEPTH).x, 0.0F);
   const Vector2 city = drift(camera, CITY_DEPTH);
   const Vector2 band(drift(camera, BAND_DEPTH).x, 0.0F);
@@ -1629,6 +1760,9 @@ void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
 
 void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
                 const View &camera) {
+  if (camera.inside) {
+    return;
+  }
   const godot::Color steam = color(150, 255, 140, 0.16F);
   art.look(canvas, Vector2(), 1.0F);
   paint_steam(canvas, art, std::floor(band_surface(acid_ratio)), steam);
@@ -1644,6 +1778,9 @@ void paint_glow(godot::Node2D &canvas, const Art &art, float acid_ratio,
 void paint_city_glow(godot::Node2D &canvas, const Art &art,
                      const survival::MapContent &content, const View &camera) {
   art.look(canvas, origin(camera), camera.zoom);
+  if (camera.inside) {
+    return;
+  }
   for (const auto &area : content.obstacles) {
     const auto box = area_rect(area);
     halo(canvas, camera, box.get_center(), OBSTACLE_GLOW,
@@ -1692,23 +1829,34 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                    static_cast<float>(everything.run.full_acid.value));
   canvas.set_texture_filter(
       godot::CanvasItem::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
-  paint_structure(canvas, art, content);
+  const auto inside = inside_of(everything, view);
+  if (inside) {
+    canvas.draw_rect(
+        rect(-MASK_REACH, -MASK_REACH, 2.0F * MASK_REACH, 2.0F * MASK_REACH),
+        palette().background);
+  } else {
+    paint_structure(canvas, art, content);
+  }
   const auto paint_buildings = [&](bool front) {
     paint_kind(ObjectKind::Building, [&](const ObjectSnapshot &object) {
-      if (view.exploration.chef.interior != object.id &&
+      if (!inside && view.exploration.chef.interior != object.id &&
           view.exploration.appraiser.interior != object.id) {
         paint_building(canvas, art, content, object, front);
       }
     });
   };
   paint_buildings(false);
-  for (const auto &marker : markers) {
-    paint_shop_front(canvas, art, objects, marker);
+  if (!inside) {
+    for (const auto &marker : markers) {
+      paint_shop_front(canvas, art, objects, marker);
+    }
   }
   paint_interiors(canvas, art, everything, view);
   paint_ground(canvas, art, content, objects, ground, surface);
   paint_buildings(true);
-  paint_obstacles(canvas, art, view.exploration.map, content);
+  if (!inside) {
+    paint_obstacles(canvas, art, view.exploration.map, content);
+  }
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {
     paint_passage(canvas, art, object, false);
   });
@@ -1731,14 +1879,15 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     paint_actor(canvas, art, view, Actor::Appraiser,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
   }
-  std::vector<std::optional<survival::ObjectId>> present;
-  if (party.chef_out) {
-    present.push_back(view.exploration.chef.interior);
+  paint_interior_covers(canvas, art, everything, view, inside.has_value());
+  if (inside) {
+    paint_interior_mask(canvas, inside->extent);
   }
-  if (party.appraiser_out) {
-    present.push_back(view.exploration.appraiser.interior);
+  // The measuring checks read whether the screen is only an inside.
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("inside_view", inside.has_value());
+    canvas.set_meta("inside_extent", inside ? inside->extent : godot::Rect2());
   }
-  paint_interior_veils(canvas, art, everything, present, view.exploration.map);
 }
 
 std::optional<Image> item_icon(std::string_view name) {
@@ -1776,7 +1925,12 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered) {
-  const auto markers = markers_of(view, shot.out_of_reach);
+  auto markers = markers_of(view, shot.out_of_reach);
+  if (shot.camera.inside) {
+    std::erase_if(markers, [&](const Marker &marker) {
+      return !shot.camera.room.intersects(area_rect(marker.object.area));
+    });
+  }
   const auto labels = label_city(art, view, control, markers, shot, covered);
   godot::Array pointed;
   for (const auto &pointer : labels.pointers) {
