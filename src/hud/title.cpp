@@ -43,19 +43,19 @@ constexpr float MARGIN = 8.0F;
 /// The metal, paint and goo of the UI kit.
 struct Kit {
   godot::Color outline = color(12, 11, 18, 1.0F);
-  godot::Color fill = color(21, 20, 32, 1.0F);
-  godot::Color idle = color(30, 29, 48, 1.0F);
-  godot::Color rim_light = color(124, 118, 140, 1.0F);
-  godot::Color rim = color(78, 73, 92, 1.0F);
+  godot::Color fill = color(10, 11, 23, 1.0F);
+  godot::Color idle = color(19, 18, 34, 1.0F);
+  godot::Color rim_light = color(114, 121, 139, 1.0F);
+  godot::Color rim = color(56, 51, 74, 1.0F);
   godot::Color rim_dark = color(40, 37, 52, 1.0F);
   godot::Color rivet = color(168, 162, 178, 1.0F);
   godot::Color rust = color(184, 108, 38, 1.0F);
   godot::Color goo = color(214, 58, 154, 1.0F);
   godot::Color goo_light = color(255, 140, 208, 1.0F);
-  godot::Color gold_light = color(255, 236, 150, 1.0F);
-  godot::Color gold_top = color(255, 206, 64, 1.0F);
-  godot::Color gold_bottom = color(236, 150, 16, 1.0F);
-  godot::Color gold_edge = color(122, 70, 8, 1.0F);
+  godot::Color accent_light = color(224, 255, 161, 1.0F);
+  godot::Color accent_top = color(176, 244, 49, 1.0F);
+  godot::Color accent_bottom = color(109, 174, 26, 1.0F);
+  godot::Color accent_edge = color(42, 65, 22, 1.0F);
   godot::Color lamp_glass = color(250, 168, 38, 1.0F);
   godot::Color lamp_brass = color(150, 96, 30, 1.0F);
 };
@@ -104,17 +104,12 @@ void goo(godot::Node2D &canvas, const Kit &kit, godot::Rect2 area) {
 void lantern(godot::Node2D &canvas, const Kit &kit, godot::Rect2 area) {
   const float x = area.position.x - 2.0F * PX;
   const float y = area.position.y - 3.0F * PX;
-  rendering::rounded(
-      canvas, rect(x - 8.0F, y - 4.0F, 7.0F * PX + 16.0F, 12.0F * PX + 8.0F),
-      14.0F, color(255, 160, 40, 0.14F));
-  rendering::rounded(canvas, rect(x - 2.0F, y, 7.0F * PX + 4.0F, 10.0F * PX),
-                     8.0F, color(255, 170, 50, 0.22F));
   fill(canvas, x + PX, y, 5.0F * PX, PX, kit.lamp_brass);
   fill(canvas, x, y + PX, 7.0F * PX, PX, kit.lamp_brass);
   fill(canvas, x, y + 2.0F * PX, 7.0F * PX, 6.0F * PX, kit.outline);
   fill(canvas, x + PX, y + 2.0F * PX, 5.0F * PX, 6.0F * PX, kit.lamp_glass);
   fill(canvas, x + 2.0F * PX, y + 3.0F * PX, 3.0F * PX, 4.0F * PX,
-       kit.gold_light);
+       kit.accent_light);
   fill(canvas, x, y + 8.0F * PX, 7.0F * PX, PX, kit.lamp_brass);
 }
 
@@ -154,21 +149,21 @@ void bevel(godot::Node2D &canvas, const Kit &kit, godot::Rect2 area,
        area.size.x - 2.0F * inner, area.size.y - 2.0F * inner, kit.outline);
 }
 
-/// The gold of a marked button, lit along its top.
-void gold(godot::Node2D &canvas, const Kit &kit, godot::Rect2 area) {
+/// The acid-green mark of a selected button, lit along its top.
+void highlight(godot::Node2D &canvas, const Kit &kit, godot::Rect2 area) {
   fill(canvas, area.position.x, area.position.y, area.size.x, area.size.y,
-       kit.gold_edge);
+       kit.accent_edge);
   const godot::Rect2 inner(area.position + godot::Vector2(PX, PX),
                            area.size - godot::Vector2(2.0F * PX, 2.0F * PX));
   const float half = std::floor(inner.size.y / PX / 2.0F) * PX;
   fill(canvas, inner.position.x, inner.position.y, inner.size.x, half,
-       kit.gold_top);
+       kit.accent_top);
   fill(canvas, inner.position.x, inner.position.y + half, inner.size.x,
-       inner.size.y - half, kit.gold_bottom);
+       inner.size.y - half, kit.accent_bottom);
   fill(canvas, inner.position.x, inner.position.y, inner.size.x, PX,
-       kit.gold_light);
+       kit.accent_light);
   fill(canvas, inner.position.x + 3.0F * PX, area.get_end().y - 2.0F * PX,
-       inner.size.x - 6.0F * PX, PX / 2.0F, kit.gold_edge);
+       inner.size.x - 6.0F * PX, PX / 2.0F, kit.accent_edge);
 }
 
 } // namespace
@@ -183,10 +178,28 @@ void paint_title_art(godot::Node2D &canvas, float veil) {
   canvas.set_meta("title_art", art);
   const godot::Rect2 screen = rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
   canvas.draw_texture_rect(art, screen, false);
+  paint_hd_art(canvas, "characters/chef_idle.png",
+               rect(90.0F, 430.0F, 256.0F / rendering::ART_SCALE,
+                    224.0F / rendering::ART_SCALE));
+  paint_hd_art(canvas, "characters/appraiser_idle.png",
+               rect(260.0F, 430.0F, 256.0F / rendering::ART_SCALE,
+                    224.0F / rendering::ART_SCALE));
   if (veil > 0.0F) {
     canvas.draw_rect(screen, color(9, 10, 20, veil));
   }
   note(canvas, "art", screen);
+}
+
+void paint_hd_art(godot::Node2D &canvas, const godot::String &path,
+                  godot::Rect2 area) {
+  const godot::Ref<godot::Texture2D> texture =
+      godot::ResourceLoader::get_singleton()->load(
+          "res://levels/monster_mouth_escape/art_hd/" + path);
+  CRASH_COND_MSG(texture.is_null(), "HUD art must load: " + path);
+  godot::Dictionary textures = canvas.get_meta("hud_art", godot::Dictionary());
+  textures.set(path, texture);
+  canvas.set_meta("hud_art", textures);
+  canvas.draw_texture_rect(texture, area, false);
 }
 
 void kit_panel(godot::Node2D &canvas, godot::Rect2 area) {
@@ -209,7 +222,7 @@ void kit_panel(godot::Node2D &canvas, godot::Rect2 area) {
 void kit_button(godot::Node2D &canvas, godot::Rect2 area, bool selected) {
   const Kit kit;
   if (selected) {
-    gold(canvas, kit, area);
+    highlight(canvas, kit, area);
   } else {
     bevel(canvas, kit, area, 1.0F);
     fill(canvas, area.position.x + 2.0F * PX, area.position.y + 2.0F * PX,
