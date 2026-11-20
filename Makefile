@@ -156,6 +156,14 @@ test-survival: build
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalScreenLockCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Screen lock: 37 live checks passed (building entry, lone actor, jump, late entrant, joint travel and fade there and back).' "$$log"
 
+# The only StairsCheck mode that runs headless: the floor-contact check and the map
+# tours read drawn pixels, so they need a display and are run by hand (see
+# docs/art/production/toxic-night-kit/README.md). The finished line carries counts of
+# the art, so the check reads its verdict, not the counts.
+	@log=$$(mktemp); data=$$(mktemp -d); trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop StairsCheck --fixed-fps 60 -- --map-density > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Eq '^Stairs: finished: pass; [0-9]+ pictures replaced at twice the pixels' "$$log"
+
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \
 	"$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
