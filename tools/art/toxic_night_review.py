@@ -9,6 +9,7 @@ import tempfile
 from toxic_night import ART, ASSETS, KIT, ROOT, run
 
 REFERENCE = '35a53ee444965e50eba276c823cbf8273ba47d53'
+BACKGROUND_BASELINE = 'b47f41b7a53f784d0f05371d0bf9b020bf20ccf8'
 CAPTURES = {
     'street': ('230-street-day-1.png', 'street'),
     'cold-store': ('271-cold-store-day-1.png', 'building'),
@@ -40,6 +41,31 @@ def compose_hd():
 
         montage([(path, ART / path) for path in ASSETS], KIT / 'hd-kit-board.png',
                 '640x288>+12+28', '3x')
+        backgrounds = []
+        details = []
+        for name, center in [('throat', (0.7, 0.25)), ('acid', (0.26, 0.65)),
+                             ('aquarium', (0.52, 0.6))]:
+            old = work / (name + '-old.png')
+            old.write_bytes(subprocess.check_output([
+                'git', 'show', BACKGROUND_BASELINE +
+                ':project/levels/monster_mouth_escape/art_hd/backgrounds/' + name + '.png'
+            ], cwd=ROOT))
+            new = ART / 'backgrounds' / (name + '.png')
+            backgrounds += [(name + ' / earlier export', old),
+                            (name + ' / 144px-cell redraw', new)]
+            for label, path, side in [('old 96px to 144px', old, 96),
+                                       ('new native 144px', new, 144)]:
+                width, height = map(int, subprocess.check_output(
+                    ['magick', 'identify', '-format', '%w %h', str(path)], text=True).split())
+                x, y = (round(center[0] * width - side / 2),
+                        round(center[1] * height - side / 2))
+                detail = work / (name + '-' + str(side) + '.png')
+                run('magick', path, '-crop', f'{side}x{side}+{x}+{y}', '+repage',
+                    '-filter', 'Point', '-resize', '432x432!', detail)
+                details.append((name + ' / ' + label + ' / 3x', detail))
+        montage(backgrounds, KIT / 'hd-backgrounds-comparison.png',
+                '960x540>+12+28', '2x3')
+        montage(details, KIT / 'hd-backgrounds-detail.png', '432x432+12+28', '2x3')
         rooms = [(name, ART / f'world/interior_{name}.png')
                  for name in ('kitchen', 'noodle', 'cold_store', 'service')]
         room_board = work / 'rooms.png'
@@ -53,8 +79,17 @@ def compose_hd():
         city = work / 'city-layer.png'
         run('magick', ART / 'backgrounds/city.png', '-filter', 'Point', '-resize', '1920x735!', city)
         street = work / 'street-board.png'
-        run('magick', '-size', '1920x1080', 'xc:#100e20', city,
+        throat = work / 'throat-layer.png'
+        acid = work / 'acid-layer.png'
+        run('magick', ART / 'backgrounds/throat.png', '-filter', 'Point',
+            '-resize', '1920x1309!', throat)
+        run('magick', ART / 'backgrounds/acid.png', '-filter', 'Point',
+            '-resize', '1920x507!', acid)
+        run('magick', '-size', '1920x1080', 'xc:#100e20', throat,
+            '-geometry', '+0+0', '-composite', city,
             '-geometry', '+0+200', '-composite', street)
+        run('magick', street, acid, '-geometry', '+0+820', '-composite',
+            ART / 'walkway/structure.png', '-geometry', '+0+292', '-composite', street)
         placements = [
             ('world/shop.png', '864x288+0+0', '768x256!', 0, 134),
             ('walkway/deck.png', '2880x126+0+0', '1920x84!', 0, 700),
@@ -73,9 +108,9 @@ def compose_hd():
             run(*command, '-filter', 'Point', '-resize', size, module)
             run('magick', street, module, '-geometry', f'+{x}+{y}', '-composite', street)
         montage([('Toxic Night F-street reference', references['street']),
-                 ('144px-cell art composition / not runtime or collision evidence', street)],
+                 ('144px-cell redraw / earlier supports / offline art composition', street)],
                 KIT / 'hd-street-comparison.png', '960x540+0+12', '2x1')
-    print('Composed HD kit, interior and street boards from the current exports; no runtime capture used.')
+    print('Composed HD kit, interior, background, detail and street boards; no runtime capture used.')
 
 
 def compose(captures):

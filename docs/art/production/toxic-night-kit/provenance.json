@@ -135,5 +135,61 @@
     "review": "python3 tools/art/toxic_night_review.py --hd; asset compositions only, no runtime capture",
     "delivery": "Interior and street subset (18 PNGs); remaining map categories retain their prior art",
     "status": "Candidate; creative review, #281 integration and PM bundle CI pending"
+  },
+  "hd_backgrounds": {
+    "date": "2026-11-21",
+    "issue": 276,
+    "baseline": "b47f41b7a53f784d0f05371d0bf9b020bf20ccf8",
+    "tool": "Built-in image_gen; model not reported; no paid provider or external upload",
+    "inputs": "Pinned F-street image as palette/pixel reference; each corresponding baseline background as composition reference",
+    "prompts": "hd-sources/prompts.json (throat, acid, aquarium)",
+    "sources": [
+      {
+        "path": "hd-sources/throat.png",
+        "size": [
+          1519,
+          1035
+        ],
+        "sha256": "8fdd04fd5ccdfeb9b6f07f1098a81b354f671538539cfa28dd55ef2469c9638f"
+      },
+      {
+        "path": "hd-sources/acid.png",
+        "size": [
+          2103,
+          748
+        ],
+        "sha256": "877b128c76d345bcc1d59c0b9ae84288f023eb427d7103c9417d8e19c786405e"
+      },
+      {
+        "path": "hd-sources/aquarium.png",
+        "size": [
+          1672,
+          941
+        ],
+        "sha256": "0497e2a44c50156e12a80aaa2654e6449e00189e8dba35f0d0bab136e2a8aeb8"
+      }
+    ],
+    "grid": "144 authored pixels per map cell; 1.5x prior canvas extents rounded upward",
+    "canvases": {
+      "throat": [
+        1517,
+        1034
+      ],
+      "acid": [
+        2880,
+        761
+      ],
+      "aquarium": [
+        2880,
+        1620
+      ]
+    },
+    "cleanup": "Nearest-only normalization, 96-color undithered palette, binary alpha; Aseprite 1.3.18.6 native source and PNG export",
+    "acid_anchor": "Source divided at row 300: upper 300 rows fit 2880x250; remaining 448 rows fit 2880x511; original far waterline retained at approximately one third of canvas without removing ruin tips",
+    "prepare": "python3 tools/art/toxic_night.py --prepare-backgrounds",
+    "export": "python3 tools/art/toxic_night.py",
+    "review": "python3 tools/art/toxic_night_review.py --hd; offline asset evidence only",
+    "delivery": "Three backgrounds only; supports, aquarium deck, other props, containers and hazards pending",
+    "status": "Candidate; creative acceptance, runtime placement and PM bundle CI pending"
   }
 }
