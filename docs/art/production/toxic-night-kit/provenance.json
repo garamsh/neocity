@@ -191,5 +191,58 @@
     "review": "python3 tools/art/toxic_night_review.py --hd; offline asset evidence only",
     "delivery": "Three backgrounds only; supports, aquarium deck, other props, containers and hazards pending",
     "status": "Candidate; creative acceptance, runtime placement and PM bundle CI pending"
+  },
+  "hd_props": {
+    "date": "2026-11-21",
+    "issue": 276,
+    "baseline": "bf1ad36459b4f9632560f41d29d00ba2832af21d",
+    "tool": "Built-in image_gen.imagegen; model not reported; no paid provider or external upload",
+    "inputs": "Text prompts only. Worker visually inspected pinned F-street and F-building references and previous runtime exports; no source-image attachments were passed to the generator.",
+    "prompts": "hd-sources/prompts.json (containers, hazards, props, supports)",
+    "sources": [
+      {
+        "path": "hd-sources/containers.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "5c15a0a66ec4327d4a1653dc1ab292e4c210cae781effa4a0f93eb1d9db30dd1"
+      },
+      {
+        "path": "hd-sources/hazards-deck.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "1881a2a003c7c677855c8b06d3c2e34ac7a99455bb2b89f4d961427c2ac52801"
+      },
+      {
+        "path": "hd-sources/props.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "bbc08fdafdef2fa58e68736a9372ef23c88a402b418ae942f7ebe17e3301d365"
+      },
+      {
+        "path": "hd-sources/supports.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "563f46f0210c5f6f0337c31cf07b18da77aa6550432b4728af00ad8117ab9907"
+      }
+    ],
+    "layout": "hd-sources/props-layout.json",
+    "grid": "144 authored pixels per cell; previous canvas and visible bounds scaled 1.5x with upward edge rounding",
+    "cleanup": "Native alpha threshold 50%; nearest-only sprite normalization; 96 colors without dithering; binary alpha; Aseprite 1.3.18.6 batch native source and PNG exports",
+    "anchors": "Container and obstacle pivots and baseline_y scaled 1.5x; each visible bottom anchor retained. Vendor fits proportionally within prior visible bounds. Support pieces keep normalized placements.",
+    "retouch": "Aquarium deck repeats reflected half-period, with a two-pixel opaque teal contact rim; warning pillar uses measurement ticks and chevrons without words.",
+    "prepare": "python3 tools/art/toxic_night.py --prepare-props",
+    "export": "python3 tools/art/toxic_night.py",
+    "check": "python3 tools/art/toxic_night.py --check",
+    "review": "python3 tools/art/toxic_night_review.py --hd; offline assets only, no runtime capture",
+    "delivery": "17 static exports; total kit now 38 native sources and PNGs. Ten mutant animation frames remain at prior density for a separate animation review.",
+    "status": "Candidate; creative acceptance, runtime verification and PM bundle CI pending"
   }
 }
