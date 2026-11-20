@@ -7,6 +7,7 @@
 
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -48,12 +49,17 @@ godot::Ref<godot::Resource> dress(godot::Node2D &layer, const char *file) {
 
 } // namespace
 
-SurvivalRules::SurvivalRules(survival::Content game)
+SurvivalRules::SurvivalRules(survival::Content game,
+                             const std::optional<survival::DaySave> &saved)
     : content(std::move(game)), simulation(content.run), world(content.objects),
       exploration(simulation, world, content.companion.exploration),
       workshop(simulation, content.companion.workshop),
       endings(simulation, workshop, survival::TEMPORARY_ENDING),
-      companion(content.companion) {}
+      companion(content.companion) {
+  if (saved.has_value()) {
+    saved->restore(simulation, workshop, exploration);
+  }
+}
 
 session::SurvivalFeatures SurvivalRules::features() {
   return {.content = content,
@@ -66,8 +72,15 @@ session::SurvivalFeatures SurvivalRules::features() {
 }
 
 MainScene::MainScene()
-    : session(
-          [this] { return start_survival(); },
+    : save_slot(std::filesystem::path(godot::OS::get_singleton()
+                                          ->get_user_data_dir()
+                                          .utf8()
+                                          .get_data()) /
+                "day.save"),
+      session(
+          [this](const std::optional<survival::DaySave> &saved) {
+            return start_survival(saved);
+          },
           session::CinematicStage{
               .play =
                   [this](const godot::String &scene) {
@@ -110,6 +123,22 @@ MainScene::MainScene()
                           rendering::DISPLAY_FILE);
                     }
                     return saved;
+                  }},
+          session::SaveStage{
+              .load =
+                  [this] {
+                    return save_slot.load(survival::temporary_content(
+                        0, session::day_lengths_from_environment()));
+                  },
+              .update =
+                  [this](const session::SurvivalFeatures &rules,
+                         survival::ControlMap players) {
+                    if (!save_slot.update(rules.simulation.get(),
+                                          rules.workshop.get(),
+                                          rules.exploration.get(), players)) {
+                      godot::UtilityFunctions::push_warning(
+                          "Could not update user://day.save");
+                    }
                   }}) {}
 
 void MainScene::_bind_methods() {
@@ -267,12 +296,16 @@ void MainScene::pin_scene_clock(double seconds) {
 
 void MainScene::pin_display_size(godot::Vector2i size) { pinned_screen = size; }
 
-session::SurvivalFeatures MainScene::start_survival() {
-  const auto seed = pinned_seed.value_or(
-      static_cast<std::uint32_t>(godot::UtilityFunctions::randi()));
+session::SurvivalFeatures
+MainScene::start_survival(const std::optional<survival::DaySave> &saved) {
+  const auto seed = saved.has_value()
+                        ? saved->seed()
+                        : pinned_seed.value_or(static_cast<std::uint32_t>(
+                              godot::UtilityFunctions::randi()));
   return survival_rules
       .emplace(survival::temporary_content(
-          seed, session::day_lengths_from_environment()))
+                   seed, session::day_lengths_from_environment()),
+               saved)
       .features();
 }
 

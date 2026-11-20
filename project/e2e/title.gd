@@ -4,7 +4,8 @@ extends SceneTree
 ## number, the controls page and back, the How to play page and back, the
 ## choice of players by cursor, the controls page against the pause screen's
 ## keys, a new game, the same entries with real mouse events, and quitting. It
-## also reads back the frames of the UI kit the title and its pages note.
+## also reads back the frames of the UI kit the title and its pages note,
+## and reopens a saved run through the first title entry, Continue.
 
 ## How long, in milliseconds of the real clock, a panel takes to rise into
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
@@ -26,7 +27,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Title: ", checks, " live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).")
+		print("Title: ", checks, " live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -48,6 +49,8 @@ func _run() -> void:
 	if not await _controls_list_the_pause_keys():
 		return
 	if not await _mouse_drives_the_menus():
+		return
+	if not await _continue_is_first_and_resumes_the_saved_day():
 		return
 	await _quit_ends_the_game()
 
@@ -176,29 +179,29 @@ func _cursor_chooses_each_player() -> bool:
 	if not _check(scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 0 and _actor("chef", "key_set") == -1, "S then Enter on the choice of players plays the appraiser"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_UP)
 	await _tap(KEY_W)
 	await _tap(KEY_ENTER)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "the choice keeps its cursor, and up then W wrap to two players"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_DOWN)
 	await _tap(KEY_ENTER)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == -1, "down wraps past two players back to the chef"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
-	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players again")
+	await _tap(KEY_2)
+	return _check(scene.screen_name() == "survival_setup", "2 opens the choice of players again beside Continue")
 
 ## The controls page lists the pause screen's two-player rows, then the pause
 ## and leave keys.
 func _controls_list_the_pause_keys() -> bool:
-	await _tap(KEY_2)
+	await _tap(KEY_3)
 	var controls: PackedStringArray = MainScene.controls_keys()
 	await _tap(KEY_ESCAPE)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_3)
 	if not _check(scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "3 starts two players"):
 		return false
@@ -216,7 +219,7 @@ func _controls_list_the_pause_keys() -> bool:
 func _new_game_starts_a_run() -> bool:
 	await _tap(KEY_1)
 	await _tap(KEY_E)
-	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "New game then 1 starts the survival game as the chef"):
+	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "1 on the choice of players starts the survival game as the chef"):
 		return false
 	# The first question of the process rises into place on the real clock, and
 	# headless frames take far less than its 220 ms.
@@ -227,7 +230,7 @@ func _new_game_starts_a_run() -> bool:
 	var rising: Rect2 = scene.get_meta("interruption_button", Rect2())
 	await _click_at(Vector2(rising.position.x + 12.0, rising.end.y - 2.0))
 	var left_by_click: bool = scene.screen_name() == "main"
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_M)
@@ -245,19 +248,19 @@ func _new_game_starts_a_run() -> bool:
 ## chooses; the controls page's way back goes back. The mouse leaves the
 ## entries before the keys take over again.
 func _mouse_drives_the_menus() -> bool:
-	_point_at(_target("option_2"))
+	_point_at(_target("option_3"))
 	await _frames(4)
-	if not _check(_hovered() == "option_2", "the entry under the mouse lights"):
+	if not _check(_hovered() == "option_3", "the entry under the mouse lights"):
 		return false
-	if not _check(await _click("option_2") and scene.screen_name() == "controls", "a click on Controls opens the controls"):
+	if not _check(await _click("option_3") and scene.screen_name() == "controls", "a click on Controls opens the controls"):
 		return false
 	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the way back returns to the title"):
 		return false
-	if not _check(await _click("option_3") and scene.screen_name() == "how_to_play", "a click on How to play opens its page"):
+	if not _check(await _click("option_4") and scene.screen_name() == "how_to_play", "a click on How to play opens its page"):
 		return false
 	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the How to play page's way back returns to the title"):
 		return false
-	if not _check(await _click("option_1") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
+	if not _check(await _click("option_2") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
 		return false
 	if not _check(await _click("option_3") and scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "a click on Two players starts two players"):
 		return false
@@ -267,9 +270,33 @@ func _mouse_drives_the_menus() -> bool:
 	await _frames(4)
 	return _check(scene.screen_name() == "main" and _hovered() == "", "the run is left and nothing is lit away from the entries")
 
-## New game is marked after the run; three steps down mark Quit. The pass
+## A real new game has written this process's isolated slot; reopening the
+## shipped scene must read it and show Continue before New game.
+func _continue_is_first_and_resumes_the_saved_day() -> bool:
+	if not _check(FileAccess.file_exists("user://day.save"), "setup: a new game wrote its day slot"):
+		return false
+	if not _check(reload_current_scene() == OK, "setup: the shipped scene reopens with the saved slot"):
+		return false
+	await _frames(2)
+	scene = current_scene as MainScene
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	if not _check(lines.find("CONTINUE") >= 0 and lines.find("NEW GAME") > lines.find("CONTINUE"), "Continue is drawn before New game: %s" % [lines]):
+		return false
+	var buttons: Array[Rect2] = _frames_of("button")
+	if not _check(buttons.size() == 6 and buttons[0] == _target("option_1")["rect"] and buttons[1] == _target("option_2")["rect"], "the saved title draws six entries with Continue first"):
+		return false
+	await _tap(KEY_1)
+	var status: Dictionary = scene.survival_status()
+	if not _check(scene.screen_name() == "survival" and not status.has("cinematic") and status.get("day", 0) == 1 and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "1 resumes day one with the saved two-player roles and no intro: %s" % status):
+		return false
+	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
+	return _check(scene.screen_name() == "main", "leaving Continue returns to the saved title")
+
+## Continue is marked after reopening; four steps down mark Quit. The pass
 ## line prints from `_finalize` only.
 func _quit_ends_the_game() -> void:
+	await _tap(KEY_DOWN)
 	await _tap(KEY_DOWN)
 	await _tap(KEY_S)
 	await _tap(KEY_DOWN)
