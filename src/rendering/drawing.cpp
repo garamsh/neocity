@@ -292,8 +292,9 @@ bool hd(Image image) {
          (image >= Image::HdChefIdle && image <= Image::HdClock);
 }
 
-/// Native picture pixels per layout unit, before the camera and canvas. The
-/// noodle vendor was drawn at the layout size and keeps it.
+/// Native picture pixels per layout unit, before the camera and canvas, for
+/// art that is not map art. The noodle vendor was drawn at the layout size and
+/// keeps it.
 float density(Image image) {
   const godot::String folder = godot::String(path(image)).get_slice("/", 0);
   const bool world = folder == "walkway" || folder == "world" ||
@@ -301,6 +302,83 @@ float density(Image image) {
                      folder == "mutants" || folder == "obstacles";
   const bool cell_dense = world && image != Image::NoodleVendor;
   return (cell_dense ? 2.0F : 1.0F) * (hd(image) ? ART_SCALE : 1.0F);
+}
+
+/// The map art's size in layout units: the world area the picture covers,
+/// whatever pixels it is drawn with, so a finer replacement of the same
+/// picture keeps its size on the screen.
+std::optional<Vector2> footprint(Image image) {
+  switch (image) {
+  case Image::AquariumBackdrop:
+    return Vector2(1280.0F, 720.0F);
+  case Image::TerminalBackdrop:
+    return Vector2(768.0F, 384.0F);
+  case Image::AquariumDeck:
+    return Vector2(128.0F, 28.0F);
+  case Image::InteriorKitchen:
+  case Image::InteriorNoodle:
+    return Vector2(192.0F, 64.0F);
+  case Image::InteriorColdStore:
+  case Image::InteriorService:
+  case Image::ColdStore:
+    return Vector2(96.0F, 96.0F);
+  case Image::SpanWreck:
+  case Image::FireEscape:
+  case Image::Ladder:
+  case Image::Kiosk:
+    return Vector2(32.0F, 32.0F);
+  case Image::KioskRuined:
+    return Vector2(96.0F, 48.0F);
+  case Image::Throat:
+    return Vector2(1011.0F, 689.0F) / ART_SCALE;
+  case Image::City:
+    return Vector2(1280.0F, 490.0F);
+  case Image::Acid:
+    return Vector2(1280.0F, 338.0F);
+  case Image::RatWalk1:
+  case Image::RatWalk2:
+  case Image::RatWalk3:
+  case Image::RatWalk4:
+  case Image::HumanWalk1:
+  case Image::HumanWalk2:
+  case Image::HumanWalk3:
+  case Image::HumanWalk4:
+    return Vector2(256.0F, 224.0F) / 3.0F;
+  case Image::ObstacleVent:
+  case Image::ObstacleSpikes:
+    return Vector2(224.0F, 224.0F) / 3.0F;
+  case Image::Deck:
+    return Vector2(640.0F, 168.0F);
+  case Image::Structure:
+    return Vector2(640.0F, 183.0F);
+  case Image::Rubble:
+    return Vector2(32.0F, 16.0F);
+  case Image::BuildingWall:
+    return Vector2(640.0F, 132.0F);
+  case Image::Shop:
+    return Vector2(640.0F, 128.0F);
+  case Image::VendingMachine:
+    return Vector2(48.0F, 59.0F);
+  case Image::VendorCart:
+    return Vector2(64.0F, 32.0F);
+  case Image::NoodleVendor:
+    return Vector2(26.0F, 48.0F);
+  case Image::BagWashedUp:
+    return Vector2(28.0F, 31.0F);
+  case Image::LadderBroken:
+  case Image::DoorColdStore:
+  case Image::DoorBroken:
+    return Vector2(32.0F, 64.0F);
+  case Image::Ferry:
+    return Vector2(128.0F, 50.0F);
+  default:
+    return std::nullopt;
+  }
+}
+
+/// `image`'s size in layout units when its texture is `pixels` big.
+Vector2 layout_size(Image image, Vector2 pixels) {
+  return footprint(image).value_or(pixels / density(image));
 }
 
 /// The outline of `area` with its corners rounded by `radius`, clockwise from
@@ -650,7 +728,8 @@ Look Art::looking() const {
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
-  const float scale = density(image);
+  const auto pixels = images.at(slot(image))->get_size();
+  const float scale = pixels.x / layout_size(image, pixels).x;
   note_foreground(canvas, image,
                   godot::Rect2(source.position * scale, source.size * scale),
                   destination);
@@ -737,7 +816,7 @@ float Art::shown_for(const godot::String &name) const {
 }
 
 Vector2 Art::size(Image image) const {
-  return images.at(slot(image))->get_size() / density(image);
+  return layout_size(image, images.at(slot(image))->get_size());
 }
 
 float Art::seconds() const {

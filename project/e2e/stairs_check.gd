@@ -41,10 +41,10 @@ func _run() -> void:
 		else:
 			await _map_art_tour()
 		return
-	await _tap(KEY_1)
-	await _tap(KEY_1)
-	await _tap(KEY_E)
-	await _tap(KEY_Q)
+	if OS.get_cmdline_user_args().has("--map-density"):
+		await _map_density()
+		return
+	await _enter_city()
 	for direction: Key in [KEY_D, KEY_A, KEY_D]:
 		_key(direction, true)
 		for frame: int in range(600):
@@ -86,6 +86,73 @@ func _run() -> void:
 	var enough: bool = measured.size() == 4 and check_floor_lines(scene, pixels)
 	print("Stairs: finished: %s; %d/4 direction/cell readings, %d failures." % ["pass" if enough and failures == 0 else "fail", measured.size(), failures])
 	quit(0 if enough and failures == 0 else 1)
+
+## Starts a run with two humans and sends the chef out onto the street.
+func _enter_city() -> void:
+	await _tap(KEY_1)
+	await _tap(KEY_1)
+	await _tap(KEY_E)
+	await _tap(KEY_Q)
+
+## The street's map art as the last frame drew it: each picture's texture path
+## and the area of the scene it covered.
+func _map_layers() -> Array[Dictionary]:
+	var layers: Array[Dictionary] = []
+	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):
+		var texture: Texture2D = layer["texture"]
+		var source: Rect2 = layer["source"]
+		layers.append({"path": texture.resource_path, "area": layer["destination"], "pixels": source.size, "texture": texture.get_size(), "kind": texture.get_class()})
+	return layers
+
+## Checks that map art is drawn by the world area it covers: the street is
+## drawn, then again after every world, ground and walkway picture is replaced
+## by itself at twice the pixels, and no picture may change its area.
+func _map_density() -> void:
+	await _enter_city()
+	var before: Array[Dictionary] = _map_layers()
+	var folders: Array[String] = ["world", "ground", "walkway"]
+	var finer: int = 0
+	var kept: Array[Texture2D] = []
+	for folder: String in folders:
+		var directory: String = "res://levels/monster_mouth_escape/art_hd/" + folder
+		for file: String in DirAccess.get_files_at(directory):
+			if not file.ends_with(".png"):
+				continue
+			var texture: Texture2D = load(directory.path_join(file))
+			var image: Image = texture.get_image()
+			image.resize(image.get_width() * 2, image.get_height() * 2, Image.INTERPOLATE_NEAREST)
+			var replacement: ImageTexture = ImageTexture.create_from_image(image)
+			var where: String = texture.resource_path
+			replacement.take_over_path(where)
+			kept.append(replacement)
+			finer += 1
+	change_scene_to_file("res://main.tscn")
+	for frame: int in range(4):
+		await process_frame
+	scene = current_scene as MainScene
+	scene.get_node("World").set_meta("measure_art", true)
+	scene.pin_survival_seed(11)
+	scene.pin_scene_clock(clock)
+	await _enter_city()
+	var after: Array[Dictionary] = _map_layers()
+	var moved: Array[String] = []
+	var denser: bool = false
+	if before.is_empty() or before.size() != after.size():
+		moved.append("the street drew %d pictures, then %d" % [before.size(), after.size()])
+	else:
+		for index: int in range(before.size()):
+			var was: Dictionary = before[index]
+			var now: Dictionary = after[index]
+			var was_area: Rect2 = was["area"]
+			var now_area: Rect2 = now["area"]
+			if not was_area.position.is_equal_approx(now_area.position) or not was_area.size.is_equal_approx(now_area.size):
+				moved.append("%s covered %s, then %s" % [was["path"], was_area, now_area])
+			var was_pixels: Vector2 = was["pixels"]
+			var now_pixels: Vector2 = now["pixels"]
+			denser = denser or now_pixels.is_equal_approx(was_pixels * 2.0)
+	var passed: bool = moved.is_empty() and denser and finer > 0
+	print("Stairs: finished: %s; %d pictures replaced at twice the pixels, %d drawn, %d moved or resized %s, finer pixels read: %s." % ["pass" if passed else "fail", finer, before.size(), moved.size(), moved.slice(0, 3), denser])
+	quit(0 if passed else 1)
 
 ## Captures both single-floor shops through their actual ladder routes.
 func _kit_interiors() -> void:
@@ -147,9 +214,16 @@ func _map_art_tour() -> void:
 			Vector2i(52, 2), Vector2i(51, 3), Vector2i(50, 4),
 			Vector2i(49, 3), Vector2i(48, 2), Vector2i(42, 2), Vector2i(42, 4), Vector2i(47, 4), Vector2i(47, 6),
 			Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)])
+		var regrouped: bool = false
 		for target: Vector2i in route:
+			if regrouped and target in [Vector2i(40, 7), Vector2i(44, 6)]:
+				continue
 			if not await _tour_move(target):
 				return
+			if day == 1 and target == Vector2i(38, 8):
+				if not await _tour_party_in_cold_store():
+					return
+				regrouped = true
 			if target == Vector2i(39, 4):
 				if not await _tour_interior("271-cold-store-day-%d" % day, 3, "world/interior_cold_store.png"):
 					return
@@ -211,14 +285,78 @@ func _shop_interior(name: String, picture: String) -> bool:
 		_tour_fail("the occupied shop did not draw " + picture)
 	return inside
 
+## Checks the Cold Store display when the two humans are not on one floor of
+## it: with one outside, only the floor the other stands on is lit and every
+## other floor is covered solid; with both inside on different floors, both
+## floors are lit and the camera holds both. Ends with both on the middle floor.
+func _tour_party_in_cold_store() -> bool:
+	if not await _tour_move(Vector2i(38, 8), Vector2i(36, 8)):
+		return false
+	if not await _tour_shot("281-cold-store-one-out"):
+		return false
+	var world: Node = scene.get_node("World")
+	var rooms: Array = world.get_meta("interior_rooms", [])
+	if rooms.size() != 3 or world.get_meta("inside_view", false):
+		_tour_fail("one human out of the Cold Store still leaves the outside on screen with its three floors: " + str(rooms.size()))
+		return false
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		var ground: bool = is_equal_approx(floor_y, _lowest_floor(rooms))
+		var covered: float = room["cover"]
+		if room["lit"] != ground or (ground and covered > 0.01) or (not ground and covered < 0.99):
+			_tour_fail("with one human out, the floor of the other must be alone lit and the rest covered solid: " + str(room))
+			return false
+	if not await _tour_move(Vector2i(40, 7), Vector2i(44, 6)):
+		return false
+	if not await _tour_shot("281-cold-store-two-floors"):
+		return false
+	rooms = world.get_meta("interior_rooms", [])
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var lit: int = 0
+	for room: Dictionary in rooms:
+		var area: Rect2 = room["area"]
+		var covered: float = room["cover"]
+		var floor_y: float = room["floor_y"]
+		var upper: bool = is_equal_approx(floor_y, _highest_floor(rooms))
+		if room["lit"] == upper or (room["lit"] and covered > 0.01) or (not room["lit"] and covered < 0.8):
+			_tour_fail("with the humans on two floors, both of their floors must be lit and the top one covered: " + str(room))
+			return false
+		if room["lit"]:
+			lit += 1
+			if not Rect2(0, 0, 1280, 720).encloses(view * area):
+				_tour_fail("the camera does not hold the lit floor " + str(room["name"]))
+				return false
+	if rooms.size() != 3 or lit != 2 or not world.get_meta("inside_view", false):
+		_tour_fail("the two floors are not the only inside on screen: " + str(lit))
+		return false
+	print("Stairs: Cold Store with one human out, then on two floors: lit floors and covers as the display rules say.")
+	return await _tour_move(Vector2i(44, 6))
+
+func _lowest_floor(rooms: Array) -> float:
+	var lowest: float = -INF
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		lowest = maxf(lowest, floor_y)
+	return lowest
+
+func _highest_floor(rooms: Array) -> float:
+	var highest: float = INF
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		highest = minf(highest, floor_y)
+	return highest
+
 ## Checks that all room bands end at their collision floors and the outside darkens.
 func _tour_interior(name: String, count: int, picture: String) -> bool:
 	if not await _tour_shot(name):
 		return false
 	var world: Node = scene.get_node("World")
 	var rooms: Array = world.get_meta("interior_rooms", [])
-	if rooms.size() != count or world.get_meta("interior_veil", 0.0) < 0.5:
-		_tour_fail("the occupied cut-away lacks its rooms or outside veil: " + name)
+	if rooms.size() != count or not world.get_meta("inside_view", false):
+		_tour_fail("the occupied building lacks its rooms or shows more than its inside: " + name)
+		return false
+	if not _inside_is_framed(world, rooms):
+		_tour_fail("the building's lit floor is not alone bright and framed to fill the screen: " + name)
 		return false
 	var fragments: Array = []
 	for fragment: Dictionary in world.get_meta("foreground_layers", []):
@@ -235,10 +373,30 @@ func _tour_interior(name: String, count: int, picture: String) -> bool:
 		if not is_equal_approx(area.end.y, floor_y):
 			_tour_fail("the room background ends away from its floor: " + str(room["name"]))
 			return false
-	print("Stairs: cut-away %s: %d floor-aligned rooms, outside veil=%s." % [name, rooms.size(), world.get_meta("interior_veil")])
+	print("Stairs: interior %s: %d floor-aligned rooms, only the inside on screen." % [name, rooms.size()])
 	return true
 
-func _tour_move(target: Vector2i) -> bool:
+## Whether the floors nobody stands on are covered, the lit floor is not, and
+## the lit floor fills the play area in one dimension at a whole zoom.
+func _inside_is_framed(world: Node, rooms: Array) -> bool:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var lit: int = 0
+	for room: Dictionary in rooms:
+		var covered: float = room["cover"]
+		if room["lit"]:
+			lit += 1
+			var area: Rect2 = room["area"]
+			var shown: Rect2 = view * area
+			if covered > 0.01 or maxf(shown.size.x / 1280.0, shown.size.y / 478.0) < 0.7 or not is_equal_approx(view.get_scale().x, roundf(view.get_scale().x)):
+				return false
+		elif covered < 0.8:
+			return false
+	var layers: Array = world.get_meta("backdrop_layers", [null])
+	return lit >= 1 and layers.is_empty()
+
+## Walks the chef to `target` and the appraiser to `partner`, or to `target` too.
+func _tour_move(target: Vector2i, other: Vector2i = Vector2i(-1, -1)) -> bool:
+	var partner: Vector2i = target if other == Vector2i(-1, -1) else other
 	var last: Dictionary[String, int] = {}
 	var stalled: Dictionary[String, int] = {}
 	for frame: int in range(600):
@@ -246,10 +404,11 @@ func _tour_move(target: Vector2i) -> bool:
 		var reached: bool = true
 		for role: String in ["chef", "appraiser"]:
 			var body: Dictionary = state[role]
+			var goal: Vector2i = target if role == "chef" else partner
 			var column: int = body["x"]
 			var row: int = body["y"]
 			var at: Vector2i = Vector2i(column, row)
-			var done: bool = state["map"] == "Aquarium" and target == Vector2i(62, 11) or at == target and body["stance"] != "airborne"
+			var done: bool = state["map"] == "Aquarium" and target == Vector2i(62, 11) or at == goal and body["stance"] != "airborne"
 			reached = reached and done
 			var left: Key = KEY_A if role == "chef" else KEY_J
 			var right: Key = KEY_D if role == "chef" else KEY_L
@@ -257,17 +416,17 @@ func _tour_move(target: Vector2i) -> bool:
 			var down: Key = KEY_S if role == "chef" else KEY_K
 			var jump: Key = KEY_SPACE if role == "chef" else KEY_SEMICOLON
 			var run: Key = KEY_SHIFT if role == "chef" else KEY_H
-			var sideways: bool = not done and target.x != at.x
-			_key(left, sideways and target.x < at.x)
-			_key(right, sideways and target.x > at.x)
-			_key(up, not done and not sideways and target.y < at.y)
-			_key(down, not done and not sideways and target.y > at.y)
-			_key(run, sideways and absi(target.x - at.x) > 3)
+			var sideways: bool = not done and goal.x != at.x
+			_key(left, sideways and goal.x < at.x)
+			_key(right, sideways and goal.x > at.x)
+			_key(up, not done and not sideways and goal.y < at.y)
+			_key(down, not done and not sideways and goal.y > at.y)
+			_key(run, sideways and absi(goal.x - at.x) > 3)
 			var sub_x: int = body["sub_x"]
 			stalled[role] = stalled.get(role, 0) + 1 if sideways and sub_x == last.get(role, -1) and body["stance"] == "standing" else 0
 			last[role] = sub_x
-			var climb_step: bool = target.y < at.y and absi(target.x - at.x) <= 1
-			var gap_takeoff: bool = target.y < row and target.x - column == 2 and sub_x % 32 >= 16
+			var climb_step: bool = goal.y < at.y and absi(goal.x - at.x) <= 1
+			var gap_takeoff: bool = goal.y < row and goal.x - column == 2 and sub_x % 32 >= 16
 			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or climb_step or stalled[role] > 6)
 			_key(jump, jump_pressed)
 		if reached:
