@@ -37,6 +37,9 @@ constexpr float WAIST = 12.0F;
 /// below their feet.
 constexpr float ROOM_ACROSS = 256.0F;
 constexpr float ROOM_UP = 128.0F;
+/// How far past either end of the map the camera may look, in scene pixels, so
+/// a character at the end stands whole in the frame, not half off its edge.
+constexpr float EDGE_ROOM = 64.0F;
 
 /// The screen lock keeps two actors in the city no further apart sideways than
 /// the close zoom still fits with their room, one scene pixel to a sub-cell.
@@ -69,12 +72,14 @@ struct Subject {
   float facing = 1.0F;
 };
 
-/// Where the camera may look: the map's width and the scene's height.
+/// Where the camera may look: the map's width with EDGE_ROOM beyond each end,
+/// and the scene's height.
 godot::Rect2 bounds_of(const survival::MapContent &map) {
   const Vector2 corner = map_point({.x = 0, .y = 0});
   const Vector2 far_corner =
       map_point({.x = map.size.width * survival::SUBCELLS, .y = 0});
-  return {corner.x, 0.0F, far_corner.x - corner.x, SCREEN_HEIGHT};
+  return {corner.x - EDGE_ROOM, 0.0F,
+          far_corner.x - corner.x + 2.0F * EDGE_ROOM, SCREEN_HEIGHT};
 }
 
 /// Where the camera may look inside a building: its sides, and any height.

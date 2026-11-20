@@ -4,8 +4,15 @@ extends SceneTree
 
 const ORIGIN: Vector2 = Vector2(64, 70)
 const CELL: float = 32.0
+## Canvas pixels to a layout unit: the 1920x1080 canvas over the 1280x720 layout.
+const CANVAS_SCALE: float = 1.5
+## Half a drawn body's width, in layout pixels, the chef's feet must stay inside the screen by.
+const CHEF_HALF: float = 48.0
 const CELLS: Array[Vector2i] = [Vector2i(9, 9), Vector2i(10, 9)]
+## How far, in scene pixels, the control reads the drawn contact line from the real floor line, up and down.
+const OFFSETS: Array[float] = [-8.0, -1.0, 1.0, 8.0]
 var scene: MainScene
+var edge_logged: int = 0
 var clock: float = 0.0
 var pixels: Dictionary = {}
 var measured: Dictionary = {}
@@ -83,7 +90,7 @@ func _run() -> void:
 				break
 		_key(direction, false)
 		await process_frame
-	var enough: bool = measured.size() == 4 and check_floor_lines(scene, pixels)
+	var enough: bool = measured.size() == 4 and check_floor_lines(scene, pixels) and floor_line_offsets_fail(scene, pixels)
 	print("Stairs: finished: %s; %d/4 direction/cell readings, %d failures." % ["pass" if enough and failures == 0 else "fail", measured.size(), failures])
 	quit(0 if enough and failures == 0 else 1)
 
@@ -104,12 +111,30 @@ func _map_layers() -> Array[Dictionary]:
 		layers.append({"path": texture.resource_path, "area": layer["destination"], "pixels": source.size, "texture": texture.get_size(), "kind": texture.get_class()})
 	return layers
 
+## The characters the last frame drew whose picture is not drawn at one texture
+## pixel to a canvas pixel at the close camera, which is the density the drawing
+## derives for art that no table sizes by world area. Fails to read none, so a
+## frame that drew no character is reported too.
+func _characters_off_native_density() -> Array[String]:
+	var found: Array[String] = []
+	var layers: Array = scene.get_node("World").get_meta("character_layers", [])
+	if layers.is_empty():
+		found.append("no character was drawn")
+	for layer: Dictionary in layers:
+		var texture: Texture2D = layer["texture"]
+		var area: Rect2 = layer["area"]
+		var drawn: Vector2 = area.size * CANVAS_SCALE
+		if not drawn.is_equal_approx(texture.get_size()):
+			found.append("%s drawn %s for %s pixels" % [layer["role"], drawn, texture.get_size()])
+	return found
+
 ## Checks that map art is drawn by the world area it covers: the street is
 ## drawn, then again after every world, ground and walkway picture is replaced
 ## by itself at twice the pixels, and no picture may change its area.
 func _map_density() -> void:
 	await _enter_city()
 	var before: Array[Dictionary] = _map_layers()
+	var unsized: Array[String] = _characters_off_native_density()
 	var folders: Array[String] = ["world", "ground", "walkway"]
 	var finer: int = 0
 	var kept: Array[Texture2D] = []
@@ -150,8 +175,8 @@ func _map_density() -> void:
 			var was_pixels: Vector2 = was["pixels"]
 			var now_pixels: Vector2 = now["pixels"]
 			denser = denser or now_pixels.is_equal_approx(was_pixels * 2.0)
-	var passed: bool = moved.is_empty() and denser and finer > 0
-	print("Stairs: finished: %s; %d pictures replaced at twice the pixels, %d drawn, %d moved or resized %s, finer pixels read: %s." % ["pass" if passed else "fail", finer, before.size(), moved.size(), moved.slice(0, 3), denser])
+	var passed: bool = moved.is_empty() and denser and finer > 0 and unsized.is_empty()
+	print("Stairs: finished: %s; %d pictures replaced at twice the pixels, %d drawn, %d moved or resized %s, finer pixels read: %s, %d characters off native density %s." % ["pass" if passed else "fail", finer, before.size(), moved.size(), moved.slice(0, 3), denser, unsized.size(), unsized])
 	quit(0 if passed else 1)
 
 ## Captures both single-floor shops through their actual ladder routes.
@@ -394,6 +419,21 @@ func _inside_is_framed(world: Node, rooms: Array) -> bool:
 	var layers: Array = world.get_meta("backdrop_layers", [null])
 	return lit >= 1 and layers.is_empty()
 
+## Whether the chef, once on the street's far columns, is drawn with room to
+## spare either side of its feet: its feet's screen position a body's half width
+## inside the screen, where the camera clamps at the end of the map.
+func _chef_whole(state: Dictionary) -> bool:
+	var body: Dictionary = state["chef"]
+	if body["location"] != "city" or body["x"] < 58:
+		return true
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var feet: Vector2 = view * (ORIGIN + Vector2(body["sub_x"], 0))
+	var shown: bool = feet.x >= CHEF_HALF and feet.x <= 1280.0 - CHEF_HALF
+	if edge_logged < 3:
+		edge_logged += 1
+		print("Stairs: chef at column %d is drawn %.1f of 1280 across (needs %.0f to %.0f)." % [body["x"], feet.x, CHEF_HALF, 1280.0 - CHEF_HALF])
+	return shown
+
 ## Walks the chef to `target` and the appraiser to `partner`, or to `target` too.
 func _tour_move(target: Vector2i, other: Vector2i = Vector2i(-1, -1)) -> bool:
 	var partner: Vector2i = target if other == Vector2i(-1, -1) else other
@@ -429,6 +469,9 @@ func _tour_move(target: Vector2i, other: Vector2i = Vector2i(-1, -1)) -> bool:
 			var gap_takeoff: bool = goal.y < row and goal.x - column == 2 and sub_x % 32 >= 16
 			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or climb_step or stalled[role] > 6)
 			_key(jump, jump_pressed)
+		if not _chef_whole(state):
+			_tour_fail("the camera cut the chef off at the map's edge: " + _tour_status(state))
+			return false
 		if reached:
 			_release_movement()
 			await process_frame
@@ -495,9 +538,22 @@ func _tour_fail(reason: String) -> void:
 
 ## Reads the collision snapshot's floors through the actual deck commands, including offscreen cells.
 static func check_floor_lines(subject: MainScene, cache: Dictionary = {}) -> bool:
+	var fault: String = _floor_line_fault(subject, cache, 0.0)
+	if not fault.is_empty():
+		push_error(fault)
+		return false
+	return true
+
+## Whether the drawn contact line sits `offset` scene pixels away from the real
+## floor line on every intact terrain floor, which the check must tell from one
+## that sits on it: probes every floor as check_floor_lines does with the line
+## read at floor + offset, and returns what it found wrong, or an empty string
+## where it found nothing.
+static func _floor_line_fault(subject: MainScene, cache: Dictionary, offset: float) -> String:
 	var world: Node = subject.get_node("World")
 	var floors: Array = world.get_meta("collision_floors", [])
 	var layers: Array = world.get_meta("deck_layers", [])
+	var view: Transform2D = subject.get_meta("map_view", Transform2D())
 	var cells: int = 0
 	var controls: int = 0
 	var voids: int = 0
@@ -507,11 +563,9 @@ static func check_floor_lines(subject: MainScene, cache: Dictionary = {}) -> boo
 		var standing: bool = floor_record["standing"]
 		for column: int in range(roundi(area.position.x), roundi(area.end.x), 32):
 			if not standing:
-				for offset: float in [0.5, 16.0, 31.5]:
-					var view: Transform2D = subject.get_meta("map_view", Transform2D())
-					if _stone_layers(view * Vector2(column + offset, floor_y + 0.25), layers, cache):
-						push_error("Stairs: absent terrain %s still draws a floor at x=%s." % [floor_record["name"], column + offset])
-						return false
+				for x: float in [0.5, 16.0, 31.5]:
+					if offset == 0.0 and _stone_layers(view * Vector2(column + x, floor_y + 0.25), layers, cache):
+						return "Stairs: absent terrain %s still draws a floor at x=%s." % [floor_record["name"], column + x]
 				voids += 1
 				continue
 			var top_layers: Array = []
@@ -520,20 +574,29 @@ static func check_floor_lines(subject: MainScene, cache: Dictionary = {}) -> boo
 				if is_equal_approx(destination.position.y, floor_y) and destination.position.x < column + CELL and destination.end.x > column:
 					top_layers.append(layer)
 			if top_layers.is_empty():
-				push_error("Stairs: no deck begins at collision floor %s x=%d." % [floor_record["name"], column])
-				return false
-			for offset: float in [0.5, 16.0, 31.5]:
-				var view: Transform2D = subject.get_meta("map_view", Transform2D())
-				var hit: Vector2 = view * Vector2(column + offset, floor_y + 0.25)
-				var miss: Vector2 = view * Vector2(column + offset, floor_y - 0.25)
+				return "Stairs: no deck begins at collision floor %s x=%d." % [floor_record["name"], column]
+			for x: float in [0.5, 16.0, 31.5]:
+				var hit: Vector2 = view * Vector2(column + x, floor_y + offset + 0.25)
+				var miss: Vector2 = view * Vector2(column + x, floor_y + offset - 0.25)
 				if not _stone_layers(hit, top_layers, cache) or _stone_layers(miss, top_layers, cache):
-					push_error("Stairs: floor %s x=%s top=%s lost contact or confused the nearest row above it." % [floor_record["name"], column + offset, floor_y])
-					return false
+					return "Stairs: floor %s x=%s top=%s lost contact or confused the nearest row above it." % [floor_record["name"], column + x, floor_y]
 				controls += 1
 			cells += 1
-	print("Stairs: %s day %s: %d terrain cells have opaque contact at x=0.5,16,31.5; %d nearest-row-above controls returned nothing." % [subject.survival_status()["map"], subject.survival_status()["day"], cells, controls])
-	print("Stairs: %d dormant or destroyed terrain cells correctly draw no collision deck." % voids)
-	return cells > 0
+	if offset == 0.0:
+		print("Stairs: %s day %s: %d terrain cells have opaque contact at x=0.5,16,31.5; %d nearest-row-above controls returned nothing." % [subject.survival_status()["map"], subject.survival_status()["day"], cells, controls])
+		print("Stairs: %d dormant or destroyed terrain cells correctly draw no collision deck." % voids)
+	return "" if cells > 0 else "Stairs: no terrain floor was read."
+
+## Whether the floor-contact reading fails for a contact line drawn OFFSETS
+## scene pixels above or below the real floor line, in each direction, so a
+## drawn line that drifts from where the feet stand is not read as matching.
+static func floor_line_offsets_fail(subject: MainScene, cache: Dictionary = {}) -> bool:
+	for offset: float in OFFSETS:
+		var fault: String = _floor_line_fault(subject, cache, offset)
+		print("Stairs: control, the contact line read %+.1f scene pixels from the floor line: %s." % [offset, "rejected" if not fault.is_empty() else "ACCEPTED"])
+		if fault.is_empty():
+			return false
+	return true
 
 ## Reads alpha through the actual texture, crop and draw transform, excluding all scenery and actors.
 func _stone(point: Vector2) -> bool:

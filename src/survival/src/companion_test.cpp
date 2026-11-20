@@ -927,6 +927,18 @@ TEST(Companion, AHumanCollectsOnlyWithinRangeAndMovesAsPressed) {
             std::nullopt);
 }
 
+TEST(Companion, AHumanIsOfferedNoSearchOfAnEmptyContainer) {
+  auto view = city_view({.x = 2});
+  add_source(view, SOURCE, 3);
+  const auto companion = companion_with();
+  const PlayerInput pressed{.search = true};
+  ASSERT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
+            Action{Search{SOURCE}});
+  view.exploration.sources.front().items.clear();
+  EXPECT_EQ(companion.command(Actor::Chef, two_players(), pressed, view).action,
+            std::nullopt);
+}
+
 TEST(Companion, TravelLeavesFromBaseAndReturnsFromTheCity) {
   const auto companion = companion_with();
   const PlayerInput pressed{.travel = true};
