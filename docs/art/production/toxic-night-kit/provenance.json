@@ -11,16 +11,62 @@
   "sources": [
     {
       "path": "source.png",
-      "sha256": "d3feaf1522d63d146856affaf3a329523a34c0da283739a7ba7d7bfdb903e655"
+      "sha256": "d3feaf1522d63d146856affaf3a329523a34c0da283739a7ba7d7bfdb903e655",
+      "size": [
+        1536,
+        1024
+      ]
     },
     {
       "path": "backdrop-source.png",
-      "sha256": "aa72bc848d436e218d13762afa6ead0219f4adf673c0fc250d7f7c63c223a0d1"
+      "sha256": "aa72bc848d436e218d13762afa6ead0219f4adf673c0fc250d7f7c63c223a0d1",
+      "size": [
+        1717,
+        916
+      ]
     }
   ],
   "selection": "source.png supplies foreground modules; backdrop-source.png supplies only its middle skyline strip. Its throat and acid panels are unused.",
   "authoring": "Native Aseprite 1.3.18.6 sources; atlas preparation crops and nearest-only composition, deck faces darkened below the twelve-pixel rim, prop key alpha thresholded to 0/255",
   "export": "python3 tools/art/toxic_night.py",
   "prepare": "python3 tools/art/toxic_night.py --prepare",
-  "status": "Candidate production kit under selected Toxic Night direction; creative review pending"
+  "status": "Candidate production kit under selected Toxic Night direction; creative review pending",
+  "review": {
+    "runtime_revision": "ff5debed412fce1a780cd0a1a8db908be361d3a8",
+    "harness": "project/e2e/stairs_check.gd (continuation adds --kit-interiors)",
+    "seed": 11,
+    "canvas": [
+      1920,
+      1080
+    ],
+    "players": "two human key sets 0/1",
+    "display": "private kwin_wayland --virtual; Godot Wayland; Dummy audio; fixed-fps 60; vsync disabled",
+    "map_tour": "Street and Aquarium, days 1/5/10; pass, exit 0",
+    "shop_tour": "Kitchen and Noodle Shop on day 1; pass, exit 0",
+    "negative_control": "Noodle Shop temporarily mapped to InteriorKitchen; C++ build exit 0, kitchen control passed, noodle picture check failed, exit 1; source restored; original renderer rebuilt successfully afterward",
+    "compose": "python3 tools/art/toxic_night_review.py",
+    "captures": [
+      {
+        "path": "captures/230-street-day-1.png",
+        "sha256": "b10362faa2dfad62103c39dc4f7515182b6d464b293dd0d3db99912ce56581f3"
+      },
+      {
+        "path": "captures/271-cold-store-day-1.png",
+        "sha256": "faf2cbc479aad37ac9826d1d783d29365cd572f194f44bd5cdff194414e06022"
+      },
+      {
+        "path": "captures/271-service-room-day-1.png",
+        "sha256": "90b8d6ca244d9c5dbff9021e8e4f83f6b0851655e030551e4b004b2f95b97d40"
+      },
+      {
+        "path": "captures/276-interior-kitchen.png",
+        "sha256": "f1d5f1aa86da547727974dc0eb367c09a0be82b1260c0262d3105328ad6b42bd"
+      },
+      {
+        "path": "captures/276-interior-noodle.png",
+        "sha256": "cbef23748d24cc2e79e29f48ff9da57e7e386ddd8619a64170275fd1552f9c2a"
+      }
+    ],
+    "date": "2026-11-20"
+  }
 }

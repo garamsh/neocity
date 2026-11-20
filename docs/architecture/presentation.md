@@ -50,6 +50,8 @@ How the GDExtension presents the title screen and the survival game through inpu
 
 [ADR 0040](adr/0040-author-map-pieces-in-an-aseprite-kit.md) records native Aseprite source ownership and explicit per-building interior artwork for the first Toxic Night map kit.
 
+The focused `StairsCheck --kit-interiors` tour reaches the kitchen and noodle lofts through paired human ladder travel and checks each occupied shop's actual picture. The [kit evidence](../art/production/toxic-night-kit/README.md) retains native captures, reference comparisons and their reproduction commands.
+
 ## Open questions
 
 - A production rendering backend beyond the Godot canvas.

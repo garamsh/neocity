@@ -16,7 +16,23 @@ Source ownership, exports and visual evidence for the first map-art delivery of 
 
 ## Review evidence
 
-The comparison files in this directory place the selected direction beside actual private-display captures. They compare atmosphere and pixel treatment; mockup geometry is not collision data. The kit board shows every exported asset independently of the runtime.
+The comparisons place the selected direction on the left and actual private-display captures on the right, both at half size with nearest sampling. They compare atmosphere and pixel treatment; mockup geometry is not collision data. Native captures remain in [captures/](captures/).
+
+| Evidence | Subject |
+|---|---|
+| [Street comparison](street-comparison.png) | Starting street, new skyline, decks, walls and props |
+| [Cold-store comparison](cold-store-comparison.png) | Three floor-aligned rooms with refrigeration lockers |
+| [Service-room comparison](service-room-comparison.png) | Two rooms with aquarium tanks and pumps |
+| [Kitchen comparison](kitchen-comparison.png) | Occupied kitchen loft with stove and shelves |
+| [Noodle comparison](noodle-comparison.png) | Occupied noodle loft with bowls and boiler |
+| [Kit board](kit-board.png) | All eighteen exports, shown independently of the runtime |
+
+- Runtime code and artwork: `ff5debed412fce1a780cd0a1a8db908be361d3a8`; the continuation adds the shop tour and evidence tooling, without redrawing the kit. Seed 11, two human key sets, native 1920×1080 canvas, pinned scene clock.
+- Full map tour: `godot --path project --display-driver wayland --audio-driver Dummy --disable-vsync --fixed-fps 60 --main-loop StairsCheck -- --map-art-tour`. Both maps passed on days 1, 5 and 10, including paired travel, drawn collision floors, three cold-store rooms and two service rooms.
+- Shop tour: the same command with `--kit-interiors` instead of `--map-art-tour`, on day 1. Both humans reach each shop by its ladder; the check reads the picture actually drawn. This is an evidence route, not an additional movement model.
+- Run either tour only in a private `kwin_wayland --virtual --width 1920 --height 1080 --no-lockscreen --no-global-shortcuts` session, with a private runtime socket and isolated `XDG_DATA_HOME` and `XDG_CONFIG_HOME`, after checking the one-minute load is below 6. No user-display window was opened.
+- Recompose from the stored captures: `python3 tools/art/toxic_night_review.py`. To import fresh tour output, add `--captures <user-data-directory>/survival`. Reference PNGs are read from the recorded art-direction commit, without downloading or uploading files.
+- The street comparison still shows the earlier bright throat, acid lake and support artwork. Its full-screen value balance is not a claim that the unfinished backdrop pass is accepted. UI, item badges and character art belong to another delivery.
 
 ## Delivery boundary
 
