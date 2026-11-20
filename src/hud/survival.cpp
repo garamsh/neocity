@@ -89,7 +89,7 @@ constexpr int HAND_OFF_SIZE = SMALL_SIZE;
 /// at its own height, widened to its words.
 constexpr float PROMPT_HEIGHT = 48.0F;
 constexpr float PROMPT_MIN_WIDTH = 170.0F;
-constexpr float PROMPT_MAX_WIDTH = 520.0F;
+constexpr float PROMPT_MAX_WIDTH = 580.0F;
 /// What a prompt's player tag and key cap take of its width, at most.
 constexpr float PROMPT_KEYS_WIDTH = 120.0F;
 constexpr float PROMPT_PAD = 22.0F;
