@@ -9,6 +9,7 @@
 #include "sound.hpp"
 #include "survival_run.hpp"
 #include "tips.hpp"
+#include <survival/save.hpp>
 
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -84,7 +85,17 @@ struct DisplayStage {
 };
 
 /// Builds a fresh run's rule objects and hands back references to them.
-using StartSurvival = std::function<SurvivalFeatures()>;
+using StartSurvival =
+    std::function<SurvivalFeatures(const std::optional<survival::DaySave> &)>;
+
+/// The single slot's file boundary, supplied by the composition root.
+struct SaveStage {
+  /// Reads a valid checkpoint or reports absence, corruption or
+  /// incompatibility.
+  std::function<std::optional<survival::DaySave>()> load;
+  /// Stores a fresh day or removes a terminal run's checkpoint; handles errors.
+  std::function<void(const SurvivalFeatures &, survival::ControlMap)> update;
+};
 
 /// The open cinematic. `card_left` is the fallback card's remaining seconds,
 /// and empty while a scene plays on the stage.
@@ -99,9 +110,10 @@ struct Playback {
 class Session {
 public:
   /// Receives the survival run factory, the stage that plays cinematics, the
-  /// one that plays sound, and the one that keeps the display choice.
+  /// one that plays sound, the display choice, and the day slot.
   Session(StartSurvival start_survival, CinematicStage cinematic_stage,
-          SoundStage sound_stage, DisplayStage display_stage);
+          SoundStage sound_stage, DisplayStage display_stage,
+          SaveStage save_stage);
   /// Samples edges once and advances the open screen; a survival run takes all
   /// of the frame time.
   void advance(double delta, Command command);
@@ -156,6 +168,7 @@ private:
   void advance_setup(const Command &command);
   void advance_settings(const Command &command);
   void start_run(survival::ControlMap control);
+  void continue_run();
   void advance_run(SurvivalRun &open, double delta, const Command &command);
   void advance_interruption(hud::Interruption open, const Command &command);
   void play(hud::Cinematic cinematic);
@@ -193,7 +206,7 @@ private:
   std::size_t pause_row = 0;
   /// The marked row of the settings page: resolution, window.
   std::size_t settings_row = 0;
-  /// The marked title entry, an index into `hud::TITLE_ENTRIES`.
+  /// The marked entry in the current title menu.
   std::size_t cursor = 0;
   /// The marked choice of players, an index into `hud::SETUP_ENTRIES`.
   std::size_t setup_cursor = 0;
@@ -203,6 +216,8 @@ private:
   /// The flourishes under way in the open run.
   std::vector<rendering::Burst> bursts;
   StartSurvival start;
+  SaveStage saving;
+  std::optional<survival::DaySave> saved;
   std::optional<Playback> playback;
   /// The open run's first-play tips; a new run starts them afresh.
   Tips tips;

@@ -136,6 +136,7 @@ public:
   [[nodiscard]] Snapshot snapshot() const;
 
 private:
+  friend class DaySave;
   ActorSnapshot &actor_state(Actor actor);
   void relocate(ActorSnapshot &actor);
 

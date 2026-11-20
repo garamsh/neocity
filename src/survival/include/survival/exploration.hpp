@@ -375,6 +375,7 @@ public:
   [[nodiscard]] ExplorationSnapshot snapshot() const;
 
 private:
+  friend class DaySave;
   struct Explorer {
     ExplorerSnapshot state;
     std::chrono::microseconds remainder{};

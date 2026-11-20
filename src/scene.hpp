@@ -2,6 +2,7 @@
 
 #include "audio/speaker.hpp"
 #include "rendering/drawing.hpp"
+#include "session/save.hpp"
 #include "session/session.hpp"
 
 #include <survival/companion.hpp>
@@ -24,7 +25,9 @@ namespace neocity {
 /// a value stays where it was built.
 class SurvivalRules {
 public:
-  explicit SurvivalRules(survival::Content game);
+  explicit SurvivalRules(
+      survival::Content game,
+      const std::optional<survival::DaySave> &saved = std::nullopt);
   SurvivalRules(const SurvivalRules &) = delete;
   SurvivalRules &operator=(const SurvivalRules &) = delete;
   SurvivalRules(SurvivalRules &&) = delete;
@@ -91,7 +94,8 @@ private:
   bool play_cinematic(const godot::String &scene);
   [[nodiscard]] bool cinematic_playing() const;
   void stop_cinematic();
-  session::SurvivalFeatures start_survival();
+  session::SurvivalFeatures
+  start_survival(const std::optional<survival::DaySave> &saved);
   void draw_world();
   void draw_glow();
   void draw_finish();
@@ -101,6 +105,7 @@ private:
   std::optional<SurvivalRules> survival_rules;
   std::optional<std::uint32_t> pinned_seed;
   std::optional<godot::Vector2i> pinned_screen;
+  session::SaveSlot save_slot;
   session::Session session;
   std::optional<rendering::Art> drawing;
   std::optional<audio::Speaker> speaker;

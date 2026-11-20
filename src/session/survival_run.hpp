@@ -43,8 +43,14 @@ class SurvivalRun {
 public:
   /// `first_event` numbers the run's first logged event; the screen tells
   /// notes apart by these numbers, so each run continues the last one's.
-  SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
-              std::uint64_t first_event);
+  /// `save_day` stores each fresh day or removes a terminal run's slot;
+  /// `fresh_run` is false on Continue, which keeps the existing checkpoint.
+  SurvivalRun(
+      SurvivalFeatures rules, survival::ControlMap players,
+      std::uint64_t first_event,
+      std::function<void(const SurvivalFeatures &, survival::ControlMap)>
+          save_day,
+      bool fresh_run = true);
   /// Retains this frame's input and runs every step the frame time completes;
   /// returns the events those steps recorded, oldest first.
   std::vector<hud::Event>
@@ -85,6 +91,7 @@ private:
                       survival::PlayerInput &input,
                       const survival::GameView &current);
   void step();
+  void checkpoint();
   void run_action(survival::Actor actor, const survival::Action &action,
                   std::uint32_t day);
   void report_returns(const survival::Snapshot &before,
@@ -94,6 +101,7 @@ private:
   void record(const hud::Event &event);
 
   SurvivalFeatures features;
+  std::function<void(const SurvivalFeatures &, survival::ControlMap)> save_day;
   survival::ControlMap controllers;
   bool started_together = false;
   double accumulated = 0.0;

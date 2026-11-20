@@ -228,13 +228,17 @@ void kit_button(godot::Node2D &canvas, godot::Rect2 area, bool selected) {
 
 namespace {
 
-godot::Rect2 entry_area(std::size_t index) {
-  return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * ENTRY_PITCH,
-              ENTRY_WIDTH, ENTRY_HEIGHT);
+float entry_pitch(bool saved) { return saved ? 62.0F : ENTRY_PITCH; }
+
+godot::Rect2 entry_area(std::size_t index, bool saved) {
+  return rect(ENTRY_X, ENTRY_Y + static_cast<float>(index) * entry_pitch(saved),
+              ENTRY_WIDTH, saved ? 58.0F : ENTRY_HEIGHT);
 }
 
 const char *entry_label(TitleEntry entry) {
   switch (entry) {
+  case TitleEntry::Continue:
+    return "CONTINUE";
   case TitleEntry::NewGame:
     return "NEW GAME";
   case TitleEntry::Controls:
@@ -251,6 +255,8 @@ const char *entry_label(TitleEntry entry) {
 
 const char *entry_summary(TitleEntry entry) {
   switch (entry) {
+  case TitleEntry::Continue:
+    return "Resume from the start of the saved day.";
   case TitleEntry::NewGame:
     return "Play the chef, the appraiser, or both with a friend.";
   case TitleEntry::Controls:
@@ -268,7 +274,8 @@ const char *entry_summary(TitleEntry entry) {
 } // namespace
 
 void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
-                 TitleEntry selected) {
+                 TitleEntry selected, bool saved) {
+  const auto &entries = title_entries(saved);
   const auto tones = rendering::palette();
   const Kit kit;
   paint_title_art(canvas, 0.0F);
@@ -276,20 +283,20 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
   kit_panel(canvas, menu);
   lantern(canvas, kit, menu);
   const auto chosen_at = static_cast<float>(
-      std::ranges::find(TITLE_ENTRIES, selected) - TITLE_ENTRIES.begin());
-  for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
-    kit_button(canvas, entry_area(index), false);
+      std::ranges::find(entries, selected) - entries.begin());
+  for (std::size_t index = 0; index < entries.size(); ++index) {
+    kit_button(canvas, entry_area(index, saved), false);
   }
   // The gold button slides to the cursor's entry.
-  kit_button(
-      canvas,
-      rect(ENTRY_X,
-           ENTRY_Y + drawing.glide("title_cursor", chosen_at) * ENTRY_PITCH,
-           ENTRY_WIDTH, ENTRY_HEIGHT),
-      true);
+  kit_button(canvas,
+             rect(ENTRY_X,
+                  ENTRY_Y + drawing.glide("title_cursor", chosen_at) *
+                                entry_pitch(saved),
+                  ENTRY_WIDTH, saved ? 58.0F : ENTRY_HEIGHT),
+             true);
   float y = ENTRY_Y;
   std::size_t number = 1;
-  for (const TitleEntry entry : TITLE_ENTRIES) {
+  for (const TitleEntry entry : entries) {
     const bool chosen = entry == selected;
     if (number <= NUMBERED_ENTRIES) {
       drawing.text(
@@ -298,11 +305,12 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
               "]",
           24, chosen ? tones.ink : tones.gold, rendering::Weight::Bold);
     }
-    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 30.0F, entry_label(entry),
-                 32, chosen ? tones.ink : tones.white, rendering::Weight::Bold);
-    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + 54.0F,
+    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + (saved ? 26.0F : 30.0F),
+                 entry_label(entry), 32, chosen ? tones.ink : tones.white,
+                 rendering::Weight::Bold);
+    drawing.text(canvas, ENTRY_X + ENTRY_TEXT_X, y + (saved ? 48.0F : 54.0F),
                  entry_summary(entry), 16, chosen ? tones.ink : tones.muted);
-    y += ENTRY_PITCH;
+    y += entry_pitch(saved);
     ++number;
   }
   kit_panel(canvas, rect(MARGIN, FOOT_Y, SCREEN_WIDTH - 2.0F * MARGIN,
@@ -315,12 +323,13 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
                tones.muted);
 }
 
-std::vector<Target> title_targets() {
+std::vector<Target> title_targets(bool saved) {
+  const auto &entries = title_entries(saved);
   std::vector<Target> targets;
-  targets.reserve(TITLE_ENTRIES.size());
-  for (std::size_t index = 0; index < TITLE_ENTRIES.size(); ++index) {
+  targets.reserve(entries.size());
+  for (std::size_t index = 0; index < entries.size(); ++index) {
     targets.push_back(
-        {.area = entry_area(index), .press = OptionPress{index + 1}});
+        {.area = entry_area(index, saved), .press = OptionPress{index + 1}});
   }
   return targets;
 }
