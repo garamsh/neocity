@@ -214,9 +214,16 @@ func _map_art_tour() -> void:
 			Vector2i(52, 2), Vector2i(51, 3), Vector2i(50, 4),
 			Vector2i(49, 3), Vector2i(48, 2), Vector2i(42, 2), Vector2i(42, 4), Vector2i(47, 4), Vector2i(47, 6),
 			Vector2i(49, 8), Vector2i(50, 7), Vector2i(51, 6), Vector2i(52, 5), Vector2i(60, 5), Vector2i(60, 11)])
+		var regrouped: bool = false
 		for target: Vector2i in route:
+			if regrouped and target in [Vector2i(40, 7), Vector2i(44, 6)]:
+				continue
 			if not await _tour_move(target):
 				return
+			if day == 1 and target == Vector2i(38, 8):
+				if not await _tour_party_in_cold_store():
+					return
+				regrouped = true
 			if target == Vector2i(39, 4):
 				if not await _tour_interior("271-cold-store-day-%d" % day, 3, "world/interior_cold_store.png"):
 					return
@@ -278,6 +285,67 @@ func _shop_interior(name: String, picture: String) -> bool:
 		_tour_fail("the occupied shop did not draw " + picture)
 	return inside
 
+## Checks the Cold Store display when the two humans are not on one floor of
+## it: with one outside, only the floor the other stands on is lit and every
+## other floor is covered solid; with both inside on different floors, both
+## floors are lit and the camera holds both. Ends with both on the middle floor.
+func _tour_party_in_cold_store() -> bool:
+	if not await _tour_move(Vector2i(38, 8), Vector2i(36, 8)):
+		return false
+	if not await _tour_shot("281-cold-store-one-out"):
+		return false
+	var world: Node = scene.get_node("World")
+	var rooms: Array = world.get_meta("interior_rooms", [])
+	if rooms.size() != 3 or world.get_meta("inside_view", false):
+		_tour_fail("one human out of the Cold Store still leaves the outside on screen with its three floors: " + str(rooms.size()))
+		return false
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		var ground: bool = is_equal_approx(floor_y, _lowest_floor(rooms))
+		var covered: float = room["cover"]
+		if room["lit"] != ground or (ground and covered > 0.01) or (not ground and covered < 0.99):
+			_tour_fail("with one human out, the floor of the other must be alone lit and the rest covered solid: " + str(room))
+			return false
+	if not await _tour_move(Vector2i(40, 7), Vector2i(44, 6)):
+		return false
+	if not await _tour_shot("281-cold-store-two-floors"):
+		return false
+	rooms = world.get_meta("interior_rooms", [])
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var lit: int = 0
+	for room: Dictionary in rooms:
+		var area: Rect2 = room["area"]
+		var covered: float = room["cover"]
+		var floor_y: float = room["floor_y"]
+		var upper: bool = is_equal_approx(floor_y, _highest_floor(rooms))
+		if room["lit"] == upper or (room["lit"] and covered > 0.01) or (not room["lit"] and covered < 0.8):
+			_tour_fail("with the humans on two floors, both of their floors must be lit and the top one covered: " + str(room))
+			return false
+		if room["lit"]:
+			lit += 1
+			if not Rect2(0, 0, 1280, 720).encloses(view * area):
+				_tour_fail("the camera does not hold the lit floor " + str(room["name"]))
+				return false
+	if rooms.size() != 3 or lit != 2 or not world.get_meta("inside_view", false):
+		_tour_fail("the two floors are not the only inside on screen: " + str(lit))
+		return false
+	print("Stairs: Cold Store with one human out, then on two floors: lit floors and covers as the display rules say.")
+	return await _tour_move(Vector2i(44, 6))
+
+func _lowest_floor(rooms: Array) -> float:
+	var lowest: float = -INF
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		lowest = maxf(lowest, floor_y)
+	return lowest
+
+func _highest_floor(rooms: Array) -> float:
+	var highest: float = INF
+	for room: Dictionary in rooms:
+		var floor_y: float = room["floor_y"]
+		highest = minf(highest, floor_y)
+	return highest
+
 ## Checks that all room bands end at their collision floors and the outside darkens.
 func _tour_interior(name: String, count: int, picture: String) -> bool:
 	if not await _tour_shot(name):
@@ -326,7 +394,9 @@ func _inside_is_framed(world: Node, rooms: Array) -> bool:
 	var layers: Array = world.get_meta("backdrop_layers", [null])
 	return lit >= 1 and layers.is_empty()
 
-func _tour_move(target: Vector2i) -> bool:
+## Walks the chef to `target` and the appraiser to `partner`, or to `target` too.
+func _tour_move(target: Vector2i, other: Vector2i = Vector2i(-1, -1)) -> bool:
+	var partner: Vector2i = target if other == Vector2i(-1, -1) else other
 	var last: Dictionary[String, int] = {}
 	var stalled: Dictionary[String, int] = {}
 	for frame: int in range(600):
@@ -334,10 +404,11 @@ func _tour_move(target: Vector2i) -> bool:
 		var reached: bool = true
 		for role: String in ["chef", "appraiser"]:
 			var body: Dictionary = state[role]
+			var goal: Vector2i = target if role == "chef" else partner
 			var column: int = body["x"]
 			var row: int = body["y"]
 			var at: Vector2i = Vector2i(column, row)
-			var done: bool = state["map"] == "Aquarium" and target == Vector2i(62, 11) or at == target and body["stance"] != "airborne"
+			var done: bool = state["map"] == "Aquarium" and target == Vector2i(62, 11) or at == goal and body["stance"] != "airborne"
 			reached = reached and done
 			var left: Key = KEY_A if role == "chef" else KEY_J
 			var right: Key = KEY_D if role == "chef" else KEY_L
@@ -345,17 +416,17 @@ func _tour_move(target: Vector2i) -> bool:
 			var down: Key = KEY_S if role == "chef" else KEY_K
 			var jump: Key = KEY_SPACE if role == "chef" else KEY_SEMICOLON
 			var run: Key = KEY_SHIFT if role == "chef" else KEY_H
-			var sideways: bool = not done and target.x != at.x
-			_key(left, sideways and target.x < at.x)
-			_key(right, sideways and target.x > at.x)
-			_key(up, not done and not sideways and target.y < at.y)
-			_key(down, not done and not sideways and target.y > at.y)
-			_key(run, sideways and absi(target.x - at.x) > 3)
+			var sideways: bool = not done and goal.x != at.x
+			_key(left, sideways and goal.x < at.x)
+			_key(right, sideways and goal.x > at.x)
+			_key(up, not done and not sideways and goal.y < at.y)
+			_key(down, not done and not sideways and goal.y > at.y)
+			_key(run, sideways and absi(goal.x - at.x) > 3)
 			var sub_x: int = body["sub_x"]
 			stalled[role] = stalled.get(role, 0) + 1 if sideways and sub_x == last.get(role, -1) and body["stance"] == "standing" else 0
 			last[role] = sub_x
-			var climb_step: bool = target.y < at.y and absi(target.x - at.x) <= 1
-			var gap_takeoff: bool = target.y < row and target.x - column == 2 and sub_x % 32 >= 16
+			var climb_step: bool = goal.y < at.y and absi(goal.x - at.x) <= 1
+			var gap_takeoff: bool = goal.y < row and goal.x - column == 2 and sub_x % 32 >= 16
 			var jump_pressed: bool = not done and body["stance"] == "standing" and (gap_takeoff or climb_step or stalled[role] > 6)
 			_key(jump, jump_pressed)
 		if reached:
