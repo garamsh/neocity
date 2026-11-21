@@ -21,12 +21,26 @@ const FIRST_PLAYER_OUTLINE: Color = Color(1.0, 0.62, 0.12)
 const AI_OUTLINE: Color = Color(0.85, 0.88, 0.92)
 ## The cell of the Cold Store's hall where both humans stand overlapped.
 const HALL: Vector2i = Vector2i(38, 8)
+## Where the camera's centre rests on the screen, and how far from it, in layout units, a human's feet may stand.
+const FOCUS: Vector2 = Vector2(640, 301)
+const BAND: Vector2 = Vector2(200, 130)
+## The cells of the kitchen's floor the humans stand on, from its door end through the middle to the far side.
+const KITCHEN_STOPS: Array[Vector2i] = [Vector2i(0, 6), Vector2i(2, 6), Vector2i(5, 6)]
+## The same for the noodle shop, whose room starts at cell 20.
+const NOODLE_STOPS: Array[Vector2i] = [Vector2i(20, 6), Vector2i(22, 6), Vector2i(25, 6)]
+## The least the camera's centre moves between two stops, in scene pixels.
+const LEAST_TRAVEL: float = 20.0
 var scene: MainScene
 var clock: float = 0.0
 var held_keys: Dictionary[Key, bool] = {}
 var failures: Array[String] = []
+## With `--capture=<folder>` on a real window, each stop in the shops is saved there as a PNG, and the run ends after the noodle shop.
+var capture: String = ""
 
 func _initialize() -> void:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture="):
+			capture = argument.trim_prefix("--capture=")
 	Engine.max_fps = 60
 	_run.call_deferred()
 
@@ -43,6 +57,11 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
+	if not await _check_kitchen_camera():
+		return
+	if not capture.is_empty():
+		await _capture_noodle()
+		return
 	var on_street: bool = true
 	for target: Vector2i in ROUTE:
 		if not await _move(target, target):
@@ -51,6 +70,7 @@ func _run() -> void:
 			on_street = false
 			await _settle()
 			_check_outlines("street")
+			_check_street_plain()
 	await _settle()
 	_check_hall()
 	_check_outlines("hall")
@@ -66,6 +86,84 @@ func _run() -> void:
 	var verdict: String = "pass" if failures.is_empty() else "fail"
 	print("Interior: finished: %s; %d failures %s." % [verdict, failures.size(), failures])
 	quit(0 if failures.is_empty() else 1)
+
+## Walks both humans up into the kitchen and along it, and reads where the camera stands at each stop.
+func _check_kitchen_camera() -> bool:
+	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
+		if not await _move(target, target):
+			return false
+	var centres: Array[Vector2] = []
+	for stop: Vector2i in KITCHEN_STOPS:
+		if not await _move(stop, stop):
+			return false
+		await _settle()
+		centres.append(_read_camera("kitchen " + str(stop)))
+		await _save("kitchen-%d" % stop.x)
+	for index: int in range(1, centres.size()):
+		if centres[index].x - centres[index - 1].x < LEAST_TRAVEL:
+			_fail("the camera did not follow along the kitchen: centres %s" % [centres])
+	_check_open_door("kitchen")
+	if _world().get_meta("vignette", 0.0) <= 0.0:
+		_fail("the kitchen drew no vignette")
+	return await _move(Vector2i(3, 6), Vector2i(3, 6)) and await _move(Vector2i(3, 8), Vector2i(3, 8))
+
+## Saves the frame as `<capture>/<name>.png` when capturing.
+func _save(name: String) -> void:
+	if capture.is_empty():
+		return
+	DirAccess.make_dir_recursive_absolute(capture)
+	await process_frame
+	root.get_viewport().get_texture().get_image().save_png("%s/%s.png" % [capture, name])
+
+## Walks both humans from the kitchen to the noodle shop and along it, checks the same follow and saves each stop.
+func _capture_noodle() -> void:
+	for target: Vector2i in [Vector2i(3, 8), Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(23, 8), Vector2i(23, 6)]:
+		if not await _move(target, target):
+			return
+	for stop: Vector2i in NOODLE_STOPS:
+		if not await _move(stop, stop):
+			return
+		await _settle()
+		_read_camera("noodle " + str(stop))
+		await _save("noodle-%d" % stop.x)
+	_check_open_door("noodle")
+	print("Interior: capture finished: %s; %d failures %s." % ["pass" if failures.is_empty() else "fail", failures.size(), failures])
+	quit(0 if failures.is_empty() else 1)
+
+## The camera's centre in the scene; fails when the chef stands outside the band around the middle of
+## the screen or the centre has left the room.
+func _read_camera(where: String) -> Vector2:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var zoom: float = view.get_scale().x
+	var centre: Vector2 = (FOCUS - view.origin) / zoom
+	var extent: Rect2 = _world().get_meta("inside_extent", Rect2())
+	if not extent.grow(1.0).has_point(centre):
+		_fail("%s: the camera looks past the room: centre %s, room %s" % [where, centre, extent])
+	var chef: Dictionary = scene.survival_status()["chef"]
+	var chef_x: int = chef["sub_x"]
+	var chef_y: int = chef["sub_y"]
+	var feet: Vector2 = view * (ORIGIN + Vector2(chef_x, chef_y))
+	var off: Vector2 = (feet - FOCUS).abs()
+	if off.x > BAND.x or off.y > BAND.y:
+		_fail("%s: the chef stands %s from the middle of the screen, outside the band %s" % [where, off, BAND])
+	return centre
+
+## The door the humans came in by is drawn open on the street, inside the room.
+func _check_open_door(where: String) -> void:
+	var door: Dictionary = _world().get_meta("open_door", {})
+	var extent: Rect2 = _world().get_meta("inside_extent", Rect2())
+	if door.is_empty():
+		_fail("%s: no open door was drawn" % where)
+		return
+	var opening: Rect2 = door["area"]
+	if not extent.encloses(opening) or str(door["street"]) != "City":
+		_fail("%s: the open door %s does not show the street inside the room %s: %s" % [where, opening, extent, door])
+
+## The street shows neither the vignette nor an open door.
+func _check_street_plain() -> void:
+	var door: Dictionary = _world().get_meta("open_door", {})
+	if _world().get_meta("vignette", 1.0) != 0.0 or not door.is_empty():
+		_fail("the street drew a vignette or an open door")
 
 func _world() -> Node:
 	return scene.get_node("World")

@@ -37,14 +37,15 @@ struct View {
 
 /// Where the camera over the city heads: the actors in the city, human or AI.
 /// One is shown at twice the scene's size, a little ahead of the way it faces;
-/// two are framed together at twice the size while they fit and at the scene's
-/// own size once they do not, which the screen lock keeps from happening
-/// sideways. With nobody in the city it rests on the base entrance. It never
-/// shows past the map's left and right edges or the scene's top and bottom, and
-/// centres on the map when the view is wider than it. While every actor in the
-/// city is inside one building it frames the rooms they stand in at the
-/// largest whole zoom that fits them on the play area, no larger than one and a
-/// half times the close zoom, and never shows past the building's sides.
+/// two are framed together, ahead of the way they face together, at twice the
+/// size while they fit and at the scene's own size once they do not, which the
+/// screen lock keeps from happening sideways. With nobody in the city it rests
+/// on the base entrance. It never shows past the map's left and right edges or
+/// the scene's top and bottom, and centres on the map when the view is wider
+/// than it. Inside a building, which every actor in the city is in, it follows
+/// the same way at the same zooms, its centre kept within the building's rooms,
+/// so the room scrolls past as the actors walk and the view past its sides is
+/// darkness.
 [[nodiscard]] View aim(const survival::Content &content,
                        const survival::GameView &view);
 

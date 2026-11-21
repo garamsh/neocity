@@ -3,6 +3,8 @@
 #include "camera.hpp"
 
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
@@ -1009,11 +1011,60 @@ const std::map<std::string_view, Image> &interior_pictures() {
   return PICTURES;
 }
 
+/// Where a room picture's street door opens, in layout units from the
+/// picture's top left corner: every interior has one at its left end.
+struct Doorway {
+  Image image;
+  godot::Rect2 opening;
+};
+constexpr std::array DOORWAYS{Doorway{.image = Image::InteriorKitchen,
+                                      .opening = {4.0F, 19.0F, 14.5F, 36.0F}},
+                              Doorway{.image = Image::InteriorNoodle,
+                                      .opening = {3.0F, 21.0F, 8.5F, 33.5F}},
+                              Doorway{.image = Image::InteriorColdStore,
+                                      .opening = {3.0F, 39.0F, 13.0F, 31.5F}},
+                              Doorway{.image = Image::InteriorService,
+                                      .opening = {3.0F, 33.0F, 14.0F, 29.5F}}};
+/// The part of the city picture seen through a door, in layout units, and how
+/// much of the opening's bottom the acid's glow fills.
+constexpr godot::Rect2 DOOR_CITY_VIEW{985.0F, 200.0F, 96.0F, 240.0F};
+constexpr float DOOR_ACID_SHARE = 0.18F;
+/// The share of the opening the swung-open door leaf covers, from its hinge.
+constexpr float DOOR_LEAF_SHARE = 0.22F;
+
+/// Draws the door of the room picture at `room` open: the street seen through
+/// it, taken from the city layer with the acid's glow at its foot, and the
+/// door leaf swung back against the wall.
+void paint_open_door(godot::Node2D &canvas, const Art &art, Image image,
+                     const godot::Rect2 &room) {
+  const auto *doorway = std::ranges::find(DOORWAYS, image, &Doorway::image);
+  if (doorway == DOORWAYS.end()) {
+    return;
+  }
+  const godot::Rect2 opening{room.position + doorway->opening.position,
+                             doorway->opening.size};
+  canvas.draw_rect(opening, palette().background);
+  art.image_part(canvas, Image::City, DOOR_CITY_VIEW, opening);
+  const float glow = opening.size.y * DOOR_ACID_SHARE;
+  canvas.draw_rect(rect(opening.position.x, opening.get_end().y - glow,
+                        opening.size.x, glow),
+                   color(110, 255, 90, 0.35F));
+  canvas.draw_rect(rect(opening.position.x, opening.position.y,
+                        opening.size.x * DOOR_LEAF_SHARE, opening.size.y),
+                   color(58, 42, 52, 1.0F));
+  if (canvas.has_meta("measure_art")) {
+    godot::Dictionary drawn;
+    drawn.set("area", opening);
+    drawn.set("street", godot::String("City"));
+    canvas.set_meta("open_door", drawn);
+  }
+}
+
 /// Draws the picture of every building an actor is in, floor by floor aligned
 /// to the real floors.
 void paint_interiors(godot::Node2D &canvas, const Art &art,
                      const survival::Content &content,
-                     const survival::GameView &view) {
+                     const survival::GameView &view, bool open_door) {
   for (const auto &interior : content.companion.exploration.interiors) {
     const auto feet = feet_in(view, interior.building);
     if (interior.map != view.exploration.map || feet.empty()) {
@@ -1024,12 +1075,25 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
     if (interior.floors.empty()) {
       const Vector2 size = art.size(image);
       const auto box = area_rect(interior.area);
-      art.image(canvas, image,
-                Vector2(box.position.x, box.position.y + box.size.y - size.y));
+      const Vector2 corner(box.position.x,
+                           box.position.y + box.size.y - size.y);
+      art.image(canvas, image, corner);
+      if (open_door) {
+        paint_open_door(canvas, art, image, {corner, size});
+      }
       continue;
     }
-    for (const auto &room : inside_building(interior, feet).rooms) {
+    const auto rooms = inside_building(interior, feet).rooms;
+    for (const auto &room : rooms) {
       paint_room(canvas, art, image, room.area);
+    }
+    // The ground floor's door is the way in from the street.
+    if (open_door) {
+      const auto &ground = rooms.back().area;
+      paint_open_door(canvas, art, image,
+                      {ground.position.x,
+                       ground.get_end().y - art.size(image).y,
+                       art.size(image).x, art.size(image).y});
     }
   }
 }
@@ -1112,6 +1176,60 @@ void paint_interior_mask(godot::Node2D &canvas, const godot::Rect2 &extent) {
       rect(box.position.x - reach, box.position.y, reach, box.size.y), tone);
   canvas.draw_rect(rect(box.get_end().x, box.position.y, reach, box.size.y),
                    tone);
+}
+
+/// The soft oval over the screen's edges while it shows only a building's
+/// inside: clear within `VIGNETTE_RINGS`'s first ring, darkening through the
+/// rest until past the corners it is the background's own colour. Each ring is
+/// a share of the screen's half size and the background's opacity there.
+struct VignetteRing {
+  float reach;
+  float opacity;
+};
+constexpr std::array VIGNETTE_RINGS{
+    VignetteRing{.reach = 0.3F, .opacity = 0.0F},
+    VignetteRing{.reach = 0.75F, .opacity = 0.55F},
+    VignetteRing{.reach = 1.5F, .opacity = 1.0F}};
+constexpr int VIGNETTE_STEPS = 48;
+
+void paint_vignette(godot::Node2D &canvas, const Art &art) {
+  const auto kept = art.looking();
+  art.look(canvas, Vector2(), 1.0F);
+  const Vector2 middle(SCREEN_WIDTH / 2.0F, SCREEN_HEIGHT / 2.0F);
+  const auto tone = palette().background;
+  const auto point = [&](const VignetteRing &ring, int step) {
+    const float angle = 2.0F * std::numbers::pi_v<float> *
+                        static_cast<float>(step) /
+                        static_cast<float>(VIGNETTE_STEPS);
+    return middle + Vector2(std::cos(angle) * middle.x * ring.reach,
+                            std::sin(angle) * middle.y * ring.reach);
+  };
+  const auto shade = [&](const VignetteRing &ring) {
+    auto edge = tone;
+    edge.a = ring.opacity;
+    return edge;
+  };
+  for (std::size_t ring = 0; ring + 1 < VIGNETTE_RINGS.size(); ++ring) {
+    const auto &in = VIGNETTE_RINGS.at(ring);
+    const auto &out = VIGNETTE_RINGS.at(ring + 1);
+    for (int step = 0; step < VIGNETTE_STEPS; ++step) {
+      godot::PackedVector2Array corners;
+      corners.push_back(point(in, step));
+      corners.push_back(point(out, step));
+      corners.push_back(point(out, step + 1));
+      corners.push_back(point(in, step + 1));
+      godot::PackedColorArray shades;
+      shades.push_back(shade(in));
+      shades.push_back(shade(out));
+      shades.push_back(shade(out));
+      shades.push_back(shade(in));
+      canvas.draw_polygon(corners, shades);
+    }
+  }
+  art.look(canvas, kept.origin, kept.zoom);
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("vignette", VIGNETTE_RINGS.back().opacity);
+  }
 }
 
 void paint_passage(godot::Node2D &canvas, const Art &art,
@@ -2032,7 +2150,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       paint_shop_front(canvas, art, objects, marker);
     }
   }
-  paint_interiors(canvas, art, everything, view);
+  paint_interiors(canvas, art, everything, view, inside.has_value());
   std::vector<survival::GridPosition> stairs;
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -2092,10 +2210,15 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {
     paint_interior_mask(canvas, inside->extent);
+    paint_vignette(canvas, art);
   }
   // The measuring checks read whether the screen is only an inside.
   if (canvas.has_meta("measure_art")) {
     canvas.set_meta("inside_view", inside.has_value());
+    if (!inside) {
+      canvas.set_meta("vignette", 0.0F);
+      canvas.set_meta("open_door", godot::Dictionary());
+    }
     canvas.set_meta("inside_extent", inside ? inside->extent : godot::Rect2());
   }
 }
