@@ -9,7 +9,7 @@ namespace {
 
 using rendering::rect;
 
-constexpr int ROW_SIZE = 2 * rendering::FONT_GRID;
+constexpr int ROW_SIZE = 2 * rendering::TYPE_UNIT;
 constexpr float ARROWS_X = 240.0F;
 constexpr float ARROW_WIDTH = 30.0F;
 constexpr float ARROW_HEIGHT = 26.0F;
@@ -41,10 +41,10 @@ void paint_display_rows(godot::Node2D &canvas, const rendering::Art &drawing,
                        tones.raised);
     }
     drawing.text(canvas, left, y, row.name, ROW_SIZE,
-                 row.marked ? tones.gold : tones.white);
+                 row.marked ? tones.lime : tones.white);
     for (const bool forward : {false, true}) {
       const auto area = arrow(left, y, forward);
-      kit_button(canvas, area, false);
+      paint_card(canvas, area, false);
       drawing.text(canvas, area.position.x + 10.0F, y - 1.0F,
                    forward ? ">" : "<", ROW_SIZE, tones.white);
     }

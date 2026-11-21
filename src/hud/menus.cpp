@@ -42,44 +42,40 @@ void backdrop(godot::Node2D &canvas, float veil) {
 void paint_controls(godot::Node2D &canvas, const rendering::Art &drawing) {
   const auto tones = rendering::palette();
   backdrop(canvas, 0.6F);
-  kit_panel(canvas,
-            rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  paint_panel(canvas,
+              rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Controls", 40,
-               tones.white, rendering::Weight::Bold);
+               tones.white, rendering::Weight::Title);
   paint_key_rows(canvas, drawing, control_rows(), CONTROLS_TEXT_X,
                  CONTROLS_ROW_Y, CONTROLS_ROW_HEIGHT);
-  kit_button(canvas, back_area(drawing), false);
-  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
-               CONTROLS_BACK, 24, tones.white);
+  paint_action(canvas, drawing, back_area(drawing), CONTROLS_BACK, 24, false);
 }
 
 void paint_how_to_play(godot::Node2D &canvas, const rendering::Art &drawing) {
   const auto tones = rendering::palette();
   backdrop(canvas, 0.6F);
-  kit_panel(canvas,
-            rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  paint_panel(canvas,
+              rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "How to play", 40,
-               tones.white, rendering::Weight::Bold);
+               tones.white, rendering::Weight::Title);
   drawing.text(canvas, CONTROLS_TEXT_X, HOW_LEAD_Y,
-               "Keep the monster fed until the way out opens.", 24, tones.gold);
+               "Keep the monster fed until the way out opens.", 24, tones.lime);
   float y = HOW_ROW_Y;
   for (const Tip tip : TIPS) {
     drawing.text(canvas, CONTROLS_TEXT_X, y, tip_text(tip), 16, tones.white);
     y += HOW_ROW_HEIGHT;
   }
-  kit_button(canvas, back_area(drawing), false);
-  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
-               CONTROLS_BACK, 24, tones.white);
+  paint_action(canvas, drawing, back_area(drawing), CONTROLS_BACK, 24, false);
 }
 
 void paint_settings(godot::Node2D &canvas, const rendering::Art &drawing,
                     const std::vector<DisplayRow> &rows) {
   const auto tones = rendering::palette();
   backdrop(canvas, 0.6F);
-  kit_panel(canvas,
-            rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
+  paint_panel(canvas,
+              rect(CONTROLS_X, CONTROLS_Y, CONTROLS_WIDTH, CONTROLS_HEIGHT));
   drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + 66.0F, "Settings", 40,
-               tones.white, rendering::Weight::Bold);
+               tones.white, rendering::Weight::Title);
   paint_display_rows(canvas, drawing, rows, CONTROLS_TEXT_X, SETTINGS_ROW_Y,
                      SETTINGS_ROW_HEIGHT);
   drawing.text(canvas, CONTROLS_TEXT_X, SETTINGS_HINT_Y,
@@ -88,9 +84,7 @@ void paint_settings(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.text(canvas, CONTROLS_TEXT_X, SETTINGS_HINT_Y + 28.0F,
                "The picture is drawn at the window's own resolution.", 16,
                tones.muted);
-  kit_button(canvas, back_area(drawing), false);
-  drawing.text(canvas, CONTROLS_TEXT_X, CONTROLS_Y + CONTROLS_HEIGHT - 36.0F,
-               CONTROLS_BACK, 24, tones.white);
+  paint_action(canvas, drawing, back_area(drawing), CONTROLS_BACK, 24, false);
 }
 
 std::vector<Target> settings_targets(const rendering::Art &drawing,
