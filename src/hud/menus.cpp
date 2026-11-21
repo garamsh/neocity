@@ -10,13 +10,13 @@ namespace {
 using rendering::rect;
 
 /// The controls page lines up with the pause screen, whose rows it shares.
-constexpr float CONTROLS_X = 190.0F;
+constexpr float CONTROLS_X = 220.0F;
 constexpr float CONTROLS_Y = 20.0F;
-constexpr float CONTROLS_WIDTH = 900.0F;
+constexpr float CONTROLS_WIDTH = 840.0F;
 constexpr float CONTROLS_HEIGHT = 680.0F;
-constexpr float CONTROLS_TEXT_X = 230.0F;
-constexpr float CONTROLS_ROW_Y = 140.0F;
-constexpr float CONTROLS_ROW_HEIGHT = 38.0F;
+constexpr float CONTROLS_TEXT_X = 260.0F;
+constexpr float CONTROLS_ROW_Y = 124.0F;
+constexpr float CONTROLS_ROW_HEIGHT = 32.0F;
 constexpr const char *CONTROLS_BACK = "Back to the title";
 /// The How to play page shares the controls page's panel and way back.
 constexpr float HOW_LEAD_Y = 136.0F;
@@ -28,8 +28,8 @@ constexpr float SETTINGS_ROW_HEIGHT = 56.0F;
 constexpr float SETTINGS_HINT_Y = 330.0F;
 
 godot::Rect2 back_area(const rendering::Art &drawing) {
-  return rect(CONTROLS_TEXT_X - 14.0F, CONTROLS_Y + CONTROLS_HEIGHT - 66.0F,
-              drawing.text_width(CONTROLS_BACK, 24) + 28.0F, 46.0F);
+  return rect(CONTROLS_TEXT_X - 14.0F, CONTROLS_Y + CONTROLS_HEIGHT - 76.0F,
+              drawing.text_width(CONTROLS_BACK, 24) + 28.0F, 44.0F);
 }
 
 /// The title picture under a dark veil, so a page's panels stand out on it.
