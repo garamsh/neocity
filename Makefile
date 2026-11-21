@@ -166,6 +166,11 @@ test-survival: build
 	@log=$$(mktemp); data=$$(mktemp -d); trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop StairsCheck --fixed-fps 60 -- --interior-zoom > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Eq '^Stairs: finished: pass; [0-9]+ buildings read, 0 faults' "$$log"
+# InteriorCheck walks both humans into the Cold Store's hall on real keys and reads what
+# the drawing recorded (pictures, stair treads, plates), so it needs no display.
+	@log=$$(mktemp); data=$$(mktemp -d); trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop InteriorCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Interior: finished: pass; 0 failures [].' "$$log"
 
 test-escape: build
 	@log=$$(mktemp); trap 'rm -f "$$log"' EXIT HUP INT TERM; \

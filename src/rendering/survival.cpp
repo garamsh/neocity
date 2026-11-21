@@ -5,6 +5,7 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
+#include <godot_cpp/variant/vector2i.hpp>
 
 #include <algorithm>
 #include <array>
@@ -175,6 +176,8 @@ godot::Color sea_deep_tint() { return color(90, 150, 100, 1.0F); }
 godot::Color untinted() { return {1.0F, 1.0F, 1.0F}; }
 /// The stairs' stringer, under their treads, faces away from the light.
 godot::Color stringer_tint() { return {0.7F, 0.7F, 0.75F}; }
+/// The solid under a deck a stair joins to the floor beside it.
+godot::Color riser_tone() { return color(26, 22, 38, 1.0F); }
 /// The walked-on top edge of the ground is lit warm and bright.
 godot::Color ground_edge_tint() { return {3.9F, 3.25F, 2.6F}; }
 
@@ -295,9 +298,11 @@ public:
   /// Places `text`, after the mark's icon if it has one, with the left end of
   /// its baseline, or the icon's bottom-left corner, at `at`, or nearby, and
   /// tells whether it did: words for a spot off the play area, or with no
-  /// free spot near it, are left out. No other plate comes within `gap` of it.
+  /// free spot near it, are left out. No other plate comes within `gap` of it,
+  /// and none leaves `bound`, if it has one.
   bool add(const Art &art, Vector2 at, const godot::String &text, int size,
-           godot::Color tint, const Mark &mark = {}, float gap = PLATE_GAP) {
+           godot::Color tint, const Mark &mark = {}, float gap = PLATE_GAP,
+           const std::optional<godot::Rect2> &bound = std::nullopt) {
     const godot::Rect2 wanted = plate_box(art, at, text, size, mark);
     if (!room().intersects(wanted)) {
       return false;
@@ -308,17 +313,18 @@ public:
         Vector2(-1.0F, 1.0F), Vector2(1.0F, 1.0F)};
     const Vector2 pitch(PLATE_STEP, wanted.size.y + PLATE_GAP);
     godot::Rect2 box = wanted;
-    for (int ring = 1; ring <= PLATE_RINGS && !vacant(box, gap); ++ring) {
+    for (int ring = 1; ring <= PLATE_RINGS && !vacant(box, gap, bound);
+         ++ring) {
       for (const Vector2 direction : DIRECTIONS) {
         box = godot::Rect2(wanted.position +
                                direction * pitch * static_cast<float>(ring),
                            wanted.size);
-        if (vacant(box, gap)) {
+        if (vacant(box, gap, bound)) {
           break;
         }
       }
     }
-    if (!vacant(box, gap)) {
+    if (!vacant(box, gap, bound)) {
       return false;
     }
     placed.push_back(
@@ -360,9 +366,10 @@ public:
   }
 
 private:
-  [[nodiscard]] bool vacant(const godot::Rect2 &box, float gap) const {
+  [[nodiscard]] bool vacant(const godot::Rect2 &box, float gap,
+                            const std::optional<godot::Rect2> &bound) const {
     const godot::Rect2 spaced = box.grow(gap);
-    return room().encloses(box) &&
+    return room().encloses(box) && (!bound || bound->encloses(box)) &&
            std::ranges::none_of(placed,
                                 [&](const Plate &plate) {
                                   return spaced.intersects(plate.box);
@@ -470,20 +477,64 @@ godot::Rect2 deck_source(survival::GridPosition cell) {
               DECK_DEPTH);
 }
 
+/// What the ground around a deck cell is: the cells of the stairs, whose
+/// treads meet the floors a row above and below them, and the rooms of the
+/// buildings whose inside is on show, under whose floors the street's walls
+/// are not drawn.
+struct Footing {
+  std::span<const survival::GridPosition> stairs;
+  std::span<const survival::WorldArea> hollow;
+};
+
+/// Whether the stair at `cell` joins the floor of `neighbour`, which is a row
+/// above or below it, so the treads and that floor are drawn as one.
+bool stair_joins(const Footing &footing, survival::GridPosition cell,
+                 survival::GridPosition neighbour) {
+  const auto stair = [&](survival::GridPosition at) {
+    return std::ranges::find(footing.stairs, at) != footing.stairs.end();
+  };
+  return std::abs(cell.y - neighbour.y) == 1 &&
+         (stair(cell) || stair(neighbour));
+}
+
+/// Whether the deck of `cell` is a floor of a building's room on show.
+bool in_shown_room(const Footing &footing, survival::GridPosition cell) {
+  return std::ranges::any_of(
+      footing.hollow, [&](const auto &room) { return covers(room, cell); });
+}
+
+/// Whether the ground at `side` of `cell` is the floor it joins: the cell's
+/// neighbour on its row, or the floor of a stair's tread a row away.
+bool joined(std::span<const survival::GroundCell> standing,
+            const Footing &footing, survival::GridPosition cell,
+            std::int32_t side) {
+  const survival::GridPosition next{.x = cell.x + side, .y = cell.y};
+  if (has_ground(standing, next)) {
+    return true;
+  }
+  return std::ranges::any_of(std::array{-1, 1}, [&](std::int32_t rows) {
+    const survival::GridPosition other{.x = next.x, .y = cell.y + rows};
+    return has_ground(standing, other) && stair_joins(footing, cell, other);
+  });
+}
+
 /// A walkway deck under the floor line of `cell`, stained by the acid when
 /// `corroded`, under its top edge lit warm and bright, so the surface a player
 /// walks on reads first; exposed stone courses and the loft underside recede
 /// beneath that full-width edge.
 void paint_deck(godot::Node2D &canvas, const Art &art,
                 std::span<const survival::GroundCell> standing,
-                survival::GridPosition cell, bool corroded) {
+                const Footing &footing, survival::GridPosition cell,
+                bool corroded) {
   const godot::Rect2 source = deck_source(cell);
   const godot::Color tint = corroded ? corroded_tint() : untinted();
   const godot::Color face = tint * godot::Color(0.70F, 0.70F, 0.70F);
   const Vector2 at(cell_x(cell.x), floor_y(cell.y));
-  const bool loft = cell.y == LOFT_ROW;
-  const bool left = !has_ground(standing, {.x = cell.x - 1, .y = cell.y});
-  const bool right = !has_ground(standing, {.x = cell.x + 1, .y = cell.y});
+  // The kitchen loft's brick face is the street's, so a floor inside a room on
+  // show has none.
+  const bool loft = cell.y == LOFT_ROW && !in_shown_room(footing, cell);
+  const bool left = !joined(standing, footing, cell, -1);
+  const bool right = !joined(standing, footing, cell, 1);
   if (!left && !right) {
     art.image_part(canvas, Image::Deck, source,
                    rect(at.x, at.y, CELL, DECK_DEPTH), face);
@@ -546,6 +597,7 @@ bool corroded(float top, float surface) { return surface < top + DECK_DEPTH; }
 /// The ferry hull hangs below its collision deck.
 void paint_ground_cell(godot::Node2D &canvas, const Art &art,
                        std::span<const survival::GroundCell> standing,
+                       const Footing &footing,
                        const survival::GroundCell &ground, bool aquarium,
                        float surface) {
   const Vector2 at(cell_x(ground.cell.x), floor_y(ground.cell.y));
@@ -556,7 +608,7 @@ void paint_ground_cell(godot::Node2D &canvas, const Art &art,
     art.image_part(canvas, Image::AquariumDeck, rect(from, 0.0F, CELL, size.y),
                    rect(at.x, at.y, CELL, size.y));
   } else {
-    paint_deck(canvas, art, standing, ground.cell, eaten);
+    paint_deck(canvas, art, standing, footing, ground.cell, eaten);
   }
   if (ground.kind == GroundKind::Rubble) {
     art.image(canvas, Image::Rubble,
@@ -677,13 +729,51 @@ void paint_steam(godot::Node2D &canvas, const Art &art, float surface,
   }
 }
 
+/// The solid under the upper one of each pair of floors a stair joins, from
+/// the foot of its deck down to the floor line of the lower, so a tread and the
+/// floor beside it meet without a gap.
+void paint_stair_risers(godot::Node2D &canvas,
+                        std::span<const survival::GroundCell> standing,
+                        const Footing &footing) {
+  godot::Array risers;
+  for (const auto &stair : footing.stairs) {
+    if (!has_ground(standing, stair)) {
+      continue;
+    }
+    for (const std::int32_t side : {-1, 1}) {
+      for (const std::int32_t rows : {-1, 1}) {
+        const survival::GridPosition other{.x = stair.x + side,
+                                           .y = stair.y + rows};
+        if (!has_ground(standing, other)) {
+          continue;
+        }
+        const survival::GridPosition upper = rows > 0 ? stair : other;
+        const survival::GridPosition lower = rows > 0 ? other : stair;
+        const float top = floor_y(upper.y) + DECK_DEPTH;
+        const float bottom = floor_y(lower.y);
+        canvas.draw_rect(rect(cell_x(upper.x), top, CELL, bottom - top),
+                         riser_tone());
+        godot::Dictionary riser;
+        riser.set("cell", godot::Vector2i(upper.x, upper.y));
+        riser.set("tread", floor_y(upper.y));
+        riser.set("top", top);
+        riser.set("bottom", bottom);
+        risers.push_back(riser);
+      }
+    }
+  }
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("stair_risers", risers);
+  }
+}
+
 /// The ferry's hull, then each walkway of standing terrain on its floor line,
 /// eaten where the acid at `surface` has reached it.
 void paint_ground(godot::Node2D &canvas, const Art &art,
                   const survival::MapContent &content,
                   std::span<const ObjectSnapshot> objects,
                   const std::vector<survival::GroundCell> &ground,
-                  float surface) {
+                  const Footing &footing, float surface) {
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
         object.state == ObjectState::Intact &&
@@ -695,9 +785,10 @@ void paint_ground(godot::Node2D &canvas, const Art &art,
     }
   }
   for (const auto &cell : ground) {
-    paint_ground_cell(canvas, art, ground, cell,
+    paint_ground_cell(canvas, art, ground, footing, cell,
                       content.id == survival::MapId::Aquarium, surface);
   }
+  paint_stair_risers(canvas, ground, footing);
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
         object.state == ObjectState::Destroyed) {
@@ -724,6 +815,7 @@ bool stands_in_front(LandmarkKind kind) {
   case LandmarkKind::Ferry:
   case LandmarkKind::Platform:
   case LandmarkKind::Bridge:
+  case LandmarkKind::Stair:
     return false;
   }
   std::abort();
@@ -767,6 +859,7 @@ void paint_building(godot::Node2D &canvas, const Art &art,
     case LandmarkKind::Ferry:
     case LandmarkKind::Platform:
     case LandmarkKind::Bridge:
+    case LandmarkKind::Stair:
       break;
     }
   }
@@ -939,6 +1032,22 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
       paint_room(canvas, art, image, room.area);
     }
   }
+}
+
+/// The extents of the buildings on `view`'s map that an actor is in: those of
+/// several floors only, when `floors_only`.
+std::vector<survival::WorldArea>
+occupied_buildings(const survival::Content &content,
+                   const survival::GameView &view, bool floors_only) {
+  std::vector<survival::WorldArea> areas;
+  for (const auto &interior : content.companion.exploration.interiors) {
+    if (interior.map == view.exploration.map &&
+        !(floors_only && interior.floors.empty()) &&
+        !feet_in(view, interior.building).empty()) {
+      areas.push_back(interior.area);
+    }
+  }
+  return areas;
 }
 
 /// Darkens, over everything drawn in them, the floors of every building an
@@ -1434,6 +1543,19 @@ Labels label_city(const Art &art, const survival::GameView &view,
                 .labelled = {},
                 .counts = {}};
   auto &plates = labels.plates;
+  // Inside a building a badge or a tag stays in the room of its source or its
+  // actor, never over the black around the building: that room is at least
+  // the two rows over its floor line, `bottom`, and the building's extent
+  // holds it.
+  const auto within = [&](float bottom) -> std::optional<godot::Rect2> {
+    if (!camera.inside) {
+      return std::nullopt;
+    }
+    const godot::Rect2 extent = to_screen(camera, camera.room);
+    const float height = static_cast<float>(PICTURE_ROWS) * CELL * camera.zoom;
+    return extent.intersection(godot::Rect2(extent.position.x, bottom - height,
+                                            extent.size.x, height));
+  };
   for (const auto &area : covered) {
     plates.keep_clear(area);
   }
@@ -1485,7 +1607,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
     if (plates.add(art,
                    Vector2(cell.get_center().x - width / 2.0F + 2.0F,
                            cell.position.y - 2.0F - PLATE_GAP),
-                   count, COUNT_SIZE, tint, mark)) {
+                   count, COUNT_SIZE, tint, mark, PLATE_GAP,
+                   within(cell.get_end().y))) {
       labels.labelled.push_back(from(survival::object_name(marker.object.id)));
       labels.counts.push_back(plates.last());
     }
@@ -1540,7 +1663,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
     plates.add(art,
                Vector2(feet.x + (6.0F - CELL / 2.0F + offset) * camera.zoom,
                        top - TAG_GAP - static_cast<float>(TAG_SIZE) * 0.3F),
-               tag_of(control, actor), TAG_SIZE, tones.cyan, {}, TAG_GAP);
+               tag_of(control, actor), TAG_SIZE, tones.cyan, {}, TAG_GAP,
+               within(feet.y));
   };
   if (party.chef_out) {
     tag(Actor::Chef, view.exploration.chef.body, 0.0F);
@@ -1864,13 +1988,35 @@ void paint_city(godot::Node2D &canvas, const Art &art,
     }
   }
   paint_interiors(canvas, art, everything, view);
-  paint_ground(canvas, art, content, objects, ground, surface);
+  std::vector<survival::GridPosition> stairs;
+  for (const auto &object : objects) {
+    if (object.kind == ObjectKind::Terrain &&
+        landmark(content, object.id) == LandmarkKind::Stair) {
+      for (std::int32_t x = object.area.x;
+           x < object.area.x + object.area.width; ++x) {
+        for (std::int32_t y = object.area.y;
+             y < object.area.y + object.area.height; ++y) {
+          stairs.push_back({.x = x, .y = y});
+        }
+      }
+    }
+  }
+  const auto hollow = occupied_buildings(everything, view, true);
+  paint_ground(canvas, art, content, objects, ground,
+               {.stairs = stairs, .hollow = hollow}, surface);
   paint_buildings(true);
   if (!inside) {
     paint_obstacles(canvas, art, view.exploration.map, content);
   }
+  // The door is the building's front, so it is not drawn over the inside of a
+  // building an actor is in.
+  const auto occupied = occupied_buildings(everything, view, false);
   paint_kind(ObjectKind::Entrance, [&](const ObjectSnapshot &object) {
-    paint_passage(canvas, art, object, false);
+    if (std::ranges::none_of(occupied, [&](const auto &room) {
+          return covers(room, {.x = object.area.x, .y = object.area.y});
+        })) {
+      paint_passage(canvas, art, object, false);
+    }
   });
   paint_kind(ObjectKind::Ladder, [&](const ObjectSnapshot &object) {
     paint_passage(canvas, art, object, true);
