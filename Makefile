@@ -197,6 +197,12 @@ test-escape: build
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalBalanceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Balance: finished: pass; seed 1 monster_satisfied on day 10, seed 26 vomited_out on day 31, seed 81 acid loss on day 31.' "$$log"
 
+# EscapeDeviceCheck walks both humans to the broken device on real keys, collects its three parts and uses
+# it, headless. The finished line names the day the run ended on, so the check reads its verdict.
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop EscapeDeviceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Eq '^Escape device: finished: pass; the run ended as escaped on day [0-9]+ with 3 parts\.' "$$log"
+
 test-loss: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalLossCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
