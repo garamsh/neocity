@@ -22,9 +22,12 @@ constexpr float PLAY_HEIGHT = 478.0F;
 /// picture pixel stays a whole square of screen pixels.
 constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
-/// The largest zoom inside a building, which a small shop's room fills the
-/// screen with.
-constexpr float MOST = 6.0F;
+/// The largest zoom inside a building: one and a half times the street's close
+/// zoom, so a character is never drawn more than one and a half times as tall
+/// as on the street whichever room it stands in, and every room that fits at it
+/// is drawn at it. Rounded down to a whole zoom.
+constexpr float MOST = 3.0F;
+static_assert(MOST <= CLOSE * 1.5F);
 /// How far past a building's rooms, up and down, the camera may look, which
 /// the screen shows as darkness.
 constexpr float OVERLOOK = 4000.0F;
