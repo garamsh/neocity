@@ -2313,9 +2313,8 @@ String tip_line(const SurvivalFrame &frame, Tip tip) {
     const auto &first = KEY_LABELS.at(players.front().second);
     const auto &second = KEY_LABELS.at(players.back().second);
     return text + String(" Set out with [") + from(first.travel) + "] (P" +
-           number(players.front().second + 1) + ") or [" +
-           from(second.travel) + "] (P" + number(players.back().second + 1) +
-           ").";
+           number(players.front().second + 1) + ") or [" + from(second.travel) +
+           "] (P" + number(players.back().second + 1) + ").";
   }
   return text;
 }
