@@ -78,8 +78,6 @@ constexpr float CRANE_LOW = 330.0F;
 constexpr Vector2 ACTOR_PIVOT(128.0F / (2.0F * ART_SCALE),
                               204.0F / (2.0F * ART_SCALE));
 constexpr float DASH = 4.0F;
-/// Clears the head of a character that rises a cell above its own.
-constexpr float TAG_RISE = 38.0F;
 /// Clears the chef's tag when the two actors share a cell.
 constexpr float SHARED_CELL_TAG_SHIFT = 26.0F;
 /// How long after a step an actor still shows a walking frame; a walking step
@@ -107,6 +105,9 @@ constexpr int COUNT_SIZE = 16;
 constexpr int NAME_SIZE = 16;
 /// Clear space kept between two plates.
 constexpr float PLATE_GAP = 2.0F;
+/// Clear space an actor's tag keeps from every plate before it, so the tag
+/// reads as the actor's and not as a part of a place's name.
+constexpr float TAG_GAP = 8.0F;
 /// How far a plate looks sideways per step when its spot is taken.
 constexpr float PLATE_STEP = 16.0F;
 constexpr int PLATE_RINGS = 12;
@@ -294,9 +295,9 @@ public:
   /// Places `text`, after the mark's icon if it has one, with the left end of
   /// its baseline, or the icon's bottom-left corner, at `at`, or nearby, and
   /// tells whether it did: words for a spot off the play area, or with no
-  /// free spot near it, are left out.
+  /// free spot near it, are left out. No other plate comes within `gap` of it.
   bool add(const Art &art, Vector2 at, const godot::String &text, int size,
-           godot::Color tint, const Mark &mark = {}) {
+           godot::Color tint, const Mark &mark = {}, float gap = PLATE_GAP) {
     const godot::Rect2 wanted = plate_box(art, at, text, size, mark);
     if (!room().intersects(wanted)) {
       return false;
@@ -307,17 +308,17 @@ public:
         Vector2(-1.0F, 1.0F), Vector2(1.0F, 1.0F)};
     const Vector2 pitch(PLATE_STEP, wanted.size.y + PLATE_GAP);
     godot::Rect2 box = wanted;
-    for (int ring = 1; ring <= PLATE_RINGS && !vacant(box); ++ring) {
+    for (int ring = 1; ring <= PLATE_RINGS && !vacant(box, gap); ++ring) {
       for (const Vector2 direction : DIRECTIONS) {
         box = godot::Rect2(wanted.position +
                                direction * pitch * static_cast<float>(ring),
                            wanted.size);
-        if (vacant(box)) {
+        if (vacant(box, gap)) {
           break;
         }
       }
     }
-    if (!vacant(box)) {
+    if (!vacant(box, gap)) {
       return false;
     }
     placed.push_back(
@@ -359,8 +360,8 @@ public:
   }
 
 private:
-  [[nodiscard]] bool vacant(const godot::Rect2 &box) const {
-    const godot::Rect2 spaced = box.grow(PLATE_GAP);
+  [[nodiscard]] bool vacant(const godot::Rect2 &box, float gap) const {
+    const godot::Rect2 spaced = box.grow(gap);
     return room().encloses(box) &&
            std::ranges::none_of(placed,
                                 [&](const Plate &plate) {
@@ -959,10 +960,14 @@ void paint_interior_covers(godot::Node2D &canvas, const Art &art,
     for (std::size_t index = 0; index < inside.rooms.size(); ++index) {
       const auto &room = inside.rooms.at(index);
       auto tone = palette().background;
+      float cover = only_inside ? COVER_INSIDE : COVER_OUTSIDE;
+      if (room.lit) {
+        cover = 0.0F;
+      }
       tone.a = art.glide(
           "interior_cover_" + from(survival::object_name(interior.building)) +
               "_" + godot::String::num_int64(static_cast<std::int64_t>(index)),
-          room.lit ? 0.0F : (only_inside ? COVER_INSIDE : COVER_OUTSIDE));
+          cover);
       if (tone.a > 0.001F) {
         canvas.draw_rect(room.area, tone);
       }
@@ -1439,18 +1444,21 @@ Labels label_city(const Art &art, const survival::GameView &view,
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
   }
-  const auto keep_actor = [&](Actor actor, const survival::Body &body,
-                              float offset) {
+  const auto actor_box = [&](Actor actor, const survival::Body &body,
+                             float offset) {
     const auto now = view.progression.world_time;
     const auto shown = pose(actor, body, art.track(actor, body, now), now);
     const Vector2 size = art.size(shown.image);
     const Vector2 feet = feet_of(art, actor, body);
     const float anchor = ACTOR_PIVOT.x;
     const float pivot = shown.mirrored ? size.x - anchor : anchor;
-    plates.keep_clear(to_screen(
-        camera,
-        godot::Rect2(Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y),
-                     size)));
+    return to_screen(camera, godot::Rect2(Vector2(feet.x - pivot + offset,
+                                                  feet.y - ACTOR_PIVOT.y),
+                                          size));
+  };
+  const auto keep_actor = [&](Actor actor, const survival::Body &body,
+                              float offset) {
+    plates.keep_clear(actor_box(actor, body, offset));
   };
   if (party.chef_out) {
     keep_actor(Actor::Chef, view.exploration.chef.body, 0.0F);
@@ -1525,10 +1533,14 @@ Labels label_city(const Art &art, const survival::GameView &view,
   }
   const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
     const Vector2 feet = to_screen(camera, feet_of(art, actor, body));
+    constexpr int TAG_SIZE = 14;
+    // Just over the head the actor is drawn with, so the tag stays beside it
+    // and not among the names of the places around.
+    const float top = actor_box(actor, body, offset).position.y;
     plates.add(art,
-               feet + Vector2((6.0F - CELL / 2.0F + offset) * camera.zoom,
-                              -(CELL + TAG_RISE) * camera.zoom),
-               tag_of(control, actor), 14, tones.cyan);
+               Vector2(feet.x + (6.0F - CELL / 2.0F + offset) * camera.zoom,
+                       top - TAG_GAP - static_cast<float>(TAG_SIZE) * 0.3F),
+               tag_of(control, actor), TAG_SIZE, tones.cyan, {}, TAG_GAP);
   };
   if (party.chef_out) {
     tag(Actor::Chef, view.exploration.chef.body, 0.0F);

@@ -126,6 +126,9 @@ const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## The map's words that are neither a place's name nor a number, such as a
 ## count: a broken passage's mark and the actors' tags.
 const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
+## The words of the actors' tags, and the space a tag keeps from any other plate.
+const ACTOR_TAGS: Array[String] = ["P1", "P2", "AI"]
+const TAG_CLEARANCE: float = 7.5
 ## What feeding does, which the recipe book on the pause screen names.
 const FEED_RULES: Array[String] = ["A dish reaching the needed score holds the acid back.", "A hated dish, a lower score or no meal raises it.", "Full acid ends the run."]
 
@@ -675,6 +678,8 @@ func _first_day() -> void:
 	if not _every_place_measured():
 		return
 	if not _plates_apart("the first city screen"):
+		return
+	if not _tags_clear_of_names("the first city screen"):
 		return
 	if not _plates_clear_of_sources("the first city screen"):
 		return
@@ -2075,6 +2080,25 @@ func _plates_apart(where: String) -> bool:
 			if one.intersects(other):
 				covered.append("%s over %s" % [one, other])
 	return _check(sources > 0 and plates.size() > sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
+
+## No actor's tag stands within TAG_CLEARANCE of another plate, a place's name
+## among them, so a tag is not read as part of a name; the control is that the
+## map drew a tag and a plate that is not one.
+func _tags_clear_of_names(where: String) -> bool:
+	var plates: Array = scene.get_meta("map_plates", [])
+	var words: Array = scene.get_meta("map_words", [])
+	var tags: int = 0
+	var crowded: Array[String] = []
+	for tag: int in range(plates.size()):
+		if not ACTOR_TAGS.has(words[tag]):
+			continue
+		tags += 1
+		var tag_box: Rect2 = plates[tag]
+		for other: int in range(plates.size()):
+			var other_box: Rect2 = plates[other]
+			if other != tag and tag_box.grow(TAG_CLEARANCE).intersects(other_box):
+				crowded.append("%s %s near %s %s" % [words[tag], tag_box, words[other], other_box])
+	return _check(tags > 0 and plates.size() > tags and crowded.is_empty(), "an actor's tag keeps clear of every other plate on %s: %d tags, %d plates, %s" % [where, tags, plates.size(), crowded])
 
 ## Where a human's feet are in the scene.
 func _feet(who: String) -> Vector2:
