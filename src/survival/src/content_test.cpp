@@ -715,9 +715,10 @@ TEST(TemporaryContent,
   const auto content = short_days(1);
   const auto &exploration = content.companion.exploration;
   ASSERT_TRUE(exploration.escape.has_value());
-  EXPECT_EQ(exploration.escape->parts_needed, 3U);
-  EXPECT_EQ(exploration.escape->from_day, 10U);
-  EXPECT_EQ(exploration.escape->map, MapId::Aquarium);
+  const auto device = exploration.escape.value_or(EscapeDevice{});
+  EXPECT_EQ(device.parts_needed, 3U);
+  EXPECT_EQ(device.from_day, 10U);
+  EXPECT_EQ(device.map, MapId::Aquarium);
   std::map<MapId, std::uint32_t> parts;
   for (const auto &source : exploration.sources) {
     const auto object =

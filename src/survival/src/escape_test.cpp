@@ -22,53 +22,56 @@ constexpr std::uint32_t PARTS = 3;
 class Device {
 public:
   explicit Device(std::uint32_t held = PARTS, AcidLevel full = AcidLevel{100})
-      : simulation({.exploration_budget = 30s, .seed = 0, .full_acid = full}),
-        world({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 20}},
-               {.id = SOURCE,
-                .kind = ObjectKind::MaterialSource,
-                .area = {.x = 1},
-                .ingredient = ESCAPE_PART}}),
-        exploration(simulation, world,
-                    {.base = {.x = -10, .y = -10},
-                     .entry = {.x = 0, .y = 0},
-                     .exits = {},
-                     .interiors = {},
-                     .sources = {stock(SOURCE, held, ESCAPE_PART)},
-                     .obstacles = {},
-                     .patrols = {},
-                     .escape = EscapeDevice{.map = MapId::Street,
-                                            .area = {.x = 4, .y = 0},
-                                            .parts_needed = PARTS,
-                                            .from_day = FIRST_DAY}}) {
+      : shared({.exploration_budget = 30s, .seed = 0, .full_acid = full}),
+        map({{.id = FLOOR, .area = {.x = 0, .y = 0, .width = 20}},
+             {.id = SOURCE,
+              .kind = ObjectKind::MaterialSource,
+              .area = {.x = 1},
+              .ingredient = ESCAPE_PART}}),
+        explorers(shared, map,
+                  {.base = {.x = -10, .y = -10},
+                   .entry = {.x = 0, .y = 0},
+                   .exits = {},
+                   .interiors = {},
+                   .sources = {stock(SOURCE, held, ESCAPE_PART)},
+                   .obstacles = {},
+                   .patrols = {},
+                   .escape = EscapeDevice{.map = MapId::Street,
+                                          .area = {.x = 4, .y = 0},
+                                          .parts_needed = PARTS,
+                                          .from_day = FIRST_DAY}}) {
     skip_to(1);
   }
 
+  [[nodiscard]] Simulation &simulation() { return shared; }
+  [[nodiscard]] Exploration &exploration() { return explorers; }
+
   /// Ends days at base until `day` opens.
   void skip_to(std::uint32_t day) {
-    while (simulation.snapshot().day < day) {
-      if (simulation.finish_day({}) != Result::Applied) {
+    while (shared.snapshot().day < day) {
+      if (shared.finish_day({}) != Result::Applied) {
         throw std::logic_error("day refused");
       }
     }
-    if (exploration.advance({}, {}) != Result::Applied) {
+    if (explorers.advance({}, {}) != Result::Applied) {
       throw std::logic_error("world refused");
     }
   }
 
   /// The chef enters and takes every part the source holds.
   void take_parts() {
-    if (exploration.enter(Actor::Chef) != Result::Applied) {
+    if (explorers.enter(Actor::Chef) != Result::Applied) {
       throw std::logic_error("entry refused");
     }
-    while (collect(exploration, Actor::Chef, SOURCE) ==
+    while (collect(explorers, Actor::Chef, SOURCE) ==
            CollectionResult::Applied) {
     }
   }
 
   /// Walks the chef right until its feet are in `column`.
   void walk_to(std::int32_t column) {
-    while (cell_of(exploration.snapshot().chef.body.position).x < column) {
-      if (exploration.advance(
+    while (cell_of(explorers.snapshot().chef.body.position).x < column) {
+      if (explorers.advance(
               100ms, {ExplorationInput{.direction = Direction::Right}, {}}) !=
           Result::Applied) {
         throw std::logic_error("advance refused");
@@ -76,9 +79,10 @@ public:
     }
   }
 
-  Simulation simulation;
-  World world;
-  Exploration exploration;
+private:
+  Simulation shared;
+  World map;
+  Exploration explorers;
 };
 
 TEST(Escape, ACarriedPartSetUsedAtTheDeviceOnItsDayEndsTheRun) {
@@ -86,8 +90,8 @@ TEST(Escape, ACarriedPartSetUsedAtTheDeviceOnItsDayEndsTheRun) {
   device.skip_to(FIRST_DAY);
   device.take_parts();
   device.walk_to(3);
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::Applied);
-  const auto snapshot = device.simulation.snapshot();
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::Applied);
+  const auto snapshot = device.simulation().snapshot();
   EXPECT_EQ(snapshot.phase, Phase::Ended);
   EXPECT_EQ(snapshot.ending, Ending::Escaped);
 }
@@ -97,9 +101,9 @@ TEST(Escape, TheDeviceRefusesBeforeItsFirstDay) {
   device.skip_to(FIRST_DAY - 1);
   device.take_parts();
   device.walk_to(3);
-  const auto before = device.simulation.snapshot();
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::TooEarly);
-  EXPECT_EQ(device.simulation.snapshot(), before);
+  const auto before = device.simulation().snapshot();
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::TooEarly);
+  EXPECT_EQ(device.simulation().snapshot(), before);
 }
 
 TEST(Escape, TheDeviceRefusesWithTooFewParts) {
@@ -107,32 +111,33 @@ TEST(Escape, TheDeviceRefusesWithTooFewParts) {
   device.skip_to(FIRST_DAY);
   device.take_parts();
   device.walk_to(3);
-  const auto before = device.simulation.snapshot();
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::MissingIngredients);
-  EXPECT_EQ(device.simulation.snapshot(), before);
+  const auto before = device.simulation().snapshot();
+  EXPECT_EQ(device.exploration().escape(Actor::Chef),
+            Result::MissingIngredients);
+  EXPECT_EQ(device.simulation().snapshot(), before);
 }
 
 TEST(Escape, TheDeviceRefusesAwayFromIt) {
   Device device;
   device.skip_to(FIRST_DAY);
   device.take_parts();
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::NotAtDevice);
-  EXPECT_EQ(device.simulation.snapshot().phase, Phase::Exploration);
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::NotAtDevice);
+  EXPECT_EQ(device.simulation().snapshot().phase, Phase::Exploration);
 }
 
 TEST(Escape, AnActorAtBaseCannotUseTheDevice) {
   Device device;
   device.skip_to(FIRST_DAY);
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::NotExploring);
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::NotExploring);
 }
 
 TEST(Escape, ASearchingActorCannotUseTheDevice) {
   Device device;
   device.skip_to(FIRST_DAY);
   device.take_parts();
-  EXPECT_EQ(device.exploration.search(Actor::Chef, SOURCE),
+  EXPECT_EQ(device.exploration().search(Actor::Chef, SOURCE),
             CollectionResult::Applied);
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::Busy);
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::Busy);
 }
 
 TEST(Escape, ALostRunStaysLostWhateverThePartsCarried) {
@@ -140,12 +145,12 @@ TEST(Escape, ALostRunStaysLostWhateverThePartsCarried) {
   device.skip_to(FIRST_DAY);
   device.take_parts();
   device.walk_to(3);
-  ASSERT_EQ(device.simulation.return_to_base(Actor::Chef), Result::Applied);
-  ASSERT_EQ(device.simulation.finish_day(AcidLevel{10}), Result::Applied);
-  ASSERT_EQ(device.simulation.snapshot().phase, Phase::Lost);
-  const auto before = device.simulation.snapshot();
-  EXPECT_EQ(device.exploration.escape(Actor::Chef), Result::RunOver);
-  EXPECT_EQ(device.simulation.snapshot(), before);
+  ASSERT_EQ(device.simulation().return_to_base(Actor::Chef), Result::Applied);
+  ASSERT_EQ(device.simulation().finish_day(AcidLevel{10}), Result::Applied);
+  ASSERT_EQ(device.simulation().snapshot().phase, Phase::Lost);
+  const auto before = device.simulation().snapshot();
+  EXPECT_EQ(device.exploration().escape(Actor::Chef), Result::RunOver);
+  EXPECT_EQ(device.simulation().snapshot(), before);
 }
 
 TEST(Escape, ARunWithNoDeviceCannotEscape) {

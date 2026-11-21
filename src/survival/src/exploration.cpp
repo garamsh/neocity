@@ -717,7 +717,10 @@ Result Exploration::escape(Actor actor) {
   if (!at_escape_device(config, current, explorer(actor).state.body.position)) {
     return Result::NotAtDevice;
   }
-  const auto &device = *config.escape;
+  if (!config.escape.has_value()) {
+    return Result::NotAtDevice;
+  }
+  const auto &device = config.escape.value();
   if (progression.day < device.from_day) {
     return Result::TooEarly;
   }
