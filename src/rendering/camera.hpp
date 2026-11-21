@@ -43,8 +43,8 @@ struct View {
 /// shows past the map's left and right edges or the scene's top and bottom, and
 /// centres on the map when the view is wider than it. While every actor in the
 /// city is inside one building it frames the rooms they stand in at the
-/// largest whole zoom that fits them on the play area, and never shows past the
-/// building's sides.
+/// largest whole zoom that fits them on the play area, no larger than one and a
+/// half times the close zoom, and never shows past the building's sides.
 [[nodiscard]] View aim(const survival::Content &content,
                        const survival::GameView &view);
 
