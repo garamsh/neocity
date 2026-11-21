@@ -1931,16 +1931,16 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
     const auto label = setup_label(entry);
     const float top = y + (SETUP_HEIGHT - SETUP_FIGURE_HEIGHT) / 2.0F;
     if (entry == SetupEntry::TwoPlayers) {
-      figure(rendering::Image::ChefIdle, SETUP_X + 16.0F, top);
-      figure(rendering::Image::AppraiserIdle, SETUP_X + 64.0F, top);
+      figure(rendering::Image::ChefIdle, SETUP_X + 64.0F, top);
+      figure(rendering::Image::AppraiserIdle, SETUP_X + 104.0F, top);
     } else {
       figure(entry == SetupEntry::Chef ? rendering::Image::ChefIdle
                                        : rendering::Image::AppraiserIdle,
-             SETUP_X + 28.0F, top);
+             SETUP_X + 72.0F, top);
     }
-    drawing.text(canvas, SETUP_X + 120.0F, y + 46.0F, label.at(0), 32,
+    drawing.text(canvas, SETUP_X + 160.0F, y + 46.0F, label.at(0), 32,
                  chosen ? tones.ink : tones.white, Weight::Title);
-    drawing.text(canvas, SETUP_X + 120.0F, y + 78.0F, label.at(1), 16,
+    drawing.text(canvas, SETUP_X + 160.0F, y + 78.0F, label.at(1), 16,
                  chosen ? tones.ink : tones.muted);
     rendering::key_cap(
         canvas, drawing,
