@@ -212,8 +212,17 @@ def export():
     manifest = json.loads(manifest_path.read_text())
     entries = {entry['path']: entry for entry in manifest['files']}
     props = json.loads((KIT / 'hd-sources/props-layout.json').read_text())['assets']
+    native_count = 0
+    generated_count = 0
+
+    def owns_source(destination, source):
+        return (destination not in entries or
+                entries[destination].get('source') == str(source.relative_to(ROOT)))
+
     for destination, role in ASSETS.items():
         source = source_path(destination)
+        if not owns_source(destination, source):
+            continue
         target = ART / destination
         run('aseprite', '--batch', source, '--save-as', target)
         dimensions = subprocess.check_output(
@@ -233,12 +242,15 @@ def export():
                            'backgrounds/aquarium.png'):
             entry['retouch'] = '144px-cell kit; native #262 pixel finishing; Aseprite batch export'
         entries[destination] = entry
+        native_count += 1
     for destination, source_name, size, role, issue in (
             ('endings/escaped.png', 'endings/escaped.png', None,
              'Chef and appraiser escape through the damaged aquarium-roof device', 304),
             ('base/feed_crane.png', 'art-polish-262/crane-source.png', '660x224!',
              'Corroded feeding crane; engine placement pending, not drawn by this PR', 262)):
         source = ROOT / 'docs/art/production' / source_name
+        if not owns_source(destination, source):
+            continue
         target = ART / destination
         if size:
             run('magick', source, '-filter', 'Point', '-resize', size,
@@ -257,13 +269,16 @@ def export():
             'export': 'python3 tools/art/toxic_night.py',
             'retouch': 'nearest 660x224; binary alpha' if size else 'unmodified generated original',
         }
+        generated_count += 1
     manifest['files'] = list(entries.values())
     manifest['map_kit'] = {'issue': 276, 'source': 'docs/art/production/toxic-night-kit/',
                            'grid': '144 authored pixels per cell; destination world areas owned by #281',
                            'sampling': 'nearest', 'status': 'all static map art redrawn; mutant animation frames retain their prior sources',
                            'hd_paths': list(ASSETS)}
     manifest_path.write_text(json.dumps(manifest, indent=2) + '\n')
-    print(f'Exported {len(ASSETS)} native Aseprite map assets selected by ASSETS.')
+    print(f'Exported {native_count} native assets selected by ASSETS and '
+          f'{generated_count} generated assets selected by the export list; '
+          'other manifest source owners preserved.')
 
 
 def check():
