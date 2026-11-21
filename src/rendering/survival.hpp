@@ -115,11 +115,5 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered);
-/// Draws the base: the kitchen art over the whole screen, the chef and the
-/// appraiser standing on its floor, and the feed crane over the monster's
-/// mouth, with its dish lowered by `lowering` from 0 (rest) to 1 (fed).
-/// `dish_ready` hangs the stored dish on the crane.
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready,
-                    float lowering);
 
 } // namespace neocity::rendering

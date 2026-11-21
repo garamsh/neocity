@@ -265,8 +265,6 @@ const char *path(Image image) {
     return "ui/frame_button.png";
   case Image::FrameSlot:
     return "ui/frame_slot.png";
-  case Image::BaseKitchen:
-    return "base/kitchen.png";
   case Image::TitleKeyArt:
     return "title/key_art.png";
   case Image::TitleLogo:
