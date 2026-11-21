@@ -201,9 +201,10 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
                         Interruption interruption, const SurvivalFrame &frame,
                         const std::array<VolumeRow, 2> &volumes,
                         const std::vector<DisplayRow> &displays);
-/// Draws the dark stage under a cinematic scene or, with `fallback`, the
-/// placeholder card that stands in when no scene can play, with its button
-/// to skip it or leave for the main menu.
+/// Draws the dark stage under a cinematic scene or, with `fallback`, the card
+/// that stands in when no scene can play: for an ending or the loss, its
+/// picture over a band holding its title, its description and a Main menu
+/// button; for the intro, a card with a Skip and a Main menu button.
 void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                      Cinematic cinematic, bool fallback,
                      const SurvivalFrame &frame);
@@ -229,6 +230,9 @@ interruption_text(Interruption interruption);
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The line of `tip`, which names the action and not its key.
 [[nodiscard]] godot::String tip_text(Tip tip);
+/// The line `tip` draws at base: `tip_text`, and for the set-out tip the
+/// set-out key of each human who has a key set.
+[[nodiscard]] godot::String tip_line(const SurvivalFrame &frame, Tip tip);
 /// Names `tip` for the Godot checks, such as `set_out`.
 [[nodiscard]] godot::String tip_name(Tip tip);
 /// What ends the run well, on every survival screen.
@@ -265,10 +269,11 @@ action_labels(const SurvivalFrame &frame);
 /// step, feed, dish choice and end of day and the appraiser's ingredients.
 [[nodiscard]] std::vector<Target>
 survival_targets(const rendering::Art &drawing, const SurvivalFrame &frame);
-/// The placeholder card's skip, which presses every human's interact key as
-/// the skip key does, and its way to the main menu.
+/// What a click acts on over a card: the ending's and the loss's Main menu,
+/// and the intro's skip, which presses every human's interact key as the skip
+/// key does, with its way to the main menu.
 [[nodiscard]] std::vector<Target>
-cinematic_targets(const rendering::Art &drawing);
+cinematic_targets(const rendering::Art &drawing, Cinematic cinematic);
 /// What a click acts on over a stopped run: the pause screen's continue,
 /// leave, volume blocks and display arrows, or a question's answers.
 [[nodiscard]] std::vector<Target>

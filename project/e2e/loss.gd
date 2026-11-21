@@ -11,8 +11,6 @@ const UNSIGNED: String = "res://e2e/cinematic_unsigned_fixture.tscn"
 const FINISHES_IN_READY: String = "res://e2e/cinematic_ready_fixture.tscn"
 const CARD_FRAMES: int = 372
 const DAY_LIMIT: int = 30
-## The placeholder card's button: its left part skips, its right part leaves.
-const CARD_BUTTON: String = "Skip     Main menu"
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -85,9 +83,9 @@ func _never_feeding_loses() -> void:
 		return
 	if not _check(_int("day") - 1 == ceili(float(full) / penalty) and _str("ending") == "", "the loss comes on the day acid fills, with no ending"):
 		return
-	var art: Texture2D = scene.get_meta("ending_art", null)
-	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
-	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback" and art != null and art.resource_path.ends_with("/endings/acid_failure.png") and lines.has("DISSOLVED"), "a missing loss scene takes the illustrated acid failure card"):
+	await _frames(2)
+	var shown: String = EndScreenCheck.problem(scene, "acid_failure", "Dissolved", "The acid filled the monster's mouth after ")
+	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback" and shown.is_empty(), "a missing loss scene takes the illustrated acid failure card: " + shown):
 		return
 	if not _check(_str("next").contains("acid"), "the screen names the loss"):
 		return
@@ -109,9 +107,9 @@ func _skip_the_card() -> void:
 
 func _click_skips_the_card() -> void:
 	await _lose()
-	if not _check(_str("cinematic") == "loss" and _card_names_no_key(), "the loss card names what a click does and no key"):
+	if not _check(_str("cinematic") == "loss" and _target("party_interact").is_empty() and not _target("menu").is_empty(), "the loss card offers the main menu alone to a click"):
 		return
-	_check(await _click("party_interact") and scene.screen_name() == "main" and scene.survival_status().is_empty(), "a click on skip skips the loss card and the run is closed")
+	_check(await _click("menu") and scene.screen_name() == "main" and scene.survival_status().is_empty(), "a click on Main menu leaves the loss card and the run is closed")
 
 func _card_times_out() -> void:
 	await _lose()
@@ -248,13 +246,3 @@ func _click(press: String) -> bool:
 		Input.parse_input_event(event)
 		await _frames(2 if pressed else 8)
 	return true
-
-## Whether the last frame drew the placeholder card's button, which names
-## what a click does, and no line naming the skip or leave key.
-func _card_names_no_key() -> bool:
-	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
-	var keyed: Array[String] = []
-	for line: String in lines:
-		if line.contains("E:") or line.contains("M:"):
-			keyed.append(line)
-	return lines.has(CARD_BUTTON) and keyed.is_empty()

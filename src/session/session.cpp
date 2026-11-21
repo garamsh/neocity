@@ -405,7 +405,7 @@ Session::shown_targets(const rendering::Art &drawing) const {
     return hud::setup_targets();
   case Screen::Survival:
     if (playback && playback->card_left) {
-      return hud::cinematic_targets(drawing);
+      return hud::cinematic_targets(drawing, playback->cinematic);
     }
     if (playback || !framed) {
       return {};

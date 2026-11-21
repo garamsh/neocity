@@ -76,6 +76,12 @@ func _run() -> void:
 	if state.get("ending", "") != "escaped":
 		_abort("three parts at the device on day %s did not end the run as escaped: %s" % [state["day"], _describe(state)])
 		return
+	for frame: int in range(3):
+		await process_frame
+	var shown: String = EndScreenCheck.problem(scene, "escaped", "Escaped", "The party mended the roof device and escaped after ")
+	if not shown.is_empty():
+		_abort("the escaped screen is incomplete: " + shown)
+		return
 	print("Escape device: finished: pass; the run ended as escaped on day %d with %d parts." % [state["day"], PARTS_NEEDED])
 	quit(0)
 

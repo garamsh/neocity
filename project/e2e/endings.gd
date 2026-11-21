@@ -29,7 +29,9 @@ func _run() -> void:
 			await _follow_next()
 	if not _check(_str("phase") == "ended" and _str("ending") == "vomited_out" and _int("day") == 31, "the thirtieth completed day opens vomited out"):
 		return
-	if not await _check_ending_art("vomited_out", "VOMITED OUT"):
+	await _frames(2)
+	var shown: String = EndScreenCheck.problem(scene, "vomited_out", "Vomited out", "After 30 days, the monster spat")
+	if not _check(shown.is_empty(), "the vomited-out screen is complete: " + shown):
 		return
 	var before: Dictionary = _status()
 	await _tap(KEY_Q)
@@ -37,7 +39,7 @@ func _run() -> void:
 	if not _check(_same_state(before), "vomited out blocks play"):
 		return
 	await _tap(KEY_E)
-	if not _check(scene.screen_name() == "main", "skip leaves vomited out for the title"):
+	if not _check(scene.screen_name() == "main", "the skip key leaves vomited out for the title"):
 		return
 	print("Endings: ", checks, " live checks passed.")
 	quit(0)
