@@ -283,11 +283,14 @@ func _continue_is_first_and_resumes_the_saved_day() -> bool:
 	if not _check(lines.find("CONTINUE") >= 0 and lines.find("NEW GAME") > lines.find("CONTINUE"), "Continue is drawn before New game: %s" % [lines]):
 		return false
 	var buttons: Array[Rect2] = _frames_of("button")
-	if not _check(buttons.size() == 6 and buttons[0] == _target("option_1")["rect"] and buttons[1] == _target("option_2")["rect"], "the saved title draws six entries with Continue first"):
+	var first_rect: Rect2 = _target("option_1")["rect"]
+	var second_rect: Rect2 = _target("option_2")["rect"]
+	if not _check(buttons.size() == 6 and buttons[0] == first_rect and buttons[1] == second_rect, "the saved title draws six entries with Continue first"):
 		return false
 	await _tap(KEY_1)
 	var status: Dictionary = scene.survival_status()
-	if not _check(scene.screen_name() == "survival" and not status.has("cinematic") and status.get("day", 0) == 1 and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "1 resumes day one with the saved two-player roles and no intro: %s" % status):
+	var day: int = status.get("day", 0)
+	if not _check(scene.screen_name() == "survival" and not status.has("cinematic") and day == 1 and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "1 resumes day one with the saved two-player roles and no intro: %s" % status):
 		return false
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)

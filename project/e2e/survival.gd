@@ -308,7 +308,7 @@ func _a_click_on_the_chef_cooks() -> bool:
 ## cancel answer clicks, and the keys alone pause and return.
 func _mouse_in_the_city() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	walker = "chef"
@@ -403,7 +403,7 @@ func _two_players_share_the_mouse() -> void:
 ## Real keys: Esc, M and Enter over a run, and over a cinematic.
 func _pause_and_leave() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_ESCAPE)
 	if not _check(_str("cinematic") == "intro" and _str("interruption") == "", "Esc does not pause a cinematic"):
@@ -411,7 +411,7 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_M)
 	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M during a cinematic leaves at once"):
 		return
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -462,7 +462,7 @@ func _pause_and_leave() -> void:
 		return
 	_key(KEY_ENTER, false)
 	await _frames(4)
-	await _tap(KEY_1)
+	await _new_game()
 	if not _check(scene.screen_name() == "survival_setup", "the main menu answers once Enter is up"):
 		return
 	await _tap(KEY_M)
@@ -529,7 +529,7 @@ func _hand_off_shows_the_keys_left() -> void:
 	if not _check(_str("hand_off").contains("Appraiser"), "the notice follows a swap"):
 		return
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_TAB)
@@ -542,7 +542,7 @@ func _hand_off_shows_the_keys_left() -> void:
 ## the AI appraiser, which fills the log, and sets out again.
 func _repeated_note_appears() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -563,7 +563,7 @@ func _repeated_note_appears() -> void:
 
 func _start_two_players() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 
@@ -892,7 +892,7 @@ func _touching_an_obstacle_sends_the_actor_away() -> void:
 ## stored dish once there is one to feed.
 func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -1042,7 +1042,7 @@ func _second_day() -> void:
 
 func _chef_chooses_a_dish() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _set_out_before_feeding()
@@ -1201,7 +1201,7 @@ func _set_out_before_feeding() -> void:
 ## would feed.
 func _follow_next_to_the_ending() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	scene.pin_survival_seed(LONG_RUN_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -1416,7 +1416,7 @@ func _appraiser_run() -> void:
 	await _leave_run()
 	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M ends the run"):
 		return
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "key_set") == 0 and _actor("chef", "key_set") == -1, "choosing the appraiser gives AI the chef"):
@@ -1469,7 +1469,7 @@ func _appraiser_run() -> void:
 ## An AI chef cooks a step after the last appraisal, so NEXT must not end that day.
 func _appraiser_follows_next() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	var steps: int = 0
@@ -1815,7 +1815,7 @@ func _search_and_take(times: int, shared: String = "") -> bool:
 
 func _loss_clears_the_offer() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -1837,7 +1837,7 @@ func _a_timed_cook_draws_its_bar() -> void:
 	await _leave_run()
 	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
 	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -2497,6 +2497,12 @@ func _leave_run() -> void:
 		await _tap(KEY_M)
 		await _tap(KEY_ENTER)
 	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and _status().is_empty(), 30)
+
+## Chooses New game on the title screen: a saved day puts Continue first, so
+## New game is then the second entry.
+func _new_game() -> void:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _tap(KEY_2 if lines.find("CONTINUE") >= 0 else KEY_1)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

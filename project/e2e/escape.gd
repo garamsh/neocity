@@ -264,8 +264,11 @@ func _stand_in(resource: Resource, path: String) -> void:
 	stand_in = resource
 	resource.take_over_path(path)
 
+## Starts a new two-player run: a saved day puts Continue first on the title
+## screen, so New game is then the second entry.
 func _start() -> void:
-	await _tap(KEY_1)
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _tap(KEY_2 if lines.find("CONTINUE") >= 0 else KEY_1)
 	await _tap(KEY_1)
 
 ## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
