@@ -119,6 +119,8 @@ const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
 ## The key caps the action prompts draw: the search and travel keys of each key
 ## set.
 const PROMPT_CAPS: Array[String] = ["[R]", "[P]", "[Q]", "[U]"]
+## The set-out tip's words, which the tip draws its key after.
+const SET_OUT_TIP: String = "Set out into the city to gather food. The day's clock runs only there."
 ## The top band's lower edge, which holds the day, acid and clock plates alone.
 const TOP_BAND_END: float = 56.0
 ## The words of a source's kind the map once wrote beside its supply.
@@ -613,19 +615,52 @@ func _watch_tips() -> void:
 		tip_overlaps.append("%s off the screen at %s" % [text, area])
 	tip_frames += 1
 
+## The set-out key of each key set, from the controls table: its travel row.
+func _set_out_keys() -> Array[String]:
+	var keys: Array[String] = []
+	for row: String in MainScene.controls_keys():
+		if row.begins_with("Set out or return to base: "):
+			for key: String in row.trim_prefix("Set out or return to base: ").split(" / "):
+				if key != "":
+					keys.append(key)
+	return keys
+
+## The endings the set-out tip may draw: the set-out key of one human, or of two.
+func _set_out_endings() -> Array[String]:
+	var keys: Array[String] = _set_out_keys()
+	var endings: Array[String] = []
+	for key: String in keys:
+		endings.append(" Set out with [%s]." % key)
+	if keys.size() == 2:
+		endings.append(" Set out with [%s] (P1) or [%s] (P2)." % [keys[0], keys[1]])
+	return endings
+
+## `line` without the set-out key the set-out tip ends in; any other line, and a
+## set-out tip ending in anything else, stays as drawn.
+func _without_set_out_key(line: String) -> String:
+	if line.begins_with(SET_OUT_TIP) and _set_out_endings().has(line.trim_prefix(SET_OUT_TIP)):
+		return SET_OUT_TIP
+	return line
+
 ## Every concept's tip opened, none twice in one run, a later run opened one
 ## again, and no drawn tip covered the HUD or a target; the control is that
 ## tips were drawn.
 func _tips_opened_once_each() -> bool:
-	if not _check(every_tip.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
+	var opened: Dictionary[String, bool] = {}
+	for line: String in every_tip:
+		opened[_without_set_out_key(line)] = true
+	if not _check(opened.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
 		return false
 	if not _check(repeated_tips.is_empty() and tip_reopened, "no tip opened twice in one run, and a new run opened one again: %s" % [repeated_tips]):
 		return false
 	var keyed: Array[String] = []
+	var lines: Dictionary[String, bool] = {}
 	for line: String in every_tip:
-		if line.contains("[") or line.contains("Esc") or line.contains("Enter"):
+		var bare: String = _without_set_out_key(line)
+		lines[bare] = true
+		if bare.contains("[") or bare.contains("Esc") or bare.contains("Enter"):
 			keyed.append(line)
-	if not _check(keyed.is_empty(), "the tips name actions and not keys: %s" % [keyed]):
+	if not _check(keyed.is_empty(), "the tips name actions and not keys, but the set-out key on the set-out tip: %s" % [keyed]):
 		return false
 	return _check(tip_overlaps.is_empty() and tip_frames > 0, "a tip covers no HUD panel or target and stays on the screen: %s in %s" % [tip_overlaps.slice(0, 5), tip_frames])
 
@@ -660,7 +695,7 @@ func _menus() -> void:
 ## nothing, so the run stays at base on day one with its time.
 func _a_click_closes_the_tip() -> bool:
 	var tip: Dictionary = scene.get_meta("hud_tip", {})
-	if not _check(_str("tip") == "set_out" and str(tip.get("text", "")).begins_with("Set out"), "the first tip at base says to set out: %s" % [tip]):
+	if not _check(_str("tip") == "set_out" and str(tip.get("text", "")) == SET_OUT_TIP + " Set out with [%s]." % _set_out_keys()[0], "the first tip at base says to set out and names the set-out key: %s" % [tip]):
 		return false
 	var remaining: int = _int("remaining_ms")
 	var area: Rect2 = tip["rect"]
@@ -1991,14 +2026,16 @@ func _hud_area() -> float:
 		area += panel.get_area()
 	return area
 
-## Whether the last frame drew no Esc and no key cap but the search keys of
-## the action prompts, such as "[R]", while it drew the top bar's words.
+## Whether the last frame drew no Esc and no key cap but the keys of
+## the action prompts, such as "[R]", and the set-out key of the set-out tip,
+## while it drew the top bar's words.
 func _names_only_prompt_keys(where: String) -> bool:
 	var keyed: Array[String] = []
 	for line: String in _drawn_lines():
-		if line.contains("Esc") or (line.contains("[") and not PROMPT_CAPS.has(line)):
+		var bare: String = _without_set_out_key(line)
+		if bare.contains("Esc") or (bare.contains("[") and not PROMPT_CAPS.has(bare)):
 			keyed.append(line)
-	return _check(keyed.is_empty() and _top_bar_drawn(), "%s names no key but the prompts' search keys: %s" % [where, keyed])
+	return _check(keyed.is_empty() and _top_bar_drawn(), "%s names no key but the prompts' keys and the set-out tip's: %s" % [where, keyed])
 
 ## Whether the last frame drew the day, the acid and the clock.
 func _top_bar_drawn() -> bool:
