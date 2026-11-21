@@ -796,14 +796,6 @@ const Art::Silhouette &Art::silhouette(Image image) const {
   return silhouettes.emplace(slot(image), std::move(made)).first->second;
 }
 
-void Art::player_colour(bool chef, godot::Color colour) const {
-  player_colours.at(chef ? 0 : 1) = colour;
-}
-
-godot::Color Art::player_colour(bool chef) const {
-  return player_colours.at(chef ? 0 : 1);
-}
-
 godot::Rect2 Art::opaque_area(Image image, Vector2 position,
                               bool mirrored) const {
   const auto &shape = silhouette(image);
