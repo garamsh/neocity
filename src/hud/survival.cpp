@@ -1635,44 +1635,140 @@ float crane_lowering(const std::vector<rendering::Burst> &bursts) {
   return lowering;
 }
 
-/// Composes the base's HD art and pixel crane beneath its interface.
+/// What fills a layer of the base scene: a picture under `art_hd/`, or the
+/// stored dish drawn with the item renderer.
+enum class Fill : std::uint8_t { Picture, StoredDish };
+
+/// One layer of the base scene, in 1920×1080 canvas pixels. The feed's travel
+/// moves a layer by `follows` times that travel and grows its height by
+/// `stretches` times it, so a fixed layer has both at zero.
+struct BaseLayer {
+  std::string_view name;
+  Fill fill;
+  std::string_view picture;
+  Vector2 at;
+  Vector2 size;
+  Vector2 follows;
+  float stretches;
+  /// Whether the layer belongs to the feed crane, whose bounds are reported.
+  bool crane;
+};
+
+constexpr Vector2 NO_MOTION(0.0F, 0.0F);
+constexpr Vector2 DOWN(0.0F, 1.0F);
+constexpr Vector2 ACTOR_SIZE(256.0F, 224.0F);
+/// How far the cradle and its dish go down when fully lowered, in canvas
+/// pixels: 140 layout units.
+constexpr float CRANE_TRAVEL = 140.0F * rendering::ART_SCALE;
+/// The stored dish's icon in canvas pixels, with its centre at x1666 and its
+/// bottom at y685 when the cradle is at rest.
+constexpr float DISH_SIZE = ICON * rendering::ART_SCALE;
+
+/// The base scene from back to front. The interface is drawn over all of it.
+constexpr std::array BASE_LAYERS{
+    BaseLayer{.name = "background",
+              .fill = Fill::Picture,
+              .picture = "base/kitchen.png",
+              .at = Vector2(0.0F, 0.0F),
+              .size = Vector2(1920.0F, 1080.0F),
+              .follows = NO_MOTION,
+              .stretches = 0.0F,
+              .crane = false},
+    BaseLayer{.name = "appraiser",
+              .fill = Fill::Picture,
+              .picture = "characters/appraiser_idle.png",
+              .at = Vector2(225.0F, 588.0F),
+              .size = ACTOR_SIZE,
+              .follows = NO_MOTION,
+              .stretches = 0.0F,
+              .crane = false},
+    BaseLayer{.name = "chef",
+              .fill = Fill::Picture,
+              .picture = "characters/chef_idle.png",
+              .at = Vector2(780.0F, 588.0F),
+              .size = ACTOR_SIZE,
+              .follows = NO_MOTION,
+              .stretches = 0.0F,
+              .crane = false},
+    BaseLayer{.name = "front",
+              .fill = Fill::Picture,
+              .picture = "base/kitchen_front.png",
+              .at = Vector2(0.0F, 0.0F),
+              .size = Vector2(1920.0F, 1080.0F),
+              .follows = NO_MOTION,
+              .stretches = 0.0F,
+              .crane = false},
+    BaseLayer{.name = "mast",
+              .fill = Fill::Picture,
+              .picture = "base/feed_crane.png",
+              .at = Vector2(1240.0F, 150.0F),
+              .size = Vector2(660.0F, 642.0F),
+              .follows = NO_MOTION,
+              .stretches = 0.0F,
+              .crane = true},
+    BaseLayer{.name = "cable",
+              .fill = Fill::Picture,
+              .picture = "base/feed_crane_cable.png",
+              .at = Vector2(1650.0F, 275.0F),
+              .size = Vector2(40.0F, 230.0F),
+              .follows = NO_MOTION,
+              .stretches = 1.0F,
+              .crane = true},
+    BaseLayer{.name = "cradle",
+              .fill = Fill::Picture,
+              .picture = "base/feed_crane_cradle.png",
+              .at = Vector2(1530.0F, 505.0F),
+              .size = Vector2(280.0F, 220.0F),
+              .follows = DOWN,
+              .stretches = 0.0F,
+              .crane = true},
+    BaseLayer{.name = "dish",
+              .fill = Fill::StoredDish,
+              .picture = "",
+              .at = Vector2(1666.0F - DISH_SIZE / 2.0F, 685.0F - DISH_SIZE),
+              .size = Vector2(DISH_SIZE, DISH_SIZE),
+              .follows = DOWN,
+              .stretches = 0.0F,
+              .crane = false},
+};
+
+/// Draws the base scene beneath its interface: every layer of `BASE_LAYERS` in
+/// order, moved and stretched by how far the feed has lowered the crane.
+/// Leaves each drawn layer's name and area as the `base_layers` meta, in draw
+/// order, and the crane's bounds as `feed_crane`.
 void paint_workshop_art(godot::Node2D &canvas, const rendering::Art &drawing,
                         const SurvivalFrame &frame, float lowering) {
-  drawing.image(canvas, rendering::Image::BaseKitchen, Vector2(0.0F, 0.0F));
   canvas.set_meta("character_layers", godot::Array());
-  constexpr float FLOOR = 528.0F;
-  constexpr float TOP = FLOOR - 204.0F / rendering::ART_SCALE;
-  constexpr float WIDTH = 256.0F / rendering::ART_SCALE;
-  constexpr float HEIGHT = 224.0F / rendering::ART_SCALE;
-  godot::Array figures;
-  for (const auto actor : ACTORS) {
+  const float travel = std::clamp(lowering, 0.0F, 1.0F) * CRANE_TRAVEL;
+  godot::Array drawn;
+  godot::Rect2 crane;
+  bool crane_started = false;
+  for (const auto &layer : BASE_LAYERS) {
+    if (layer.fill == Fill::StoredDish && frame.view.workshop.foods.empty()) {
+      continue;
+    }
     const auto area =
-        rect(actor == Actor::Chef ? 520.0F : 150.0F, TOP, WIDTH, HEIGHT);
-    paint_hd_art(canvas,
-                 actor == Actor::Chef ? "characters/chef_idle.png"
-                                      : "characters/appraiser_idle.png",
-                 area);
-    figures.push_back(area);
+        godot::Rect2((layer.at + layer.follows * travel) / rendering::ART_SCALE,
+                     (layer.size + Vector2(0.0F, layer.stretches * travel)) /
+                         rendering::ART_SCALE);
+    if (layer.fill == Fill::Picture) {
+      paint_hd_art(canvas, from(layer.picture), area);
+    } else {
+      paint_item(canvas, drawing,
+                 survival::food_name(frame.view.workshop.foods.front().food),
+                 area.position);
+    }
+    godot::Dictionary note;
+    note.set("name", from(layer.name));
+    note.set("area", area);
+    drawn.push_back(note);
+    if (layer.crane) {
+      crane = crane_started ? crane.merge(area) : area;
+      crane_started = true;
+    }
   }
-  canvas.set_meta("workshop_figures", figures);
-  const auto steel = color(70, 65, 86, 1.0F);
-  const auto acid = color(140, 235, 92, 1.0F);
-  const float hook = 190.0F + lowering * 140.0F;
-  canvas.draw_rect(rect(830.0F, 150.0F, 440.0F, 12.0F), steel);
-  canvas.draw_rect(rect(830.0F, 162.0F, 440.0F, 2.0F), acid);
-  canvas.draw_rect(rect(988.0F, 162.0F, 24.0F, 10.0F), steel);
-  canvas.draw_rect(rect(999.0F, 172.0F, 2.0F, hook - 172.0F), steel);
-  canvas.draw_rect(rect(994.0F, hook, 12.0F, 12.0F), steel);
-  canvas.draw_rect(rect(994.0F, hook + 10.0F, 8.0F, 2.0F), acid);
-  if (!frame.view.workshop.foods.empty()) {
-    paint_item(canvas, drawing,
-               survival::food_name(frame.view.workshop.foods.front().food),
-               Vector2(972.0F, hook + 12.0F));
-  } else if (lowering > 0.0F) {
-    canvas.draw_rect(rect(982.0F, hook + 20.0F, 36.0F, 16.0F), steel);
-  }
-  canvas.set_meta("feed_crane",
-                  rect(830.0F, 150.0F, 440.0F, hook + 68.0F - 150.0F));
+  canvas.set_meta("base_layers", drawn);
+  canvas.set_meta("feed_crane", crane);
 }
 
 void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,

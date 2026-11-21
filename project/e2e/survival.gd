@@ -979,18 +979,48 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 		return
 	_check(line.begins_with("Feed "), "a dish to feed comes before the AI chef cooking another: %s" % line)
 
-## The chef and the appraiser stand on the kitchen floor and the feed crane
-## hangs over the monster's mouth with the stored dish on it: the base draws
-## both over the kitchen picture.
+## The chef and the appraiser stand on the kitchen floor, drawn over the
+## background and under the workbench front: the base draws both.
 func _base_figures_drawn() -> bool:
-	var figures: Array = scene.get_meta("workshop_figures", [])
-	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
-	if not _check(figures.size() == 2, "the base draws the appraiser and the chef: %d figures" % figures.size()):
+	var layers: Dictionary = _base_layers()
+	if not _check(layers.has("appraiser") and layers.has("chef"), "the base draws the appraiser and the chef: %s" % [layers.keys()]):
 		return false
-	for figure: Rect2 in figures:
+	for worker: String in ["appraiser", "chef"]:
+		var figure: Rect2 = layers[worker]["area"]
 		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
 			return false
-	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
+	return true
+
+
+## The base scene's layers as the last frame drew them: name to its draw order
+## and area, in layout units.
+func _base_layers() -> Dictionary:
+	var layers: Dictionary = {}
+	var drawn: Array = scene.get_meta("base_layers", [])
+	for order: int in range(drawn.size()):
+		var layer: Dictionary = drawn[order]
+		layers[layer["name"]] = {"order": order, "area": layer["area"]}
+	return layers
+
+
+## The area of a base layer, empty when it is not drawn.
+func _layer_area(layers: Dictionary, name: String) -> Rect2:
+	return layers[name]["area"] if layers.has(name) else Rect2()
+
+
+## Whether the base's layers hold: at rest the workbench front is drawn after
+## both workers and the crane over it, and with the crane lowered the mast and
+## the cable's top stay where they were while the cable grows by as much as the
+## cradle and any dish still drawn go down.
+func _base_layers_hold(rest: Dictionary, lowered: Dictionary) -> bool:
+	var names: Array = ["background", "appraiser", "chef", "front", "mast", "cable", "cradle"]
+	var drawn: bool = rest.has("dish") and names.all(func(name: String) -> bool: return rest.has(name) and lowered.has(name))
+	var ordered: bool = drawn and rest["front"]["order"] > rest["appraiser"]["order"] and rest["front"]["order"] > rest["chef"]["order"] and rest["front"]["order"] > rest["background"]["order"] and rest["front"]["order"] < rest["mast"]["order"]
+	var down: float = _layer_area(lowered, "cradle").position.y - _layer_area(rest, "cradle").position.y
+	var fixed: bool = _layer_area(lowered, "mast") == _layer_area(rest, "mast") and _layer_area(lowered, "cable").position == _layer_area(rest, "cable").position
+	# The fed dish is gone from the base once fed, so the dish is only compared while it is still drawn.
+	var follows: bool = (not lowered.has("dish") or is_equal_approx(_layer_area(lowered, "dish").position.y - _layer_area(rest, "dish").position.y, down)) and is_equal_approx(_layer_area(lowered, "cable").size.y - _layer_area(rest, "cable").size.y, down) and _layer_area(lowered, "cradle").position.x == _layer_area(rest, "cradle").position.x
+	return _check(ordered and down > 20.0 and fixed and follows, "the workbench front is drawn after both workers, and the mast and cable top stay while the cradle, dish and cable go down by %s: %s then %s" % [down, rest, lowered])
 
 
 ## How far down the feed crane's hook and dish hang.
@@ -1017,8 +1047,11 @@ func _workshop_day_one() -> void:
 	if not _check(_lines("day_result").is_empty(), "the workshop shows no result until a day has ended"):
 		return
 	var resting: float = _crane_height()
+	var rest_layers: Dictionary = _base_layers()
 	await _tap(KEY_F)
 	if not await _until("the feed crane lowers its dish", func() -> bool: return _crane_height() > resting + 20.0, 30):
+		return
+	if not _base_layers_hold(rest_layers, _base_layers()):
 		return
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
 		return
