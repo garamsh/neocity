@@ -57,7 +57,7 @@ make ci
 - `make format`: clang-format check in LLVM style; apply it with `.tools/cpp/bin/clang-format --style=LLVM -i` on the changed files.
 - `make build`: optimized CMake build of the rules library and extension, pinned Godot version, and resource import.
 - `make test`: the survival library's unit tests through CTest, configured main-scene readiness, live checks of the title screen, live checks pressing the arrow keys and player two's keys, the survival fixed-step checks at two frame rates and on the real clock, and live checks playing the survival game with real key and mouse events.
-- `make test-unit`, `make test-startup`, `make test-title`, `make test-timing`, `make test-survival`, `make test-escape`, `make test-loss`, `make test-audio`: the parts of `make test`, each runnable alone; each runs `make build` first, as `make test` does.
+- `make test-unit`, `make test-startup`, `make test-title`, `make test-timing`, `make test-survival`, `make test-escape`, `make test-loss`, `make test-audio`: the parts of `make test`, each runnable alone; each runs `make build` first, as `make test` does. `make test-escape` runs its own three parts, `make test-escape-route`, `make test-escape-cinematics` and `make test-balance`, which CI runs as separate jobs.
 - `make ci`: the complete set. Rules-only checks run without Godot and without a prior `make build`; once the pinned tools are installed by the first Make entry point, from the repository root:
 
 ```sh
