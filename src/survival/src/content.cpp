@@ -757,6 +757,7 @@ std::vector<Landmark> street_landmarks() {
       {.object = DRIFTED_FERRY, .kind = Ferry},
       {.object = PIER, .kind = Platform},
       {.object = ROTTEN_BRIDGE, .kind = Bridge},
+      {.object = COLD_STAIR, .kind = Stair},
   };
 }
 

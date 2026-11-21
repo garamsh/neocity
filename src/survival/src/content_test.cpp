@@ -562,7 +562,7 @@ TEST(TemporaryContent, EveryLandmarkPictureMarksOneObjectThatCanShowIt) {
       ++pictures[landmark.kind];
     }
   }
-  EXPECT_EQ(pictures.size(), 5U);
+  EXPECT_EQ(pictures.size(), 6U);
   for (const auto &[kind, count] : pictures) {
     EXPECT_EQ(count, 1U);
   }

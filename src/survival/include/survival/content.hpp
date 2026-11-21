@@ -55,14 +55,17 @@ struct Decoration {
   WorldArea area;
 };
 
-/// A picture of its own that one building or terrain object shows; no rule
-/// reads it.
+/// A picture of its own that one building or terrain object shows, or how the
+/// screen joins it to its neighbours; no rule reads it.
 enum class LandmarkKind : std::uint8_t {
   Kiosk,
   ColdStore,
   Ferry,
   Platform,
-  Bridge
+  Bridge,
+  /// A one-cell step whose treads the screen joins to the floors a row above
+  /// and below it.
+  Stair
 };
 
 /// The object that shows one landmark picture.
