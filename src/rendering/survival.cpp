@@ -1187,22 +1187,29 @@ struct VignetteRing {
   float opacity;
 };
 constexpr std::array VIGNETTE_RINGS{
-    VignetteRing{.reach = 0.3F, .opacity = 0.0F},
-    VignetteRing{.reach = 0.75F, .opacity = 0.55F},
-    VignetteRing{.reach = 1.5F, .opacity = 1.0F}};
+    VignetteRing{.reach = 0.4F, .opacity = 0.0F},
+    VignetteRing{.reach = 0.75F, .opacity = 0.4F},
+    VignetteRing{.reach = 1.0F, .opacity = 0.75F},
+    VignetteRing{.reach = 1.45F, .opacity = 1.0F}};
 constexpr int VIGNETTE_STEPS = 48;
 
-void paint_vignette(godot::Node2D &canvas, const Art &art) {
+void paint_vignette(godot::Node2D &canvas, const Art &art,
+                    const godot::Rect2 &room) {
   const auto kept = art.looking();
   art.look(canvas, Vector2(), 1.0F);
   const Vector2 middle(SCREEN_WIDTH / 2.0F, SCREEN_HEIGHT / 2.0F);
+  // The oval's half size: the screen's width, and the room's height on the
+  // screen where it is shorter than the screen, so the room's top and bottom
+  // darken as its sides do.
+  const Vector2 half(middle.x,
+                     std::min(middle.y, room.size.y * kept.zoom / 2.0F));
   const auto tone = palette().background;
   const auto point = [&](const VignetteRing &ring, int step) {
     const float angle = 2.0F * std::numbers::pi_v<float> *
                         static_cast<float>(step) /
                         static_cast<float>(VIGNETTE_STEPS);
-    return middle + Vector2(std::cos(angle) * middle.x * ring.reach,
-                            std::sin(angle) * middle.y * ring.reach);
+    return middle + Vector2(std::cos(angle) * half.x * ring.reach,
+                            std::sin(angle) * half.y * ring.reach);
   };
   const auto shade = [&](const VignetteRing &ring) {
     auto edge = tone;
@@ -1288,6 +1295,22 @@ std::optional<Image> supply_icon(const ObjectSnapshot &source) {
     name = survival::ingredient_name(*source.ingredient);
   }
   return item_icon(name);
+}
+
+/// Where `area` stands when it is drawn inside a building, scaled by `scale`
+/// about the middle of its bottom edge within `extent`: whole objects stand on
+/// the room's floor, and one reaching below the room, as a ladder does, keeps
+/// the part that is in the room.
+Vector2 indoor_pivot(const godot::Rect2 &area, const godot::Rect2 &extent) {
+  const auto shown = area.intersection(extent);
+  return {area.get_center().x,
+          shown.has_area() ? shown.get_end().y : area.get_end().y};
+}
+
+godot::Rect2 indoors(const godot::Rect2 &area, const godot::Rect2 &extent,
+                     float scale) {
+  const Vector2 pivot = indoor_pivot(area, extent);
+  return {pivot + (area.position - pivot) * scale, area.size * scale};
 }
 
 /// One source as the map shows it.
@@ -1702,7 +1725,11 @@ Labels label_city(const Art &art, const survival::GameView &view,
   const auto red = color(255, 150, 150, 1.0F);
   const auto party = party_of(view);
   const auto on_screen = [&](const survival::WorldArea &area) {
-    return to_screen(camera, area_rect(area));
+    const auto box = area_rect(area);
+    return to_screen(
+        camera, camera.inside
+                    ? indoors(box, camera.room, actor_scale(true, camera.zoom))
+                    : box);
   };
   Labels labels{.plates = {},
                 .pointers = camera.inside
@@ -2195,16 +2222,38 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       paint_passage(canvas, art, object, false);
     }
   });
+  // Inside a building the map's objects are drawn at the actors' size, each
+  // on the floor of its room, as the room's picture is at a quarter of theirs.
+  const auto at_room_scale = [&](survival::WorldArea where, auto &&draw) {
+    if (!inside) {
+      draw();
+      return;
+    }
+    const auto kept = art.looking();
+    const float scale = actor_scale(true, kept.zoom);
+    const Vector2 pivot = indoor_pivot(area_rect(where), inside->extent);
+    art.look(canvas, (kept.origin + pivot * kept.zoom * (1.0F - scale)).round(),
+             kept.zoom * scale);
+    draw();
+    art.look(canvas, kept.origin, kept.zoom);
+  };
   paint_kind(ObjectKind::Ladder, [&](const ObjectSnapshot &object) {
-    paint_passage(canvas, art, object, true);
+    at_room_scale(object.area,
+                  [&] { paint_passage(canvas, art, object, true); });
   });
   paint_kind(ObjectKind::Npc, [&](const ObjectSnapshot &object) {
-    paint_npc(canvas, art, object);
+    at_room_scale(object.area, [&] { paint_npc(canvas, art, object); });
   });
   for (const auto &marker : markers) {
-    paint_source(canvas, art, marker);
+    at_room_scale(marker.object.area,
+                  [&] { paint_source(canvas, art, marker); });
   }
   paint_mutants(canvas, art, view);
+  // The room darkens toward the screen's edges under the actors, so they and
+  // the words stay readable.
+  if (inside) {
+    paint_vignette(canvas, art, inside->extent);
+  }
   canvas.set_meta("character_layers", godot::Array());
   if (canvas.has_meta("measure_art")) {
     canvas.set_meta("actor_outlines", godot::Array());
@@ -2225,7 +2274,6 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {
     paint_interior_mask(canvas, inside->extent);
-    paint_vignette(canvas, art);
   }
   // The measuring checks read whether the screen is only an inside.
   if (canvas.has_meta("measure_art")) {
@@ -2290,7 +2338,12 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   godot::Array areas;
   for (const auto &marker : markers) {
     drawn.push_back(from(survival::object_name(marker.object.id)));
-    areas.push_back(to_screen(shot.camera, area_rect(marker.object.area)));
+    const auto box = area_rect(marker.object.area);
+    areas.push_back(to_screen(shot.camera,
+                              shot.camera.inside
+                                  ? indoors(box, shot.camera.room,
+                                            actor_scale(true, shot.camera.zoom))
+                                  : box));
   }
   canvas.set_meta("map_plates", labels.plates.boxes());
   canvas.set_meta("map_words", labels.plates.words());
