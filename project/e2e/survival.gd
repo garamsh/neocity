@@ -327,7 +327,15 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
+	var left: int = _int("remaining_ms")
 	if not _check(await _click("chef_search") and _actor("chef", "searching") >= 0, "a click on the action button opens the search, as R does"):
+		return
+	# A search holds the chef: the shared clock runs on, the line says it is open,
+	# and the travel key cannot return it to base.
+	if not _check(_int("remaining_ms") <= left and _next().begins_with("Searching Tomato machine: "), "the line says the search is open: %s" % _next()):
+		return
+	await _tap(KEY_Q)
+	if not _check(_where("chef") == "city" and _actor("chef", "searching") >= 0, "a searching chef cannot return to base"):
 		return
 	if not _check(await _click("chef_other_0") and _actor("chef", "ingredients") == 1, "a click on a container slot takes the item into the pack"):
 		return
@@ -710,7 +718,7 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the shelf's kelp", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	if not _prompt_matches_stock("Shop Shelf"):
+	if not await _emptied_source_is_not_offered("Shop Shelf"):
 		return
 	if not _hud_is_top_bar("a source"):
 		return
@@ -722,10 +730,7 @@ func _first_day() -> void:
 	if not await _walk_route([Vector2i(3, 6), Vector2i(3, 8)] + TOMATO_ROUTE):
 		return
 	walker = "chef"
-	if not _prompt_matches_stock("Tomato Machine"):
-		return
-	# The AI appraiser shares the machine and may have emptied it first.
-	if not await _search_and_take(1, "Tomato Machine"):
+	if not await _emptied_source_is_not_offered("Tomato Machine"):
 		return
 	if not _check(_stock("Tomato Machine") < stock, "a take spends the shared container's stock"):
 		return
@@ -738,15 +743,15 @@ func _first_day() -> void:
 		return
 	_check(_events().has("Time is up: everyone is back at base."), "the screen reports the timed return")
 
-## At a source the chef stands beside: the prompt offers to search it by its
-## name beside the search key while it holds something, and the way to base
-## alone once the AI partner has emptied it, which the control reads from the
-## source's stock.
-func _prompt_matches_stock(source: String) -> bool:
-	if _stock(source) > 0:
-		var offer: String = "SEARCH " + _place(source)
-		return _check(_actions() == [offer] and _drawn(offer) and _drawn("[R]"), "at a source holding something the prompt offers to search it by its name beside the search key: %s" % [_actions()])
-	return _check(_actions() == ["TO BASE"] and _target("chef_search").is_empty(), "an emptied source is not offered for a search, only the way to base: %s" % [_actions()])
+## Beside a source the AI partner shares, waits until the partner has emptied
+## it, which it does while it stays within reach of the chef, so the run takes
+## one path whichever machine's timing; then an emptied source is not offered
+## for a search, only the way to base. The control is that the source still
+## stands, so it is the emptiness that withholds the offer.
+func _emptied_source_is_not_offered(source: String) -> bool:
+	if not await _until("the AI partner empties %s" % source, func() -> bool: return _stock(source) == 0, 900):
+		return false
+	return _check(_object(source) == "intact" and _actions() == ["TO BASE"] and _target("chef_search").is_empty() and _actor("chef", "searching") == -1, "an emptied source that still stands is not offered for a search, only the way to base: %s" % [_actions()])
 
 ## Runs east along the upper walkway towards its step down.
 func _run_east() -> void:
@@ -1398,30 +1403,12 @@ func _search_the_vendor_cart() -> void:
 		return
 	# Let go of E held since setting out before pressing it at the machine.
 	await _frames(2 * STEP_FRAMES)
-	var left: int = _int("remaining_ms")
-	await _tap(KEY_R)
-	# The AI partner may have emptied the cart on earlier days, and an emptied
-	# cart is not offered for a search: it still stands, and R opens only the
-	# inventory.
-	if _stock("Vendor Cart") == 0:
-		if not _check(_object("Vendor Cart") == "intact" and _actor("chef", "searching") == -1 and _actions() == ["CLOSE"], "an emptied source acid never destroys stands and is not opened for a search: %s" % [_actions()]):
-			return
-		await _tap(KEY_R)
-		await _tap(KEY_Q)
-		await _until("the party is home from the cart", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120)
-		return
-	if not _check(_actor("chef", "searching") >= 0, "the chef opens a source acid never destroys"):
-		return
-	if not _check(_actor("chef", "searching") >= 0 and _int("remaining_ms") <= left, "a search holds the chef and leaves the shared clock running"):
-		return
-	if not _check(_next().begins_with("Searching Fish cart: "), "the line says the search is open: %s" % _next()):
-		return
-	await _tap(KEY_Q)
-	if not _check(_where("chef") == "city", "a searching chef cannot return to base"):
+	if not await _emptied_source_is_not_offered("Vendor Cart"):
 		return
 	await _tap(KEY_R)
-	if not await _until("the chef's search closes", func() -> bool: return _actor("chef", "searching") == -1, COLLECT_FRAMES):
+	if not _check(_screen_open(0) and _actor("chef", "searching") == -1 and _actions() == ["CLOSE"], "R at an emptied source acid never destroys opens the inventory alone: %s" % [_actions()]):
 		return
+	await _tap(KEY_R)
 	await _tap(KEY_Q)
 	await _until("the party is home from the cart", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120)
 

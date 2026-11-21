@@ -9,7 +9,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 LEGACY_SOURCE = 'docs/art/production/map-hd-sources/'
 
 
-def main(root=ROOT):
+def main(root=ROOT, run=subprocess.run, measure=subprocess.check_output):
     art = root / 'project/levels/monster_mouth_escape/art_hd'
     manifest_path = art / 'manifest.json'
     manifest = json.loads(manifest_path.read_text())
@@ -26,8 +26,8 @@ def main(root=ROOT):
         if source.name in ('structures.png', 'terminal.png'):
             command += ['-channel', 'A', '-threshold', '50%', '+channel']
         command += ['-depth', '8', 'PNG32:' + str(target)]
-        subprocess.run(command, check=True)
-        dimensions = subprocess.check_output(
+        run(command, check=True)
+        dimensions = measure(
             ['magick', 'identify', '-format', '%w %h', str(target)], text=True)
         entry['size'] = [int(value) for value in dimensions.split()]
         entry['sha256'] = hashlib.sha256(target.read_bytes()).hexdigest()
