@@ -5,7 +5,7 @@ PYTHON ?= python3
 # The Godot checks play an 18 second day with no base clock and instant cooking
 # (src/session/survival_run.cpp reads these); `run` gets none, so a run played
 # by hand has 5 minutes of each and a cook of seconds.
-GODOT_CHECKS := test-startup test-title test-timing test-survival test-escape test-loss test-audio
+GODOT_CHECKS := test-startup test-title test-timing test-survival test-escape test-endings test-loss test-audio
 $(GODOT_CHECKS): export NEOCITY_EXPLORATION_SECONDS := 18
 $(GODOT_CHECKS): export NEOCITY_BASE_SECONDS := 0
 $(GODOT_CHECKS): export NEOCITY_COOK_SECONDS := 0
@@ -41,7 +41,7 @@ ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
 endif
 
-.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio ci run
+.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-endings test-loss test-audio ci run
 
 $(TOOLS_STAMP): Makefile
 	$(PYTHON) -m venv $(TOOLS)
@@ -97,7 +97,7 @@ build: $(TOOLS_STAMP)
 	@data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" $(PYTHON) -c "$$GODOT_IMPORT_WITH_LIMIT" $(GODOT_IMPORT_LIMIT) "$(GODOT)" --headless --path $(PROJECT_DIR) --import
 
-test: test-unit test-startup test-title test-timing test-survival test-escape test-loss test-audio
+test: test-unit test-startup test-title test-timing test-survival test-escape test-endings test-loss test-audio
 
 test-unit: build
 	$(CTEST) --test-dir $(BUILD_DIR) --output-on-failure --no-tests=error
@@ -202,6 +202,13 @@ test-escape: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop EscapeDeviceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Eq '^Escape device: finished: pass; the run ended as escaped on day [0-9]+ with 3 parts\.' "$$log"
+
+# SurvivalEndingsCheck follows NEXT through thirty days to the vomited-out screen, so it has its own target
+# and its own time budget.
+test-endings: build
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEndingsCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Endings: 5 live checks passed.' "$$log"
 
 test-loss: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \

@@ -74,6 +74,7 @@ The following are temporary values that make the prototype playable and are not 
 - `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. It judges only in the workshop, waits while the party is in the city and changes nothing after the run is over. The host checks after commands and after base time advances, including an automatic end of day.
 - The first judgment reached sets `Phase::Ended` and `Snapshot::ending`. Satisfaction takes precedence over vomiting when both hold. Full acid is already `Phase::Lost` before the check, and cannot be replaced by either ending.
 - Satisfaction, vomiting, escape and acid failure each show their own picture with a title and a description on the ending or loss card, laid out as [presentation](presentation.md) states. Acid failure remains a loss with no `Ending` value. The existing cinematic skip and return contract still applies.
+- `project/e2e/endings.gd` (`make test-endings`) follows the NEXT line on real keys, climbing, jumping and closing the transfer screen as it names them, and choosing dishes that keep the monster short of seven satisfied days, to the thirtieth day, where it checks the vomited-out screen with `project/e2e/end_screen_check.gd`. It is its own target because the run takes minutes, and it fails when the route stalls or the screen breaks.
 
 #### Monster satisfied
 
