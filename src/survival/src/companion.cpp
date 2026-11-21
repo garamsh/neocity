@@ -117,19 +117,27 @@ std::vector<Goal> reachable_containers(const GameView &view) {
   return goals;
 }
 
-/// Containers that hold something and are supplying, what the party lacks
-/// first.
+/// The first of `stock`'s items AI takes: a part of the escape device is for a
+/// human to carry.
+std::optional<IngredientId> first_food(const SourceStock &stock) {
+  const auto found = std::ranges::find_if(
+      stock.items, [](IngredientId item) { return item != ESCAPE_PART; });
+  return found != stock.items.end() ? std::optional{*found} : std::nullopt;
+}
+
+/// Containers that hold food and are supplying, what the party lacks first.
 std::vector<Goal> collection_goals(const GameView &view) {
   std::vector<Goal> goals;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(view.world.objects, stock.id, &ObjectSnapshot::id);
-    if (!stock.items.empty() && object != view.world.objects.end() &&
+    const auto food = first_food(stock);
+    if (food && object != view.world.objects.end() &&
         object->material_available) {
       goals.push_back({.target = stock.id,
                        .area = object->area,
                        .action = Search{stock.id},
-                       .lacking = !party_carries(view, stock.items.front())});
+                       .lacking = !party_carries(view, *food)});
     }
   }
   std::ranges::stable_partition(goals, &Goal::lacking);
@@ -245,8 +253,9 @@ std::optional<IngredientId> first_unidentified(const GameView &view) {
        {&view.progression.chef.inventory, &view.progression.appraiser.inventory,
         &view.progression.fridge}) {
     for (const auto ingredient : *inventory) {
-      if (std::ranges::find(view.workshop.identified, ingredient) ==
-          view.workshop.identified.end()) {
+      if (ingredient != ESCAPE_PART &&
+          std::ranges::find(view.workshop.identified, ingredient) ==
+              view.workshop.identified.end()) {
         return ingredient;
       }
     }
@@ -362,6 +371,10 @@ ActorCommand translate(const CompanionConfig &config, Actor actor,
     command.movement = input.movement;
     if (input.travel) {
       command.action = ReturnToBase{};
+    } else if (input.interact &&
+               at_escape_device(config.exploration, view.exploration.map,
+                                body_of(view, actor).position)) {
+      command.action = UseDevice{};
     } else if (input.search) {
       const auto position = cell_of_actor(view, actor);
       const auto range = config.exploration.collection_distance;
@@ -508,10 +521,11 @@ ActorCommand ai_in_exploration(const CompanionConfig &config, Actor actor,
     if (const auto &open = explorer_of(view, actor).searching) {
       const auto stock = std::ranges::find(view.exploration.sources,
                                            open->source, &SourceStock::id);
-      if (stock != view.exploration.sources.end() && !stock->items.empty() &&
-          has_room(config, view, actor)) {
-        return {.action = Take{.source = open->source,
-                               .ingredient = stock->items.front()}};
+      const auto food = stock != view.exploration.sources.end()
+                            ? first_food(*stock)
+                            : std::nullopt;
+      if (food && has_room(config, view, actor)) {
+        return {.action = Take{.source = open->source, .ingredient = *food}};
       }
       return {.action = CloseSearch{}};
     }
@@ -678,6 +692,11 @@ ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
 ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
                  Search command) {
   return exploration.search(actor, command.source);
+}
+
+ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,
+                 UseDevice /*command*/) {
+  return exploration.escape(actor);
 }
 
 ActionResult run(Exploration &exploration, Workshop & /*workshop*/, Actor actor,

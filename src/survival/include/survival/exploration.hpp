@@ -193,6 +193,10 @@ struct IngredientWeight {
   std::uint32_t weight = 0;
 };
 
+/// The one kind of ingredient that is no food but a part of the escape
+/// device; nothing cooks, appraises or feeds it, and AI never takes it.
+inline constexpr IngredientId ESCAPE_PART{8};
+
 /// What an actor can carry before it slows. Left out, nothing slows an actor.
 struct CarryRules {
   std::vector<IngredientWeight> weights;
@@ -249,6 +253,16 @@ struct Patrol {
   GridPosition to;
 };
 
+/// The broken device that ends the run in an escape: on `map`, usable by an
+/// actor within `collection_distance` of `area` from day `from_day` on, once it
+/// carries `parts_needed` of `ESCAPE_PART`.
+struct EscapeDevice {
+  MapId map = MapId::Aquarium;
+  WorldArea area;
+  std::uint32_t parts_needed = 3;
+  std::uint32_t from_day = 10;
+};
+
 /// Temporary tuning. `carry` slows an actor that carries too much. `entry` is
 /// the base entrance, a cell of the street. `absence` is how long an actor that
 /// touched a mutant or an obstacle is gone from the map before it returns
@@ -265,7 +279,14 @@ struct ExplorationConfig {
   std::vector<Obstacle> obstacles;
   std::vector<Patrol> patrols;
   std::chrono::microseconds absence{};
+  /// Left out, no run can end in an escape.
+  std::optional<EscapeDevice> escape = std::nullopt;
 };
+
+/// Whether a body at `position` on `map` stands within reach of the escape
+/// device of `config`; false with none.
+[[nodiscard]] bool at_escape_device(const ExplorationConfig &config, MapId map,
+                                    Position position);
 
 /// A search under way: the actor has `source` open and takes no movement until
 /// it closes the search.
@@ -380,6 +401,13 @@ public:
   /// container: `ContainerFull` with no free slot.
   [[nodiscard]] CollectionResult put(Actor actor, ObjectId source,
                                      IngredientId ingredient);
+  /// Uses the escape device and ends the run as `Ending::Escaped`. Refused
+  /// with `Result::RunOver` once the run is over, `NotExploring` for an actor
+  /// that is not on the map, `Busy` while it searches, `NotAtDevice` away from
+  /// the device or with none configured, `TooEarly` before the device's first
+  /// day and `MissingIngredients` without enough parts; a refusal changes
+  /// nothing.
+  [[nodiscard]] Result escape(Actor actor);
   /// Returns independent values; requests are never retained in this snapshot.
   [[nodiscard]] ExplorationSnapshot snapshot() const;
 

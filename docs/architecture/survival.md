@@ -70,10 +70,10 @@ The following are temporary values that make the prototype playable and are not 
 
 ### Endings
 
-- An ending is a value of `Ending`: `MonsterSatisfied` or `VomitedOut`. `Endings` holds an ordered table pairing each ending with its judgment, reading the public progression and workshop snapshots and `EndingConfig`. [ADR 0038](adr/0038-end-day-thirty-by-vomiting-and-illustrate-the-three-outcomes.md) extends [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) with the day limit and progression input.
+- An ending is a value of `Ending`: `MonsterSatisfied`, `VomitedOut` or `Escaped`. `Endings` holds an ordered table pairing each ending with its judgment, reading the public progression and workshop snapshots and `EndingConfig`. [ADR 0038](adr/0038-end-day-thirty-by-vomiting-and-illustrate-the-three-outcomes.md) extends [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) with the day limit and progression input.
 - `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. It judges only in the workshop, waits while the party is in the city and changes nothing after the run is over. The host checks after commands and after base time advances, including an automatic end of day.
 - The first judgment reached sets `Phase::Ended` and `Snapshot::ending`. Satisfaction takes precedence over vomiting when both hold. Full acid is already `Phase::Lost` before the check, and cannot be replaced by either ending.
-- Satisfaction, vomiting and acid failure each show one Toxic Night image and a caption on the ending or loss card. Acid failure remains a loss with no `Ending` value. The existing cinematic skip and return contract still applies.
+- Satisfaction, vomiting, escape and acid failure each show one image and a caption on the ending or loss card; the escape's picture is drawn later, and until it exists the card shows the dark stage with the device in one colour. Acid failure remains a loss with no `Ending` value. Acid failure remains a loss with no `Ending` value. The existing cinematic skip and return contract still applies.
 
 #### Monster satisfied
 
@@ -86,10 +86,18 @@ The following are temporary values that make the prototype playable and are not 
 - `VomitedOut` is reached after day thirty finishes, if the run has not already ended. The next-day counter is then 31; opening day thirty is not sufficient.
 - The limit is deterministic, with no random escape draw. Satisfaction on the last day still wins, and acid filling on that day still loses.
 
+#### Escaped
+
+- `Escaped` is the one ending reached in the city, as [ADR 0045](adr/0045-end-the-run-at-a-repaired-escape-device.md) decides. `Exploration::escape` ends the run through `Simulation::escape`; it is not a row of the `Endings` table, which judges only in the workshop. The host runs it when a human presses the interact key beside the device: `Action` gives `UseDevice`, which only the interact key in the city produces.
+- The device is one `EscapeDevice` in `ExplorationConfig`: a map, an area, the parts it needs and its first day. The actor must be on the map, off any search, within `collection_distance` of the area, on or after the first day and carrying that many `ESCAPE_PART`. Refusals are `Result::NotExploring`, `Busy`, `NotAtDevice`, `TooEarly` and `MissingIngredients`, and a refusal changes nothing.
+- A run that is already over answers `RunOver`, so an acid loss beats an escape, and the workshop endings are judged only at base, so satisfaction and escape never hold in one command. There is no random draw.
+- `ESCAPE_PART` is an ingredient identity that is no food: no recipe, flavor or appraisal reads it, the appraiser's lists skip it, and AI never takes it, nor visits a container that holds nothing else. It has a weight like any carried item.
+
 #### Ending values
 
 - The monster is satisfied on 7 days, a temporary balance value in `TEMPORARY_ENDING`, not final balance confirmed by the user. The satisfying score stays `WorkshopConfig::satisfying_score`.
 - `EndingConfig::vomited_out_day` is 30, the chosen completed-day limit rather than a random chance or an additional satisfied-day requirement.
+- The escape device needs 3 parts from day 10, and a part weighs 2: temporary values the PM set under goal #268, held in `EscapeDevice`, `temporary_content` and `weights()`. The device stands on the aquarium's service roof at cell (6,4). The parts lie one in the cold store's upper shelf and two in the aquarium service room's shelf and roof crate, each replacing the last slot of its container, so every one lies on the route the map tour already walks. `NEOCITY_ESCAPE_DAY` sets the first day for the Godot checks only, through `DayLengths::escape_day`.
 
 ### Loss
 
@@ -176,7 +184,7 @@ The world, exploration, workshop, ending, companion, and screen files in the fol
 - The distinction between both actors briefly returning and actual cooking. Currently both at base is the workshop phase, with its own five minutes.
 - The real exploration budget, acid units, the final rise formula, arrival timing, next-day start conditions, the final movement speeds and jump reach, and later feature-specific result types. Test inputs do not imply balance decisions.
 - Whether appraisal failure is misinformation or a failure indication, retry limits, the final result of cooking failure, and the unfed acid penalty and feedings per day.
-- The final satisfaction score and the number of satisfied days, and what the satisfied ending depicts. Other endings, such as the monster vomiting the party out or a way out of the map, are later goals.
+- The final satisfaction score and the number of satisfied days, and what the satisfied ending depicts. The escape device's numbers are temporary and wait for the balance pass.
 - Whether AI should end the day or set out on its own when its human partner stays idle. Currently AI waits for the human.
 - Whether a human appraiser can direct an AI chef's dish. Currently the AI chef picks its own.
 - The save and restore format. Current snapshots are read-only value passing and not a save file or restore.

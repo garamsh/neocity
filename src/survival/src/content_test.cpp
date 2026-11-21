@@ -699,14 +699,38 @@ TEST(TemporaryContent, TheCarryRulesAndSlotCountsAreThePmsTemporaryNumbers) {
   EXPECT_EQ(content.run.fridge_slots, 30U);
   EXPECT_EQ(carry.max_weight, 20U);
   EXPECT_EQ(carry.overweight_percent, 60U);
-  EXPECT_EQ(carry.weights.size(), 7U);
+  EXPECT_EQ(carry.weights.size(), 8U);
   std::map<std::uint32_t, int> tally;
   for (const auto &entry : carry.weights) {
     ++tally[entry.weight];
   }
   EXPECT_EQ(tally[1], 3);
-  EXPECT_EQ(tally[2], 2);
+  EXPECT_EQ(tally[2], 3);
   EXPECT_EQ(tally[3], 2);
+  EXPECT_EQ(weight_of(carry, ESCAPE_PART), 2U);
+}
+
+TEST(TemporaryContent,
+     ThreePartsOfTheEscapeDeviceLieInBothMapsAndWeighSomething) {
+  const auto content = short_days(1);
+  const auto &exploration = content.companion.exploration;
+  ASSERT_TRUE(exploration.escape.has_value());
+  const auto device = exploration.escape.value_or(EscapeDevice{});
+  EXPECT_EQ(device.parts_needed, 3U);
+  EXPECT_EQ(device.from_day, 10U);
+  EXPECT_EQ(device.map, MapId::Aquarium);
+  std::map<MapId, std::uint32_t> parts;
+  for (const auto &source : exploration.sources) {
+    const auto object =
+        std::ranges::find(content.objects, source.id, &ObjectDefinition::id);
+    ASSERT_NE(object, content.objects.end());
+    parts[object->map] += static_cast<std::uint32_t>(
+        std::ranges::count(source.items, ESCAPE_PART));
+  }
+  EXPECT_GE(parts[MapId::Street], 1U);
+  EXPECT_GE(parts[MapId::Aquarium], 1U);
+  EXPECT_EQ(parts[MapId::Street] + parts[MapId::Aquarium], 3U);
+  EXPECT_GT(weight_of(exploration.carry, ESCAPE_PART), 0U);
 }
 
 TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
@@ -1265,8 +1289,11 @@ TEST(TemporaryContent, AnAiPartySearchesEveryColdStoreFloorAndRoof) {
        ++step) {
     game.step(ALL_AI);
   }
+  // AI takes every food and leaves a part of the escape device to a human.
   for (const auto &source : game.exploration().snapshot().sources) {
-    EXPECT_TRUE(source.items.empty()) << object_name(source.id);
+    EXPECT_TRUE(std::ranges::all_of(source.items, [](IngredientId item) {
+      return item == ESCAPE_PART;
+    })) << object_name(source.id);
   }
   EXPECT_EQ(game.simulation().snapshot().phase, Phase::Workshop);
 }

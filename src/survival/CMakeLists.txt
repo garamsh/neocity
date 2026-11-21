@@ -20,7 +20,7 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
-add_executable(survival_test src/simulation_test.cpp src/world_test.cpp src/exploration_test.cpp src/workshop_test.cpp src/companion_test.cpp src/content_test.cpp src/ending_test.cpp src/save_test.cpp)
+add_executable(survival_test src/simulation_test.cpp src/world_test.cpp src/exploration_test.cpp src/workshop_test.cpp src/companion_test.cpp src/content_test.cpp src/ending_test.cpp src/escape_test.cpp src/save_test.cpp)
 target_link_libraries(survival_test PRIVATE survival GTest::gtest_main)
 target_compile_options(survival_test PRIVATE ${NEOCITY_WARNINGS})
 set_target_properties(survival_test PROPERTIES COMPILE_WARNING_AS_ERROR ON)
