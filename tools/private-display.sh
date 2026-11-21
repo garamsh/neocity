@@ -36,8 +36,9 @@ config=$(mktemp -d "${TMPDIR:-/tmp}/nc.XXXXXX")
 trap 'rm -rf "$runtime" "$config"' EXIT
 chmod 700 "$runtime"
 
-# UNVERIFIED: kwin is started with no program, then the command runs against its
-# sockets, because kwin did not launch the command as its session program.
+# kwin is started with no program, then the command runs against its
+# sockets, because kwin did not launch the command as its session program;
+# run on 2026-11-22 it started the command and left the user's fcitx5 alone (see #321).
 # The config holds one setting, an empty input method, so no user config is read.
 printf '[Wayland]\nInputMethod=\n' >"$config/kwinrc"
 
