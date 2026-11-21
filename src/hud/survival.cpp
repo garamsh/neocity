@@ -2102,7 +2102,7 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
   rendering::paint_mouth(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                          shot.out_of_reach);
+                          frame.control, shot.out_of_reach);
     rendering::paint_city_bursts(canvas, bursts, acid_ratio(frame));
   }
   drawing.shift(canvas, {});
