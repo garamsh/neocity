@@ -102,13 +102,10 @@ const SCREEN_MIDDLE: float = 360.0
 ## interact key, so cooking waits for it to close.
 const CLOSE_FIRST: String = "Close the inventory first."
 ## The face the screen draws every changing line in.
-const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
-## The face's grid, in layout units per em, which every drawn size is a multiple of.
-## A layout unit is 1.5 canvas pixels, so this keeps the face's pixels square on
-## the layout grid and not on the screen's, as ADR 0024 records.
-const FONT_GRID: int = 8
+const FONTS: String = "res://levels/monster_mouth_escape/fonts/"
+const CHANGING_FONT: String = FONTS + "body.tres"
 ## The smallest size, in layout units, the interface draws a word at.
-const MIN_TEXT_SIZE: int = 16
+const MIN_TEXT_SIZE: int = 14
 ## What ends the run well, which the pause screen names.
 const ENDING_GOAL: String = "Satisfy the monster on 7 days"
 ## How many first-play tips there are, one per concept that base shows; the
@@ -2002,14 +1999,14 @@ func _result_says(words: String) -> bool:
 
 ## Pauses and continues, and tells whether the ending goal was drawn over
 ## the pause screen and not on the screen under it. The screen and the pause
-## over it each draw every word at a whole multiple of the font's grid.
+## over it each draw every word in the new faces.
 func _pause_shows_ending_goal() -> bool:
 	var before: bool = _drawn_says(ENDING_GOAL)
-	if not _text_on_grid("the screen under the pause"):
+	if not _text_in_faces("the screen under the pause"):
 		return false
 	await _tap(KEY_ESCAPE)
 	var paused: bool = _str("interruption") == "paused" and _drawn_says(ENDING_GOAL)
-	if not _text_on_grid("the pause screen"):
+	if not _text_in_faces("the pause screen"):
 		return false
 	await _tap(KEY_ESCAPE)
 	return _str("goal") == ENDING_GOAL and not before and paused and _str("interruption") == ""
@@ -2018,17 +2015,22 @@ func _pause_shows_ending_goal() -> bool:
 func _drawn_lines() -> PackedStringArray:
 	return scene.get_meta("screen_text", PackedStringArray())
 
-## Whether every word the last frame drew was drawn at a whole multiple of the
-## font's grid, 16 layout units at the least, and the font is imported without
-## antialiasing; the control is that the frame drew words at all.
-func _text_on_grid(where: String) -> bool:
+## Whether the last frame drew words, none under MIN_TEXT_SIZE layout units, and
+## the interface's three faces are Chivo at 400 and 700 and Bricolage Grotesque
+## at 800, not the old pixel face; the control is that the frame drew words.
+func _text_in_faces(where: String) -> bool:
 	var sizes: PackedInt32Array = scene.get_meta("screen_text_sizes", PackedInt32Array())
-	var off: Array[int] = []
+	var small: Array[int] = []
 	for size: int in sizes:
-		if size % FONT_GRID != 0 or size < MIN_TEXT_SIZE:
-			off.append(size)
-	var face: FontFile = load(CHANGING_FONT)
-	return _check(not sizes.is_empty() and off.is_empty() and face.antialiasing == TextServer.FONT_ANTIALIASING_NONE, "every word on %s is drawn at a multiple of %d, %d at the least, in an unsmoothed face: off the grid %s of %s" % [where, FONT_GRID, MIN_TEXT_SIZE, off, sizes])
+		if size < MIN_TEXT_SIZE:
+			small.append(size)
+	var body: FontVariation = load(FONTS + "body.tres")
+	var strong: FontVariation = load(FONTS + "strong.tres")
+	var title: FontVariation = load(FONTS + "title.tres")
+	var wght: int = TextServerManager.get_primary_interface().name_to_tag("wght")
+	var faces: bool = body.base_font.resource_path.contains("Chivo") and strong.base_font.resource_path.contains("Chivo") and title.base_font.resource_path.contains("Bricolage")
+	var weights: bool = body.variation_opentype[wght] == 400.0 and strong.variation_opentype[wght] == 700.0 and title.variation_opentype[wght] == 800.0
+	return _check(not sizes.is_empty() and small.is_empty() and faces and weights, "every word on %s is drawn at %d at the least in the new faces: under it %s of %s" % [where, MIN_TEXT_SIZE, small, sizes])
 
 ## Whether the last frame drew a line reading exactly `words`.
 func _drawn(words: String) -> bool:

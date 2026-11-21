@@ -60,7 +60,7 @@ void paint_pop(godot::Node2D &canvas, Vector2 centre, float done) {
   const auto tones = palette();
   canvas.draw_arc(centre, 6.0F + 28.0F * done, 0.0F,
                   2.0F * std::numbers::pi_v<float>, 24,
-                  fade(tones.gold, 1.0F - done), 3.0F);
+                  fade(tones.lime, 1.0F - done), 3.0F);
   specks(canvas, centre, done, 8, 34.0F, 3.0F, tones.white);
 }
 
@@ -104,7 +104,7 @@ void paint_reaction(godot::Node2D &canvas, const Art &art, bool pleased,
                     float done) {
   const auto tones = palette();
   const godot::String word = pleased ? "YUM!" : "BLEH!";
-  const godot::Color tint = pleased ? tones.success : tones.danger;
+  const godot::Color tint = pleased ? tones.success : tones.magenta;
   const float rise = 50.0F * done;
   const float alpha = done < 0.7F ? 1.0F : (1.0F - done) / 0.3F;
   const Vector2 at = BUCKET + Vector2(-40.0F, -40.0F - rise);
@@ -114,7 +114,7 @@ void paint_reaction(godot::Node2D &canvas, const Art &art, bool pleased,
           fade(tones.background, 0.85F * alpha));
   art.text(canvas, at.x, at.y, word, 26, fade(tint, alpha), Weight::Bold);
   if (pleased) {
-    specks(canvas, BUCKET, done, 8, 40.0F, 3.0F, tones.gold);
+    specks(canvas, BUCKET, done, 8, 40.0F, 3.0F, tones.lime);
   }
 }
 

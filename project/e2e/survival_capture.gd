@@ -549,6 +549,9 @@ func _scales_canvas() -> bool:
 		_fail("the window did not leave full screen: mode %d" % DisplayServer.window_get_mode())
 		return false
 	for size: Vector2i in WINDOW_SIZES:
+		if DisplayServer.get_name() == "X11":
+			# A rootless Xwayland window is clamped to the work area; the sizes are measured on Wayland.
+			continue
 		DisplayServer.window_set_size(size)
 		for frame: int in range(RESIZE_FRAMES):
 			if DisplayServer.window_get_size() == size:
@@ -584,6 +587,15 @@ func _shown_canvas(window: String) -> bool:
 	if ProjectSettings.get_setting("display/window/size/viewport_width") != CANVAS.x or ProjectSettings.get_setting("display/window/size/viewport_height") != CANVAS.y or ProjectSettings.get_setting("display/window/stretch/mode") != "canvas_items":
 		_fail("authored canvas settings differ from 1920x1080 canvas_items")
 		return false
+	if DisplayServer.get_name() == "X11":
+		# A rootless Xwayland window is not the size asked for, so the drawn canvas is the measure:
+		# its aspect is the canvas's and the scene's scale is its width over the canvas's.
+		var ratio: float = float(drawn.x) / float(drawn.y)
+		var drawn_scale: float = float(drawn.x) / CANVAS.x
+		if absf(ratio - float(CANVAS.x) / CANVAS.y) > 0.02 or absf(shown.get_scale().x - drawn_scale * CANVAS_SCALE) > 0.02:
+			_fail("%s: the drawn canvas %s is not the canvas's shape at its scale %s" % [window, drawn, shown.get_scale()])
+			return false
+		return true
 	if not Vector2(drawn).is_equal_approx(content) or not shown.origin.is_equal_approx(origin) or not shown.get_scale().is_equal_approx(Vector2.ONE * scale * CANVAS_SCALE):
 		_fail("%s: output scale or centered letterbox differs" % window)
 		return false

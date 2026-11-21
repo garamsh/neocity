@@ -1363,7 +1363,7 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
     stand_on_floor(canvas, art, source_image(marker.stock.kind), cell, tint);
   }
   if (marker.promised) {
-    canvas.draw_rect(cell, tones.gold, false, 2.0F);
+    canvas.draw_rect(cell, tones.lime, false, 2.0F);
   } else if (marker.stocked_open) {
     dashed_frame(canvas, cell, tones.white);
   }
