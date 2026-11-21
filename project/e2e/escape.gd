@@ -2,6 +2,7 @@ class_name SurvivalEscapeCheck
 extends SceneTree
 ## Plays the survival game from the main menu to the ending with real key events,
 ## and drives the cinematic contract with no asset, a working scene, and broken ones.
+## At 60 frames per second it plays the group of parts named after `--` (`_parts`).
 
 ## Any seed does: following NEXT feeds to satisfaction on most days.
 const SEED: int = 7
@@ -24,6 +25,8 @@ const SLOW_FRAME_MS: int = 500
 const INTRO_CARD_SLOW_FRAMES: int = 12
 ## The placeholder card's button: its left part skips, its right part leaves.
 const CARD_BUTTON: String = "Skip     Main menu"
+## What each group of parts covers, as its finished line names it.
+const PART_NAMES: Dictionary[String, String] = {"route": "fallback, input block, days, ending", "cinematics": "scene, skip, broken assets, click, menu, instant finish"}
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -68,12 +71,30 @@ func _run() -> void:
 			print("Escape slow frames: ", checks, " live checks passed.")
 			quit(0)
 		return
-	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _clicks_work_the_card, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]:
+	var group: String = "" if OS.get_cmdline_user_args().is_empty() else OS.get_cmdline_user_args()[0]
+	var parts: Array[Callable] = _parts(group)
+	if parts.is_empty():
+		push_error("Escape check: name the parts to play after --: route or cinematics, not '%s'" % group)
+		quit(1)
+		return
+	for part: Callable in parts:
 		await part.call()
 		if failed:
 			return
-	print("Escape: ", checks, " live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).")
+	print("Escape %s: %d live checks passed (%s)." % [group, checks, PART_NAMES[group]])
 	quit(0)
+
+## The parts one process plays at a fixed 60 frames per second, by the group the
+## command line names. A group's parts share one process because each starts from
+## the state the last left: the ending card follows the run played to its end, and
+## a stand-in scene stays served until the next part replaces it.
+func _parts(group: String) -> Array[Callable]:
+	match group:
+		"route":
+			return [_fallback_intro, _play_to_the_ending, _fallback_ending]
+		"cinematics":
+			return [_scene_intro, _skipped_scene, _broken_scenes, _clicks_work_the_card, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]
+	return []
 
 ## No intro asset exists, so a real run opens on the card, blocked, until it times out.
 func _fallback_intro() -> void:
