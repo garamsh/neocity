@@ -290,10 +290,10 @@ func _run() -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
-	await _tap(KEY_2)
+	await _title_entry(2)
 	await _save("25-controls")
 	await _tap(KEY_ESCAPE)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _save("2-choose-players")
 	await _tap(KEY_1)
 	await _save("12-intro-card")
@@ -428,7 +428,7 @@ func _run() -> void:
 	await _frames(4)
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 	await _save("15-two-players-workshop")
@@ -448,7 +448,7 @@ func _run() -> void:
 	# day's base shows the day's result beside several finds in packs and fridge.
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -471,7 +471,7 @@ func _run() -> void:
 		return
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	scene.pin_survival_seed(ENDING_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -511,7 +511,7 @@ func _timed_cook_capture() -> bool:
 	await _tap(KEY_ENTER)
 	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
 	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -1920,6 +1920,13 @@ func _finish(result: String) -> void:
 		if not diagnostic_findings.is_empty():
 			result = "fail: %d diagnostic findings: %s" % [diagnostic_findings.size(), diagnostic_findings]
 		print("Capture: finished: ", result)
+
+## Presses the title entry that is `number` on a title with no saved day: a saved day
+## draws Continue first, which moves every other entry down one.
+func _title_entry(number: int) -> void:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var shift: int = 1 if lines.find("CONTINUE") >= 0 else 0
+	await _tap((KEY_1 + number - 1 + shift) as Key)
 
 func _tap(code: Key) -> void:
 	_key(code, true)
