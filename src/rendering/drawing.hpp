@@ -285,11 +285,6 @@ public:
   /// the ring's pixel count there. Returns whether a ring was drawn.
   bool outline(godot::Node2D &canvas, Image image, godot::Vector2 position,
                bool mirrored, godot::Color colour) const;
-  /// The colour the outline of the chef (`chef`) or the appraiser takes from
-  /// now on; the label pass sets it from who drives each, after the city is
-  /// drawn, so the first frame of a run uses the defaults.
-  void player_colour(bool chef, godot::Color colour) const;
-  [[nodiscard]] godot::Color player_colour(bool chef) const;
   /// The screen area of `image`'s opaque pixels when drawn at `position`
   /// (mirrored or not), in the units `size` gives.
   [[nodiscard]] godot::Rect2 opaque_area(Image image, godot::Vector2 position,
@@ -405,8 +400,6 @@ private:
   };
   [[nodiscard]] const Silhouette &silhouette(Image image) const;
   mutable std::map<std::size_t, Silhouette> silhouettes;
-  mutable std::array<godot::Color, 2> player_colours{
-      godot::Color(1.0F, 0.62F, 0.12F), godot::Color(0.25F, 0.85F, 1.0F)};
   /// The steady clock's reading when the art loaded.
   std::uint64_t loaded;
   std::optional<float> pinned;
