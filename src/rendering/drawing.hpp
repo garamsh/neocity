@@ -272,10 +272,11 @@ public:
   /// The sizes `text` actually drew at, one per call since the last call, in
   /// drawing order: each is the grid size, not the one asked for.
   [[nodiscard]] std::vector<int> take_sizes() const;
-  /// Draws `image` at its own size times a whole `scale`, its top-left corner
-  /// on the pixel at `position`; `mirrored` flips it horizontally in place.
-  /// Each colour is multiplied by `tint`. A canvas with `character_layers`
-  /// receives the drawn character texture, screen area and reflection there.
+  /// Draws `image` at its own size times `scale` (a whole number, except for
+  /// the characters inside a building), its top-left corner on the pixel at
+  /// `position`; `mirrored` flips it horizontally in place. Each colour is
+  /// multiplied by `tint`. A canvas with `character_layers` receives the drawn
+  /// character texture, screen area and reflection there.
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
@@ -284,11 +285,12 @@ public:
   /// `actor_outlines` receives the character's role, screen area, colour and
   /// the ring's pixel count there. Returns whether a ring was drawn.
   bool outline(godot::Node2D &canvas, Image image, godot::Vector2 position,
-               bool mirrored, godot::Color colour) const;
+               bool mirrored, godot::Color colour, float scale = 1.0F) const;
   /// The screen area of `image`'s opaque pixels when drawn at `position`
-  /// (mirrored or not), in the units `size` gives.
+  /// (mirrored or not) at `scale`, in the units `size` gives.
   [[nodiscard]] godot::Rect2 opaque_area(Image image, godot::Vector2 position,
-                                         bool mirrored) const;
+                                         bool mirrored,
+                                         float scale = 1.0F) const;
   /// Draws the `source` part of `image`, in the units `size` gives, into
   /// `destination`, each colour multiplied by `tint`; a negative destination
   /// width or height reflects that axis about its position. A canvas with

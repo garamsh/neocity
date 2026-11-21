@@ -1,6 +1,6 @@
 # ADR 0042: Explore building interiors from inside
 
-> Status: proposed; the zoom range of its Camera decision superseded by ADR 0044
+> Status: proposed; the Camera decision superseded by ADR 0048 (its zoom range first by ADR 0044)
 > Date: 2026-11-20
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

@@ -1,6 +1,6 @@
 # ADR 0044: Cap the interior zoom at one and a half times the street's
 
-> Status: proposed
+> Status: superseded by ADR 0048
 > Date: 2026-11-21
 
 Supersedes the zoom range of the **Camera** decision in [ADR 0042](0042-explore-building-interiors-from-inside.md); every other decision of 0042 stands.
