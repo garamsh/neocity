@@ -81,6 +81,10 @@ constexpr float PLATE_ICON_Y = 11.0F;
 constexpr float PLATE_WORDS_X = 47.0F;
 constexpr float GAUGE_HEIGHT = 8.0F;
 constexpr float GAUGE_GAP = 10.0F;
+/// The acid share from which the acid plate warns, and the room its triangle
+/// takes.
+constexpr float ACID_WARNING = 0.5F;
+constexpr float WARNING_MARK = 22.0F;
 constexpr float GOAL_Y = BAND_Y + BAND_HEIGHT + GAP;
 constexpr int GOAL_SIZE = SMALL_SIZE;
 constexpr float GOAL_PAD = 14.0F;
@@ -787,20 +791,28 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
                    drawing.text_width(day, BIG_SIZE, Weight::Bold),
                BAND_BASELINE, two_digits(progression.day), BIG_SIZE, tones.lime,
                Weight::Bold);
-  plate(ACID_X, ACID_WIDTH);
-  const String acid = "ACID ";
+  const bool rising = acid_ratio(frame) >= ACID_WARNING;
+  const auto acid_plate = rect(ACID_X, BAND_Y, ACID_WIDTH, BAND_HEIGHT);
+  if (rising) {
+    rendering::warning(canvas, acid_plate);
+    cover(canvas, acid_plate);
+  } else {
+    plate(ACID_X, ACID_WIDTH);
+  }
+  const int acid_size = rising ? SMALL_SIZE : ACID_SIZE;
+  const String acid = rising ? "ACID RISING " : "ACID ";
   const String percent =
       number(static_cast<std::uint64_t>(progression.acid.value) * 100U /
              frame.content.get().run.full_acid.value) +
       "%";
-  const float words = ACID_X + PLATE_PAD;
-  const float acid_width = drawing.text_width(acid, ACID_SIZE, Weight::Bold);
-  drawing.text(canvas, words, BAND_BASELINE, acid, ACID_SIZE, tones.magenta,
+  const float words = ACID_X + PLATE_PAD + (rising ? WARNING_MARK : 0.0F);
+  const float acid_width = drawing.text_width(acid, acid_size, Weight::Bold);
+  drawing.text(canvas, words, BAND_BASELINE, acid, acid_size, tones.magenta,
                Weight::Bold);
-  drawing.text(canvas, words + acid_width, BAND_BASELINE, percent, ACID_SIZE,
+  drawing.text(canvas, words + acid_width, BAND_BASELINE, percent, acid_size,
                tones.white, Weight::Bold);
   const float gauge_x = words + acid_width +
-                        drawing.text_width(percent, ACID_SIZE, Weight::Bold) +
+                        drawing.text_width(percent, acid_size, Weight::Bold) +
                         GAUGE_GAP;
   gauge(canvas, drawing, "acid",
         rect(gauge_x, BAND_Y + (BAND_HEIGHT - GAUGE_HEIGHT) / 2.0F,
