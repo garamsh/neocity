@@ -19,7 +19,7 @@ Source provenance, export ownership and review evidence for the layered base red
 - Three built-in image-generation calls on 2026-11-22; [exact prompts and reference roles](prompts.json). Model, seed and quality were not exposed. No paid credits or external image uploads were used.
 - Source outputs are retained unmodified. Transparent exports use the existing crane pipeline's 50% binary-alpha convention to remove nearly invisible generated alpha outside the silhouettes. Resampling uses nearest neighbours; no palette reduction or smoothing.
 - Reproduce exports and boards with `python3 docs/art/production/base-shelter-268/export.py` (Pillow required). The script updates only its five runtime files and their manifest records. Each record carries source and output SHA256 digests.
-- Ownership limitation: `tools/art/toxic_night.py` still unconditionally exports the former #262 crane. Before that exporter is next used, an engine/tooling follow-up must remove its `base/feed_crane.png` export tuple or honor the manifest's new source owner. The earlier `toxic-night-screens/export.py` likewise belongs to the preceding base source and must not be run to regenerate this redraw.
+- `tools/art/toxic_night.py` preserves outputs and manifest records assigned to another source, including this crane, while still exporting its own sources and new destinations. The earlier `toxic-night-screens/export.py` belongs to the preceding base source and must not be run to regenerate this redraw.
 
 ## Evidence and placement
 
