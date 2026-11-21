@@ -1553,7 +1553,8 @@ func _two_players() -> void:
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
 	var keys: Array[String] = _set_out_keys()
-	var two_tip: String = str(scene.get_meta("hud_tip", {}).get("text", ""))
+	var drawn_tip: Dictionary = scene.get_meta("hud_tip", {})
+	var two_tip: String = str(drawn_tip.get("text", ""))
 	if not _check(_next().begins_with("Set out into the city") and two_tip == SET_OUT_TIP + " Set out with [%s] (P1) or [%s] (P2)." % [keys[0], keys[1]], "the base line tells two players to set out, and the set-out tip names both keys: %s %s" % [_next(), two_tip]):
 		return
 	if not _text_fits("two players at base before setting out"):
