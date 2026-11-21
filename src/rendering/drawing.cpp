@@ -1,5 +1,6 @@
 #include "drawing.hpp"
 
+#include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -709,6 +710,152 @@ void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
   canvas.draw_texture_rect(images.at(slot(image)),
                            godot::Rect2(Vector2(), drawn), false, tint);
   canvas.draw_set_transform_matrix(placed);
+}
+
+/// How far, in picture pixels, an outline stands outside the shape.
+constexpr int OUTLINE_REACH = 5;
+/// The alpha from which a picture pixel belongs to the shape.
+constexpr float OPAQUE = 0.5F;
+
+const Art::Silhouette &Art::silhouette(Image image) const {
+  const auto found = silhouettes.find(slot(image));
+  if (found != silhouettes.end()) {
+    return found->second;
+  }
+  Silhouette made;
+  const godot::Ref<godot::Image> source = images.at(slot(image))->get_image();
+  if (source.is_valid() && !source->is_empty()) {
+    const int width = source->get_width();
+    const int height = source->get_height();
+    const auto index = [width](int x, int y) {
+      return static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+             static_cast<std::size_t>(x);
+    };
+    std::vector<bool> solid(static_cast<std::size_t>(width) *
+                            static_cast<std::size_t>(height));
+    int left = width;
+    int top = height;
+    int right = -1;
+    int bottom = -1;
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        if (source->get_pixel(x, y).a >= OPAQUE) {
+          solid.at(index(x, y)) = true;
+          left = std::min(left, x);
+          right = std::max(right, x);
+          top = std::min(top, y);
+          bottom = std::max(bottom, y);
+        }
+      }
+    }
+    if (right >= 0) {
+      const auto at = [&](int x, int y) {
+        return x >= 0 && y >= 0 && x < width && y < height &&
+               solid.at(index(x, y));
+      };
+      for (int y = std::max(0, top - OUTLINE_REACH);
+           y <= std::min(height - 1, bottom + OUTLINE_REACH); ++y) {
+        int run_end = -1;
+        for (int x = std::max(0, left - OUTLINE_REACH);
+             x <= std::min(width - 1, right + OUTLINE_REACH); ++x) {
+          if (at(x, y)) {
+            run_end = -1;
+            continue;
+          }
+          bool near = false;
+          for (int dy = -OUTLINE_REACH; dy <= OUTLINE_REACH && !near; ++dy) {
+            for (int dx = -OUTLINE_REACH; dx <= OUTLINE_REACH; ++dx) {
+              if (dx * dx + dy * dy <= OUTLINE_REACH * OUTLINE_REACH &&
+                  at(x + dx, y + dy)) {
+                near = true;
+                break;
+              }
+            }
+          }
+          if (!near) {
+            run_end = -1;
+            continue;
+          }
+          ++made.ring_pixels;
+          if (run_end == x) {
+            made.ring.back().size.x += 1.0F;
+          } else {
+            made.ring.emplace_back(
+                Vector2(static_cast<float>(x), static_cast<float>(y)),
+                Vector2(1.0F, 1.0F));
+          }
+          run_end = x + 1;
+        }
+      }
+      made.opaque = godot::Rect2(
+          Vector2(static_cast<float>(left), static_cast<float>(top)),
+          Vector2(static_cast<float>(right - left + 1),
+                  static_cast<float>(bottom - top + 1)));
+    }
+  }
+  return silhouettes.emplace(slot(image), std::move(made)).first->second;
+}
+
+void Art::player_colour(bool chef, godot::Color colour) const {
+  player_colours.at(chef ? 0 : 1) = colour;
+}
+
+godot::Color Art::player_colour(bool chef) const {
+  return player_colours.at(chef ? 0 : 1);
+}
+
+godot::Rect2 Art::opaque_area(Image image, Vector2 position,
+                              bool mirrored) const {
+  const auto &shape = silhouette(image);
+  const Vector2 full = images.at(slot(image))->get_size();
+  const Vector2 drawn = size(image);
+  const Vector2 ratio(drawn.x / full.x, drawn.y / full.y);
+  float left = shape.opaque.position.x;
+  const float width = shape.opaque.size.x;
+  if (mirrored) {
+    left = full.x - left - width;
+  }
+  return {position.floor() +
+              Vector2(left * ratio.x, shape.opaque.position.y * ratio.y),
+          Vector2(width * ratio.x, shape.opaque.size.y * ratio.y)};
+}
+
+bool Art::outline(godot::Node2D &canvas, Image image, Vector2 position,
+                  bool mirrored, godot::Color colour) const {
+  const auto &shape = silhouette(image);
+  if (shape.ring.empty()) {
+    return false;
+  }
+  const Vector2 drawn = size(image);
+  if (canvas.has_meta("actor_outlines")) {
+    godot::Array outlines = canvas.get_meta("actor_outlines", godot::Array());
+    godot::Dictionary mark;
+    mark.set("role", godot::String(path(image)).get_file().begins_with("chef_")
+                         ? "chef"
+                         : "appraiser");
+    const Vector2 zoom = placed.get_scale();
+    mark.set("area", godot::Rect2(placed.get_origin() + position.floor() * zoom,
+                                  drawn * zoom));
+    mark.set("opaque", opaque_area(image, position, mirrored).abs());
+    mark.set("colour", colour);
+    mark.set("pixels", shape.ring_pixels);
+    outlines.push_back(mark);
+    canvas.set_meta("actor_outlines", outlines);
+  }
+  // The ring's runs are in picture pixels; a mirrored one flips about the
+  // frame's width.
+  const Vector2 full = images.at(slot(image))->get_size();
+  const Vector2 ratio(drawn.x / full.x, drawn.y / full.y);
+  const Vector2 origin = position.floor();
+  for (const auto &run : shape.ring) {
+    const float left =
+        mirrored ? full.x - run.position.x - run.size.x : run.position.x;
+    canvas.draw_rect(
+        godot::Rect2(origin + Vector2(left, run.position.y) * ratio,
+                     run.size * ratio),
+        colour);
+  }
+  return true;
 }
 
 void Art::shift(godot::Node2D &canvas, Vector2 offset) const {

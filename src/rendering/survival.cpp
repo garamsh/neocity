@@ -1390,20 +1390,64 @@ Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
           art.glide(chef ? "chef_feet_y" : "appraiser_feet_y", point.y)};
 }
 
-/// Draws an actor taller than its cell, its frame's bottom edge on its feet,
-/// in the pose its body and its motion call for.
-void paint_actor(godot::Node2D &canvas, const Art &art,
-                 const survival::GameView &view, Actor actor,
-                 const survival::Body &body, float offset) {
+/// Where an actor's frame is drawn and which one.
+struct Placement {
+  Image image{};
+  bool mirrored = false;
+  Vector2 position;
+};
+
+Placement placement_of(const Art &art, const survival::GameView &view,
+                       Actor actor, const survival::Body &body, float offset) {
   const auto now = view.progression.world_time;
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
   const float anchor = ACTOR_PIVOT.x;
   const float pivot = shown.mirrored ? size.x - anchor : anchor;
-  art.image(canvas, shown.image,
-            Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y), 1.0F,
-            shown.mirrored);
+  return {.image = shown.image,
+          .mirrored = shown.mirrored,
+          .position = Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y)};
+}
+
+/// Draws an actor taller than its cell, its frame's bottom edge on its feet,
+/// in the pose its body and its motion call for.
+void paint_actor(godot::Node2D &canvas, const Art &art,
+                 const survival::GameView &view, Actor actor,
+                 const survival::Body &body, float offset) {
+  const auto at = placement_of(art, view, actor, body, offset);
+  art.image(canvas, at.image, at.position, 1.0F, at.mirrored);
+}
+
+/// The colour of the outline that keeps a hidden human findable: the
+/// player's own, a neutral one for the AI partner.
+godot::Color outline_colour(survival::ControlMap control, Actor actor) {
+  const auto keys = survival::key_set(control, actor);
+  if (!keys) {
+    return {0.85F, 0.88F, 0.92F};
+  }
+  return *keys == 0 ? godot::Color(1.0F, 0.62F, 0.12F)
+                    : godot::Color(0.25F, 0.85F, 1.0F);
+}
+
+/// The chef is drawn first and the appraiser over it. Where the appraiser's
+/// body covers the chef's, the chef's outline is drawn over the appraiser, so
+/// the chef stays in view in its own shape and its player's colour.
+void paint_hidden_outline(godot::Node2D &canvas, const Art &art,
+                          const survival::GameView &view,
+                          float appraiser_offset) {
+  const auto back =
+      placement_of(art, view, Actor::Chef, view.exploration.chef.body, 0.0F);
+  const auto front =
+      placement_of(art, view, Actor::Appraiser, view.exploration.appraiser.body,
+                   appraiser_offset);
+  const auto hidden = art.opaque_area(back.image, back.position, back.mirrored);
+  const auto cover =
+      art.opaque_area(front.image, front.position, front.mirrored);
+  if (hidden.intersects(cover)) {
+    art.outline(canvas, back.image, back.position, back.mirrored,
+                art.player_colour(true));
+  }
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -1654,6 +1698,8 @@ Labels label_city(const Art &art, const survival::GameView &view,
                  "BROKEN", 13, red);
     }
   }
+  art.player_colour(true, outline_colour(control, Actor::Chef));
+  art.player_colour(false, outline_colour(control, Actor::Appraiser));
   const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
     const Vector2 feet = to_screen(camera, feet_of(art, actor, body));
     constexpr int TAG_SIZE = 14;
@@ -2029,6 +2075,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   }
   paint_mutants(canvas, art, view);
   canvas.set_meta("character_layers", godot::Array());
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("actor_outlines", godot::Array());
+  }
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,
                 0.0F);
@@ -2036,6 +2085,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   if (party.appraiser_out) {
     paint_actor(canvas, art, view, Actor::Appraiser,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
+  }
+  if (party.chef_out && party.appraiser_out) {
+    paint_hidden_outline(canvas, art, view, party.shared ? 10.0F : 0.0F);
   }
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {

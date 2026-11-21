@@ -38,11 +38,17 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
+	var on_street: bool = true
 	for target: Vector2i in ROUTE:
 		if not await _move(target, target):
 			return
+		if on_street:
+			on_street = false
+			await _settle()
+			_check_outlines("street")
 	await _settle()
 	_check_hall()
+	_check_outlines("hall")
 	if not await _move(STAIR, STAIR):
 		return
 	await _settle()
@@ -114,6 +120,46 @@ func _check_hall() -> void:
 			_fail("the tag %s floats off the room of its human: %s over the feet at %s" % [words[index], box, feet])
 	if not stray.is_empty():
 		_fail("badges or tags float outside the building: %s" % [stray.slice(0, 3)])
+
+## The opaque pixels of a drawn character layer, in the screen units its area is in.
+func _opaque_of(layer: Dictionary) -> Rect2:
+	var texture: Texture2D = layer["texture"]
+	var area: Rect2 = layer["area"]
+	var used: Rect2 = Rect2(texture.get_image().get_used_rect())
+	var ratio: Vector2 = area.size / texture.get_size()
+	var left: float = used.position.x
+	if layer["mirrored"]:
+		left = texture.get_size().x - used.end.x
+	return Rect2(area.position + Vector2(left, used.position.y) * ratio, used.size * ratio)
+
+## Where two humans' bodies overlap on screen, the one behind keeps an outline of its own shape and
+## its player's colour drawn over the one in front: a ring with pixels, on the hidden body's frame.
+func _check_outlines(where: String) -> void:
+	var world: Node = _world()
+	var front: Dictionary = {}
+	var back: Dictionary = {}
+	for layer: Dictionary in world.get_meta("character_layers", []):
+		if layer["role"] == "chef":
+			back = layer
+		else:
+			front = layer
+	if back.is_empty() or front.is_empty():
+		_fail("%s: both humans were not drawn: %s" % [where, world.get_meta("character_layers", [])])
+		return
+	var back_area: Rect2 = back["area"]
+	var hidden: Rect2 = _opaque_of(back)
+	if not hidden.intersects(_opaque_of(front)):
+		_fail("%s: the two humans share a cell but their bodies do not overlap on screen" % where)
+		return
+	var found: bool = false
+	for mark: Dictionary in world.get_meta("actor_outlines", []):
+		var colour: Color = mark["colour"]
+		var pixels: int = mark["pixels"]
+		var area: Rect2 = mark["area"]
+		if mark["role"] == "chef" and pixels > 0 and colour.a > 0.0 and colour.v > 0.2 and area.is_equal_approx(back_area):
+			found = true
+	if not found:
+		_fail("%s: the chef's body is overlapped by the appraiser's with no visible outline of its own over it: %s" % [where, world.get_meta("actor_outlines", [])])
 
 ## The stair's treads sit on the floor line its walker's feet keep, and run down to the floor beside it.
 func _check_stair() -> void:
