@@ -30,7 +30,7 @@ The room pictures and the characters are on different scales. A shop room is 192
 
 - The room fills 71% of the screen's height and the screen's width, scrolling 256 pixels across the kitchen and the noodle shop; the Cold Store's floors and the service room are drawn at the zoom their lit floors call for, 5 and 3 or less, with the actors the street's size on the screen.
 - `StairsCheck -- --interior-zoom` reads that the chef is drawn no taller on the screen in any building than on the street, equally tall in all of them, and each building at the street's zoom or nearer.
-- `InteriorCheck` walks both humans along the kitchen and reads that the camera's centre differs between the door end, the middle and the far side, that the view stays within the room's sides, that the humans stand within a band around the screen's middle in the middle of the room and within the screen at its ends, and that an open door and the vignette are drawn inside and neither on the street.
+- `InteriorCheck` walks both humans along the kitchen and reads that the camera's centre differs between the door end, the middle and the far side, that the view stays within the room's sides, that the humans stand within a band around the screen's middle in the middle of the room and within the screen at its ends, that both humans' feet and the whole height of the room are in view at the ladder's top, along the floor, in the Cold Store's hall and on its stair, and that an open door and the vignette are drawn inside and neither on the street.
 - A ladder, whose object runs below the room's floor, shows the part in the room as a short ladder on the floor at its own column; the room picture's own ladder is where it was drawn.
 
 ## Signs the decision was wrong

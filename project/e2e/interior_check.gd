@@ -75,11 +75,13 @@ func _run() -> void:
 			_check_street_plain()
 	await _settle()
 	_check_hall()
+	_check_visible("hall")
 	_check_outlines("hall")
 	if not await _move(STAIR, STAIR):
 		return
 	await _settle()
 	_check_stair()
+	_check_visible("stair")
 	_check_neighbours()
 	if not await _move(HALL, HALL):
 		return
@@ -94,6 +96,10 @@ func _check_kitchen_camera() -> bool:
 	for target: Vector2i in [Vector2i(3, 8), Vector2i(3, 6)]:
 		if not await _move(target, target):
 			return false
+	# Climbing in, at the top of the ladder, and then along the floor: the room's two rows are in view throughout.
+	await _settle()
+	_check_visible("kitchen ladder top")
+	await _save("kitchen-climb")
 	var centres: Array[Vector2] = []
 	for stop: Vector2i in KITCHEN_STOPS:
 		if not await _move(stop, stop):
@@ -145,6 +151,7 @@ func _read_camera(where: String, middle: bool) -> Vector2:
 		_fail("%s: the camera looks past the room's sides: view %s, room %s" % [where, shown, extent])
 	if not extent.grow(1.0).has_point(centre):
 		_fail("%s: the camera's centre is outside the room: centre %s, room %s" % [where, centre, extent])
+	_check_visible(where)
 	var chef: Dictionary = scene.survival_status()["chef"]
 	var chef_x: int = chef["sub_x"]
 	var chef_y: int = chef["sub_y"]
@@ -154,6 +161,24 @@ func _read_camera(where: String, middle: bool) -> Vector2:
 	if off.x > limit or off.y > BAND.y:
 		_fail("%s: the chef stands %s from the middle of the screen, outside the band %s" % [where, off, Vector2(limit, BAND.y)])
 	return centre
+
+## Both humans' feet are on the screen, and so is the whole height of the room when the room is no taller
+## than the screen shows: the camera follows sideways and frames the floors upright, so no row of the room is
+## cut off wherever the humans stand on it or climb to it.
+func _check_visible(where: String) -> void:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var shown: Rect2 = view.affine_inverse() * Rect2(0, 0, 1280, 720)
+	var extent: Rect2 = _world().get_meta("inside_extent", Rect2())
+	var status: Dictionary = scene.survival_status()
+	for role: String in ["chef", "appraiser"]:
+		var body: Dictionary = status[role]
+		var body_x: int = body["sub_x"]
+		var body_y: int = body["sub_y"]
+		var feet: Vector2 = ORIGIN + Vector2(body_x, body_y)
+		if not shown.grow(1.0).has_point(feet):
+			_fail("%s: the %s's feet %s are outside the view %s" % [where, role, feet, shown])
+	if extent.size.y <= shown.size.y and (shown.position.y > extent.position.y + 1.0 or shown.end.y < extent.end.y - 1.0):
+		_fail("%s: a row of the room is cut off: view %s, room %s" % [where, shown, extent])
 
 ## The door the humans came in by is drawn open on the street, inside the room.
 func _check_open_door(where: String) -> void:
