@@ -2380,7 +2380,7 @@ String tip_text(Tip tip) {
 }
 
 String tip_line(const SurvivalFrame &frame, Tip tip) {
-  const String text = tip_text(tip);
+  String text = tip_text(tip);
   if (tip != Tip::SetOut) {
     return text;
   }
