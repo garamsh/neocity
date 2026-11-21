@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <charconv>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <type_traits>
 
@@ -35,10 +36,10 @@ struct Reader {
       good = false;
       return;
     }
-    const auto parsed =
-        std::from_chars(token.data(), token.data() + token.size(), number);
-    good = good && parsed.ec == std::errc{} &&
-           parsed.ptr == token.data() + token.size();
+    const char *const first = token.data();
+    const char *const last = std::to_address(token.end());
+    const auto parsed = std::from_chars(first, last, number);
+    good = good && parsed.ec == std::errc{} && parsed.ptr == last;
   }
   template <typename T> void list(std::vector<T> &items) {
     std::size_t count = 0;
@@ -54,10 +55,14 @@ struct Reader {
   }
 };
 
+template <typename Archive, typename T> void field(Archive &archive, T &item) {
+  archive.value(item);
+}
+
 template <typename Archive, typename T>
 void enumeration(Archive &archive, T &value, unsigned last) {
   auto number = static_cast<unsigned>(value);
-  archive.value(number);
+  field(archive, number);
   if constexpr (std::is_same_v<Archive, Reader>) {
     if (number > last) {
       archive.good = false;
@@ -65,6 +70,11 @@ void enumeration(Archive &archive, T &value, unsigned last) {
     }
     value = static_cast<T>(number);
   }
+}
+
+template <typename Archive> void stock(Archive &archive, SourceStock &source) {
+  archive.value(source.id.value);
+  archive.list(source.items);
 }
 
 template <typename Archive> void dish(Archive &archive, Dish &value) {
@@ -79,7 +89,7 @@ template <typename Archive> void outcome(Archive &archive, DayOutcome &value) {
   archive.value(value.acid_rise.value);
   archive.value(value.acid_drop.value);
   unsigned fed = value.fed ? 1U : 0U;
-  archive.value(fed);
+  field(archive, fed);
   if constexpr (std::is_same_v<Archive, Reader>) {
     archive.good = archive.good && fed <= 1;
     if (fed == 1) {
@@ -88,13 +98,12 @@ template <typename Archive> void outcome(Archive &archive, DayOutcome &value) {
   }
   if (value.fed) {
     dish(archive, value.fed->dish);
-    auto &score = value.fed->score;
-    archive.value(score.new_food);
-    archive.value(score.new_ingredients);
-    archive.value(score.new_ingredient_points);
-    archive.value(score.taste);
-    archive.value(score.fine);
-    archive.value(score.total);
+    archive.value(value.fed->score.new_food);
+    archive.value(value.fed->score.new_ingredients);
+    archive.value(value.fed->score.new_ingredient_points);
+    archive.value(value.fed->score.taste);
+    archive.value(value.fed->score.fine);
+    archive.value(value.fed->score.total);
   }
 }
 
@@ -117,7 +126,7 @@ void state(Archive &archive, Snapshot &progression, WorkshopSnapshot &kitchen,
   enumeration(archive, players.chef, 1);
   enumeration(archive, players.appraiser, 1);
   for (auto &touch : touches) {
-    archive.value(touch);
+    field(archive, touch);
   }
   std::size_t count = kitchen.foods.size();
   archive.value(count);
@@ -132,7 +141,7 @@ void state(Archive &archive, Snapshot &progression, WorkshopSnapshot &kitchen,
     dish(archive, food);
   }
   unsigned last = kitchen.last_day ? 1U : 0U;
-  archive.value(last);
+  field(archive, last);
   if constexpr (std::is_same_v<Archive, Reader>) {
     archive.good = archive.good && last <= 1;
     if (last == 1) {
@@ -152,8 +161,7 @@ void state(Archive &archive, Snapshot &progression, WorkshopSnapshot &kitchen,
     sources.resize(count);
   }
   for (auto &source : sources) {
-    archive.value(source.id.value);
-    archive.list(source.items);
+    stock(archive, source);
   }
 }
 
@@ -169,7 +177,7 @@ std::optional<DaySave> DaySave::capture(const Simulation &simulation,
       workshop.state.remaining_base != workshop.config.base_time) {
     return std::nullopt;
   }
-  DaySave save;
+  DaySave save{workshop.generator};
   save.progression = simulation.snapshot();
   save.kitchen = workshop.snapshot();
   save.sources = exploration.config.sources;
@@ -208,7 +216,7 @@ std::optional<DaySave> DaySave::parse(std::string_view bytes,
   if (magic != "MME-DAY" || version != 1) {
     return std::nullopt;
   }
-  DaySave save;
+  DaySave save{std::mt19937{content.run.seed}};
   std::int64_t budget = 0;
   std::int64_t cook = 0;
   std::int64_t base = 0;

@@ -31,7 +31,7 @@ public:
   [[nodiscard]] std::uint32_t seed() const;
 
 private:
-  DaySave() = default;
+  explicit DaySave(const std::mt19937 &generator) : random(generator) {}
   [[nodiscard]] bool valid(const Content &content) const;
 
   Snapshot progression;

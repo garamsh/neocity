@@ -53,8 +53,14 @@ func _run() -> void:
 	print("Keys: ", checks, " live checks passed (survival player one, survival player two).")
 	quit(0)
 
+## Chooses New game: a saved day puts Continue first on the title screen, so
+## New game is then the second entry.
+func _new_game() -> void:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _tap(KEY_2 if lines.find("CONTINUE") >= 0 else KEY_1)
+
 func _one_player() -> bool:
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "choosing the chef starts a run on key set one"):
@@ -84,7 +90,7 @@ func _one_player() -> bool:
 
 ## Two humans: player two plays the appraiser on the second key set.
 func _two_players() -> bool:
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):

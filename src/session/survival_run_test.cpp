@@ -13,28 +13,32 @@ namespace {
 
 using namespace std::chrono_literals;
 
-struct RunRules {
+class RunRules {
+public:
   explicit RunRules(survival::DayLengths lengths = {})
-      : content(survival::temporary_content(42, lengths)) {}
+      : settings(survival::temporary_content(42, lengths)) {}
 
-  survival::Content content;
-  survival::Simulation simulation{content.run};
-  survival::World world{content.objects};
-  survival::Exploration exploration{simulation, world,
-                                    content.companion.exploration};
-  survival::Workshop workshop{simulation, content.companion.workshop};
-  survival::Endings endings{simulation, workshop, survival::TEMPORARY_ENDING};
-  survival::Companion companion{content.companion};
+  [[nodiscard]] survival::Simulation &simulation() { return shared; }
+  [[nodiscard]] survival::Workshop &workshop() { return kitchen; }
 
   SurvivalFeatures features() {
-    return {.content = content,
-            .simulation = simulation,
-            .world = world,
-            .exploration = exploration,
-            .workshop = workshop,
-            .endings = endings,
-            .companion = companion};
+    return {.content = settings,
+            .simulation = shared,
+            .world = map,
+            .exploration = explorers,
+            .workshop = kitchen,
+            .endings = finale,
+            .companion = controllers};
   }
+
+private:
+  survival::Content settings;
+  survival::Simulation shared{settings.run};
+  survival::World map{settings.objects};
+  survival::Exploration explorers{shared, map, settings.companion.exploration};
+  survival::Workshop kitchen{shared, settings.companion.workshop};
+  survival::Endings finale{shared, kitchen, survival::TEMPORARY_ENDING};
+  survival::Companion controllers{settings.companion};
 };
 
 TEST(SurvivalAutosave, OffersContinueFirstOnlyWhenASlotWasParsed) {
@@ -83,7 +87,8 @@ TEST(SurvivalAutosave, StoresEveryNewDayInsideALongFrameWithFreshClocks) {
   SurvivalRun run{rules.features(), survival::two_players(), 0, remember};
   (void)run.advance(3.2, {}, survival::Direction::Idle);
   EXPECT_EQ(days, (std::vector<std::uint32_t>{1, 2, 3, 4}));
-  EXPECT_LT(*rules.workshop.snapshot().remaining_base, 1s);
+  const auto remaining = rules.workshop().snapshot().remaining_base;
+  EXPECT_LT(remaining.value_or(1s), 1s);
 }
 
 TEST(SurvivalAutosave, StoresBeforeThePartnerCanActOnTheNewDay) {
@@ -105,7 +110,7 @@ TEST(SurvivalAutosave, StoresBeforeThePartnerCanActOnTheNewDay) {
   EXPECT_EQ(saved.back().day, 2U);
   EXPECT_EQ(saved.back().phase, survival::Phase::Workshop);
   EXPECT_EQ(saved.back().appraiser.location, survival::Location::Base);
-  EXPECT_EQ(rules.simulation.snapshot().appraiser.location,
+  EXPECT_EQ(rules.simulation().snapshot().appraiser.location,
             survival::Location::City);
 }
 
