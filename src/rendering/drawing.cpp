@@ -796,11 +796,11 @@ const Art::Silhouette &Art::silhouette(Image image) const {
   return silhouettes.emplace(slot(image), std::move(made)).first->second;
 }
 
-godot::Rect2 Art::opaque_area(Image image, Vector2 position,
-                              bool mirrored) const {
+godot::Rect2 Art::opaque_area(Image image, Vector2 position, bool mirrored,
+                              float scale) const {
   const auto &shape = silhouette(image);
   const Vector2 full = images.at(slot(image))->get_size();
-  const Vector2 drawn = size(image);
+  const Vector2 drawn = size(image) * scale;
   const Vector2 ratio(drawn.x / full.x, drawn.y / full.y);
   float left = shape.opaque.position.x;
   const float width = shape.opaque.size.x;
@@ -813,12 +813,12 @@ godot::Rect2 Art::opaque_area(Image image, Vector2 position,
 }
 
 bool Art::outline(godot::Node2D &canvas, Image image, Vector2 position,
-                  bool mirrored, godot::Color colour) const {
+                  bool mirrored, godot::Color colour, float scale) const {
   const auto &shape = silhouette(image);
   if (shape.ring.empty()) {
     return false;
   }
-  const Vector2 drawn = size(image);
+  const Vector2 drawn = size(image) * scale;
   if (canvas.has_meta("actor_outlines")) {
     godot::Array outlines = canvas.get_meta("actor_outlines", godot::Array());
     godot::Dictionary mark;
@@ -828,7 +828,7 @@ bool Art::outline(godot::Node2D &canvas, Image image, Vector2 position,
     const Vector2 zoom = placed.get_scale();
     mark.set("area", godot::Rect2(placed.get_origin() + position.floor() * zoom,
                                   drawn * zoom));
-    mark.set("opaque", opaque_area(image, position, mirrored).abs());
+    mark.set("opaque", opaque_area(image, position, mirrored, scale).abs());
     mark.set("colour", colour);
     mark.set("pixels", shape.ring_pixels);
     outlines.push_back(mark);

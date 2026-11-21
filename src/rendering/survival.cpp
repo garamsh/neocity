@@ -1513,28 +1513,32 @@ struct Placement {
   Image image{};
   bool mirrored = false;
   Vector2 position;
+  float scale = 1.0F;
 };
 
 Placement placement_of(const Art &art, const survival::GameView &view,
-                       Actor actor, const survival::Body &body, float offset) {
+                       Actor actor, const survival::Body &body, float offset,
+                       float scale) {
   const auto now = view.progression.world_time;
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
   const float anchor = ACTOR_PIVOT.x;
-  const float pivot = shown.mirrored ? size.x - anchor : anchor;
+  const float pivot = (shown.mirrored ? size.x - anchor : anchor) * scale;
   return {.image = shown.image,
           .mirrored = shown.mirrored,
-          .position = Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y)};
+          .position =
+              Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y * scale),
+          .scale = scale};
 }
 
 /// Draws an actor taller than its cell, its frame's bottom edge on its feet,
 /// in the pose its body and its motion call for.
 void paint_actor(godot::Node2D &canvas, const Art &art,
                  const survival::GameView &view, Actor actor,
-                 const survival::Body &body, float offset) {
-  const auto at = placement_of(art, view, actor, body, offset);
-  art.image(canvas, at.image, at.position, 1.0F, at.mirrored);
+                 const survival::Body &body, float offset, float scale) {
+  const auto at = placement_of(art, view, actor, body, offset, scale);
+  art.image(canvas, at.image, at.position, at.scale, at.mirrored);
 }
 
 /// The colour of the outline that keeps a hidden human findable: the
@@ -1553,19 +1557,20 @@ godot::Color outline_colour(survival::ControlMap control, Actor actor) {
 /// the chef stays in view in its own shape and its player's colour.
 void paint_hidden_outline(godot::Node2D &canvas, const Art &art,
                           const survival::GameView &view,
-                          survival::ControlMap control,
-                          float appraiser_offset) {
-  const auto back =
-      placement_of(art, view, Actor::Chef, view.exploration.chef.body, 0.0F);
+                          survival::ControlMap control, float appraiser_offset,
+                          float scale) {
+  const auto back = placement_of(art, view, Actor::Chef,
+                                 view.exploration.chef.body, 0.0F, scale);
   const auto front =
       placement_of(art, view, Actor::Appraiser, view.exploration.appraiser.body,
-                   appraiser_offset);
-  const auto hidden = art.opaque_area(back.image, back.position, back.mirrored);
+                   appraiser_offset, scale);
+  const auto hidden =
+      art.opaque_area(back.image, back.position, back.mirrored, scale);
   const auto cover =
-      art.opaque_area(front.image, front.position, front.mirrored);
+      art.opaque_area(front.image, front.position, front.mirrored, scale);
   if (hidden.intersects(cover)) {
     art.outline(canvas, back.image, back.position, back.mirrored,
-                outline_colour(control, Actor::Chef));
+                outline_colour(control, Actor::Chef), scale);
   }
 }
 
@@ -1729,6 +1734,7 @@ Labels label_city(const Art &art, const survival::GameView &view,
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
   }
+  const float scale = actor_scale(camera.inside, camera.zoom);
   const auto actor_box = [&](Actor actor, const survival::Body &body,
                              float offset) {
     const auto now = view.progression.world_time;
@@ -1736,10 +1742,11 @@ Labels label_city(const Art &art, const survival::GameView &view,
     const Vector2 size = art.size(shown.image);
     const Vector2 feet = feet_of(art, actor, body);
     const float anchor = ACTOR_PIVOT.x;
-    const float pivot = shown.mirrored ? size.x - anchor : anchor;
-    return to_screen(camera, godot::Rect2(Vector2(feet.x - pivot + offset,
-                                                  feet.y - ACTOR_PIVOT.y),
-                                          size));
+    const float pivot = (shown.mirrored ? size.x - anchor : anchor) * scale;
+    return to_screen(camera,
+                     godot::Rect2(Vector2(feet.x - pivot + offset * scale,
+                                          feet.y - ACTOR_PIVOT.y * scale),
+                                  size * scale));
   };
   const auto keep_actor = [&](Actor actor, const survival::Body &body,
                               float offset) {
@@ -2150,7 +2157,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       paint_shop_front(canvas, art, objects, marker);
     }
   }
-  paint_interiors(canvas, art, everything, view, inside.has_value());
+  if (!inside) {
+    paint_interiors(canvas, art, everything, view, false);
+  }
   std::vector<survival::GridPosition> stairs;
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -2168,6 +2177,11 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_ground(canvas, art, content, objects, ground,
                {.stairs = stairs, .hollow = hollow}, surface);
   paint_buildings(true);
+  // The room's picture holds its own floor and ceiling, so it is drawn over
+  // the map's decks that reach into it.
+  if (inside) {
+    paint_interiors(canvas, art, everything, view, true);
+  }
   if (!inside) {
     paint_obstacles(canvas, art, view.exploration.map, content);
   }
@@ -2195,17 +2209,18 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   if (canvas.has_meta("measure_art")) {
     canvas.set_meta("actor_outlines", godot::Array());
   }
+  const float scale = actor_scale(inside.has_value(), art.looking().zoom);
+  const float apart = party.shared ? 10.0F * scale : 0.0F;
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,
-                0.0F);
+                0.0F, scale);
   }
   if (party.appraiser_out) {
     paint_actor(canvas, art, view, Actor::Appraiser,
-                view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
+                view.exploration.appraiser.body, apart, scale);
   }
   if (party.chef_out && party.appraiser_out) {
-    paint_hidden_outline(canvas, art, view, control,
-                         party.shared ? 10.0F : 0.0F);
+    paint_hidden_outline(canvas, art, view, control, apart, scale);
   }
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {

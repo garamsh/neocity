@@ -128,14 +128,14 @@ func _only_inside() -> bool:
 	return scene.get_node("World").get_meta("inside_view", false)
 
 ## Whether the throat, the city and the acid backdrop were left out of the last
-## frame, and the camera shows the building's extent whole at the street's close zoom, 2.
+## frame, and the camera is at the street's close zoom, 2, or nearer, with the building on the screen.
 func _nothing_outside_the_shop() -> bool:
 	var world: Node = scene.get_node("World")
 	var extent: Rect2 = world.get_meta("inside_extent", Rect2())
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	var shown: Rect2 = view * extent
 	var layers: Array = world.get_meta("backdrop_layers", [null])
-	return layers.is_empty() and is_equal_approx(view.get_scale().x, 2.0) and Rect2(0, 0, 1280, 720).encloses(shown)
+	return layers.is_empty() and view.get_scale().x >= 2.0 and Rect2(0, 0, 1280, 720).intersects(shown)
 
 func _draws_interior(file: String) -> bool:
 	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):

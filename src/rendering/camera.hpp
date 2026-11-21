@@ -37,7 +37,7 @@ struct View {
 
 /// Where the camera over the city heads: the actors in the city, human or AI.
 /// One is shown at twice the scene's size, a little ahead of the way it faces;
-/// two are framed together, ahead of the way they face together, at twice the
+/// two are framed together at twice the
 /// size while they fit and at the scene's own size once they do not, which the
 /// screen lock keeps from happening sideways. With nobody in the city it rests
 /// on the base entrance. It never shows past the map's left and right edges or
@@ -54,6 +54,12 @@ struct View {
 /// stepping once the eased zoom passes halfway between two.
 [[nodiscard]] View follow(const Art &art, const survival::MapContent &content,
                           const View &heading);
+
+/// How much of its size an actor is drawn at under `camera`: whole on the
+/// street, and inside a building the street's close zoom over the camera's, so
+/// an actor stands as tall on the screen as on the street while the rooms,
+/// drawn two cells tall, are four times its height.
+[[nodiscard]] float actor_scale(bool inside, float zoom);
 
 /// How far, in screen pixels, a backdrop layer `depth` of the way from the
 /// back of the scene to the map has slid from where it rests: 0 stays and 1
