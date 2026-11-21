@@ -205,11 +205,18 @@ constexpr const char *CARD_BUTTON = "Skip     Main menu";
 constexpr const char *CARD_LEAVE = "Main menu";
 constexpr float CARD_BUTTON_X = 130.0F;
 constexpr float CARD_BUTTON_Y = 610.0F;
-constexpr float SETUP_X = 200.0F;
-constexpr float SETUP_Y = 170.0F;
-constexpr float SETUP_WIDTH = 880.0F;
-constexpr float SETUP_HEIGHT = 116.0F;
-constexpr float SETUP_PITCH = 128.0F;
+/// The choice of players: a panel at the right of the title art, holding the
+/// heading, one row per entry and a hint line.
+constexpr float SETUP_PANEL_X = 740.0F;
+constexpr float SETUP_PANEL_Y = 110.0F;
+constexpr float SETUP_PANEL_WIDTH = 500.0F;
+constexpr float SETUP_PANEL_HEIGHT = 500.0F;
+constexpr float SETUP_X = 764.0F;
+constexpr float SETUP_Y = 200.0F;
+constexpr float SETUP_WIDTH = 452.0F;
+constexpr float SETUP_HEIGHT = 104.0F;
+constexpr float SETUP_PITCH = 116.0F;
+constexpr float SETUP_FIGURE_HEIGHT = 72.0F;
 
 /// The key each action is bound to in project.godot, one entry per key set.
 struct KeyLabels {
@@ -1860,15 +1867,15 @@ std::vector<survival::ObjectId> named_once(const SurvivalFrame &frame) {
   return objects;
 }
 
-/// The name and the line under it of one choice of players.
+/// The name and the one-line role of one choice of players.
 std::array<String, 2> setup_label(SetupEntry entry) {
   switch (entry) {
   case SetupEntry::Chef:
-    return {"CHEF", "You cook. AI appraises."};
+    return {"Chef", "You cook. AI appraises."};
   case SetupEntry::Appraiser:
-    return {"APPRAISER", "You appraise. AI cooks."};
+    return {"Appraiser", "You appraise. AI cooks."};
   case SetupEntry::TwoPlayers:
-    return {"TWO PLAYERS", "P1 chef (WASD), P2 appraiser (IJKL)."};
+    return {"Two players", "Play together on one keyboard."};
   }
   std::abort();
 }
@@ -1884,50 +1891,50 @@ godot::Rect2 setup_area(std::size_t index) {
 void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected) {
   const auto tones = rendering::palette();
-  paint_title_art(canvas, 0.55F);
-  drawing.text(canvas, SETUP_X, 120.0F, "Who is playing?", 40, tones.white,
-               Weight::Bold);
+  paint_title_art(canvas, 0.0F);
+  kit_panel(canvas, rect(SETUP_PANEL_X, SETUP_PANEL_Y, SETUP_PANEL_WIDTH,
+                         SETUP_PANEL_HEIGHT));
+  drawing.text(canvas, SETUP_X, SETUP_PANEL_Y + 60.0F, "Who is playing?", 40,
+               tones.white, Weight::Bold);
   const auto chosen_at = static_cast<float>(
       std::ranges::find(SETUP_ENTRIES, selected) - SETUP_ENTRIES.begin());
   const float cursor =
       SETUP_Y + drawing.glide("setup_cursor", chosen_at) * SETUP_PITCH;
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
-    kit_panel(canvas, setup_area(index));
+    kit_button(canvas, setup_area(index), false);
   }
-  // The highlight slides to the cursor's entry.
+  // The gold button slides to the cursor's entry.
   kit_button(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT), true);
   float y = SETUP_Y;
   std::size_t number_key = 1;
+  const auto figure = [&](rendering::Image image, float x, float top) {
+    const float scale = SETUP_FIGURE_HEIGHT / drawing.size(image).y;
+    drawing.image(canvas, image, Vector2(x, top), scale);
+  };
   for (const SetupEntry entry : SETUP_ENTRIES) {
     const bool chosen = entry == selected;
     const auto label = setup_label(entry);
+    const float top = y + (SETUP_HEIGHT - SETUP_FIGURE_HEIGHT) / 2.0F;
     if (entry == SetupEntry::TwoPlayers) {
-      drawing.image(canvas, rendering::Image::ChefIdle,
-                    Vector2(SETUP_X + 16.0F, y + 26.0F));
-      drawing.image(canvas, rendering::Image::AppraiserIdle,
-                    Vector2(SETUP_X + 72.0F, y + 26.0F));
+      figure(rendering::Image::ChefIdle, SETUP_X + 16.0F, top);
+      figure(rendering::Image::AppraiserIdle, SETUP_X + 64.0F, top);
     } else {
-      drawing.image(canvas,
-                    entry == SetupEntry::Chef ? rendering::Image::ChefIdle
-                                              : rendering::Image::AppraiserIdle,
-                    Vector2(SETUP_X + 44.0F, y + 26.0F));
+      figure(entry == SetupEntry::Chef ? rendering::Image::ChefIdle
+                                       : rendering::Image::AppraiserIdle,
+             SETUP_X + 28.0F, top);
     }
-    const auto ink = chosen ? tones.gold : tones.white;
-    drawing.text(canvas, SETUP_X + 160.0F, y + 52.0F,
-                 number(number_key) + "   " + label.at(0), 32, ink,
-                 Weight::Bold);
-    drawing.text(canvas, SETUP_X + 160.0F, y + 86.0F, label.at(1), 24,
-                 chosen ? tones.white : tones.muted);
+    drawing.text(canvas, SETUP_X + 120.0F, y + 46.0F, label.at(0), 32,
+                 chosen ? tones.ink : tones.white, Weight::Bold);
+    drawing.text(canvas, SETUP_X + 120.0F, y + 78.0F, label.at(1), 16,
+                 chosen ? tones.ink : tones.muted);
+    drawing.text(canvas, SETUP_X + SETUP_WIDTH - 60.0F, y + 62.0F,
+                 "[" + number(number_key) + "]", 24,
+                 chosen ? tones.ink : tones.gold, Weight::Bold);
     y += SETUP_PITCH;
     ++number_key;
   }
-  kit_panel(canvas, rect(MARGIN, 600.0F, SCREEN_WIDTH - 2.0F * MARGIN,
-                         SCREEN_HEIGHT - MARGIN - 600.0F));
-  drawing.text(canvas, 30.0F, 642.0F,
-               "Gather by day, appraise and cook at base, and feed the monster "
-               "before the acid wrecks the city.",
-               24, tones.white);
-  drawing.text(canvas, 30.0F, 680.0F, "Click who is playing.", 16, tones.muted);
+  drawing.text(canvas, SETUP_X, SETUP_Y + 3.0F * SETUP_PITCH + 24.0F,
+               "Click who is playing.", 16, tones.muted);
 }
 
 namespace {

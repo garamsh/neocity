@@ -103,6 +103,8 @@ func _cursor_chooses_each_entry() -> bool:
 		return false
 	if not _names_no_key("the choice of players", "Click who is playing."):
 		return false
+	if not _choice_lists_its_entries():
+		return false
 	await _tap(KEY_ESCAPE)
 	if not _check(scene.screen_name() == "main", "Esc goes back from the choice of players"):
 		return false
@@ -141,6 +143,28 @@ func _numbers_choose_entries() -> bool:
 	await _tap(KEY_ESCAPE)
 	await _tap(KEY_1)
 	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players")
+
+## The choice of players reads, from the drawn text and the click targets, the
+## heading and then each entry's name and one-line role with its number key, the
+## entries stacked down the right half in the order their keys number them.
+func _choice_lists_its_entries() -> bool:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var wanted: Array[String] = ["Who is playing?", "Chef", "You cook. AI appraises.", "[1]", "Appraiser", "You appraise. AI cooks.", "[2]", "Two players", "Play together on one keyboard.", "[3]"]
+	var at: int = lines.find(wanted[0])
+	var drawn: Array[String] = []
+	if at >= 0:
+		for line: String in lines.slice(at, at + wanted.size()):
+			drawn.append(line)
+	if not _check(drawn == wanted, "the choice of players draws its heading, then each entry's name, role and number key: %s" % [lines]):
+		return false
+	var rows: Array[Rect2] = []
+	for number: int in range(1, 4):
+		rows.append(_target("option_%d" % number)["rect"])
+	var stacked: bool = rows[0].position.x > 640.0 and rows[0].position.x == rows[1].position.x and rows[1].position.x == rows[2].position.x
+	stacked = stacked and rows[0].end.y <= rows[1].position.y and rows[1].end.y <= rows[2].position.y and rows[2].end.x <= 1280.0
+	if not _check(stacked and _frames_of("selected") == [rows[0]], "the three entries are click targets stacked down the right half, the gold button on the first: %s %s" % [rows, _frames_of("selected")]):
+		return false
+	return _check(_target("option_4").is_empty() and _target("option_0").is_empty(), "the choice has three click targets and no more")
 
 ## Starts and ends on the choice of players. 3 opens the How to play page,
 ## which draws a line on each concept and names no key, and Esc and M go back.
