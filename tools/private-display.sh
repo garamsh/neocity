@@ -36,13 +36,32 @@ config=$(mktemp -d "${TMPDIR:-/tmp}/nc.XXXXXX")
 trap 'rm -rf "$runtime" "$config"' EXIT
 chmod 700 "$runtime"
 
-# kwin takes one session program and quits when it exits, so the command and
-# its arguments go into one script, quoted.
-printf 'exec' >"$runtime/run"
-printf ' %q' "$@" >>"$runtime/run"
-chmod 700 "$runtime/run"
+# UNVERIFIED: kwin is started with no program, then the command runs against its
+# sockets, because kwin did not launch the command as its session program.
+# The config holds one setting, an empty input method, so no user config is read.
+printf '[Wayland]\nInputMethod=\n' >"$config/kwinrc"
 
+# Runs inside the private session bus, so kwin and the command share it.
+session() {
+  before=$(ls /tmp/.X11-unix 2>/dev/null | sort)
+  KWIN_COMPOSE=Q kwin_wayland --virtual --width "$width" --height "$height" \
+    --no-lockscreen --no-global-shortcuts --xwayland --socket nd-wayland \
+    >"$runtime/kwin.log" 2>&1 &
+  kwin=$!
+  trap 'kill "$kwin" 2>/dev/null || true' EXIT
+  x=
+  for _ in $(seq 1 100); do
+    kill -0 "$kwin" 2>/dev/null || { cat "$runtime/kwin.log" >&2; echo "kwin exited" >&2; return 1; }
+    if [ -S "$runtime/nd-wayland" ]; then
+      x=$(comm -13 <(echo "$before") <(ls /tmp/.X11-unix 2>/dev/null | sort) | head -1)
+      [ -n "$x" ] && break
+    fi
+    sleep 0.2
+  done
+  [ -n "$x" ] || { cat "$runtime/kwin.log" >&2; echo "no Wayland socket or X display" >&2; return 1; }
+  WAYLAND_DISPLAY=nd-wayland DISPLAY=":${x#X}" "$@"
+}
+export -f session
+export width height runtime config
 dbus-run-session -- env XDG_CONFIG_HOME="$config" XDG_RUNTIME_DIR="$runtime" \
-  kwin_wayland --virtual --width "$width" --height "$height" \
-  --no-lockscreen --no-global-shortcuts --xwayland --socket nd-wayland \
-  --exit-with-session "$runtime/run"
+  bash -c 'session "$@"' _ "$@"
