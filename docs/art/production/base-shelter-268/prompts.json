@@ -1,0 +1,59 @@
+{
+  "tool": "built-in image_gen.imagegen",
+  "generated_date": "2026-11-22",
+  "model": "not exposed",
+  "seed": "not exposed",
+  "quality": "not exposed",
+  "images": [
+    {
+      "asset": "background-source.png",
+      "prompt": "Create a clean newly redrawn runtime game BACKGROUND, 1920x1080 16:9, modern detailed pixel art at the density of the supplied 1920x1080 kitchen. Reference 1 (a-shelter-under-teeth.png) controls COMPOSITION AND ATMOSPHERE ONLY: workshop left two thirds, huge magenta living throat and dripping ivory teeth overhead, swallowed tilted city and elevated broken train on right, luminous lime acid water beside the platform. IGNORE ALL UI and figures in references. Reference 2 (base-kitchen-v1.png) controls art style: detailed crisp tiny stepped pixel clusters, strong contemporary neon and amber lighting, black violet steel, rusty bolted beams, beautiful high resolution 2D pixel game background, not retro low resolution. Reference 3 current kitchen controls output density only.\nClean redraw with uninterrupted natural geometry; repair seams; no pasted rectangular patches. NO CHARACTERS, NO CREATURES standing in kitchen, NO CRANE, NO CABLE, NO HOIST, NO CRADLE, NO FOOD DISH. No UI, frames, typography or lettering anywhere.\nPrecise runtime staging: left workshop spans x0 to1250. Warm hanging lamps, back wall, shelves of jars, range hood, stove near x850 and icy refrigerator near x1120. Leave two unobstructed standing bays with visible dark back wall from y580 to790: appraiser bay x270..440, chef bay x830..1000. Characters will later be added at actual foot line y792, only about 172 pixels tall. Keep back stove/workbenches behind their bodies low enough to reveal their upper bodies. Floor top at y792 across the left platform; front face of platform begins at y798. Platform ends x1310; drowned city opens beyond. Do NOT draw foreground counter, crates or anything masking the standing bays, those are a separate transparent layer. Teeth across upper edge, monster throat distinctly behind right city; bright magenta depth and green acid, warm interior amber. Bottom y825..1080 is calm dark violet almost black structural shadows, muted acid only, no important objects, reserved for later UI. Fill entire image, no letterboxing. Match approved scene's rich dramatic lighting without reproducing compositing artifacts. Flat side-view staging, detailed environment depth.",
+      "references": [
+        {
+          "path": "approved-a.png",
+          "role": "approved composition; background only"
+        },
+        {
+          "path": "docs/art/concept-art/ruined-street/base-kitchen-v1.png",
+          "role": "style"
+        },
+        {
+          "path": "project/levels/monster_mouth_escape/art_hd/base/kitchen.png",
+          "revision": "2ebcc10375ef1e730df6693865ce6a63fad2d743",
+          "role": "previous pixel density"
+        }
+      ],
+      "transparent_background": false
+    },
+    {
+      "asset": "front-source.png",
+      "prompt": "Generate ONE transparent foreground layer for a 1920x1080 modern pixel-art game scene, matching the provided newly redrawn workshop background (image 1), and approved scene composition (image 2). Output full 16:9 canvas with GENUINE alpha transparency, no opaque backdrop. This is ONLY the near edge of the appraiser's workbench, ingredient crates, the cook's counter front, and platform front fascia. No background, no characters, no crane, no lamps, no back wall, no shelves, no fridge, no ceiling, no text, no UI.\nPrecise alignment in 1920x1080: left workbench x100..515 with near counter edge at y720 and front ending at y795, enough room for the appraiser centered x353 behind it with head y625. Small crates at x50..200 and x480..610 y735..798, filled with mushrooms and vegetables. Chef counter x760..1130: narrow near worktop edge at y744, worn steel fascia down to y796, low central cooking hob with small orange fire and black pan at y735; chef centered x908 with head y620 must remain visible above y735. Platform fascia spans x0..1490 starting y792, reaches y830; subtle bolted plates and short dark underside brackets may reach y880. Keep all areas ABOVE these outlines completely transparent. Keep the entire rightmost x1500..1920 transparent. Bottom y890..1080 transparent. These objects overlap only lower legs and feet of characters at y792. Materials and style MUST match image 1: crisp small pixels, amber highlights on deep blue-violet corroded steel, fine rusty edges and pixel clusters, saturated tiny produce details, modern lighting. Flat side view with shallow perspective, completely isolated transparent game foreground, no floor surface extending backward. Do not draw large tall piles, tall legs, decorative border or entire room.",
+      "references": [
+        {
+          "path": "background-source.png",
+          "role": "materials and staging"
+        },
+        {
+          "path": "approved-a.png",
+          "role": "foreground composition"
+        }
+      ],
+      "transparent_background": true
+    },
+    {
+      "asset": "crane-source.png",
+      "prompt": "Create ONE isolated transparent game sprite of a complete feeding crane, full side view, square canvas, fine detailed modern pixel art matching the supplied kitchen concept and new background. Genuine transparent alpha everywhere around the machine. NO background, floor, city, characters, food, bowl, text, UI or border.\nReference 1 original base-kitchen-v1 is the AUTHORITY for crane form: tall narrow vertical hoist on a bolted mast, a long perfectly vertical cable, and an EMPTY triangular hanging cradle with two diagonal arms forming a triangle from a top ring to a broad flat hazard-striped tray. Reference 2 is palette and pixel density.\nPrecise separable mechanical silhouette: fixed rusted steel upright mast occupies leftmost 15 percent of square canvas from top to bottom. Narrow overhead boom runs along top from x10% to95%, with winch at x65%. A THIN perfectly vertical DOUBLE cable at x65% runs from y14% to y57%. There are NO diagonal cables crossing that cable. A top ring at x65%,y59%; triangular cradle's diagonal rigid steel sides descend from ring to tray, tray between x46% and84%, at y82%. Tray bottom at y86%. Clear empty triangle opening. Mast never intersects cradle or cable: big empty transparent gaps separate pieces. Space below tray is transparent. Worn charcoal blue-violet steel with rusty orange chipped edges and small amber highlights, bolts, little yellow-black hazard stripes on tray. Cable and cradle must be crisp individual silhouettes, independently maskable from this transparent sheet. Cradle must be empty so code can put a dish on it. Refined high resolution 2D pixel art, small deliberate clusters, sharp stepped edges, strong material depth. No soft painting, no low resolution retro look, no huge glowing outline. Complete machine fits entirely inside image without clipping.",
+      "references": [
+        {
+          "path": "docs/art/concept-art/ruined-street/base-kitchen-v1.png",
+          "role": "crane form"
+        },
+        {
+          "path": "background-source.png",
+          "role": "materials and pixel density"
+        }
+      ],
+      "transparent_background": true
+    }
+  ]
+}

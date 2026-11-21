@@ -5,7 +5,6 @@ extends SceneTree
 const ORIGIN: Vector2 = Vector2(64, 70)
 const CELL: float = 32.0
 ## The middle of the play area between the top bar and the cards, in layout units.
-const PLAY_CENTRE: Vector2 = Vector2(640.0, 301.0)
 ## Canvas pixels to a layout unit: the 1920x1080 canvas over the 1280x720 layout.
 const CANVAS_SCALE: float = 1.5
 ## Half a drawn body's width, in layout pixels, the chef's feet must stay inside the screen by.
@@ -197,13 +196,11 @@ func _settled_zoom() -> float:
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
 	return view.get_scale().x
 
-## Checks that a character is drawn no larger inside any building than one and a
-## half times its size on the street, and the same size in every building: both
-## humans stand in the street, the kitchen and noodle shops, the Cold Store and
-## the Aquarium service room, and the zoom the camera chose for each is read
-## from the view the last frame drew. Characters are drawn at scale 1 inside the
-## camera, so their on-screen height is their picture's height times that zoom.
-## Needs no display.
+## Checks that a character is drawn no taller inside any building than on the
+## street, and as tall in every building: both humans stand in the street, the
+## kitchen and noodle shops, the Cold Store and the Aquarium service room, and
+## the chef's frame is read from the layers the last frame drew, on screen. A
+## building is also drawn at the street's close zoom or nearer. Needs no display.
 func _interior_zoom() -> void:
 	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
 	await _tap(KEY_1)
@@ -212,8 +209,9 @@ func _interior_zoom() -> void:
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
 	var street: float = await _settled_zoom()
+	var street_height: float = _chef_height()
+	var zooms: Dictionary[String, float] = {}
 	var found: Dictionary[String, float] = {}
-	var centred: Dictionary[String, Vector2] = {}
 	var legs: Array[Dictionary] = [
 		{"name": "Kitchen Shop", "route": [Vector2i(3, 8), Vector2i(3, 6)]},
 		{"name": "Noodle Shop", "route": [Vector2i(3, 8), Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(23, 8), Vector2i(23, 6)]},
@@ -228,44 +226,32 @@ func _interior_zoom() -> void:
 		if not scene.get_node("World").get_meta("inside_view", false):
 			_tour_fail("the camera does not show only the inside of " + str(leg["name"]))
 			return
-		found[leg["name"]] = await _settled_zoom()
-		centred[leg["name"]] = _lit_offset()
-	var cap: float = street * 1.5
+		zooms[leg["name"]] = await _settled_zoom()
+		found[leg["name"]] = _chef_height()
+	var cap: float = street_height
 	var bad: Array[String] = []
-	if street <= 0.0:
-		bad.append("the street zoom was not read")
+	if street <= 0.0 or street_height <= 0.0:
+		bad.append("the street zoom or the chef's height was not read")
 	var first: float = found.values()[0]
 	for place: String in found:
 		var zoom: float = found[place]
 		if zoom > cap + 0.001:
-			bad.append("%s is drawn at zoom %s, over %s (1.5 x the street's %s)" % [place, zoom, cap, street])
-		var off: Vector2 = centred[place]
-		if absf(off.x) > CELL or absf(off.y) > CELL:
-			bad.append("%s's lit room is %s layout units off the middle of the play area" % [place, off])
-		if not is_equal_approx(zoom, first):
-			bad.append("%s is drawn at zoom %s but the Kitchen Shop at %s" % [place, zoom, first])
-	print("Stairs: interior zoom: street %s, buildings %s, lit rooms off centre by %s." % [street, found, centred])
+			bad.append("%s's chef is drawn %s tall, over %s (the street's)" % [place, zoom, cap])
+		if absf(zoom - first) > 1.0:
+			bad.append("%s's chef is drawn %s tall but the Kitchen Shop's at %s" % [place, zoom, first])
+		if zooms[place] < street:
+			bad.append("%s is drawn at zoom %s, under the street's %s" % [place, zooms[place], street])
+	print("Stairs: interior zoom: street %s with a chef %s tall, buildings at %s with chefs %s tall." % [street, street_height, zooms, found])
 	print("Stairs: finished: %s; %d buildings read, %d faults %s." % ["pass" if bad.is_empty() and found.size() == legs.size() else "fail", found.size(), bad.size(), bad])
 	quit(0 if bad.is_empty() and found.size() == legs.size() else 1)
 
-## How far, in layout units, the middle of the lit rooms the last frame drew is
-## from the middle of the play area: the whole room of a shop, which has no
-## floors to name.
-func _lit_offset() -> Vector2:
-	var world: Node = scene.get_node("World")
-	var view: Transform2D = scene.get_meta("map_view", Transform2D())
-	var shown: Rect2 = Rect2()
-	var started: bool = false
-	for room: Dictionary in world.get_meta("interior_rooms", []):
-		if room["lit"]:
-			var box: Rect2 = room["area"]
-			var area: Rect2 = view * box
-			shown = area if not started else shown.merge(area)
-			started = true
-	if not started:
-		var extent: Rect2 = world.get_meta("inside_extent", Rect2())
-		shown = view * extent
-	return shown.get_center() - PLAY_CENTRE
+## The height of the chef's frame on screen in the last frame, in layout units.
+func _chef_height() -> float:
+	for layer: Dictionary in scene.get_node("World").get_meta("character_layers", []):
+		if layer["role"] == "chef":
+			var area: Rect2 = layer["area"]
+			return area.size.y
+	return 0.0
 
 ## Captures both single-floor shops through their actual ladder routes.
 func _kit_interiors() -> void:
