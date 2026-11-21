@@ -427,7 +427,8 @@ func _chef_whole(state: Dictionary) -> bool:
 	if body["location"] != "city" or body["x"] < 58:
 		return true
 	var view: Transform2D = scene.get_meta("map_view", Transform2D())
-	var feet: Vector2 = view * (ORIGIN + Vector2(body["sub_x"], 0))
+	var sub_x: int = body["sub_x"]
+	var feet: Vector2 = view * (ORIGIN + Vector2(sub_x, 0))
 	var shown: bool = feet.x >= CHEF_HALF and feet.x <= 1280.0 - CHEF_HALF
 	if edge_logged < 3:
 		edge_logged += 1
