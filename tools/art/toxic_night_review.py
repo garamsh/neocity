@@ -21,6 +21,59 @@ CAPTURES = {
 }
 
 
+def compose_polish():
+    """Show #262 native edits against the assigned base, without a game display."""
+    baseline = '053e0dfb96409f85aa23f92d19425d6f5ccba909'
+    output = ROOT / 'docs/art/production/art-polish-262'
+    with tempfile.TemporaryDirectory(prefix='w262a-review-') as temporary:
+        work = pathlib.Path(temporary)
+        groups = {
+            '5-decks': [('walkway/deck.png', '864x126+0+0'),
+                        ('walkway/aquarium_deck.png', '576x126+0+0')],
+            '6-backgrounds': [('backgrounds/throat.png', '680x420+700+100'),
+                              ('backgrounds/acid.png', '864x350+200+350'),
+                              ('backgrounds/aquarium.png', '864x640+900+300')],
+            '9-props': [('walkway/deck.png', '200x108+0+144'),
+                        ('walkway/deck.png', '200x108+2680+522')],
+        }
+        for item, crops in groups.items():
+            command = ['magick', 'montage', '-font', 'DejaVu-Sans', '-pointsize', '18',
+                       '-fill', '#ded7ed', '-background', '#100e20']
+            for index, (path, box) in enumerate(crops):
+                old = work / 'old.png'
+                old.write_bytes(subprocess.check_output([
+                    'git', 'show', baseline + ':project/levels/monster_mouth_escape/art_hd/' + path
+                ], cwd=ROOT))
+                for label, source in [('before', old), ('after', ART / path)]:
+                    target = work / f'{item}-{index}-{label}.png'
+                    command_crop = ['magick', source, '-crop', box, '+repage']
+                    if item == '9-props':
+                        command_crop += ['-filter', 'Point', '-resize', '300%']
+                    run(*command_crop, target)
+                    command += ['-label', f'{path} / {label}', str(target)]
+            geometry = {'5-decks': '864x160>+12+28',
+                        '6-backgrounds': '864x640>+12+28',
+                        '9-props': '600x324+12+28'}[item]
+            run(*command, '-filter', 'Point', '-geometry', geometry,
+                '-tile', '2x', '-strip', output / (item + '-before-after.png'))
+        kitchen = ART / 'base/kitchen.png'
+        before = work / 'crane-before.png'
+        after = work / 'crane-after.png'
+        run('magick', kitchen, '-crop', '660x224+1245+225', '+repage',
+            '-fill', '#464156', '-draw',
+            'rectangle 0,0 659,17 rectangle 237,18 272,32 rectangle 253,33 255,59 '
+            'rectangle 246,60 263,77', '-fill', '#8ceb5c', '-draw',
+            'rectangle 0,18 659,20 rectangle 246,75 257,77', before)
+        run('magick', kitchen, '-crop', '660x224+1245+225', '+repage',
+            ART / 'base/feed_crane.png', '-composite', after)
+        run('magick', 'montage', '-font', 'DejaVu-Sans', '-pointsize', '18',
+            '-fill', '#ded7ed', '-background', '#100e20',
+            '-label', 'before / code shapes reconstructed at rest', before,
+            '-label', 'after / proposed sprite placement, engine pending', after,
+            '-geometry', '+12+28', '-tile', '2x1', '-strip',
+            output / '7-crane-before-after.png')
+
+
 def compose_hd():
     """Compare the HD exports with the direction without implying a runtime capture."""
     with tempfile.TemporaryDirectory(prefix='w276-hd-review-') as temporary:
@@ -205,7 +258,11 @@ if __name__ == '__main__':
     parser.add_argument('--captures', type=pathlib.Path, default=KIT / 'captures',
                         help='native StairsCheck output directory')
     parser.add_argument('--hd', action='store_true', help='compose current HD asset comparisons without a display')
+    parser.add_argument('--polish', action='store_true', help='compose #262 offline before/after crops')
     args = parser.parse_args()
+    if args.polish:
+        compose_polish()
+        raise SystemExit(0)
     if args.hd:
         compose_hd()
     else:

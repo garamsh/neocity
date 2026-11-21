@@ -1,4 +1,4 @@
-Provenance and exact generation inputs for the three ending stills used by issue #270.
+Provenance and exact generation inputs for the ending stills used by issues #270 and #304.
 
 # Ending image provenance
 
@@ -16,3 +16,10 @@ Provenance and exact generation inputs for the three ending stills used by issue
 | satisfied | `satisfied.png` | `fdbbbbc38874287ff3fbfb0548bfc0694fc46b04f6a90dfc9c560409a763ecb9` |
 | vomited_out | `vomited_out.png` | `e3d6358b7293c7c39f772a9ac46109d4a49e07ece09829886c8cb02364f17361` |
 | acid_failure | `acid_failure.png` | `d1bc82748f0485e597f9caddf584b05046386521f8d59cf7176836834cda403c` |
+
+## Escape ending
+
+- `escaped.png` was generated on 2026-11-21 with Codex's built-in ImageGen tool, opaque output. Model, seed and quality were not exposed; no paid credits or external upload were used.
+- References, in order: runtime `endings/satisfied.png`, `endings/vomited_out.png`, `endings/acid_failure.png` from `053e0dfb96409f85aa23f92d19425d6f5ccba909`, as style/framing references. [Exact prompt](escaped-prompt.txt).
+- The source here and runtime `art_hd/endings/escaped.png` are byte-identical generated originals, 1672×941, with the same empty dark lower quarter. `tools/art/toxic_night.py` copies it and records source/output digests in the HD manifest.
+- The chef pulls the appraiser through the battered escape device on an aquarium roof route. They are drawn into this scene, with no pasted runtime sprites, text or HUD. The illustration was visually inspected; runtime selection and creative acceptance remain with the engine worker and PM.

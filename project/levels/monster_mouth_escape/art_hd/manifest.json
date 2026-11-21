@@ -22,12 +22,12 @@
         1034
       ],
       "role": "Opaque Toxic Night magenta palate, cream fangs and red uvula",
-      "sha256": "881c5a523d2221dc5f66c37470d16283e1cf9e3ee0aab07aee6d61a3ffbc133b",
+      "sha256": "e1023fd6c5dd6dd71a2278450cda43df776cf0cb5e1103cb5ca3c9cb660e88e3",
       "issue": 276,
       "source": "docs/art/production/toxic-night-kit/backgrounds-throat.aseprite",
-      "source_sha256": "6f583fd5b6748b149bd6aa20b86644dce793d030ecbc227e2e0725ba7db3f3d2",
+      "source_sha256": "8ce3a239b553dab9b6c889ded43699dd0380a7b8723484e675cc28d22a0bfca5",
       "export": "python3 tools/art/toxic_night.py",
-      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "retouch": "144px-cell kit; native #262 pixel finishing; Aseprite batch export",
       "pixels_per_cell": 144
     },
     {
@@ -52,12 +52,12 @@
         761
       ],
       "role": "Toxic Night luminous acid lake and drowned trains; transparent above ruins",
-      "sha256": "bb4607cb8ca4cb19f0196d3bc13167a31ef86d466682958726079b6dd56a0aac",
+      "sha256": "cab57e636b0030949064827bc3123acd3dcc9e5db18863a1817f7592a4a43771",
       "issue": 276,
       "source": "docs/art/production/toxic-night-kit/backgrounds-acid.aseprite",
-      "source_sha256": "76e9633a9e4b69f5dced7efe631d9cf1a0585094a0328c8f399e22bd8b3eeda3",
+      "source_sha256": "0ff3531095b7937b8e784e92793a46cedb11ca58c33f370107169878b84b3813",
       "export": "python3 tools/art/toxic_night.py",
-      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "retouch": "144px-cell kit; native #262 pixel finishing; Aseprite batch export",
       "pixels_per_cell": 144
     },
     {
@@ -282,12 +282,12 @@
         756
       ],
       "role": "Six twenty-cell deck bands; flat contact at row zero",
-      "sha256": "173ec245781645ac09b44157094bb5e70cca90eb497f03cdb197037ef291ba16",
+      "sha256": "e2cd4ef2dc712250607502fa2c098f2b95befa38bdcd7b3127c520546117fbe5",
       "issue": 276,
       "source": "docs/art/production/toxic-night-kit/walkway-deck.aseprite",
-      "source_sha256": "09fa320432f7575fd7561b77a8db966751005a5c0ec37c3a02c7f38a8067ce6d",
+      "source_sha256": "01a9c531dbd2966b4024f414c42ab5f19f101c0037842e09343370ea928ade67",
       "export": "python3 tools/art/toxic_night.py",
-      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "retouch": "144px-cell kit; native #262 pixel finishing; Aseprite batch export",
       "pixels_per_cell": 144
     },
     {
@@ -2083,12 +2083,12 @@
         1620
       ],
       "role": "Toxic Night teal aquarium tanks, broken glass and amber work lights",
-      "sha256": "c9fe33f53d0ca2ac23ec53e87eed5a0323ba4b9f26c974176f6a7c4b5277cc4a",
+      "sha256": "fef6173780bcd615b2c4667591b1196b7705129872f7e85007e2e8a737ea037d",
       "issue": 276,
       "source": "docs/art/production/toxic-night-kit/backgrounds-aquarium.aseprite",
-      "source_sha256": "5f13fffab578f987b436fc7fcf4bb1ab8ff90ada66903b2f4b5730c8805bcf1b",
+      "source_sha256": "dd8266f59929df4b0b1a391c292cbe5041eebbb7654d05ee728df4adfd6e839f",
       "export": "python3 tools/art/toxic_night.py",
-      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "retouch": "144px-cell kit; native #262 pixel finishing; Aseprite batch export",
       "pixels_per_cell": 144
     },
     {
@@ -2158,12 +2158,12 @@
         126
       ],
       "role": "Four-cell teal grating with flat top, lit vents and corroded braces",
-      "sha256": "81d4463e12126cf446132374b7b41fc8f9e581e3612765af3a6d981b5c232822",
+      "sha256": "e9e976bec34978d5786486c88cec37a09194f3a5469f71c90972a0ad720d1b7b",
       "issue": 276,
       "source": "docs/art/production/toxic-night-kit/walkway-aquarium_deck.aseprite",
-      "source_sha256": "1a7a2cbee86b7396e54b5ee631a939e23adea3aefc0a57b1a0b8d552566f6022",
+      "source_sha256": "9a6938be6f0bb1c3c27370b57d07a4c50a0fe2afc675821cc6a3e43c58260ad3",
       "export": "python3 tools/art/toxic_night.py",
-      "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
+      "retouch": "144px-cell kit; native #262 pixel finishing; Aseprite batch export",
       "pixels_per_cell": 144,
       "preparation": "docs/art/production/toxic-night-kit/hd-sources/props-layout.json"
     },
@@ -2257,6 +2257,34 @@
       "crop": null,
       "resize": "nearest 1920x1080",
       "provenance": "docs/art/production/toxic-night-screens/provenance.txt"
+    },
+    {
+      "path": "endings/escaped.png",
+      "size": [
+        1672,
+        941
+      ],
+      "role": "Chef and appraiser escape through the damaged aquarium-roof device",
+      "issue": 304,
+      "source": "docs/art/production/endings/escaped.png",
+      "source_sha256": "678e23b6f7479038a4961053ac10d41a928001337911c005f052e21efb5ce115",
+      "sha256": "678e23b6f7479038a4961053ac10d41a928001337911c005f052e21efb5ce115",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "unmodified generated original"
+    },
+    {
+      "path": "base/feed_crane.png",
+      "size": [
+        660,
+        224
+      ],
+      "role": "Corroded feeding crane; engine placement pending, not drawn by this PR",
+      "issue": 262,
+      "source": "docs/art/production/art-polish-262/crane-source.png",
+      "source_sha256": "5c5c6f7859e1bce9ebf773ac6be1c7a1e7d6874a1c27281ea47700c56c2bfd37",
+      "sha256": "8872fa60dcf27a0345506171d1b01aa61c9fc832c189e0a7bb03490ff8aaca2f",
+      "export": "python3 tools/art/toxic_night.py",
+      "retouch": "nearest 660x224; binary alpha"
     }
   ],
   "system_assets": {
