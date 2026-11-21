@@ -2059,9 +2059,9 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                                        : rendering::Image::AppraiserIdle,
              SETUP_X + 72.0F, top);
     }
-    drawing.text(canvas, SETUP_X + 160.0F, y + 46.0F, label.at(0), 32,
+    drawing.text(canvas, SETUP_X + 192.0F, y + 46.0F, label.at(0), 32,
                  chosen ? tones.ink : tones.white, Weight::Title);
-    drawing.text(canvas, SETUP_X + 160.0F, y + 78.0F, label.at(1), 16,
+    drawing.text(canvas, SETUP_X + 192.0F, y + 78.0F, label.at(1), 16,
                  chosen ? tones.ink : tones.muted);
     rendering::key_cap(
         canvas, drawing,
