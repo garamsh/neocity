@@ -2219,14 +2219,14 @@
         1920,
         1080
       ],
-      "role": "Base kitchen background without characters, fridge, crane or interface",
-      "sha256": "7dbdc69ed890ee96b014758a99e07aab2f707a1fe508e7bc0568df631011ea49",
-      "issue": 251,
-      "source": "docs/art/production/street-art-251-sources/kitchen.png",
-      "source_sha256": "3d2242569e3a7c7dcdaafc8af5a16262ee0a4a1264619edf23a7787c6d1f622e",
+      "issue": 274,
+      "role": "Toxic Night kitchen without characters, crane or interface",
+      "sha256": "d6bdd631d52b14fd2ac5d89edbc5f23946884fc87f785c9685fb63594004502e",
+      "source": "docs/art/production/toxic-night-screens/base-source.png",
+      "source_sha256": "306620f3f12f092009de1a2dd34fd7bf47b28f7bc94901c671ecb32a67aa4041",
       "crop": null,
-      "resize": "1920x1080!",
-      "retouch": "ImageMagick one Lanczos resample by docs/art/production/street_art_251.py; no painted pixels"
+      "resize": "nearest 1920x1024; dark bottom padding to 1920x1080",
+      "provenance": "docs/art/production/toxic-night-screens/provenance.txt"
     },
     {
       "path": "world/interior_service.png",
@@ -2242,6 +2242,21 @@
       "export": "python3 tools/art/toxic_night.py",
       "retouch": "144px-cell redraw; nearest resampling, 96-color un-dithered cleanup; Aseprite batch export",
       "pixels_per_cell": 144
+    },
+    {
+      "path": "title/key_art.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "issue": 274,
+      "role": "Toxic Night title with embedded logo",
+      "sha256": "d53a7c61e6f5611899eb0af934f374b5ef693bf23ce9b4f40108e530206f070c",
+      "source": "docs/art/production/toxic-night-screens/title-source.png",
+      "source_sha256": "3d8977f9d8e377560f202bdda561e33cf1c0a1971d6490bc143cd2f249f6ec1a",
+      "crop": null,
+      "resize": "nearest 1920x1080",
+      "provenance": "docs/art/production/toxic-night-screens/provenance.txt"
     }
   ],
   "system_assets": {
@@ -2261,7 +2276,15 @@
       84,
       84
     ],
-    "sampling": "nearest"
+    "sampling": "nearest",
+    "hud_icons": {
+      "issue": 274,
+      "consumer": "src/hud/survival.cpp",
+      "status": "HD item icons connected in HUD; world source icons unchanged",
+      "canvas_pixels": 84,
+      "layout_units": 56,
+      "sampling": "nearest"
+    }
   },
   "map_kit": {
     "issue": 276,
