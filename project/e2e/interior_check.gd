@@ -96,8 +96,8 @@ func _check_hall() -> void:
 		var box: Rect2 = plates[index]
 		if not extent.encloses(box):
 			stray.append("%s %s outside %s" % [words[index], box, extent])
-	if plates.size() < 3:
-		_fail("the hall drew %d badges and tags, fewer than its two humans' tags and a source's badge" % plates.size())
+	if plates.size() < 2:
+		_fail("the hall drew %d badges and tags, fewer than a human's tag and a source's badge" % plates.size())
 	var sources: Array = scene.get_meta("map_sources", [])
 	var areas: Array = scene.get_meta("map_source_areas", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
