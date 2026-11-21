@@ -22,6 +22,15 @@ constexpr float PLAY_HEIGHT = 478.0F;
 /// picture pixel stays a whole square of screen pixels.
 constexpr float CLOSE = 2.0F;
 constexpr float FAR = 1.0F;
+/// The largest zoom inside a building: one and a half times the street's close
+/// zoom, so a character is never drawn more than one and a half times as tall
+/// as on the street whichever room it stands in, and every room that fits at it
+/// is drawn at it. Rounded down to a whole zoom.
+constexpr float MOST = 3.0F;
+static_assert(MOST <= CLOSE * 1.5F);
+/// How far past a building's rooms, up and down, the camera may look, which
+/// the screen shows as darkness.
+constexpr float OVERLOOK = 4000.0F;
 /// How far ahead of a lone actor the camera looks, in scene pixels.
 constexpr float LOOK_AHEAD = 80.0F;
 /// How far above its feet the camera aims at an actor, so one on the upper
@@ -31,6 +40,9 @@ constexpr float WAIST = 12.0F;
 /// below their feet.
 constexpr float ROOM_ACROSS = 256.0F;
 constexpr float ROOM_UP = 128.0F;
+/// How far past either end of the map the camera may look, in scene pixels, so
+/// a character at the end stands whole in the frame, not half off its edge.
+constexpr float EDGE_ROOM = 64.0F;
 
 /// The screen lock keeps two actors in the city no further apart sideways than
 /// the close zoom still fits with their room, one scene pixel to a sub-cell.
@@ -63,12 +75,20 @@ struct Subject {
   float facing = 1.0F;
 };
 
-/// Where the camera may look: the map's width and the scene's height.
+/// Where the camera may look: the map's width with EDGE_ROOM beyond each end,
+/// and the scene's height.
 godot::Rect2 bounds_of(const survival::MapContent &map) {
   const Vector2 corner = map_point({.x = 0, .y = 0});
   const Vector2 far_corner =
       map_point({.x = map.size.width * survival::SUBCELLS, .y = 0});
-  return {corner.x, 0.0F, far_corner.x - corner.x, SCREEN_HEIGHT};
+  return {corner.x - EDGE_ROOM, 0.0F,
+          far_corner.x - corner.x + 2.0F * EDGE_ROOM, SCREEN_HEIGHT};
+}
+
+/// Where the camera may look inside a building: its sides, and any height.
+godot::Rect2 bounds_inside(const godot::Rect2 &room) {
+  return {room.position.x, room.position.y - OVERLOOK, room.size.x,
+          room.size.y + 2.0F * OVERLOOK};
 }
 
 /// `centre` and `zoom` kept inside `bounds`, with where they rest.
@@ -114,6 +134,16 @@ View aim(const survival::Content &content, const survival::GameView &view) {
         {.feet = map_point(body.position),
          .facing = body.heading == survival::Direction::Left ? -1.0F : 1.0F});
   }
+  if (const auto inside = inside_of(content, view)) {
+    const auto fit = std::min((SCREEN_WIDTH / inside->frame.size.x),
+                              (PLAY_HEIGHT / inside->frame.size.y));
+    auto camera = placed(inside->frame.get_center(),
+                         std::clamp(std::floor(fit), FAR, MOST),
+                         bounds_inside(inside->extent));
+    camera.inside = true;
+    camera.room = inside->extent;
+    return camera;
+  }
   Vector2 target;
   float zoom = CLOSE;
   if (subjects.empty()) {
@@ -142,9 +172,14 @@ View follow(const Art &art, const survival::MapContent &content,
   // The zoom steps once the eased value passes halfway, so a step wanted for
   // only a moment is never drawn.
   const float easing = art.glide("camera_zoom", heading.zoom);
-  return placed(Vector2(art.glide("camera_x", heading.centre.x),
-                        art.glide("camera_y", heading.centre.y)),
-                easing * 2.0F > CLOSE + FAR ? CLOSE : FAR, bounds_of(content));
+  auto camera =
+      placed(Vector2(art.glide("camera_x", heading.centre.x),
+                     art.glide("camera_y", heading.centre.y)),
+             std::clamp(std::floor(easing + 0.5F), FAR, MOST),
+             heading.inside ? bounds_inside(heading.room) : bounds_of(content));
+  camera.inside = heading.inside;
+  camera.room = heading.room;
+  return camera;
 }
 
 Vector2 drift(const View &camera, float depth) {

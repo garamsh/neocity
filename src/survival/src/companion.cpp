@@ -100,13 +100,15 @@ bool party_carries(const GameView &view, IngredientId ingredient) {
          holds(view.progression.fridge);
 }
 
-/// Every container that is supplying, for a human to open.
+/// Every container that holds something and is supplying, for a human to
+/// open.
 std::vector<Goal> reachable_containers(const GameView &view) {
   std::vector<Goal> goals;
   for (const auto &stock : view.exploration.sources) {
     const auto object =
         std::ranges::find(view.world.objects, stock.id, &ObjectSnapshot::id);
-    if (object != view.world.objects.end() && object->material_available) {
+    if (!stock.items.empty() && object != view.world.objects.end() &&
+        object->material_available) {
       goals.push_back({.target = stock.id,
                        .area = object->area,
                        .action = Search{stock.id}});

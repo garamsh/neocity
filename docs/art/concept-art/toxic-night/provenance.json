@@ -1,0 +1,50 @@
+{
+  "issue": "https://github.com/garamsh/neocity/issues/269",
+  "decision": "https://github.com/garamsh/neocity/issues/268",
+  "status": "user-selected Toxic Night direction mockups; not runtime captures; character identity comes from original sheets",
+  "copied": "2026-11-18",
+  "generation": {
+    "operator": "PM",
+    "tool": "Codex CLI built-in image generation",
+    "model": "gpt-6.1-sol",
+    "dimensions": [
+      1920,
+      1080
+    ],
+    "references": [
+      {
+        "name": "concept-v1 (crop)",
+        "file": "original-concept-v1.png",
+        "treatment": "character crop from concept-v1"
+      },
+      {
+        "name": "chef-sheet-v1",
+        "file": "../characters/chef-sheet-v1.png"
+      }
+    ],
+    "prompt": "prompts.txt",
+    "prompt_order": "shared prompt followed by the F direction prompt",
+    "basis": "generation details and exact prompt supplied by the PM"
+  },
+  "files": [
+    {
+      "file": "f-street.png",
+      "sha256": "d3eb48e80394af3e45a888d75f8fe58302460da411a9151c393e3bb91fb99b1d"
+    },
+    {
+      "file": "f-building.png",
+      "sha256": "1b50bd5da5f27a8447ad75dcefc294bc5d7af79bf9ff74306b29a3609f166c26"
+    },
+    {
+      "file": "f-base.png",
+      "sha256": "247c8124c5185d2f0d7b802917267e0e6dbb24bde8bd1502dfc40bed53d7380e"
+    }
+  ],
+  "original_concept": {
+    "file": "original-concept-v1.png",
+    "repository": "garamsh/neocity",
+    "revision": "241124d5ba2dcef937c904623f1e5e3cb03fbcf5",
+    "path": "docs/art/concept-art/monster-mouth-escape/concept-v1.png",
+    "sha256": "1631e189e5c7cb3af0a0adade6c802ad50cc8f9b45be4b6c39880c2fc0debd94"
+  }
+}

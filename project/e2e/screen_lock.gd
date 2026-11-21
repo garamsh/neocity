@@ -33,14 +33,11 @@ const NAMES: Array[String] = ["chef", "appraiser"]
 ## The kitchen shop's floor in cells: its door, and a cell inside it.
 const KITCHEN_DOOR: Array[Vector2i] = [Vector2i(3, 8)]
 const KITCHEN_FLOOR: Array[Vector2i] = [Vector2i(3, 8), Vector2i(3, 6)]
-## The darkest the outside goes in a building, and the least counted as dark.
-const DARK_OUTSIDE: float = 0.5
-## How long the drawn veil is awaited, in real milliseconds, since it eases on
-## the real clock.
-const VEIL_LIMIT_MSEC: int = 3000
-## How many frames a veil that is not to appear is watched for; the day's
-## time is short, and the veil takes a fraction of a second to show.
-const VEIL_HOLD_FRAMES: int = 10
+## How many frames the screen is watched for after a move that is not to change
+## its view, and how long, in real milliseconds, the camera is awaited when it
+## is to, since it eases on the real clock.
+const VIEW_HOLD_FRAMES: int = 10
+const VIEW_LIMIT_MSEC: int = 3000
 ## The frames a map fade is watched for: it lasts 0.6 seconds of frame time (36
 ## frames at 60 a second), and the day has no time to spare.
 const FADE_FRAMES: int = 40
@@ -66,7 +63,7 @@ func _run() -> void:
 		return
 	scene.get_node("World").set_meta("measure_art", true)
 	scene.set_meta("measure_art", true)
-	await _building_entry_darkens_the_outside()
+	await _building_entry_shows_only_the_inside()
 	if failed:
 		return
 	await _lone_actor_stops_at_the_range()
@@ -95,38 +92,51 @@ func _start() -> void:
 	await _frames(10)
 	_check(_where("chef") == "city" and _where("appraiser") == "city", "both players set out into the city")
 
-## Both walk up into the kitchen shop: the outside darkens while the interior
-## background is drawn; both walk out and it clears.
-func _building_entry_darkens_the_outside() -> void:
+## Both walk up into the kitchen shop: the screen shows only the shop's inside
+## while the interior background is drawn; one in and one out keeps the street;
+## both walk out and the street returns.
+func _building_entry_shows_only_the_inside() -> void:
 	await _frames(2)
-	_check(_veil() == 0.0, "the outside is not dark before any building is entered: %f" % _veil())
-	# One actor in the shop while the other stays out leaves the street lit.
+	_check(not _only_inside(), "the screen is not only an inside before any building is entered")
+	# One actor in the shop while the other stays out leaves the street on screen.
 	if not await _drive([KITCHEN_FLOOR, []], 1200):
 		return
-	await _frames(VEIL_HOLD_FRAMES)
-	_check(_veil() < 0.01, "the street stays lit while one actor is in the shop and the other is out: %f" % _veil())
+	await _frames(VIEW_HOLD_FRAMES)
+	_check(not _only_inside(), "the street stays on screen while one actor is in the shop and the other is out")
 	if not await _drive([KITCHEN_FLOOR, KITCHEN_FLOOR], 1200):
 		return
-	await _veil_settles(true)
-	_check(_veil() >= DARK_OUTSIDE, "the outside is dark with both actors in the kitchen shop: %f" % _veil())
+	await _view_settles(true)
+	_check(_only_inside() and _nothing_outside_the_shop(), "the screen is only the kitchen shop's inside with both actors in it")
 	_check(_draws_interior("interior_kitchen.png"), "the occupied kitchen draws its interior background")
 	if not await _drive([KITCHEN_DOOR, KITCHEN_DOOR], 1200):
 		return
-	await _veil_settles(false)
-	_check(_veil() < 0.01, "the outside is clear again after both walk out: %f" % _veil())
+	await _view_settles(false)
+	_check(not _only_inside(), "the street is back on screen after both walk out")
 	_check(not _draws_interior("interior_kitchen.png"), "the kitchen's interior background is gone after both walk out")
 
-## Waits, in real time, for the veil to ease to dark or to clear.
-func _veil_settles(dark: bool) -> void:
-	var until: int = Time.get_ticks_msec() + VEIL_LIMIT_MSEC
+## Waits, in real time, for the screen to be only an inside with the camera on
+## it, or to be the street again.
+func _view_settles(inside: bool) -> void:
+	var until: int = Time.get_ticks_msec() + VIEW_LIMIT_MSEC
 	while Time.get_ticks_msec() < until:
 		await process_frame
-		if (_veil() >= DARK_OUTSIDE) == dark and (dark or _veil() < 0.01):
+		if _only_inside() == inside and (not inside or _nothing_outside_the_shop()):
 			return
 
-func _veil() -> float:
-	var level: float = scene.get_node("World").get_meta("interior_veil", -1.0)
-	return level
+## Whether the last frame drew only one building's inside.
+func _only_inside() -> bool:
+	return scene.get_node("World").get_meta("inside_view", false)
+
+## Whether the throat, the city and the acid backdrop were left out of the last
+## frame, and the camera frames the building's extent at the interior zoom, 3,
+## which the kitchen's room fits at.
+func _nothing_outside_the_shop() -> bool:
+	var world: Node = scene.get_node("World")
+	var extent: Rect2 = world.get_meta("inside_extent", Rect2())
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var shown: Rect2 = view * extent
+	var layers: Array = world.get_meta("backdrop_layers", [null])
+	return layers.is_empty() and is_equal_approx(view.get_scale().x, 3.0) and Rect2(0, 0, 1280, 720).encloses(shown)
 
 func _draws_interior(file: String) -> bool:
 	for layer: Dictionary in scene.get_node("World").get_meta("foreground_layers", []):

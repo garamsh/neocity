@@ -1,0 +1,248 @@
+{
+  "issue": 276,
+  "goal": 268,
+  "tool": "Built-in image_gen tool; model not reported",
+  "inputs": "Text prompts only; the Worker separately inspected the selected F street/building references",
+  "references": {
+    "revision": "35a53ee444965e50eba276c823cbf8273ba47d53",
+    "street": "docs/art/concept-art/toxic-night/f-street.png",
+    "building": "docs/art/concept-art/toxic-night/f-building.png"
+  },
+  "sources": [
+    {
+      "path": "source.png",
+      "sha256": "d3feaf1522d63d146856affaf3a329523a34c0da283739a7ba7d7bfdb903e655",
+      "size": [
+        1536,
+        1024
+      ]
+    },
+    {
+      "path": "backdrop-source.png",
+      "sha256": "aa72bc848d436e218d13762afa6ead0219f4adf673c0fc250d7f7c63c223a0d1",
+      "size": [
+        1717,
+        916
+      ]
+    }
+  ],
+  "selection": "source.png supplies foreground modules; backdrop-source.png supplies only its middle skyline strip. Its throat and acid panels are unused.",
+  "authoring": "Native Aseprite 1.3.18.6 sources; atlas preparation crops and nearest-only composition, deck faces darkened below the twelve-pixel rim, prop key alpha thresholded to 0/255",
+  "export": "python3 tools/art/toxic_night.py",
+  "prepare": "python3 tools/art/toxic_night.py --prepare",
+  "status": "Candidate production kit under selected Toxic Night direction; creative review pending",
+  "review": {
+    "runtime_revision": "ff5debed412fce1a780cd0a1a8db908be361d3a8",
+    "harness": "project/e2e/stairs_check.gd (continuation adds --kit-interiors)",
+    "seed": 11,
+    "canvas": [
+      1920,
+      1080
+    ],
+    "players": "two human key sets 0/1",
+    "display": "private kwin_wayland --virtual; Godot Wayland; Dummy audio; fixed-fps 60; vsync disabled",
+    "map_tour": "Street and Aquarium, days 1/5/10; pass, exit 0",
+    "shop_tour": "Kitchen and Noodle Shop on day 1; pass, exit 0",
+    "negative_control": "Noodle Shop temporarily mapped to InteriorKitchen; C++ build exit 0, kitchen control passed, noodle picture check failed, exit 1; source restored; original renderer rebuilt successfully afterward",
+    "compose": "python3 tools/art/toxic_night_review.py",
+    "captures": [
+      {
+        "path": "captures/230-street-day-1.png",
+        "sha256": "b10362faa2dfad62103c39dc4f7515182b6d464b293dd0d3db99912ce56581f3"
+      },
+      {
+        "path": "captures/271-cold-store-day-1.png",
+        "sha256": "faf2cbc479aad37ac9826d1d783d29365cd572f194f44bd5cdff194414e06022"
+      },
+      {
+        "path": "captures/271-service-room-day-1.png",
+        "sha256": "90b8d6ca244d9c5dbff9021e8e4f83f6b0851655e030551e4b004b2f95b97d40"
+      },
+      {
+        "path": "captures/276-interior-kitchen.png",
+        "sha256": "f1d5f1aa86da547727974dc0eb367c09a0be82b1260c0262d3105328ad6b42bd"
+      },
+      {
+        "path": "captures/276-interior-noodle.png",
+        "sha256": "cbef23748d24cc2e79e29f48ff9da57e7e386ddd8619a64170275fd1552f9c2a"
+      }
+    ],
+    "date": "2026-11-20"
+  },
+  "hd_redraw": {
+    "date": "2026-11-20",
+    "issue": 276,
+    "scope_comment": "https://github.com/garamsh/neocity/issues/276#issuecomment-7042249960",
+    "baseline": "4fd0bbb1e330669f25beafbded63f851e27c1766",
+    "tool": "Built-in image_gen; model not reported; no paid provider or external upload",
+    "inputs": "Text prompts only; Worker inspected pinned F-street/F-building references and prior kit",
+    "prompts": "hd-sources/prompts.json",
+    "sources": [
+      {
+        "path": "hd-sources/city.png",
+        "size": [
+          2172,
+          724
+        ],
+        "sha256": "edea753de60d3842de845b8b10aa2752e639e66baca63c9f449f71c293af2425"
+      },
+      {
+        "path": "hd-sources/cold_store.png",
+        "size": [
+          1254,
+          1254
+        ],
+        "sha256": "a61952d77721a3bec7e4a7b2c52dc2e5b1ab0675746106a3e9c15f6f3560c130"
+      },
+      {
+        "path": "hd-sources/kitchen.png",
+        "size": [
+          2172,
+          724
+        ],
+        "sha256": "3d2784450e9c7f8dbde09d3cd10fad0d7e687cf6e2a608e153f7702bf1ef449f"
+      },
+      {
+        "path": "hd-sources/noodle.png",
+        "size": [
+          2172,
+          724
+        ],
+        "sha256": "ec7a349f368e9d75601b1258e9ff9887164187ce9499bf1e40a1b6060060df7e"
+      },
+      {
+        "path": "hd-sources/service.png",
+        "size": [
+          1254,
+          1254
+        ],
+        "sha256": "c3044d76168dd615f1d46161b788fc38edbb8c9e6bc3ae1221d048d05fce166f"
+      },
+      {
+        "path": "hd-sources/street-atlas.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "8205a3b40e11a7153de0c0242f9f34c04b5544b674885c27a6315f7fda6ecc56"
+      }
+    ],
+    "grid": "144 authored pixels per map cell; world-area destination owned by #281",
+    "cleanup": "Nearest-only ImageMagick assembly, 96 colors without dithering, binary alpha; Aseprite 1.3.18.6 batch native source and PNG export",
+    "floor_panels": "Four independent single-room panels; cold-store and service panels reusable per floor; no per-floor variants",
+    "prepare": "python3 tools/art/toxic_night.py --prepare",
+    "export": "python3 tools/art/toxic_night.py",
+    "review": "python3 tools/art/toxic_night_review.py --hd; asset compositions only, no runtime capture",
+    "delivery": "Interior and street subset (18 PNGs); remaining map categories retain their prior art",
+    "status": "Candidate; creative review, #281 integration and PM bundle CI pending"
+  },
+  "hd_backgrounds": {
+    "date": "2026-11-21",
+    "issue": 276,
+    "baseline": "b47f41b7a53f784d0f05371d0bf9b020bf20ccf8",
+    "tool": "Built-in image_gen; model not reported; no paid provider or external upload",
+    "inputs": "Pinned F-street image as palette/pixel reference; each corresponding baseline background as composition reference",
+    "prompts": "hd-sources/prompts.json (throat, acid, aquarium)",
+    "sources": [
+      {
+        "path": "hd-sources/throat.png",
+        "size": [
+          1519,
+          1035
+        ],
+        "sha256": "8fdd04fd5ccdfeb9b6f07f1098a81b354f671538539cfa28dd55ef2469c9638f"
+      },
+      {
+        "path": "hd-sources/acid.png",
+        "size": [
+          2103,
+          748
+        ],
+        "sha256": "877b128c76d345bcc1d59c0b9ae84288f023eb427d7103c9417d8e19c786405e"
+      },
+      {
+        "path": "hd-sources/aquarium.png",
+        "size": [
+          1672,
+          941
+        ],
+        "sha256": "0497e2a44c50156e12a80aaa2654e6449e00189e8dba35f0d0bab136e2a8aeb8"
+      }
+    ],
+    "grid": "144 authored pixels per map cell; 1.5x prior canvas extents rounded upward",
+    "canvases": {
+      "throat": [
+        1517,
+        1034
+      ],
+      "acid": [
+        2880,
+        761
+      ],
+      "aquarium": [
+        2880,
+        1620
+      ]
+    },
+    "cleanup": "Nearest-only normalization, 96-color undithered palette, binary alpha; Aseprite 1.3.18.6 native source and PNG export",
+    "acid_anchor": "Source divided at row 300: upper 300 rows fit 2880x250; remaining 448 rows fit 2880x511; original far waterline retained at approximately one third of canvas without removing ruin tips",
+    "prepare": "python3 tools/art/toxic_night.py --prepare-backgrounds",
+    "export": "python3 tools/art/toxic_night.py",
+    "review": "python3 tools/art/toxic_night_review.py --hd; offline asset evidence only",
+    "delivery": "Three backgrounds only; supports, aquarium deck, other props, containers and hazards pending",
+    "status": "Candidate; creative acceptance, runtime placement and PM bundle CI pending"
+  },
+  "hd_props": {
+    "date": "2026-11-21",
+    "issue": 276,
+    "baseline": "bf1ad36459b4f9632560f41d29d00ba2832af21d",
+    "tool": "Built-in image_gen.imagegen; model not reported; no paid provider or external upload",
+    "inputs": "Text prompts only. Worker visually inspected pinned F-street and F-building references and previous runtime exports; no source-image attachments were passed to the generator.",
+    "prompts": "hd-sources/prompts.json (containers, hazards, props, supports)",
+    "sources": [
+      {
+        "path": "hd-sources/containers.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "5c15a0a66ec4327d4a1653dc1ab292e4c210cae781effa4a0f93eb1d9db30dd1"
+      },
+      {
+        "path": "hd-sources/hazards-deck.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "1881a2a003c7c677855c8b06d3c2e34ac7a99455bb2b89f4d961427c2ac52801"
+      },
+      {
+        "path": "hd-sources/props.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "bbc08fdafdef2fa58e68736a9372ef23c88a402b418ae942f7ebe17e3301d365"
+      },
+      {
+        "path": "hd-sources/supports.png",
+        "size": [
+          1536,
+          1024
+        ],
+        "sha256": "563f46f0210c5f6f0337c31cf07b18da77aa6550432b4728af00ad8117ab9907"
+      }
+    ],
+    "layout": "hd-sources/props-layout.json",
+    "grid": "144 authored pixels per cell; previous canvas and visible bounds scaled 1.5x with upward edge rounding",
+    "cleanup": "Native alpha threshold 50%; nearest-only sprite normalization; 96 colors without dithering; binary alpha; Aseprite 1.3.18.6 batch native source and PNG exports",
+    "anchors": "Container and obstacle pivots and baseline_y scaled 1.5x; each visible bottom anchor retained. Vendor fits proportionally within prior visible bounds. Support pieces keep normalized placements.",
+    "retouch": "Aquarium deck repeats reflected half-period, with a two-pixel opaque teal contact rim; warning pillar uses measurement ticks and chevrons without words.",
+    "prepare": "python3 tools/art/toxic_night.py --prepare-props",
+    "export": "python3 tools/art/toxic_night.py",
+    "check": "python3 tools/art/toxic_night.py --check",
+    "review": "python3 tools/art/toxic_night_review.py --hd; offline assets only, no runtime capture",
+    "delivery": "17 static exports; total kit now 38 native sources and PNGs. Ten mutant animation frames remain at prior density for a separate animation review.",
+    "status": "Candidate; creative acceptance, runtime verification and PM bundle CI pending"
+  }
+}

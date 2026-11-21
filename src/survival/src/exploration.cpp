@@ -760,16 +760,14 @@ ExplorationSnapshot Exploration::snapshot() const {
       result.mutants.push_back(mutant.state);
     }
   }
-  if (current == MapId::Street) {
-    for (auto *state : {&result.chef, &result.appraiser}) {
-      const auto cell = cell_of(state->body.position);
-      const auto inside = std::ranges::find_if(
-          config.interiors, [cell](const Interior &interior) {
-            return distance(cell, interior.area) == 0;
-          });
-      if (inside != config.interiors.end()) {
-        state->interior = inside->building;
-      }
+  for (auto *state : {&result.chef, &result.appraiser}) {
+    const auto cell = cell_of(state->body.position);
+    const auto inside =
+        std::ranges::find_if(config.interiors, [&](const Interior &interior) {
+          return interior.map == current && distance(cell, interior.area) == 0;
+        });
+    if (inside != config.interiors.end()) {
+      state->interior = inside->building;
     }
   }
   return result;

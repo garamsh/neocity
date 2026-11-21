@@ -92,7 +92,7 @@ constexpr int HAND_OFF_SIZE = SMALL_SIZE;
 /// at its own height, widened to its words.
 constexpr float PROMPT_HEIGHT = 48.0F;
 constexpr float PROMPT_MIN_WIDTH = 170.0F;
-constexpr float PROMPT_MAX_WIDTH = 520.0F;
+constexpr float PROMPT_MAX_WIDTH = 580.0F;
 /// What a prompt's player tag and key cap take of its width, at most.
 constexpr float PROMPT_KEYS_WIDTH = 120.0F;
 constexpr float PROMPT_PAD = 22.0F;
@@ -139,10 +139,10 @@ constexpr float TRANSFER_WIDTH =
     static_cast<float>(SLOT_COLUMNS) * SLOT_PITCH - 2.0F + 2.0F * INSET;
 constexpr float TRANSFER_Y = 116.0F;
 constexpr float DECK_INNER = COOK_WIDTH - 2.0F * DECK_PAD;
-/// The day's result, over the deck at its left, clear of the prompts.
-constexpr float RESULT_WIDTH = 840.0F;
+/// The day's result occupies the header, above the kitchen and its workers.
+constexpr float RESULT_WIDTH = 800.0F;
 constexpr float RESULT_X = APPRAISE_X;
-constexpr float RESULT_BOTTOM = DECK_Y - GAP;
+constexpr float RESULT_TOP = 162.0F;
 constexpr float RESULT_LINE_HEIGHT = 22.0F;
 constexpr int RESULT_SIZE = SMALL_SIZE;
 /// The pause screen: the keys at the left over the volumes, the recipe book
@@ -196,6 +196,7 @@ constexpr const char *CLOSE_FIRST = "Close the inventory first.";
 constexpr const char *INVENTORY_OPEN = "Inventory open: search again to close.";
 /// A first-play tip: one line on a panel, and its gold caption.
 constexpr float TIP_HEIGHT = 36.0F;
+constexpr float TIP_Y = 120.0F;
 constexpr float TIP_PAD = 14.0F;
 constexpr float TIP_BASELINE = 24.0F;
 constexpr const char *TIP_CAPTION = "TIP";
@@ -365,7 +366,12 @@ std::map<std::uint32_t, std::uint32_t> pack_of(const GameView &view) {
 void paint_item(godot::Node2D &canvas, const rendering::Art &drawing,
                 std::string_view name, Vector2 at) {
   if (const auto icon = rendering::item_icon(name)) {
-    drawing.image(canvas, *icon, at);
+    const bool ingredient = *icon >= rendering::Image::IngredientTomato &&
+                            *icon <= rendering::Image::IngredientTruffle;
+    const String path = "icons/" +
+                        String(ingredient ? "ingredient_" : "dish_") +
+                        from(name).to_lower().replace(" ", "_") + ".png";
+    paint_hd_art(canvas, path, godot::Rect2(at, Vector2(ICON, ICON)));
     return;
   }
   drawing.text(canvas, at.x, at.y + 28.0F, from(name), SMALL_SIZE,
@@ -758,7 +764,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
     rendering::kit_panel(canvas, area, accent, drip);
     cover(canvas, area);
   };
-  plate(MARGIN, DAY_WIDTH, rendering::Accent::Gold, false);
+  plate(MARGIN, DAY_WIDTH, rendering::Accent::Green, false);
   drawing.image(canvas, rendering::Image::HdSun,
                 Vector2(MARGIN + PLATE_ICON_X, BAND_Y + PLATE_ICON_Y));
   const String day = "DAY ";
@@ -788,7 +794,7 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
         rect(gauge_x, BAND_Y + (BAND_HEIGHT - GAUGE_HEIGHT) / 2.0F,
              ACID_X + ACID_WIDTH - PLATE_PAD - gauge_x, GAUGE_HEIGHT),
         acid_ratio(frame));
-  plate(TIME_X, TIME_WIDTH, rendering::Accent::Cyan, false);
+  plate(TIME_X, TIME_WIDTH, rendering::Accent::Green, false);
   drawing.image(canvas, rendering::Image::HdClock,
                 Vector2(TIME_X + PLATE_ICON_X, BAND_Y + PLATE_ICON_Y));
   drawing.text(canvas, TIME_X + PLATE_WORDS_X, BAND_BASELINE,
@@ -829,27 +835,15 @@ void add_areas(std::vector<godot::Rect2> &areas, const godot::Node2D &canvas,
   }
 }
 
-/// Where a tip `width` wide stands: the first place clear of `taken`, in rows
-/// from just above the bottom cards up to the notice line, each tried at the
-/// left, the middle and the right; none while every place is taken.
+/// The reserved tip row stays fixed; an inventory overlay can hide it.
 std::optional<godot::Rect2> tip_place(float width,
                                       const std::vector<godot::Rect2> &taken) {
-  const std::array columns{MARGIN, std::round((SCREEN_WIDTH - width) / 2.0F),
-                           SCREEN_WIDTH - MARGIN - width};
-  const float bottom = DECK_Y - GAP - TIP_HEIGHT;
-  const auto rows =
-      static_cast<int>((bottom - GOAL_Y) / (TIP_HEIGHT + GAP)) + 1;
-  for (int row = 0; row < rows; ++row) {
-    const float y = bottom - static_cast<float>(row) * (TIP_HEIGHT + GAP);
-    for (const float x : columns) {
-      const auto place = rect(x, y, width, TIP_HEIGHT);
-      const auto apart = place.grow(GAP / 2.0F);
-      if (std::ranges::none_of(taken, [&apart](const godot::Rect2 &area) {
-            return area.intersects(apart);
-          })) {
-        return place;
-      }
-    }
+  const auto place = rect(APPRAISE_X, TIP_Y, width, TIP_HEIGHT);
+  const auto apart = place.grow(GAP / 2.0F);
+  if (std::ranges::none_of(taken, [&apart](const godot::Rect2 &area) {
+        return area.intersects(apart);
+      })) {
+    return place;
   }
   return std::nullopt;
 }
@@ -874,7 +868,7 @@ void paint_tip(godot::Node2D &canvas, const rendering::Art &drawing,
   if (!place) {
     return;
   }
-  rendering::panel(canvas, *place);
+  rendering::kit_panel(canvas, *place, rendering::Accent::Green, false);
   const float x = place->position.x + TIP_PAD;
   const float baseline = place->position.y + TIP_BASELINE;
   drawing.text(canvas, x, baseline, TIP_CAPTION, SMALL_SIZE, tones.gold,
@@ -1007,11 +1001,11 @@ void paint_slots(godot::Node2D &canvas, const rendering::Art &drawing,
       const auto item = items.at(index);
       paint_item(canvas, drawing, survival::ingredient_name(item),
                  area.position + Vector2(1.0F, 1.0F));
-      const String weight = number(survival::weight_of(carry, item));
-      chip(canvas, drawing,
-           area.position.x + SLOT -
-               drawing.text_width(weight, SMALL_SIZE, CHANGING) - 6.0F,
-           area.position.y + SLOT - 5.0F, weight, SMALL_SIZE, tones.white);
+      const String weight = "w" + number(survival::weight_of(carry, item));
+      chip(canvas, drawing, area.position.x + 4.0F, area.position.y + 16.0F,
+           weight, SMALL_SIZE, tones.muted);
+      chip(canvas, drawing, area.position.x + SLOT - 14.0F,
+           area.position.y + SLOT - 5.0F, "1", SMALL_SIZE, tones.white);
       if (!identified(frame.view, item)) {
         chip(canvas, drawing, area.position.x + SLOT - 13.0F,
              area.position.y + 16.0F, "?", SMALL_SIZE, tones.gold);
@@ -1063,7 +1057,7 @@ void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   godot::Array drawn;
   for (const auto &view : transfers(frame)) {
-    rendering::kit_panel(canvas, view.panel, rendering::Accent::Cyan, false);
+    rendering::kit_panel(canvas, view.panel, rendering::Accent::Green, false);
     cover(canvas, view.panel);
     const auto &state = state_of(frame.view, view.actor);
     const float x = view.panel.position.x + INSET;
@@ -1242,7 +1236,7 @@ void paint_prompts(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   for (const auto &prompt : prompts(drawing, frame)) {
-    rendering::kit_panel(canvas, prompt.area, rendering::Accent::Cyan, false);
+    rendering::kit_panel(canvas, prompt.area, rendering::Accent::Green, false);
     cover(canvas, prompt.area);
     const float baseline =
         prompt.area.position.y +
@@ -1286,7 +1280,7 @@ std::size_t cookable_count(const SurvivalFrame &frame) {
 
 /// How many recipes can be cooked now, of all of them.
 String ready_note(const SurvivalFrame &frame) {
-  return "READY " + number(cookable_count(frame)) + "/" +
+  return "READY RECIPES " + number(cookable_count(frame)) + "/" +
          number(frame.content.get().companion.workshop.recipes.size());
 }
 
@@ -1333,7 +1327,7 @@ void deck_panel(godot::Node2D &canvas, const rendering::Art &drawing,
       rect(area.position.x + 12.0F, area.position.y + 8.0F,
            drawing.text_width(title, DECK_TITLE_SIZE, Weight::Bold) + 16.0F,
            30.0F),
-      color(28, 36, 78, 1.0F));
+      color(18, 17, 30, 1.0F));
   drawing.text(canvas, area.position.x + 20.0F, area.position.y + 31.0F, title,
                DECK_TITLE_SIZE, tones.white, Weight::Bold);
 }
@@ -1403,13 +1397,14 @@ void paint_appraise(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto panel = deck_area(drawing, APPRAISE_X, APPRAISE_WIDTH);
-  deck_panel(canvas, drawing, panel, "APPRAISE", rendering::Accent::Cyan,
+  deck_panel(canvas, drawing, panel, "APPRAISE", rendering::Accent::Green,
              false);
   const bool human =
       survival::key_set(frame.control, Actor::Appraiser).has_value();
   deck_right(canvas, drawing, panel, player_tag(frame, Actor::Appraiser),
              human ? tones.cyan : tones.muted);
   const auto unknown = unidentified(frame);
+  const auto pack = pack_of(frame.view);
   const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
   const auto *next = offer ? std::get_if<survival::Appraise>(&*offer) : nullptr;
   const auto slots = appraisal_area(drawing, unknown.size());
@@ -1422,6 +1417,12 @@ void paint_appraise(godot::Node2D &canvas, const rendering::Art &drawing,
                area.position + Vector2(-2.0F, -2.0F));
     chip(canvas, drawing, left + DECK_SLOT - 14.0F, slots.position.y + 16.0F,
          "?", SMALL_SIZE, tones.gold);
+    const String quantity = number(pack.at(ingredient.value));
+    chip(canvas, drawing,
+         left + DECK_SLOT - drawing.text_width(quantity, SMALL_SIZE, CHANGING) -
+             4.0F,
+         slots.position.y + DECK_SLOT - 4.0F, quantity, SMALL_SIZE,
+         tones.white);
     left += DECK_SLOT;
   }
   const float words = panel.position.x + DECK_PAD;
@@ -1441,7 +1442,7 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
                 const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto panel = deck_area(drawing, COOK_X, COOK_WIDTH);
-  deck_panel(canvas, drawing, panel, "COOK", rendering::Accent::Gold, false);
+  deck_panel(canvas, drawing, panel, "COOK", rendering::Accent::Green, false);
   if (survival::key_set(frame.control, Actor::Chef)) {
     deck_right(canvas, drawing, panel, NEXT_DISH, tones.cyan);
   }
@@ -1452,6 +1453,7 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto ingredients =
       cooking ? cooking->slots : offered_ingredients(frame);
   const auto count = cook_slots(frame, ingredients.size());
+  const auto pack = pack_of(frame.view);
   for (std::size_t index = 0; index < count; ++index) {
     const auto area =
         rect(left + static_cast<float>(index) * (DECK_SLOT + 4.0F), top,
@@ -1461,6 +1463,16 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
       paint_item(canvas, drawing,
                  survival::ingredient_name(ingredients.at(index)),
                  area.position + Vector2(-2.0F, -2.0F));
+      const auto available = pack.find(ingredients.at(index).value);
+      std::uint32_t amount = 1U;
+      if (!cooking) {
+        amount = available == pack.end() ? 0U : available->second;
+      }
+      const String quantity = number(amount);
+      chip(canvas, drawing,
+           area.get_end().x -
+               drawing.text_width(quantity, SMALL_SIZE, CHANGING) - 4.0F,
+           area.get_end().y - 4.0F, quantity, SMALL_SIZE, tones.white);
     }
   }
   const float column =
@@ -1566,9 +1578,9 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const float height =
       RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 18.0F;
-  const float top = RESULT_BOTTOM - height;
+  const float top = RESULT_TOP;
   const auto area = rect(RESULT_X, top, RESULT_WIDTH, height);
-  rendering::kit_panel(canvas, area, rendering::Accent::Gold, false);
+  rendering::kit_panel(canvas, area, rendering::Accent::Green, false);
   cover(canvas, area);
   float y = top + 10.0F + static_cast<float>(RESULT_SIZE);
   bool headline = true;
@@ -1595,11 +1607,50 @@ float crane_lowering(const std::vector<rendering::Burst> &bursts) {
   return lowering;
 }
 
+/// Composes the base's HD art and pixel crane beneath its interface.
+void paint_workshop_art(godot::Node2D &canvas, const rendering::Art &drawing,
+                        const SurvivalFrame &frame, float lowering) {
+  drawing.image(canvas, rendering::Image::BaseKitchen, Vector2(0.0F, 0.0F));
+  canvas.set_meta("character_layers", godot::Array());
+  constexpr float FLOOR = 528.0F;
+  constexpr float TOP = FLOOR - 204.0F / rendering::ART_SCALE;
+  constexpr float WIDTH = 256.0F / rendering::ART_SCALE;
+  constexpr float HEIGHT = 224.0F / rendering::ART_SCALE;
+  godot::Array figures;
+  for (const auto actor : ACTORS) {
+    const auto area =
+        rect(actor == Actor::Chef ? 520.0F : 150.0F, TOP, WIDTH, HEIGHT);
+    paint_hd_art(canvas,
+                 actor == Actor::Chef ? "characters/chef_idle.png"
+                                      : "characters/appraiser_idle.png",
+                 area);
+    figures.push_back(area);
+  }
+  canvas.set_meta("workshop_figures", figures);
+  const auto steel = color(70, 65, 86, 1.0F);
+  const auto acid = color(140, 235, 92, 1.0F);
+  const float hook = 190.0F + lowering * 140.0F;
+  canvas.draw_rect(rect(830.0F, 150.0F, 440.0F, 12.0F), steel);
+  canvas.draw_rect(rect(830.0F, 162.0F, 440.0F, 2.0F), acid);
+  canvas.draw_rect(rect(988.0F, 162.0F, 24.0F, 10.0F), steel);
+  canvas.draw_rect(rect(999.0F, 172.0F, 2.0F, hook - 172.0F), steel);
+  canvas.draw_rect(rect(994.0F, hook, 12.0F, 12.0F), steel);
+  canvas.draw_rect(rect(994.0F, hook + 10.0F, 8.0F, 2.0F), acid);
+  if (!frame.view.workshop.foods.empty()) {
+    paint_item(canvas, drawing,
+               survival::food_name(frame.view.workshop.foods.front().food),
+               Vector2(972.0F, hook + 12.0F));
+  } else if (lowering > 0.0F) {
+    canvas.draw_rect(rect(982.0F, hook + 20.0F, 36.0F, 16.0F), steel);
+  }
+  canvas.set_meta("feed_crane",
+                  rect(830.0F, 150.0F, 440.0F, hook + 68.0F - 150.0F));
+}
+
 void paint_workshop_screen(godot::Node2D &canvas, const rendering::Art &drawing,
                            const SurvivalFrame &frame,
                            const std::vector<rendering::Burst> &bursts) {
-  rendering::paint_workshop(canvas, drawing, !frame.view.workshop.foods.empty(),
-                            crane_lowering(bursts));
+  paint_workshop_art(canvas, drawing, frame, crane_lowering(bursts));
   paint_day_result(canvas, drawing, frame);
   paint_appraise(canvas, drawing, frame);
   paint_cook(canvas, drawing, frame);

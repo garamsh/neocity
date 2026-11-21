@@ -9,6 +9,7 @@
 #include <limits>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 namespace neocity::survival {
@@ -220,10 +221,18 @@ struct MapExit {
   GridPosition arrival;
 };
 
-/// The zone of a building an actor can be inside, on the street map.
+/// A named floor or roof that must remain reachable on every damage stage.
+struct InteriorFloor {
+  std::string_view name;
+  WorldArea area;
+};
+
+/// A building's occupied zone and the floors and roof its routes must reach.
 struct Interior {
   ObjectId building;
   WorldArea area;
+  MapId map = MapId::Street;
+  std::vector<InteriorFloor> floors;
 };
 
 /// A fixed obstacle: the cell of a map whose touch sends an actor away.
