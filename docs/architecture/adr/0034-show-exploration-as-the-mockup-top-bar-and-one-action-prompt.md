@@ -1,6 +1,6 @@
 # ADR 0034: Show exploration as the mockup's top bar and one action prompt
 
-> Status: accepted
+> Status: accepted; the rule that a tip names no key superseded by ADR 0046 for the set-out tip
 > Date: 2026-11-16
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

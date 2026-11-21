@@ -229,6 +229,9 @@ interruption_text(Interruption interruption);
 [[nodiscard]] godot::String next_step(const SurvivalFrame &frame);
 /// The line of `tip`, which names the action and not its key.
 [[nodiscard]] godot::String tip_text(Tip tip);
+/// The line `tip` draws at base: `tip_text`, and for the set-out tip the
+/// set-out key of each human who has a key set.
+[[nodiscard]] godot::String tip_line(const SurvivalFrame &frame, Tip tip);
 /// Names `tip` for the Godot checks, such as `set_out`.
 [[nodiscard]] godot::String tip_name(Tip tip);
 /// What ends the run well, on every survival screen.
