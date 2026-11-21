@@ -110,9 +110,9 @@ func _logo_and_panel(frame: Image) -> bool:
 	for y: int in range(int(LOGO.position.y * SCALE), int(LOGO.end.y * SCALE), 3):
 		for x: int in range(int(LOGO.position.x * SCALE), int(LOGO.end.x * SCALE), 3):
 			var pixel: Color = frame.get_pixel(x, y)
-			if pixel.r > 0.85 and pixel.g > 0.55 and pixel.b < 0.35:
+			if pixel.g > 0.8 and pixel.r > 0.35 and pixel.r < 0.85 and pixel.b < 0.4:
 				golds += 1
-	if not _check(golds > 1500, "the title picture's gold logo is on the screen: %d gold samples" % golds):
+	if not _check(golds > 1500, "the title picture's lime logo is on the screen: %d lime samples" % golds):
 		return false
 	var panels: Array[Rect2] = _frames_of("panel")
 	if not _check(panels.size() == 2, "the title notes the menu panel and the foot panel: %s" % [panels]):
