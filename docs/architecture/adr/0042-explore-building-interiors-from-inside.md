@@ -33,3 +33,7 @@ Supersede the cut-away display of ADR 0039 and ADR 0031's veil. Their routes, fl
 - An actor inside is framed so that it cannot be seen, or the zoom between floors is not a whole number.
 - A higher-resolution replacement of a map picture draws at another size.
 - Players lose track of where they are after entering a building for lack of any outside cue.
+
+## Errata
+
+- 2026-11-21: the **Camera** decision's "largest whole zoom, from 1 to 6" drew a character up to three times as tall inside a small shop as on the street, which the room's art cannot hold. The camera's largest zoom inside a building is 3, one and a half times the street's close zoom of 2: it frames the bright floors at the largest whole zoom from 1 to 3 at which they fit the play area, so a character is drawn at most one and a half times as tall as on the street and as tall in every building whose lit floors fit at 3. The zoom is still always a whole number. `rendering::inside_of` still chooses the frame and `rendering::aim` the zoom; `StairsCheck -- --interior-zoom` reads the zoom of each building against the street's.
