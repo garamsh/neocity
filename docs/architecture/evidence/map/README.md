@@ -32,9 +32,9 @@ Visible differences, from reading the boards: the street capture shows the HUD i
 - `make test-*` targets individually: they ran only as part of `make ci`.
 - Captures of the days 5 and 10 street and aquarium views, the cold-store and service rooms, and the noodle shop were produced by the checks but are not committed; only the captures the boards use are.
 
-## Recheck at 825748c
+## Recheck at 825748cd1c9d16dd58cd6249365bcdb7061c3c32
 
-Rerun on `origin/goal/maps` at `825748c` (main with #295 and #296, plus #299 interior zoom cap and centring, #300 Cold Store stair, hall picture and badges inside), checked out on `task/268-maps-recheck`, no local changes to code. The earlier section above stays as recorded at `a854079`.
+Rerun on `origin/goal/maps` at `825748cd1c9d16dd58cd6249365bcdb7061c3c32` (main with #295 and #296, plus #299 interior zoom cap and centring, #300 Cold Store stair, hall picture and badges inside), checked out on `task/268-maps-recheck`, no local changes to code. The earlier section above stays as recorded at `a854079`.
 
 | Step | Command | Exit code | Result |
 |---|---|---|---|
