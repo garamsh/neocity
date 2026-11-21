@@ -470,14 +470,13 @@ void SurvivalRun::step() {
   }
   // Base time passes only on a step that began in the workshop phase, so the
   // step that sends the party out or brings it home spends it on one side.
-  if (progression.phase == survival::Phase::Workshop) {
-    // A command may already have opened a new day in this step.
-    if (simulation.snapshot().day == progression.day) {
-      features.workshop.get().advance(STEP);
-      (void)features.endings.get().check();
-      if (simulation.snapshot().day != progression.day || over()) {
-        checkpoint();
-      }
+  // A command may already have opened a new day in this step.
+  if (progression.phase == survival::Phase::Workshop &&
+      simulation.snapshot().day == progression.day) {
+    features.workshop.get().advance(STEP);
+    (void)features.endings.get().check();
+    if (simulation.snapshot().day != progression.day || over()) {
+      checkpoint();
     }
   }
   report_returns(progression, touches, walked_home);
