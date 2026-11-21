@@ -264,6 +264,8 @@ godot::Dictionary actor_status(const GameView &view,
                  : std::int64_t{-1});
   status.set("absent_ms", absent_ms(view.exploration, actor));
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
+  status.set("parts", static_cast<std::int64_t>(std::ranges::count(
+                          state.inventory, survival::ESCAPE_PART)));
   status.set("weight", carried_weight(carry, state.inventory));
   status.set("overweight", overweight(carry, state.inventory));
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
