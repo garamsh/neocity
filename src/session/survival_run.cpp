@@ -184,6 +184,10 @@ const char *ending_name(survival::Ending ending) {
   switch (ending) {
   case survival::Ending::MonsterSatisfied:
     return "monster_satisfied";
+  case survival::Ending::VomitedOut:
+    return "vomited_out";
+  case survival::Ending::Escaped:
+    return "escaped";
   }
   std::abort();
 }
@@ -260,6 +264,8 @@ godot::Dictionary actor_status(const GameView &view,
                  : std::int64_t{-1});
   status.set("absent_ms", absent_ms(view.exploration, actor));
   status.set("ingredients", static_cast<std::int64_t>(state.inventory.size()));
+  status.set("parts", static_cast<std::int64_t>(std::ranges::count(
+                          state.inventory, survival::ESCAPE_PART)));
   status.set("weight", carried_weight(carry, state.inventory));
   status.set("overweight", overweight(carry, state.inventory));
   status.set("key_set", keys ? static_cast<std::int64_t>(*keys) : -1);
@@ -273,17 +279,27 @@ survival::DayLengths day_lengths_from_environment() {
   return {.exploration = seconds_in_environment("NEOCITY_EXPLORATION_SECONDS",
                                                 defaults.exploration),
           .base = seconds_in_environment("NEOCITY_BASE_SECONDS", defaults.base),
-          .cook =
-              seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook)};
+          .cook = seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook),
+          .escape_day = static_cast<std::uint32_t>(
+              seconds_in_environment("NEOCITY_ESCAPE_DAY",
+                                     std::chrono::seconds{defaults.escape_day})
+                  .count())};
 }
 
-SurvivalRun::SurvivalRun(SurvivalFeatures rules, survival::ControlMap players,
-                         std::uint64_t first_event)
-    : features(rules), controllers(players),
+SurvivalRun::SurvivalRun(
+    SurvivalFeatures rules, survival::ControlMap players,
+    std::uint64_t first_event,
+    std::function<void(const SurvivalFeatures &, survival::ControlMap)> save,
+    bool fresh_run)
+    : features(rules), save_day(std::move(save)), controllers(players),
       started_together(
           survival::key_set(players, Actor::Chef).has_value() &&
           survival::key_set(players, Actor::Appraiser).has_value()),
-      first_logged(first_event) {}
+      first_logged(first_event) {
+  if (fresh_run) {
+    checkpoint();
+  }
+}
 
 std::vector<hud::Event>
 SurvivalRun::advance(double delta, const std::array<PlayerInput, 2> &input,
@@ -401,6 +417,14 @@ void SurvivalRun::pick_dish(const GameView &current) {
   chosen_dish = ready.at((from + forward) % ready.size());
 }
 
+void SurvivalRun::checkpoint() {
+  if (!over() && features.exploration.get().advance(0us, {}) !=
+                     survival::Result::Applied) {
+    std::abort();
+  }
+  save_day(features, controllers);
+}
+
 void SurvivalRun::step() {
   const auto &simulation = features.simulation.get();
   const auto progression = simulation.snapshot();
@@ -431,10 +455,14 @@ void SurvivalRun::step() {
     if (command.action) {
       walked_home.at(index) =
           std::holds_alternative<survival::ReturnToBase>(*command.action);
+      const auto before_day = simulation.snapshot().day;
       run_action(actor, *command.action, progression.day);
       // The check follows the finishing command at once, before the partner's
       // command can set out and take the party out of the workshop.
       (void)features.endings.get().check();
+      if (simulation.snapshot().day != before_day || over()) {
+        checkpoint();
+      }
       if (over()) {
         return;
       }
@@ -449,8 +477,14 @@ void SurvivalRun::step() {
   }
   // Base time passes only on a step that began in the workshop phase, so the
   // step that sends the party out or brings it home spends it on one side.
-  if (progression.phase == survival::Phase::Workshop) {
+  // A command may already have opened a new day in this step.
+  if (progression.phase == survival::Phase::Workshop &&
+      simulation.snapshot().day == progression.day) {
     features.workshop.get().advance(STEP);
+    (void)features.endings.get().check();
+    if (simulation.snapshot().day != progression.day || over()) {
+      checkpoint();
+    }
   }
   report_returns(progression, touches, walked_home);
   report_world_changes(city);

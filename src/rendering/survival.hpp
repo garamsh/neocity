@@ -87,10 +87,11 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// carried off, is not drawn. A source in `out_of_reach` has stock no player
 /// can walk to: it loses the gold frame. Each actor faces the way it last
 /// walked, alternates its walking frames while it moves, and climbs on a
-/// ladder.
+/// ladder. Where the two actors' bodies overlap, `control` gives the colour of
+/// the hidden one's outline: its player's, or a neutral one for the AI.
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &everything,
-                const survival::GameView &view,
+                const survival::GameView &view, survival::ControlMap control,
                 const std::vector<survival::ObjectId> &out_of_reach);
 /// The icon of the ingredient or dish the `survival` library names
 /// `name`, if the art set has one.

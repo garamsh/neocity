@@ -85,7 +85,9 @@ func _never_feeding_loses() -> void:
 		return
 	if not _check(_int("day") - 1 == ceili(float(full) / penalty) and _str("ending") == "", "the loss comes on the day acid fills, with no ending"):
 		return
-	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback", "a missing loss scene takes the fallback card"):
+	var art: Texture2D = scene.get_meta("ending_art", null)
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	if not _check(_str("cinematic") == "loss" and _str("cinematic_source") == "fallback" and art != null and art.resource_path.ends_with("/endings/acid_failure.png") and lines.has("DISSOLVED"), "a missing loss scene takes the illustrated acid failure card"):
 		return
 	if not _check(_str("next").contains("acid"), "the screen names the loss"):
 		return

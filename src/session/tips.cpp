@@ -18,7 +18,8 @@ constexpr double TIP_SECONDS = 8.0;
 bool carries_unidentified(const survival::GameView &view) {
   const auto &identified = view.workshop.identified;
   const auto unknown = [&identified](survival::IngredientId ingredient) {
-    return std::ranges::find(identified, ingredient) == identified.end();
+    return ingredient != survival::ESCAPE_PART &&
+           std::ranges::find(identified, ingredient) == identified.end();
   };
   return std::ranges::any_of(view.progression.chef.inventory, unknown) ||
          std::ranges::any_of(view.progression.appraiser.inventory, unknown);

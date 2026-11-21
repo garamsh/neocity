@@ -56,6 +56,9 @@ struct Search {
   ObjectId source;
   friend bool operator==(const Search &, const Search &) = default;
 };
+struct UseDevice {
+  friend bool operator==(const UseDevice &, const UseDevice &) = default;
+};
 struct CloseSearch {
   friend bool operator==(const CloseSearch &, const CloseSearch &) = default;
 };
@@ -95,8 +98,9 @@ struct EndDayUnfed {
 };
 
 /// One discrete feature command, the same for a human and for AI.
-using Action = std::variant<Enter, ReturnToBase, Search, CloseSearch, Take, Put,
-                            Store, Withdraw, Appraise, Cook, Feed, EndDayUnfed>;
+using Action =
+    std::variant<Enter, ReturnToBase, Search, CloseSearch, Take, Put, Store,
+                 Withdraw, Appraise, Cook, Feed, EndDayUnfed, UseDevice>;
 
 /// The outcome the feature returned; a refusal changed nothing.
 using ActionResult = std::variant<Result, CollectionResult, WorkshopResult>;
@@ -115,7 +119,8 @@ struct ActorCommand {
 /// What one human pressed this step, free of device detail. `switch_actor` and
 /// `leave` are for the caller's ControlMap, not for `Companion`. `tap` is for
 /// the caller too, which turns it into `movement` for one step. `search` opens
-/// the container in reach, or closes the one open. `transfer` is the move the
+/// the container in reach, or closes the one open; `interact` in the city
+/// uses the escape device in reach. `transfer` is the move the
 /// caller's screen chose between a container or the fridge and the inventory;
 /// it runs only as `Take` or `Put` while searching, and as `Store` or
 /// `Withdraw` at base.

@@ -279,6 +279,16 @@ public:
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
+  /// Draws the outline of `image`'s opaque shape, a ring of `colour` just
+  /// outside it, where `image` would be drawn at `position`; a canvas with
+  /// `actor_outlines` receives the character's role, screen area, colour and
+  /// the ring's pixel count there. Returns whether a ring was drawn.
+  bool outline(godot::Node2D &canvas, Image image, godot::Vector2 position,
+               bool mirrored, godot::Color colour) const;
+  /// The screen area of `image`'s opaque pixels when drawn at `position`
+  /// (mirrored or not), in the units `size` gives.
+  [[nodiscard]] godot::Rect2 opaque_area(Image image, godot::Vector2 position,
+                                         bool mirrored) const;
   /// Draws the `source` part of `image`, in the units `size` gives, into
   /// `destination`, each colour multiplied by `tint`; a negative destination
   /// width or height reflects that axis about its position. A canvas with
@@ -381,6 +391,15 @@ private:
   mutable std::vector<Written> written;
   mutable std::vector<int> sizes;
   mutable std::optional<Waterline> waterline;
+  /// What `outline` and `opaque_area` read of a picture, found once.
+  struct Silhouette {
+    /// The ring as runs of picture pixels, one row high.
+    std::vector<godot::Rect2> ring;
+    godot::Rect2 opaque;
+    std::int64_t ring_pixels = 0;
+  };
+  [[nodiscard]] const Silhouette &silhouette(Image image) const;
+  mutable std::map<std::size_t, Silhouette> silhouettes;
   /// The steady clock's reading when the art loaded.
   std::uint64_t loaded;
   std::optional<float> pinned;

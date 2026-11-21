@@ -200,6 +200,7 @@ public:
   [[nodiscard]] WorkshopSnapshot snapshot() const;
 
 private:
+  friend class DaySave;
   [[nodiscard]] bool in_workshop() const;
   std::uint32_t roll();
   /// Ends the cook in progress with its roll: `Failed` or a stored dish.

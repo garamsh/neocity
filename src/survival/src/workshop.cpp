@@ -153,6 +153,8 @@ WorkshopResult moved(Result result) {
   case Result::NotInWorkshop:
   case Result::RunOver:
   case Result::Busy:
+  case Result::NotAtDevice:
+  case Result::TooEarly:
     return WorkshopResult::NotInWorkshop;
   }
   std::abort();

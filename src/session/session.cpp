@@ -172,14 +172,20 @@ void quit_game() {
 } // namespace
 
 Session::Session(StartSurvival start_survival, CinematicStage cinematic_stage,
-                 SoundStage sound_stage, DisplayStage display_stage)
-    : start(std::move(start_survival)), displaying(std::move(display_stage)),
+                 SoundStage sound_stage, DisplayStage display_stage,
+                 SaveStage save_stage)
+    : start(std::move(start_survival)), saving(std::move(save_stage)),
+      saved(saving.load()), displaying(std::move(display_stage)),
       stage(std::move(cinematic_stage)), sound(std::move(sound_stage)) {}
 
 void Session::enter(Screen destination) {
   if (playback) {
     stage.stop();
     playback.reset();
+  }
+  if (destination == Screen::Main) {
+    saved = saving.load();
+    cursor = std::min(cursor, hud::title_entries(saved.has_value()).size() - 1);
   }
   screen = destination;
   if (run) {
@@ -196,8 +202,8 @@ void Session::choose(std::size_t option) {
   cue(audio::Cue::MenuSelect);
   switch (screen) {
   case Screen::Main:
-    if (option >= 1 && option <= hud::TITLE_ENTRIES.size()) {
-      select(hud::TITLE_ENTRIES.at(option - 1));
+    if (option >= 1 && option <= hud::title_entries(saved.has_value()).size()) {
+      select(hud::title_entries(saved.has_value()).at(option - 1));
     }
     return;
   case Screen::SurvivalSetup:
@@ -216,6 +222,9 @@ void Session::choose(std::size_t option) {
 
 void Session::select(hud::TitleEntry entry) {
   switch (entry) {
+  case hud::TitleEntry::Continue:
+    continue_run();
+    return;
   case hud::TitleEntry::NewGame:
     enter(Screen::SurvivalSetup);
     return;
@@ -255,10 +264,11 @@ void Session::advance_title(const Command &command) {
   if (command.step == MenuStep::Up || command.step == MenuStep::Down) {
     cue(audio::Cue::MenuMove);
   }
-  move_cursor(cursor, hud::TITLE_ENTRIES.size(), command.step);
+  move_cursor(cursor, hud::title_entries(saved.has_value()).size(),
+              command.step);
   if (command.confirm) {
     cue(audio::Cue::MenuSelect);
-    select(hud::TITLE_ENTRIES.at(cursor));
+    select(hud::title_entries(saved.has_value()).at(cursor));
   }
 }
 
@@ -287,9 +297,21 @@ void Session::advance_settings(const Command &command) {
 
 void Session::start_run(survival::ControlMap control) {
   enter(Screen::Survival);
-  run.emplace(start(), control, next_event);
+  run.emplace(start(std::nullopt), control, next_event, saving.update);
   tips = {};
   play(hud::Cinematic::Intro);
+}
+
+void Session::continue_run() {
+  saved = saving.load();
+  if (!saved) {
+    cursor = 0;
+    return;
+  }
+  const auto control = saved->control();
+  enter(Screen::Survival);
+  run.emplace(start(saved), control, next_event, saving.update, false);
+  tips = {};
 }
 
 void Session::play(hud::Cinematic cinematic) {
@@ -373,7 +395,7 @@ std::vector<hud::Target>
 Session::shown_targets(const rendering::Art &drawing) const {
   switch (screen) {
   case Screen::Main:
-    return hud::title_targets();
+    return hud::title_targets(saved.has_value());
   case Screen::Controls:
   case Screen::HowToPlay:
     return hud::controls_targets(drawing);
@@ -755,7 +777,9 @@ void Session::paint_screen(godot::Node2D &canvas,
                            const rendering::Art &drawing) const {
   switch (screen) {
   case Screen::Main:
-    hud::paint_title(canvas, drawing, hud::TITLE_ENTRIES.at(cursor));
+    hud::paint_title(canvas, drawing,
+                     hud::title_entries(saved.has_value()).at(cursor),
+                     saved.has_value());
     return;
   case Screen::Controls:
     hud::paint_controls(canvas, drawing);

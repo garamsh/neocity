@@ -107,12 +107,14 @@ struct Content {
 [[nodiscard]] const MapContent &map_of(const Content &content, MapId id);
 
 /// The temporary lengths of a day: its exploration, its base time (zero for a
-/// base with no clock) and a cook. A check that need not wait out a whole day
-/// passes shorter ones.
+/// base with no clock) and a cook, and the first day the escape device works. A
+/// check that need not wait out a whole day passes shorter ones, or an earlier
+/// device.
 struct DayLengths {
   std::chrono::seconds exploration = std::chrono::minutes{5};
   std::chrono::seconds base = std::chrono::minutes{5};
   std::chrono::seconds cook = std::chrono::seconds{8};
+  std::uint32_t escape_day = 10;
 };
 
 /// Builds the temporary game for one run seed.

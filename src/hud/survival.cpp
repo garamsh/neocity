@@ -5,6 +5,9 @@
 
 #include <survival/ending.hpp>
 
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -340,7 +343,9 @@ String top_clock(const GameView &view) {
 
 bool identified(const GameView &view, IngredientId ingredient) {
   const auto &known = view.workshop.identified;
-  return std::ranges::find(known, ingredient) != known.end();
+  // A part of the escape device is no find for the appraiser.
+  return ingredient == survival::ESCAPE_PART ||
+         std::ranges::find(known, ingredient) != known.end();
 }
 
 /// Ingredients the two actors carry and the fridge holds together, by
@@ -1116,6 +1121,10 @@ std::optional<PromptAction> prompt_action(const SurvivalFrame &frame,
         .key = PlayerKey::Search,
         .text = "SEARCH " + rendering::place_name(frame.view, search->source)};
   }
+  const auto &use = frame.offers.at(index_of(actor)).interact;
+  if (use && std::holds_alternative<survival::UseDevice>(*use)) {
+    return PromptAction{.key = PlayerKey::Interact, .text = "USE DEVICE"};
+  }
   if (!searching_of(frame.view, actor) &&
       state_of(frame.view, actor).location == Location::City) {
     return PromptAction{.key = PlayerKey::Travel, .text = "TO BASE"};
@@ -1678,9 +1687,14 @@ String refusal_text(survival::Result result) {
     return "Close the search first.";
   case survival::Result::Full:
     return "Your slots are full.";
+  case survival::Result::NotAtDevice:
+    return "The device is out of reach.";
+  case survival::Result::TooEarly:
+    return "The device is not ready yet.";
+  case survival::Result::MissingIngredients:
+    return "The device needs three parts.";
   case survival::Result::InvalidElapsed:
   case survival::Result::NotInWorkshop:
-  case survival::Result::MissingIngredients:
   case survival::Result::RunOver:
     return "That cannot be done now.";
   }
@@ -1778,6 +1792,8 @@ String done_text(const GameView &view, const ActionEvent &event) {
           return from(survival::food_name(action.food)) +
                  (failed ? String(" burned: ingredients lost.")
                          : String(" cooked."));
+        } else if constexpr (std::is_same_v<Done, survival::UseDevice>) {
+          return who + String(" used the escape device.");
         } else if constexpr (std::is_same_v<Done, survival::Feed>) {
           return "Fed " + from(survival::food_name(action.food)) +
                  " to the monster.";
@@ -2086,7 +2102,7 @@ void paint_survival_world(godot::Node2D &canvas, const rendering::Art &drawing,
   rendering::paint_mouth(canvas, drawing, acid_ratio(frame), shot.camera);
   if (frame.view.progression.phase == Phase::Exploration) {
     rendering::paint_city(canvas, drawing, frame.content.get(), frame.view,
-                          shot.out_of_reach);
+                          frame.control, shot.out_of_reach);
     rendering::paint_city_bursts(canvas, bursts, acid_ratio(frame));
   }
   drawing.shift(canvas, {});
@@ -2201,6 +2217,10 @@ const char *ending_title(std::optional<survival::Ending> ending) {
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "SATISFIED";
+  case survival::Ending::VomitedOut:
+    return "VOMITED OUT";
+  case survival::Ending::Escaped:
+    return "ESCAPED";
   }
   std::abort();
 }
@@ -2212,8 +2232,57 @@ String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
     return "The monster was satisfied after " + number(days) + String(" days.");
+  case survival::Ending::VomitedOut:
+    return "After " + number(days) +
+           String(" days, the monster spat the party back into the night.");
+  case survival::Ending::Escaped:
+    return "The party mended the roof device and escaped after " +
+           number(days) + String(" days.");
   }
   std::abort();
+}
+
+const char *ending_image(std::optional<survival::Ending> ending) {
+  if (!ending.has_value()) {
+    std::abort();
+  }
+  switch (*ending) {
+  case survival::Ending::MonsterSatisfied:
+    return "res://levels/monster_mouth_escape/art_hd/endings/satisfied.png";
+  case survival::Ending::VomitedOut:
+    return "res://levels/monster_mouth_escape/art_hd/endings/vomited_out.png";
+  case survival::Ending::Escaped:
+    return "res://levels/monster_mouth_escape/art_hd/endings/escaped.png";
+  }
+  std::abort();
+}
+
+/// The escape device in one teal colour on the dark stage, drawn in code until
+/// the ending's picture exists.
+void paint_device_silhouette(godot::Node2D &canvas) {
+  const auto teal = color(52, 196, 186, 1.0F);
+  canvas.draw_rect(rect(520.0F, 230.0F, 240.0F, 40.0F), teal);
+  canvas.draw_rect(rect(620.0F, 130.0F, 40.0F, 100.0F), teal);
+  canvas.draw_rect(rect(560.0F, 90.0F, 160.0F, 40.0F), teal);
+  canvas.draw_rect(rect(590.0F, 270.0F, 20.0F, 70.0F), teal);
+  canvas.draw_rect(rect(670.0F, 270.0F, 20.0F, 70.0F), teal);
+}
+
+void paint_ending_art(godot::Node2D &canvas, const char *path) {
+  if (!godot::ResourceLoader::get_singleton()->exists(path) &&
+      std::string_view(path).ends_with("/escaped.png")) {
+    paint_device_silhouette(canvas);
+    canvas.set_meta("ending_image", "");
+    return;
+  }
+  const godot::Ref<godot::Texture2D> art =
+      godot::ResourceLoader::get_singleton()->load(path);
+  CRASH_COND_MSG(art.is_null(), "Ending art must load");
+  // Keep the texture alive until Godot renders the canvas commands.
+  canvas.set_meta("ending_art", art);
+  const auto screen = rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
+  canvas.draw_texture_rect(art, screen, false);
+  canvas.set_meta("ending_image", path);
 }
 
 } // namespace
@@ -2228,15 +2297,24 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
-                         rendering::whole_scene());
   drawing.shift(canvas, {});
-  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
-                   color(14, 12, 26, 0.6F));
-  drawing.image(canvas, rendering::Image::ChefIdle,
-                godot::Vector2(130.0F, 300.0F), 2.0F);
-  drawing.image(canvas, rendering::Image::AppraiserIdle,
-                godot::Vector2(280.0F, 300.0F), 2.0F);
+  if (cinematic == Cinematic::Intro) {
+    rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
+                           rendering::whole_scene());
+    drawing.shift(canvas, {});
+    canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                     color(14, 12, 26, 0.6F));
+    drawing.image(canvas, rendering::Image::ChefIdle,
+                  godot::Vector2(130.0F, 300.0F), 2.0F);
+    drawing.image(canvas, rendering::Image::AppraiserIdle,
+                  godot::Vector2(280.0F, 300.0F), 2.0F);
+  } else {
+    paint_ending_art(canvas, cinematic == Cinematic::Loss
+                                 ? "res://levels/monster_mouth_escape/art_hd/"
+                                   "endings/acid_failure.png"
+                                 : ending_image(progression.ending));
+    rendering::panel(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
+  }
   switch (cinematic) {
   case Cinematic::Intro:
     drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
@@ -2246,23 +2324,25 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                  24, tones.white);
     break;
   case Cinematic::Ending:
-    drawing.text(canvas, 130.0F, 170.0F, ending_title(progression.ending), 48,
+    drawing.text(canvas, 130.0F, 492.0F, ending_title(progression.ending), 48,
                  tones.gold, Weight::Bold);
-    drawing.text(canvas, 130.0F, 230.0F,
+    drawing.text(canvas, 130.0F, 536.0F,
                  ending_line(progression.ending, progression.day - 1), 24,
                  tones.white);
     break;
   case Cinematic::Loss:
-    drawing.text(canvas, 130.0F, 170.0F, "DISSOLVED", 48, tones.success,
+    drawing.text(canvas, 130.0F, 492.0F, "DISSOLVED", 48, tones.success,
                  Weight::Bold);
-    drawing.text(canvas, 130.0F, 230.0F,
+    drawing.text(canvas, 130.0F, 536.0F,
                  "The acid filled the monster's mouth after " +
                      number(progression.day - 1) + String(" days."),
                  24, tones.white);
     break;
   }
-  drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
-               24, tones.muted);
+  if (cinematic == Cinematic::Intro) {
+    drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
+                 24, tones.muted);
+  }
   paint_button(canvas, drawing, card_button(drawing), CARD_BUTTON,
                INTERRUPTION_LINE_SIZE, false);
 }
@@ -2422,7 +2502,7 @@ String hand_off_notice(const SurvivalFrame &frame) {
 String next_step(const SurvivalFrame &frame) {
   const auto &view = frame.view;
   if (view.progression.phase == Phase::Ended) {
-    return "The monster is satisfied.";
+    return ending_line(view.progression.ending, view.progression.day - 1);
   }
   if (view.progression.phase == Phase::Lost) {
     return "The acid has filled the mouth.";
@@ -2579,7 +2659,8 @@ std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   // The action prompt: every place its key can act on, the close of the
   // screen it opened, and what the base's keys do.
   const float prompt = PROMPT_MAX_WIDTH - 2.0F * PROMPT_PAD - PROMPT_KEYS_WIDTH;
-  for (const char *label : {"CLOSE", "SEARCH Fridge", "COOK", "APPRAISE"}) {
+  for (const char *label :
+       {"CLOSE", "SEARCH Fridge", "COOK", "APPRAISE", "USE DEVICE"}) {
     lines.push_back(fitted(label, PROMPT_SIZE, prompt));
   }
   for (const auto object : places) {

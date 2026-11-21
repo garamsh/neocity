@@ -26,6 +26,8 @@ Source ownership, exports and visual evidence for the static map-art deliveries 
 
 ## HD review evidence
 
+- [#262 polish evidence](../art-polish-262/README.md) records the later native deck-side, sparse utility-prop and selective background-value edits, preserving the floor contacts and kit dimensions.
+
 | Evidence | Meaning |
 |---|---|
 | [Interior comparison](hd-interiors-comparison.png) | F-building reference above four individually usable room exports |

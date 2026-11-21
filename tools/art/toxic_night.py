@@ -228,7 +228,35 @@ def export():
         if destination in props:
             entry.update(props[destination].get('anchors', {}))
             entry['preparation'] = 'docs/art/production/toxic-night-kit/hd-sources/props-layout.json'
+        if destination in ('walkway/deck.png', 'walkway/aquarium_deck.png',
+                           'backgrounds/throat.png', 'backgrounds/acid.png',
+                           'backgrounds/aquarium.png'):
+            entry['retouch'] = '144px-cell kit; native #262 pixel finishing; Aseprite batch export'
         entries[destination] = entry
+    for destination, source_name, size, role, issue in (
+            ('endings/escaped.png', 'endings/escaped.png', None,
+             'Chef and appraiser escape through the damaged aquarium-roof device', 304),
+            ('base/feed_crane.png', 'art-polish-262/crane-source.png', '660x224!',
+             'Corroded feeding crane; engine placement pending, not drawn by this PR', 262)):
+        source = ROOT / 'docs/art/production' / source_name
+        target = ART / destination
+        if size:
+            run('magick', source, '-filter', 'Point', '-resize', size,
+                '-channel', 'A', '-threshold', '50%', '+channel',
+                '-strip', 'PNG32:' + str(target))
+        else:
+            target.write_bytes(source.read_bytes())
+        dimensions = subprocess.check_output(
+            ['magick', 'identify', '-format', '%w %h', str(target)], text=True)
+        entries[destination] = {
+            'path': destination, 'size': [int(v) for v in dimensions.split()],
+            'role': role, 'issue': issue,
+            'source': str(source.relative_to(ROOT)),
+            'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
+            'sha256': hashlib.sha256(target.read_bytes()).hexdigest(),
+            'export': 'python3 tools/art/toxic_night.py',
+            'retouch': 'nearest 660x224; binary alpha' if size else 'unmodified generated original',
+        }
     manifest['files'] = list(entries.values())
     manifest['map_kit'] = {'issue': 276, 'source': 'docs/art/production/toxic-night-kit/',
                            'grid': '144 authored pixels per cell; destination world areas owned by #281',
@@ -295,9 +323,40 @@ def check():
                     raise ValueError('aquarium deck: top contact row has a hole')
                 if any(row[0] != row[-1] for row in rows):
                     raise ValueError('aquarium deck: outer repeat columns differ')
+        for destination, band_height, band_count, rim in (
+                ('walkway/deck.png', 126, 6, 18),
+                ('walkway/aquarium_deck.png', 126, 1, 45)):
+            previous_png = pathlib.Path(temporary) / 'contact-baseline.png'
+            previous_png.write_bytes(subprocess.check_output([
+                'git', 'show', '053e0dfb96409f85aa23f92d19425d6f5ccba909:'
+                'project/levels/monster_mouth_escape/art_hd/' + destination
+            ], cwd=ROOT))
+            width, height, rows = read_png(ART / destination)
+            old_width, old_height, old_rows = read_png(previous_png)
+            if (width, height) != (old_width, old_height):
+                raise ValueError(f'{destination}: polish changed the canvas')
+            for band in range(band_count):
+                start = band * band_height
+                if rows[start:start + rim] != old_rows[start:start + rim]:
+                    raise ValueError(f'{destination}: polish changed a walked contact rim')
+            if any(pixel[3] != old[3] for row, old_row in zip(rows, old_rows)
+                   for pixel, old in zip(row, old_row)):
+                raise ValueError(f'{destination}: polish changed the alpha silhouette')
+        for destination in ('base/feed_crane.png', 'endings/escaped.png'):
+            entry = entries[destination]
+            source = ROOT / entry['source']
+            target = ART / destination
+            if hashlib.sha256(source.read_bytes()).hexdigest() != entry['source_sha256']:
+                raise ValueError(f'{destination}: generated source digest differs')
+            if hashlib.sha256(target.read_bytes()).hexdigest() != entry['sha256']:
+                raise ValueError(f'{destination}: generated export digest differs')
+            width, height, _ = read_png(target)
+            if [width, height] != entry['size']:
+                raise ValueError(f'{destination}: generated canvas differs')
     print(f'Checked {len(ASSETS)} native PNG round trips and source digests; '
           f"{len(layout['assets'])} static canvases, hard-alpha sprites and floor anchors; "
-          'container/hazard pivots and aquarium deck contact/repeat columns pass.')
+          'container/hazard pivots and aquarium deck contact/repeat columns pass; '
+          'polished deck rims/alpha match the assigned baseline; two generated asset digests pass.')
 
 
 if __name__ == '__main__':
