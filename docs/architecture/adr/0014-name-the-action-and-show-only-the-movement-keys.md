@@ -1,6 +1,6 @@
 # ADR 0014: Name the action on the screen and show only the movement keys
 
-> Status: accepted; its removal of key caps amended by ADR-0034 for the action prompt
+> Status: accepted; its removal of key caps amended by ADR-0034 for the action prompt. Partly superseded by 0046: the first-day base tip names the set-out key
 > Date: 2026-11-04
 
 Append-only: once merged, the body below is not rewritten. A fact later found wrong is corrected in an appended note, not edited out; a revised decision is a new ADR that supersedes this one.

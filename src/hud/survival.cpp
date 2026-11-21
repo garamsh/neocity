@@ -876,7 +876,7 @@ void paint_tip(godot::Node2D &canvas, const rendering::Art &drawing,
     taken.push_back(target.area);
   }
   const auto tones = rendering::palette();
-  const String text = tip_text(tip);
+  const String text = tip_line(frame, tip);
   const float caption_width =
       drawing.text_width(TIP_CAPTION, SMALL_SIZE, Weight::Bold) + TIP_PAD;
   const auto place =
@@ -2388,6 +2388,26 @@ String tip_text(Tip tip) {
            " of them the monster is done with the party.";
   }
   std::abort();
+}
+
+String tip_line(const SurvivalFrame &frame, Tip tip) {
+  String text = tip_text(tip);
+  if (tip != Tip::SetOut) {
+    return text;
+  }
+  const auto players = humans(frame);
+  if (players.size() == 1) {
+    const auto &keys = KEY_LABELS.at(players.front().second);
+    return text + String(" Set out with [") + from(keys.travel) + "].";
+  }
+  if (players.size() == 2) {
+    const auto &first = KEY_LABELS.at(players.front().second);
+    const auto &second = KEY_LABELS.at(players.back().second);
+    return text + String(" Set out with [") + from(first.travel) + "] (P" +
+           number(players.front().second + 1) + ") or [" + from(second.travel) +
+           "] (P" + number(players.back().second + 1) + ").";
+  }
+  return text;
 }
 
 String tip_name(Tip tip) {
