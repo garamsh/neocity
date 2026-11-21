@@ -146,6 +146,8 @@ const DENSE_TOLERANCE: float = 0.01
 ## DECK_DEPTH below the floor line the acid has risen above is stained.
 const DECK_STAIN: Color = Color(150.0 / 255.0, 200.0 / 255.0, 140.0 / 255.0)
 const DECK_DEPTH: int = 28
+## The world area, in layout units, the deck picture covers, whatever its pixels.
+const DECK_AREA: Vector2i = Vector2i(640, 168)
 ## The least edge pixels, along the rows and along the columns, a layer must
 ## show for its density to be read.
 const DENSE_EDGES: int = 400
@@ -189,7 +191,7 @@ const SUPPORT_SHARE: float = 0.07
 const LIT_AREAS: Array[Rect2] = [Rect2(180, 180, 120, 114), Rect2(628, 244, 120, 114), Rect2(404, 328, 56, 62), Rect2(849, 210, 62, 84)]
 const LIT_RED: float = 0.6
 const LIT_WARMTH: float = 0.2
-const LIT_SHARE: float = 0.200
+const LIT_SHARE: float = 0.150
 
 ## The size of the screen every check above measures, and the window sizes it
 ## is shown at afterwards. Saved evidence and density checks use the native
@@ -1006,7 +1008,7 @@ func _read_decks(screen: String) -> bool:
 		var id: int = texture.get_instance_id()
 		if not loaded.has(id):
 			var pixels: Image = texture.get_image()
-			if texture.resource_path != "res://levels/monster_mouth_escape/art_hd/walkway/deck.png" or pixels.get_size() != Vector2i(1920, 504):
+			if texture.resource_path != "res://levels/monster_mouth_escape/art_hd/walkway/deck.png" or pixels.get_width() * DECK_AREA.y != pixels.get_height() * DECK_AREA.x:
 				_fail("%s: actual deck texture identity/size differs: %s %s" % [screen, texture.resource_path, pixels.get_size()])
 				return false
 			pixels.convert(Image.FORMAT_RGBA8)
@@ -1776,19 +1778,20 @@ func _supports_open(frame: Image, view: Transform2D, screen: String) -> bool:
 		return false
 	return true
 
-## Whether, at no acid, before anything lit is destroyed, LIT_SHARE of the
-## pixels of the lit structures the frame shows whole read warm and bright:
-## red over LIT_RED and leading blue by LIT_WARMTH, the pixels an opaque
-## character covers left out, since the pair now stands where the camera frames
-## them. The control is that the frame shows at least one.
-func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
-	if _int("acid") != 0:
-		return true
-	var warm: int = 0
-	var count: int = 0
-	for area: Rect2 in LIT_AREAS:
+## The share of each lit structure the frame shows whole that reads warm and
+## bright, red over LIT_RED and leading blue by LIT_WARMTH, with the pixels an
+## opaque character covers left out, since the pair now stands where the camera
+## frames them: one reading per structure, as x its index in LIT_AREAS, y its
+## share and z its pixels counted. A structure the frame shows in part, or
+## wholly under a character, has none.
+func _lit_shares(frame: Image, view: Transform2D) -> Array[Vector3]:
+	var shares: Array[Vector3] = []
+	for index: int in range(LIT_AREAS.size()):
+		var area: Rect2 = LIT_AREAS[index]
 		if not _shows(view, area.position, area.size):
 			continue
+		var warm: int = 0
+		var count: int = 0
 		for y: int in range(int(area.size.y)):
 			for x: int in range(int(area.size.x)):
 				var at: Vector2 = view * (area.position + Vector2(x + 0.5, y + 0.5))
@@ -1798,14 +1801,46 @@ func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
 				count += 1
 				if pixel.r >= LIT_RED and pixel.r - pixel.b >= LIT_WARMTH:
 					warm += 1
-	if count == 0:
+		if count > 0:
+			shares.append(Vector3(index, float(warm) / count, count))
+	return shares
+
+## The frame with every lit structure's lights put out: each of its pixels grey
+## at half its luminance.
+func _unlit_areas(frame: Image, view: Transform2D) -> Image:
+	var altered: Image = frame.duplicate() as Image
+	for area: Rect2 in LIT_AREAS:
+		var shown: Rect2 = view * area
+		for y: int in range(maxi(0, floori(shown.position.y)), mini(frame.get_height(), ceili(shown.end.y))):
+			for x: int in range(maxi(0, floori(shown.position.x)), mini(frame.get_width(), ceili(shown.end.x))):
+				var pixel: Color = frame.get_pixel(x, y)
+				var grey: float = pixel.get_luminance() * 0.5
+				altered.set_pixel(x, y, Color(grey, grey, grey, pixel.a))
+	return altered
+
+## Whether, at no acid, before anything lit is destroyed, each lit structure the
+## frame shows whole reads warm and bright over LIT_SHARE of its own pixels, the
+## pixels an opaque character covers left out, so a larger structure beside it
+## in the frame cannot pull a small one under, nor a frame that shows fewer of
+## them pass one that does not read lit. The controls are that the frame shows
+## at least one and that the same frame with the lights put out fails every one.
+func _shops_lit(frame: Image, view: Transform2D, screen: String) -> bool:
+	if _int("acid") != 0:
 		return true
-	var share: float = float(warm) / count
-	lit_frames += 1
-	print("Capture: %s: %.6f of the lit structures' %d scene pixels read warm and bright (at least %.6f)." % [screen, share, count, LIT_SHARE])
-	if share < LIT_SHARE:
-		_fail("%s: the shops, stalls and vending machines do not read lit" % screen)
+	var shares: Array[Vector3] = _lit_shares(frame, view)
+	if shares.is_empty():
+		return true
+	var dark: Array[Vector3] = _lit_shares(_unlit_areas(frame, view), view)
+	print("Capture: %s: control, the lit structures with their lights out read %s warm and bright (each must stay under %.6f)." % [screen, dark.map(func(reading: Vector3) -> String: return "%.6f" % reading.y), LIT_SHARE])
+	if dark.size() != shares.size() or dark.any(func(reading: Vector3) -> bool: return reading.y >= LIT_SHARE):
+		_fail("%s: a lit structure with its lights out still reads warm and bright, the control did not fail" % screen)
 		return false
+	lit_frames += 1
+	for reading: Vector3 in shares:
+		print("Capture: %s: lit structure %d reads %.6f warm and bright of its %d scene pixels (at least %.6f)." % [screen, int(reading.x), reading.y, int(reading.z), LIT_SHARE])
+		if reading.y < LIT_SHARE:
+			_fail("%s: lit structure %d, one of the shops, stalls and vending machines, does not read lit" % [screen, int(reading.x)])
+			return false
 	return true
 
 ## How far a colour's green leads its red and blue, from -1 to 1.

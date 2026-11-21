@@ -1,0 +1,628 @@
+{
+  "baseline": "bf1ad36459b4f9632560f41d29d00ba2832af21d",
+  "grid": 144,
+  "normalization": "Scale baseline canvas and visible bounds by 1.5, rounding edges upward; preserve normalized floor anchors. Container and hazard pivots scale by 1.5.",
+  "assets": {
+    "containers/crates_closed.png": {
+      "size": [
+        384,
+        432
+      ],
+      "baseline_bounds": [
+        30,
+        63,
+        196,
+        209
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "512x512+0+0",
+          "bounds": [
+            45,
+            95,
+            294,
+            313
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          192,
+          408
+        ],
+        "baseline_y": 408,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "containers/crates_open.png": {
+      "size": [
+        384,
+        432
+      ],
+      "baseline_bounds": [
+        33,
+        20,
+        190,
+        252
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "512x512+0+512",
+          "bounds": [
+            50,
+            30,
+            285,
+            378
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          192,
+          408
+        ],
+        "baseline_y": 408,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "containers/locker_closed.png": {
+      "size": [
+        384,
+        432
+      ],
+      "baseline_bounds": [
+        62,
+        20,
+        132,
+        252
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "440x512+540+0",
+          "bounds": [
+            93,
+            30,
+            198,
+            378
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          192,
+          408
+        ],
+        "baseline_y": 408,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "containers/locker_open.png": {
+      "size": [
+        384,
+        432
+      ],
+      "baseline_bounds": [
+        34,
+        20,
+        187,
+        252
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "440x512+540+512",
+          "bounds": [
+            51,
+            30,
+            281,
+            378
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          192,
+          408
+        ],
+        "baseline_y": 408,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "containers/shelf_closed.png": {
+      "size": [
+        432,
+        336
+      ],
+      "baseline_bounds": [
+        38,
+        10,
+        211,
+        198
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "512x512+1024+0",
+          "bounds": [
+            57,
+            15,
+            317,
+            297
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          216,
+          312
+        ],
+        "baseline_y": 312,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "containers/shelf_open.png": {
+      "size": [
+        432,
+        336
+      ],
+      "baseline_bounds": [
+        37,
+        10,
+        213,
+        198
+      ],
+      "parts": [
+        {
+          "source": "containers.png",
+          "crop": "512x512+1024+512",
+          "bounds": [
+            56,
+            15,
+            319,
+            297
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          216,
+          312
+        ],
+        "baseline_y": 312,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "world/ladder_broken.png": {
+      "size": [
+        144,
+        288
+      ],
+      "baseline_bounds": [
+        0,
+        9,
+        96,
+        173
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+0+0",
+          "bounds": [
+            0,
+            14,
+            144,
+            259
+          ]
+        }
+      ]
+    },
+    "world/door_broken.png": {
+      "size": [
+        144,
+        288
+      ],
+      "baseline_bounds": [
+        0,
+        34,
+        96,
+        124
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+512+0",
+          "bounds": [
+            0,
+            51,
+            144,
+            186
+          ]
+        }
+      ]
+    },
+    "world/noodle_vendor.png": {
+      "size": [
+        59,
+        108
+      ],
+      "baseline_bounds": [
+        0,
+        14,
+        39,
+        44
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+1024+0",
+          "bounds": [
+            17,
+            21,
+            26,
+            66
+          ]
+        }
+      ],
+      "fit_note": "Preserve the new full-body silhouette aspect within the previous visible bounds, centered horizontally with the same bottom anchor."
+    },
+    "world/bag_washed_up.png": {
+      "size": [
+        126,
+        140
+      ],
+      "baseline_bounds": [
+        1,
+        0,
+        82,
+        93
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+0+512",
+          "bounds": [
+            2,
+            0,
+            123,
+            140
+          ]
+        }
+      ]
+    },
+    "world/acid_drip.png": {
+      "size": [
+        72,
+        216
+      ],
+      "baseline_bounds": [
+        0,
+        42,
+        48,
+        60
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+512+512",
+          "bounds": [
+            0,
+            63,
+            72,
+            90
+          ]
+        }
+      ]
+    },
+    "ground/rubble.png": {
+      "size": [
+        144,
+        72
+      ],
+      "baseline_bounds": [
+        3,
+        0,
+        90,
+        48
+      ],
+      "parts": [
+        {
+          "source": "props.png",
+          "crop": "512x512+1024+512",
+          "bounds": [
+            5,
+            0,
+            135,
+            72
+          ]
+        }
+      ]
+    },
+    "obstacles/acid_vent.png": {
+      "size": [
+        336,
+        336
+      ],
+      "baseline_bounds": [
+        26,
+        26,
+        172,
+        182
+      ],
+      "parts": [
+        {
+          "source": "hazards-deck.png",
+          "crop": "720x430+0+300",
+          "bounds": [
+            39,
+            39,
+            258,
+            273
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          168,
+          312
+        ],
+        "baseline_y": 312,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "obstacles/flesh_spikes.png": {
+      "size": [
+        336,
+        336
+      ],
+      "baseline_bounds": [
+        17,
+        51,
+        190,
+        157
+      ],
+      "parts": [
+        {
+          "source": "hazards-deck.png",
+          "crop": "816x430+720+300",
+          "bounds": [
+            26,
+            77,
+            285,
+            235
+          ]
+        }
+      ],
+      "anchors": {
+        "pivot": [
+          168,
+          312
+        ],
+        "baseline_y": 312,
+        "facing": "right",
+        "mirror_for_left": true
+      }
+    },
+    "world/span_wreck.png": {
+      "size": [
+        144,
+        144
+      ],
+      "baseline_bounds": [
+        0,
+        1,
+        96,
+        93
+      ],
+      "parts": [
+        {
+          "source": "hazards-deck.png",
+          "crop": "700x294+450+730",
+          "bounds": [
+            0,
+            2,
+            144,
+            139
+          ]
+        }
+      ]
+    },
+    "walkway/aquarium_deck.png": {
+      "size": [
+        576,
+        126
+      ],
+      "parts": [
+        {
+          "source": "hazards-deck.png",
+          "crop": "1536x300+0+0",
+          "bounds": [
+            0,
+            0,
+            576,
+            126
+          ]
+        }
+      ],
+      "contact_row": 0
+    },
+    "walkway/structure.png": {
+      "size": [
+        2880,
+        824
+      ],
+      "parts": [
+        {
+          "source": "supports.png",
+          "crop": "512x512+0+0",
+          "baseline_bounds": [
+            756,
+            35,
+            90,
+            128
+          ],
+          "bounds": [
+            1134,
+            53,
+            135,
+            192
+          ],
+          "flop": true
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+512+0",
+          "baseline_bounds": [
+            102,
+            282,
+            60,
+            177
+          ],
+          "bounds": [
+            153,
+            423,
+            90,
+            266
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+1024+512",
+          "baseline_bounds": [
+            218,
+            287,
+            50,
+            140
+          ],
+          "bounds": [
+            327,
+            431,
+            75,
+            210
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+1024+0",
+          "baseline_bounds": [
+            343,
+            273,
+            224,
+            81
+          ],
+          "bounds": [
+            515,
+            410,
+            336,
+            121
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+1024+512",
+          "baseline_bounds": [
+            632,
+            309,
+            48,
+            169
+          ],
+          "bounds": [
+            948,
+            464,
+            72,
+            253
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+512+0",
+          "baseline_bounds": [
+            680,
+            309,
+            50,
+            123
+          ],
+          "bounds": [
+            1020,
+            464,
+            75,
+            184
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+512+0",
+          "baseline_bounds": [
+            1052,
+            282,
+            60,
+            165
+          ],
+          "bounds": [
+            1578,
+            423,
+            90,
+            248
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+1024+512",
+          "baseline_bounds": [
+            1269,
+            282,
+            50,
+            177
+          ],
+          "bounds": [
+            1904,
+            423,
+            75,
+            266
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+0+512",
+          "baseline_bounds": [
+            1502,
+            282,
+            31,
+            225
+          ],
+          "bounds": [
+            2253,
+            423,
+            47,
+            338
+          ]
+        },
+        {
+          "source": "supports.png",
+          "crop": "512x512+512+512",
+          "baseline_bounds": [
+            1572,
+            286,
+            162,
+            234
+          ],
+          "bounds": [
+            2358,
+            429,
+            243,
+            351
+          ]
+        }
+      ]
+    }
+  }
+}

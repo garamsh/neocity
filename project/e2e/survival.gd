@@ -14,8 +14,8 @@ const SEARCH_ATTEMPTS: int = 12
 ## Frames the AI partner stands still before the camera is read: a search of a
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
-## On this seed a party following NEXT alone ends the run satisfied.
-const LONG_RUN_SEED: int = 50
+## On this seed a party following NEXT alone meets a hated dish, then ends the run satisfied.
+const LONG_RUN_SEED: int = 18
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
@@ -126,6 +126,11 @@ const KIND_WORDS: Array[String] = ["BAG", "VEND", "CART", "SHOP"]
 ## The map's words that are neither a place's name nor a number, such as a
 ## count: a broken passage's mark and the actors' tags.
 const MAP_MARKS: Array[String] = ["BROKEN", "P1", "P2", "AI"]
+## The words of the actors' tags, and the space a tag keeps from any other plate.
+const ACTOR_TAGS: Array[String] = ["P1", "P2", "AI"]
+const TAG_CLEARANCE: float = 7.5
+## How far past either end of the map the camera may look, in scene pixels.
+const EDGE_ROOM: float = 64.0
 ## What feeding does, which the recipe book on the pause screen names.
 const FEED_RULES: Array[String] = ["A dish reaching the needed score holds the acid back.", "A hated dish, a lower score or no meal raises it.", "Full acid ends the run."]
 
@@ -322,7 +327,15 @@ func _mouse_in_the_city() -> void:
 		return
 	if not await _walk_route(TOMATO_ROUTE):
 		return
+	var left: int = _int("remaining_ms")
 	if not _check(await _click("chef_search") and _actor("chef", "searching") >= 0, "a click on the action button opens the search, as R does"):
+		return
+	# A search holds the chef: the shared clock runs on, the line says it is open,
+	# and the travel key cannot return it to base.
+	if not _check(_int("remaining_ms") <= left and _next().begins_with("Searching Tomato machine: "), "the line says the search is open: %s" % _next()):
+		return
+	await _tap(KEY_Q)
+	if not _check(_where("chef") == "city" and _actor("chef", "searching") >= 0, "a searching chef cannot return to base"):
 		return
 	if not _check(await _click("chef_other_0") and _actor("chef", "ingredients") == 1, "a click on a container slot takes the item into the pack"):
 		return
@@ -676,6 +689,8 @@ func _first_day() -> void:
 		return
 	if not _plates_apart("the first city screen"):
 		return
+	if not _tags_clear_of_names("the first city screen"):
+		return
 	if not _plates_clear_of_sources("the first city screen"):
 		return
 	if not await _camera_holds("the first city screen"):
@@ -703,8 +718,7 @@ func _first_day() -> void:
 		return
 	if not await _until("the AI appraiser takes the shelf's kelp", func() -> bool: return _actor("appraiser", "ingredients") >= 1, 900):
 		return
-	var shelf: String = "SEARCH " + _place("Shop Shelf")
-	if not _check(_actions() == [shelf] and _drawn(shelf) and _drawn("[R]"), "at a source the prompt offers to search it by its name beside the search key: %s" % [_actions()]):
+	if not await _emptied_source_is_not_offered("Shop Shelf"):
 		return
 	if not _hud_is_top_bar("a source"):
 		return
@@ -716,8 +730,7 @@ func _first_day() -> void:
 	if not await _walk_route([Vector2i(3, 6), Vector2i(3, 8)] + TOMATO_ROUTE):
 		return
 	walker = "chef"
-	# The AI appraiser shares the machine and may have emptied it first.
-	if not await _search_and_take(1, true):
+	if not await _emptied_source_is_not_offered("Tomato Machine"):
 		return
 	if not _check(_stock("Tomato Machine") < stock, "a take spends the shared container's stock"):
 		return
@@ -729,6 +742,16 @@ func _first_day() -> void:
 	if not _check(_where("chef") == "base" and _where("appraiser") == "base", "expiry returns both actors"):
 		return
 	_check(_events().has("Time is up: everyone is back at base."), "the screen reports the timed return")
+
+## Beside a source the AI partner shares, waits until the partner has emptied
+## it, which it does while it stays within reach of the chef, so the run takes
+## one path whichever machine's timing; then an emptied source is not offered
+## for a search, only the way to base. The control is that the source still
+## stands, so it is the emptiness that withholds the offer.
+func _emptied_source_is_not_offered(source: String) -> bool:
+	if not await _until("the AI partner empties %s" % source, func() -> bool: return _stock(source) == 0, 900):
+		return false
+	return _check(_object(source) == "intact" and _actions() == ["TO BASE"] and _target("chef_search").is_empty() and _actor("chef", "searching") == -1, "an emptied source that still stands is not offered for a search, only the way to base: %s" % [_actions()])
 
 ## Runs east along the upper walkway towards its step down.
 func _run_east() -> void:
@@ -1380,22 +1403,12 @@ func _search_the_vendor_cart() -> void:
 		return
 	# Let go of E held since setting out before pressing it at the machine.
 	await _frames(2 * STEP_FRAMES)
-	var left: int = _int("remaining_ms")
-	await _tap(KEY_R)
-	# The AI partner may have emptied the cart on earlier days: a standing
-	# cart still opens.
-	if not _check(_actor("chef", "searching") >= 0, "the chef opens a source acid never destroys"):
-		return
-	if not _check(_actor("chef", "searching") >= 0 and _int("remaining_ms") <= left, "a search holds the chef and leaves the shared clock running"):
-		return
-	if not _check(_next().begins_with("Searching Fish cart: "), "the line says the search is open: %s" % _next()):
-		return
-	await _tap(KEY_Q)
-	if not _check(_where("chef") == "city", "a searching chef cannot return to base"):
+	if not await _emptied_source_is_not_offered("Vendor Cart"):
 		return
 	await _tap(KEY_R)
-	if not await _until("the chef's search closes", func() -> bool: return _actor("chef", "searching") == -1, COLLECT_FRAMES):
+	if not _check(_screen_open(0) and _actor("chef", "searching") == -1 and _actions() == ["CLOSE"], "R at an emptied source acid never destroys opens the inventory alone: %s" % [_actions()]):
 		return
+	await _tap(KEY_R)
 	await _tap(KEY_Q)
 	await _until("the party is home from the cart", func() -> bool: return _str("phase") == "workshop", COLLECT_FRAMES + 120)
 
@@ -1775,12 +1788,15 @@ func _interact_key() -> Key:
 
 ## Opens the container in reach with the walker's search key, takes the first
 ## `times` items with its interact key and closes the search. A `shared`
-## container may hold fewer by then, and fewer are taken.
-func _search_and_take(times: int, shared: bool = false) -> bool:
+## container, named by its source, may hold fewer by then, and fewer are taken.
+func _search_and_take(times: int, shared: String = "") -> bool:
 	var pack: int = _actor(walker, "ingredients")
 	# A container another actor has open is refused, so the key is pressed again
 	# once that actor has closed it.
 	for attempt: int in range(SEARCH_ATTEMPTS):
+		# A container the partner emptied is not offered, and nothing is left to take.
+		if not shared.is_empty() and _stock(shared) == 0:
+			return true
 		await _tap(_search_key())
 		if _actor(walker, "searching") >= 0:
 			break
@@ -1788,7 +1804,7 @@ func _search_and_take(times: int, shared: bool = false) -> bool:
 	if not _check(_actor(walker, "searching") >= 0, "the search key opens the container in reach"):
 		return false
 	# With the container shared with AI, what is left may be less than wanted.
-	var want: int = mini(times, _actor(walker, "searching_items")) if shared else times
+	var want: int = mini(times, _actor(walker, "searching_items")) if not shared.is_empty() else times
 	for time: int in range(want):
 		await _tap(_interact_key())
 	var took: bool = _check(_actor(walker, "ingredients") == pack + want, "%s takes %d from the container" % [walker, want])
@@ -2076,6 +2092,25 @@ func _plates_apart(where: String) -> bool:
 				covered.append("%s over %s" % [one, other])
 	return _check(sources > 0 and plates.size() > sources and covered.is_empty(), "no map plate covers another on %s: %d plates, %d sources, %s" % [where, plates.size(), sources, covered])
 
+## No actor's tag stands within TAG_CLEARANCE of another plate, a place's name
+## among them, so a tag is not read as part of a name; the control is that the
+## map drew a tag and a plate that is not one.
+func _tags_clear_of_names(where: String) -> bool:
+	var plates: Array = scene.get_meta("map_plates", [])
+	var words: Array = scene.get_meta("map_words", [])
+	var tags: int = 0
+	var crowded: Array[String] = []
+	for tag: int in range(plates.size()):
+		if not ACTOR_TAGS.has(words[tag]):
+			continue
+		tags += 1
+		var tag_box: Rect2 = plates[tag]
+		for other: int in range(plates.size()):
+			var other_box: Rect2 = plates[other]
+			if other != tag and tag_box.grow(TAG_CLEARANCE).intersects(other_box):
+				crowded.append("%s %s near %s %s" % [words[tag], tag_box, words[other], other_box])
+	return _check(tags > 0 and plates.size() > tags and crowded.is_empty(), "an actor's tag keeps clear of every other plate on %s: %d tags, %d plates, %s" % [where, tags, plates.size(), crowded])
+
 ## Where a human's feet are in the scene.
 func _feet(who: String) -> Vector2:
 	return MAP_ORIGIN + Vector2(_actor(who, "sub_x"), _actor(who, "sub_y"))
@@ -2089,8 +2124,8 @@ func _humans_out() -> Array[String]:
 	return out
 
 ## Once the camera has settled: every actor in the city stands on the play
-## area; the view shows nothing past the map's sides or the scene's top and
-## bottom, and centres on the map when wider than it; one human is drawn at
+## area; the view shows nothing past the map's sides, beyond EDGE_ROOM, or the
+## scene's top and bottom, and centres on the map when wider than it; one human is drawn at
 ## twice the scene's size, and two at twice or once, never twice when they
 ## stand APART or more.
 func _camera_holds(where: String) -> bool:
@@ -2105,7 +2140,7 @@ func _camera_holds(where: String) -> bool:
 	var right: float = (view * (MAP_ORIGIN + map_size)).x
 	var inside: bool = (view * Vector2.ZERO).y <= 0.0 and (view * Vector2(0, SCENE_HEIGHT)).y >= SCENE_HEIGHT
 	if right - left >= PLAY.size.x:
-		inside = inside and left <= 0.0 and right >= PLAY.size.x
+		inside = inside and left <= EDGE_ROOM * zoom and right >= PLAY.size.x - EDGE_ROOM * zoom
 	else:
 		inside = inside and absf((left + right) / 2.0 - PLAY.size.x / 2.0) <= 1.0
 	var framed: bool = is_equal_approx(zoom, 2.0)

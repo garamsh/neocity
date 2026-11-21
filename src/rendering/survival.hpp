@@ -26,6 +26,29 @@ struct Shot {
   std::vector<survival::ObjectId> goals;
 };
 
+/// One floor's room inside a building and whether an actor stands on it.
+struct Room {
+  godot::Rect2 area;
+  bool lit = false;
+};
+
+/// What an actor inside a building sees of it: the building's whole extent in
+/// the scene, every floor's room, and `frame`, the lit rooms together, which
+/// the camera fills the play area with.
+struct Inside {
+  godot::Rect2 extent;
+  std::vector<Room> rooms;
+  godot::Rect2 frame;
+};
+
+/// The inside of the building every actor in the city is in, when there is an
+/// actor in the city and all of them are in the same building of the map: the
+/// screen then shows only that inside. Nullopt otherwise, including while one
+/// actor is outside, which the outside view shows with only the occupied
+/// rooms lit.
+[[nodiscard]] std::optional<Inside> inside_of(const survival::Content &content,
+                                              const survival::GameView &view);
+
 /// The canvas height of the acid's surface at `acid_ratio`, from below the
 /// map's lowest ground row at 0 to the top of the map at 1.
 [[nodiscard]] float acid_surface(float acid_ratio);
