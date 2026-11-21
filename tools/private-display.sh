@@ -4,6 +4,8 @@
 # config directory, so it never reads the user's kwinrc, attaches to the user's
 # input method or touches their desktop.
 # Usage: tools/private-display.sh [--width W] [--height H] -- command [args...]
+# Run Godot inside it with `--display-driver x11`, as the interior-camera
+# captures did; its Wayland driver crashed in the day save here.
 set -euo pipefail
 
 width=1920
@@ -42,5 +44,5 @@ chmod 700 "$runtime/run"
 
 dbus-run-session -- env XDG_CONFIG_HOME="$config" XDG_RUNTIME_DIR="$runtime" \
   kwin_wayland --virtual --width "$width" --height "$height" \
-  --no-lockscreen --no-global-shortcuts --socket nd-wayland \
+  --no-lockscreen --no-global-shortcuts --xwayland --socket nd-wayland \
   --exit-with-session "$runtime/run"
