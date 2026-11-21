@@ -549,6 +549,9 @@ func _scales_canvas() -> bool:
 		_fail("the window did not leave full screen: mode %d" % DisplayServer.window_get_mode())
 		return false
 	for size: Vector2i in WINDOW_SIZES:
+		if DisplayServer.get_name() == "X11":
+			# A rootless Xwayland window is clamped to the work area; the sizes are measured on Wayland.
+			continue
 		DisplayServer.window_set_size(size)
 		for frame: int in range(RESIZE_FRAMES):
 			if DisplayServer.window_get_size() == size:
