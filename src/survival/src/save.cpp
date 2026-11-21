@@ -251,9 +251,10 @@ bool DaySave::valid(const Content &content) const {
   const auto &config = content.companion.workshop;
   const auto &stock = content.companion.exploration.sources;
   const auto known_ingredient = [&content](IngredientId id) {
-    return std::ranges::any_of(content.objects, [id](const auto &object) {
-      return object.ingredient == id;
-    });
+    return id == ESCAPE_PART ||
+           std::ranges::any_of(content.objects, [id](const auto &object) {
+             return object.ingredient == id;
+           });
   };
   const auto known_food = [&config](FoodId id) {
     return std::ranges::any_of(config.recipes, [id](const Recipe &recipe) {

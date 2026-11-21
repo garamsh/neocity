@@ -21,7 +21,8 @@ namespace neocity::session {
 /// The lengths of a day: the temporary content's, unless the environment sets
 /// `NEOCITY_EXPLORATION_SECONDS`, `NEOCITY_BASE_SECONDS` (0 for a base with no
 /// clock) or `NEOCITY_COOK_SECONDS`, which the Godot checks do to play short
-/// days. A run played by hand sets none.
+/// days, or sets `NEOCITY_ESCAPE_DAY`, the first day the escape device works. A
+/// run played by hand sets none.
 [[nodiscard]] survival::DayLengths day_lengths_from_environment();
 
 /// One survival run's rule objects, owned by the composition root.

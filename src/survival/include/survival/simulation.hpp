@@ -13,7 +13,7 @@ namespace neocity::survival {
 enum class Actor : std::uint8_t { Chef, Appraiser };
 
 /// How a run can end well; each is judged in `ending.hpp`.
-enum class Ending : std::uint8_t { MonsterSatisfied, VomitedOut };
+enum class Ending : std::uint8_t { MonsterSatisfied, VomitedOut, Escaped };
 
 /// Workshop includes the base and untimed appraisal, cooking and feeding.
 /// Ended and Lost each end the run.
@@ -92,7 +92,9 @@ enum class Result : std::uint8_t {
   MissingIngredients,
   RunOver,
   Busy,
-  Full
+  Full,
+  NotAtDevice,
+  TooEarly
 };
 
 /// Independent survival progression with explicitly supplied simulation time.
@@ -132,6 +134,10 @@ public:
   /// Ends the run with `ending` from the workshop; every later command leaves
   /// the snapshot unchanged.
   [[nodiscard]] Result end(Ending ending);
+  /// Ends the run as `Ending::Escaped` while it is in the city: `NotExploring`
+  /// from the workshop, `RunOver` once over. Whether the escape is earned is
+  /// judged by `Exploration::escape`, which alone calls this.
+  [[nodiscard]] Result escape();
   /// Returns the complete current state, including the supplied replay seed.
   [[nodiscard]] Snapshot snapshot() const;
 

@@ -168,6 +168,18 @@ Result Simulation::end(Ending ending) {
   return Result::Applied;
 }
 
+Result Simulation::escape() {
+  if (run_over(world.phase)) {
+    return Result::RunOver;
+  }
+  if (world.phase != Phase::Exploration) {
+    return Result::NotExploring;
+  }
+  world.phase = Phase::Ended;
+  world.ending = Ending::Escaped;
+  return Result::Applied;
+}
+
 Snapshot Simulation::snapshot() const { return world; }
 
 ActorSnapshot &Simulation::actor_state(Actor actor) {

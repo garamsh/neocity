@@ -186,6 +186,8 @@ const char *ending_name(survival::Ending ending) {
     return "monster_satisfied";
   case survival::Ending::VomitedOut:
     return "vomited_out";
+  case survival::Ending::Escaped:
+    return "escaped";
   }
   std::abort();
 }
@@ -275,8 +277,11 @@ survival::DayLengths day_lengths_from_environment() {
   return {.exploration = seconds_in_environment("NEOCITY_EXPLORATION_SECONDS",
                                                 defaults.exploration),
           .base = seconds_in_environment("NEOCITY_BASE_SECONDS", defaults.base),
-          .cook =
-              seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook)};
+          .cook = seconds_in_environment("NEOCITY_COOK_SECONDS", defaults.cook),
+          .escape_day = static_cast<std::uint32_t>(
+              seconds_in_environment("NEOCITY_ESCAPE_DAY",
+                                     std::chrono::seconds{defaults.escape_day})
+                  .count())};
 }
 
 SurvivalRun::SurvivalRun(

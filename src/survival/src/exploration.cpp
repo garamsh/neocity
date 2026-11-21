@@ -536,6 +536,10 @@ Exploration::Exploration(Simulation &progression, World &city,
       throw std::invalid_argument("a patrol runs left to right along one row");
     }
   }
+  if (config.escape &&
+      (config.escape->parts_needed == 0 || config.escape->from_day == 0)) {
+    throw std::invalid_argument("an escape device needs parts and a first day");
+  }
   std::vector<ObjectId> ids;
   for (const auto &source : config.sources) {
     const auto object = std::ranges::find_if(
@@ -688,6 +692,40 @@ CollectionResult Exploration::search(Actor actor, ObjectId source) {
   }
   explorer(actor).state.searching = Searching{.source = source};
   return CollectionResult::Applied;
+}
+
+bool at_escape_device(const ExplorationConfig &config, MapId map,
+                      Position position) {
+  const auto &device = config.escape;
+  return device && device->map == map &&
+         distance(cell_of(position), device->area) <=
+             config.collection_distance;
+}
+
+Result Exploration::escape(Actor actor) {
+  const auto progression = simulation.get().snapshot();
+  if (run_over(progression.phase)) {
+    return Result::RunOver;
+  }
+  if (actor_state(progression, actor).location != Location::City ||
+      explorer(actor).state.absent) {
+    return Result::NotExploring;
+  }
+  if (searching(actor)) {
+    return Result::Busy;
+  }
+  if (!at_escape_device(config, current, explorer(actor).state.body.position)) {
+    return Result::NotAtDevice;
+  }
+  const auto &device = *config.escape;
+  if (progression.day < device.from_day) {
+    return Result::TooEarly;
+  }
+  const auto &carried = actor_state(progression, actor).inventory;
+  if (std::ranges::count(carried, ESCAPE_PART) < device.parts_needed) {
+    return Result::MissingIngredients;
+  }
+  return simulation.get().escape();
 }
 
 CollectionResult Exploration::close_search(Actor actor) {
