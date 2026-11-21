@@ -989,7 +989,8 @@ func _base_figures_drawn() -> bool:
 		var figure: Rect2 = layers[worker]["area"]
 		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
 			return false
-	return true
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
+	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
 
 
 ## The base scene's layers as the last frame drew them: name to its draw order
@@ -1011,15 +1012,14 @@ func _layer_area(layers: Dictionary, name: String) -> Rect2:
 ## Whether the base's layers hold: at rest the workbench front is drawn after
 ## both workers and the crane over it, and with the crane lowered the mast and
 ## the cable's top stay where they were while the cable grows by as much as the
-## cradle and any dish still drawn go down.
+## cradle and the fed dish go down.
 func _base_layers_hold(rest: Dictionary, lowered: Dictionary) -> bool:
 	var names: Array = ["background", "appraiser", "chef", "front", "mast", "cable", "cradle"]
 	var drawn: bool = rest.has("dish") and names.all(func(name: String) -> bool: return rest.has(name) and lowered.has(name))
 	var ordered: bool = drawn and rest["front"]["order"] > rest["appraiser"]["order"] and rest["front"]["order"] > rest["chef"]["order"] and rest["front"]["order"] > rest["background"]["order"] and rest["front"]["order"] < rest["mast"]["order"]
 	var down: float = _layer_area(lowered, "cradle").position.y - _layer_area(rest, "cradle").position.y
 	var fixed: bool = _layer_area(lowered, "mast") == _layer_area(rest, "mast") and _layer_area(lowered, "cable").position == _layer_area(rest, "cable").position
-	# The fed dish is gone from the base once fed, so the dish is only compared while it is still drawn.
-	var follows: bool = (not lowered.has("dish") or is_equal_approx(_layer_area(lowered, "dish").position.y - _layer_area(rest, "dish").position.y, down)) and is_equal_approx(_layer_area(lowered, "cable").size.y - _layer_area(rest, "cable").size.y, down) and _layer_area(lowered, "cradle").position.x == _layer_area(rest, "cradle").position.x
+	var follows: bool = (lowered.has("dish") and is_equal_approx(_layer_area(lowered, "dish").position.y - _layer_area(rest, "dish").position.y, down)) and is_equal_approx(_layer_area(lowered, "cable").size.y - _layer_area(rest, "cable").size.y, down) and _layer_area(lowered, "cradle").position.x == _layer_area(rest, "cradle").position.x
 	return _check(ordered and down > 20.0 and fixed and follows, "the workbench front is drawn after both workers, and the mast and cable top stay while the cradle, dish and cable go down by %s: %s then %s" % [down, rest, lowered])
 
 

@@ -1635,6 +1635,20 @@ float crane_lowering(const std::vector<rendering::Burst> &bursts) {
   return lowering;
 }
 
+/// The dish the cradle carries: the dish that was fed for as long as the crane
+/// is lowered for it, otherwise the stored dish the next feed would serve.
+std::optional<std::string_view> cradle_dish(const SurvivalFrame &frame,
+                                            float lowering) {
+  const auto &workshop = frame.view.workshop;
+  if (lowering > 0.0F && workshop.last_day && workshop.last_day->fed) {
+    return survival::food_name(workshop.last_day->fed->dish.food);
+  }
+  if (!workshop.foods.empty()) {
+    return survival::food_name(workshop.foods.front().food);
+  }
+  return std::nullopt;
+}
+
 /// What fills a layer of the base scene: a picture under `art_hd/`, or the
 /// stored dish drawn with the item renderer.
 enum class Fill : std::uint8_t { Picture, StoredDish };
@@ -1743,8 +1757,9 @@ void paint_workshop_art(godot::Node2D &canvas, const rendering::Art &drawing,
   godot::Array drawn;
   godot::Rect2 crane;
   bool crane_started = false;
+  const auto dish = cradle_dish(frame, lowering);
   for (const auto &layer : BASE_LAYERS) {
-    if (layer.fill == Fill::StoredDish && frame.view.workshop.foods.empty()) {
+    if (layer.fill == Fill::StoredDish && !dish) {
       continue;
     }
     const auto area =
@@ -1753,10 +1768,8 @@ void paint_workshop_art(godot::Node2D &canvas, const rendering::Art &drawing,
                          rendering::ART_SCALE);
     if (layer.fill == Fill::Picture) {
       paint_hd_art(canvas, from(layer.picture), area);
-    } else {
-      paint_item(canvas, drawing,
-                 survival::food_name(frame.view.workshop.foods.front().food),
-                 area.position);
+    } else if (dish) {
+      paint_item(canvas, drawing, *dish, area.position);
     }
     godot::Dictionary note;
     note.set("name", from(layer.name));
