@@ -2305,16 +2305,16 @@
     {
       "path": "base/feed_crane_cable.png",
       "size": [
-        32,
+        40,
         230
       ],
       "issue": 268,
       "role": "Vertical cable; extend downward from canvas 1650,275 to cradle ring",
       "source": "docs/art/production/base-shelter-268/crane-source.png",
       "source_sha256": "bebaa514fc4f447a211b925fd50a4eb45788d24136d00840780071ad355fe3d5",
-      "sha256": "337a475d7046618ec4493103be57d9b7aa1fe38f672956fc49c852d5110f8dcf",
+      "sha256": "7e097a6a85b1e35884a1ee96ea28ed23da18e6b23cee3e713aacfab1cb83664d",
       "export": "python3 docs/art/production/base-shelter-268/export.py",
-      "retouch": "nearest 660x642; binary alpha; cable crop 410,125,442,355",
+      "retouch": "nearest 660x642; binary alpha; cable crop 410,125,450,355",
       "provenance": "docs/art/production/base-shelter-268/README.md"
     },
     {

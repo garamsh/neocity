@@ -14,7 +14,7 @@ Source provenance, export ownership and review evidence for the layered base red
 | `approved-a.png` | Byte-for-byte copy of the PM-supplied `/home/sauce/.cache/mockups-268e/base/a-shelter-under-teeth.png`; upstream creator/tool metadata not supplied | Composition reference only; top plates and bottom panels excluded from the comparison board |
 | `background-source.png` | Built-in ImageGen, 1672×941 RGB | `base/kitchen.png`, 1920×1080; nearest export to 1920×1104, bottom 24 pixels removed to meet the runtime floor without a padding seam |
 | `front-source.png` | Built-in ImageGen, 1672×941 RGBA | `base/kitchen_front.png`, transparent 1920×1080; upper objects mapped to y712–791 and fascia to y792–881 |
-| `crane-source.png` | Built-in ImageGen, 1280×1280 RGBA | `base/feed_crane.png`, fixed 660×642; `base/feed_crane_cable.png`, 32×230; `base/feed_crane_cradle.png`, 280×220 |
+| `crane-source.png` | Built-in ImageGen, 1254×1254 RGBA | `base/feed_crane.png`, fixed 660×642; `base/feed_crane_cable.png`, 40×230; `base/feed_crane_cradle.png`, 280×220 |
 
 - Three built-in image-generation calls on 2026-11-22; [exact prompts and reference roles](prompts.json). Model, seed and quality were not exposed. No paid credits or external image uploads were used.
 - Source outputs are retained unmodified. Transparent exports use the existing crane pipeline's 50% binary-alpha convention to remove nearly invisible generated alpha outside the silhouettes. Resampling uses nearest neighbours; no palette reduction or smoothing.

@@ -67,11 +67,16 @@ def export():
          'Fixed hoist and mast; canvas placement 1240,150; engine connection pending',
          'nearest 660x642; binary alpha; remove moving cable and cradle region')
 
-    cable = crane.crop((410, 125, 442, 355))
+    cable = crane.crop((410, 125, 450, 355))
     save('feed_crane_cable.png', cable, 'crane-source.png',
          'Vertical cable; extend downward from canvas 1650,275 to cradle ring',
-         'nearest 660x642; binary alpha; cable crop 410,125,442,355')
+         'nearest 660x642; binary alpha; cable crop 410,125,450,355')
     cradle = crane.crop((290, 355, 570, 575))
+    assembled = fixed.copy()
+    assembled.alpha_composite(cable, (410, 125))
+    assembled.alpha_composite(cradle, (290, 355))
+    if assembled.getchannel('A').tobytes() != crane.getchannel('A').tobytes():
+        raise ValueError('Crane splits must preserve the complete source silhouette')
     save('feed_crane_cradle.png', cradle, 'crane-source.png',
          'Empty triangular cradle; rest canvas placement 1530,505; translate on feeding',
          'nearest 660x642; binary alpha; cradle crop 290,355,570,575')
