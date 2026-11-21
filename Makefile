@@ -125,6 +125,13 @@ test-startup: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop GodotStartup --quit-after 2 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Startup: 1 configured main scene ready.' "$$log"
+# A display's libraries put the system libstdc++ in the process; preloading it
+# does the same headless. The extension's streams must keep to its own copy.
+	@if [ "$$(uname -s)" = Linux ]; then \
+	log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" LD_PRELOAD="$$(g++ -print-file-name=libstdc++.so.6)" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SaveSlotCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Save slot: 2 live checks passed (a new game'"'"'s day one is written).' "$$log"; \
+	else echo "Save slot check not run: it preloads the Linux libstdc++"; fi
 
 test-title: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \

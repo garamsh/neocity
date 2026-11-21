@@ -75,6 +75,12 @@ add_library(
 )
 target_link_libraries(neocity PRIVATE survival godot-cpp)
 target_compile_options(neocity PRIVATE ${NEOCITY_WARNINGS})
+# The library carries its own libstdc++. Keeping that copy private stops its
+# iostream facets from binding to another libstdc++ in the process, which a
+# display brings in and which faulted the day save (docs/architecture/session.md).
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_options(neocity PRIVATE -Wl,--exclude-libs,ALL -Wl,-Bsymbolic)
+endif()
 # One library for editor and game, written to project/bin/ beside
 # neocity.gdextension, which loads it.
 set_target_properties(
