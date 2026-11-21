@@ -55,7 +55,7 @@ func _run() -> void:
 	await _quit_ends_the_game()
 
 ## The title notes each frame of the UI kit it draws: the picture, the menu
-## panel and the foot panel, an idle button on each entry's own area and the gold
+## panel and the foot panel, an idle card on each entry's own area and the lime
 ## one on the marked entry, which follows the cursor. A page notes its panel
 ## and its way back. Starts and ends on the title with New game marked.
 func _title_draws_the_kit() -> bool:
@@ -70,21 +70,60 @@ func _title_draws_the_kit() -> bool:
 		entries.append(_target("option_%d" % number)["rect"])
 	if not _check(buttons == entries, "an idle button stands on each of the five entries: %s against %s" % [buttons, entries]):
 		return false
-	if not _check(_frames_of("selected") == [entries[0]], "the gold button stands on New game: %s" % [_frames_of("selected")]):
+	if not _check(_frames_of("selected") == [entries[0]] and await _stamps_tell_the_states(), "the lime card stands on New game and is stamped differently from the idle cards: %s" % [_frames_of("selected")]):
 		return false
 	await _tap(KEY_W)
 	OS.delay_msec(ENTRANCE_MS)
 	await _frames(2)
-	if not _check(_frames_of("selected") == [entries[4]] and _frames_of("button") == entries, "the gold button follows the cursor to Settings"):
+	if not _check(_frames_of("selected") == [entries[4]] and _frames_of("button") == entries, "the lime card follows the cursor to Settings"):
 		return false
 	await _tap(KEY_S)
 	await _tap(KEY_2)
 	var page: Array[Rect2] = _frames_of("panel")
 	var way_back: Rect2 = _target("menu")["rect"]
-	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no gold button: %s" % [page]):
+	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no lime card: %s" % [page]):
 		return false
 	await _tap(KEY_ESCAPE)
 	return _check(scene.screen_name() == "main", "setup: the title is back with the cursor on New game")
+
+## Whether the stamps the last frame noted tell the three states apart: the
+## focused card is lime on a magenta shadow, the idle cards are dark with a
+## smaller one, and a card under a held left button has dropped with its shadow
+## shrunk. A press on the first entry acts at once, so the pressed card is read
+## on the choice of players it opens, under the same held button; Esc returns.
+func _stamps_tell_the_states() -> bool:
+	var rest: Dictionary = _stamp("card", 0)
+	var focus: Dictionary = _stamp("card", 1)
+	if rest.is_empty() or focus.is_empty() or rest["fill"] == focus["fill"] or rest["shadow_offset"] >= focus["shadow_offset"] or rest["drop"] != 0.0 or focus["drop"] != 0.0:
+		return false
+	var target: Dictionary = _target("option_1")
+	var area: Rect2 = target["rect"]
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * area.get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = motion.position
+	press.global_position = motion.position
+	Input.parse_input_event(press)
+	await _frames(2)
+	var pressed: Dictionary = _stamp("card", 2)
+	var control: bool = scene.screen_name() == "survival_setup"
+	press.pressed = false
+	Input.parse_input_event(press)
+	await _frames(2)
+	await _tap(KEY_ESCAPE)
+	control = control and scene.screen_name() == "main"
+	return control and not pressed.is_empty() and pressed["drop"] > 0.0 and pressed["shadow_offset"] < focus["shadow_offset"] and pressed["fill"] != focus["fill"]
+
+## The first stamp of `kind` in `state` the last frame noted, or empty.
+func _stamp(kind: String, state: int) -> Dictionary:
+	for stamp: Dictionary in scene.get_meta("interface_stamps", []):
+		if stamp["kind"] == kind and stamp["state"] == state:
+			return stamp
+	return {}
 
 ## The frames of the kit the last frame noted, of one `kind`.
 func _frames_of(kind: String) -> Array[Rect2]:
@@ -149,7 +188,7 @@ func _numbers_choose_entries() -> bool:
 ## entries stacked down the right half in the order their keys number them.
 func _choice_lists_its_entries() -> bool:
 	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
-	var wanted: Array[String] = ["Who is playing?", "Chef", "You cook. AI appraises.", "[1]", "Appraiser", "You appraise. AI cooks.", "[2]", "Two players", "Play together on one keyboard.", "[3]"]
+	var wanted: Array[String] = ["Who is playing?", "Chef", "You cook. AI appraises.", "1", "Appraiser", "You appraise. AI cooks.", "2", "Two players", "Play together on one keyboard.", "3"]
 	var at: int = lines.find(wanted[0])
 	var drawn: Array[String] = []
 	if at >= 0:
@@ -162,7 +201,7 @@ func _choice_lists_its_entries() -> bool:
 		rows.append(_target("option_%d" % number)["rect"])
 	var stacked: bool = rows[0].position.x > 640.0 and rows[0].position.x == rows[1].position.x and rows[1].position.x == rows[2].position.x
 	stacked = stacked and rows[0].end.y <= rows[1].position.y and rows[1].end.y <= rows[2].position.y and rows[2].end.x <= 1280.0
-	if not _check(stacked and _frames_of("selected") == [rows[0]], "the three entries are click targets stacked down the right half, the gold button on the first: %s %s" % [rows, _frames_of("selected")]):
+	if not _check(stacked and _frames_of("selected") == [rows[0]], "the three entries are click targets stacked down the right half, the lime card on the first: %s %s" % [rows, _frames_of("selected")]):
 		return false
 	return _check(_target("option_4").is_empty() and _target("option_0").is_empty(), "the choice has three click targets and no more")
 

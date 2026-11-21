@@ -57,7 +57,7 @@ constexpr Weight CHANGING = Weight::Regular;
 constexpr float BUTTON_PAD = 14.0F;
 /// The smallest words on the screen: the face at two screen pixels to each
 /// of its own.
-constexpr int SMALL_SIZE = 2 * rendering::FONT_GRID;
+constexpr int SMALL_SIZE = 2 * rendering::TYPE_UNIT;
 /// The face's capitals stand five of its eight pixels per em.
 constexpr float CAP_HEIGHT = 0.625F;
 /// The top bar: the day at the left, the acid in the middle, the time at the
@@ -66,7 +66,7 @@ constexpr float CAP_HEIGHT = 0.625F;
 constexpr float BAND_Y = MARGIN;
 constexpr float BAND_HEIGHT = 48.0F;
 constexpr float BAND_BASELINE = BAND_Y + 32.0F;
-constexpr int BIG_SIZE = 3 * rendering::FONT_GRID;
+constexpr int BIG_SIZE = 3 * rendering::TYPE_UNIT;
 constexpr float DAY_WIDTH = 192.0F;
 constexpr float TIME_WIDTH = 160.0F;
 constexpr float TIME_X = SCREEN_WIDTH - MARGIN - TIME_WIDTH;
@@ -81,6 +81,10 @@ constexpr float PLATE_ICON_Y = 11.0F;
 constexpr float PLATE_WORDS_X = 47.0F;
 constexpr float GAUGE_HEIGHT = 8.0F;
 constexpr float GAUGE_GAP = 10.0F;
+/// The acid share from which the acid plate warns, and the room its triangle
+/// takes.
+constexpr float ACID_WARNING = 0.5F;
+constexpr float WARNING_MARK = 22.0F;
 constexpr float GOAL_Y = BAND_Y + BAND_HEIGHT + GAP;
 constexpr int GOAL_SIZE = SMALL_SIZE;
 constexpr float GOAL_PAD = 14.0F;
@@ -112,8 +116,8 @@ constexpr float DECK_PAD = 16.0F;
 constexpr float ICON = 56.0F;
 /// A slot of the deck, and its pitch.
 constexpr float DECK_SLOT = 52.0F;
-constexpr int DECK_TITLE_SIZE = 3 * rendering::FONT_GRID;
-constexpr int DECK_SIZE = 2 * rendering::FONT_GRID;
+constexpr int DECK_TITLE_SIZE = 3 * rendering::TYPE_UNIT;
+constexpr int DECK_SIZE = 2 * rendering::TYPE_UNIT;
 /// The words under a panel's slots stand this far under its top.
 constexpr float DECK_NOTE_Y = 110.0F;
 constexpr float DECK_NOTE_STEP = 20.0F;
@@ -185,7 +189,7 @@ constexpr float NOTICE_BOX_Y = 236.0F;
 constexpr float NOTICE_BOX_WIDTH = 700.0F;
 constexpr float NOTICE_BOX_HEIGHT = 240.0F;
 constexpr float NOTICE_TEXT_X = 326.0F;
-constexpr int INTERRUPTION_TITLE_SIZE = 4 * rendering::FONT_GRID;
+constexpr int INTERRUPTION_TITLE_SIZE = 4 * rendering::TYPE_UNIT;
 constexpr int INTERRUPTION_LINE_SIZE = BIG_SIZE;
 /// A panel's entrance lifts it this far into place.
 constexpr float ENTRANCE_LIFT = 18.0F;
@@ -417,20 +421,16 @@ void cover(godot::Node2D &canvas, godot::Rect2 area) {
 
 /// Draws a panel of the HUD and counts it as covered.
 void hud_panel(godot::Node2D &canvas, godot::Rect2 area) {
-  rendering::panel(canvas, area);
+  rendering::plate(canvas, area);
   cover(canvas, area);
 }
 
-/// A dark button with its words centred on its height, gold when marked.
+/// The main action button with its words centred on its height, focused when
+/// marked.
 void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
                   godot::Rect2 area, const String &text, int size,
                   bool marked) {
-  const auto tones = rendering::palette();
-  rendering::button(canvas, area, marked);
-  drawing.text(canvas, area.position.x + BUTTON_PAD,
-               area.position.y +
-                   (area.size.y + static_cast<float>(size) * CAP_HEIGHT) / 2.0F,
-               text, size, marked ? tones.gold : tones.white, CHANGING);
+  paint_action(canvas, drawing, area, text, size, marked);
 }
 
 /// How wide a button must be to hold `text` at `size`.
@@ -766,8 +766,7 @@ void caption(godot::Node2D &canvas, const rendering::Art &drawing, float x,
 void gauge(godot::Node2D &canvas, const rendering::Art &drawing,
            const String &name, godot::Rect2 area, float fill) {
   const float shown = drawing.glide(name, std::clamp(fill, 0.0F, 1.0F));
-  rendering::kit_bar(canvas, area.grow(2.0F), shown,
-                     rendering::palette().success);
+  rendering::progress(canvas, area, shown);
 }
 
 /// The day at the top left, the acid in the middle and the time at the right,
@@ -776,13 +775,12 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
-  const auto plate = [&](float x, float width, rendering::Accent accent,
-                         bool drip) {
+  const auto plate = [&](float x, float width) {
     const auto area = rect(x, BAND_Y, width, BAND_HEIGHT);
-    rendering::kit_panel(canvas, area, accent, drip);
+    rendering::plate(canvas, area);
     cover(canvas, area);
   };
-  plate(MARGIN, DAY_WIDTH, rendering::Accent::Green, false);
+  plate(MARGIN, DAY_WIDTH);
   drawing.image(canvas, rendering::Image::HdSun,
                 Vector2(MARGIN + PLATE_ICON_X, BAND_Y + PLATE_ICON_Y));
   const String day = "DAY ";
@@ -791,28 +789,36 @@ void paint_corners(godot::Node2D &canvas, const rendering::Art &drawing,
   drawing.text(canvas,
                MARGIN + PLATE_WORDS_X +
                    drawing.text_width(day, BIG_SIZE, Weight::Bold),
-               BAND_BASELINE, two_digits(progression.day), BIG_SIZE, tones.gold,
+               BAND_BASELINE, two_digits(progression.day), BIG_SIZE, tones.lime,
                Weight::Bold);
-  plate(ACID_X, ACID_WIDTH, rendering::Accent::Green, true);
-  const String acid = "ACID ";
+  const bool rising = acid_ratio(frame) >= ACID_WARNING;
+  const auto acid_plate = rect(ACID_X, BAND_Y, ACID_WIDTH, BAND_HEIGHT);
+  if (rising) {
+    rendering::warning(canvas, acid_plate);
+    cover(canvas, acid_plate);
+  } else {
+    plate(ACID_X, ACID_WIDTH);
+  }
+  const int acid_size = rising ? SMALL_SIZE : ACID_SIZE;
+  const String acid = rising ? "ACID RISING " : "ACID ";
   const String percent =
       number(static_cast<std::uint64_t>(progression.acid.value) * 100U /
              frame.content.get().run.full_acid.value) +
       "%";
-  const float words = ACID_X + PLATE_PAD;
-  const float acid_width = drawing.text_width(acid, ACID_SIZE, Weight::Bold);
-  drawing.text(canvas, words, BAND_BASELINE, acid, ACID_SIZE, tones.success,
+  const float words = ACID_X + PLATE_PAD + (rising ? WARNING_MARK : 0.0F);
+  const float acid_width = drawing.text_width(acid, acid_size, Weight::Bold);
+  drawing.text(canvas, words, BAND_BASELINE, acid, acid_size, tones.magenta,
                Weight::Bold);
-  drawing.text(canvas, words + acid_width, BAND_BASELINE, percent, ACID_SIZE,
+  drawing.text(canvas, words + acid_width, BAND_BASELINE, percent, acid_size,
                tones.white, Weight::Bold);
   const float gauge_x = words + acid_width +
-                        drawing.text_width(percent, ACID_SIZE, Weight::Bold) +
+                        drawing.text_width(percent, acid_size, Weight::Bold) +
                         GAUGE_GAP;
   gauge(canvas, drawing, "acid",
         rect(gauge_x, BAND_Y + (BAND_HEIGHT - GAUGE_HEIGHT) / 2.0F,
              ACID_X + ACID_WIDTH - PLATE_PAD - gauge_x, GAUGE_HEIGHT),
         acid_ratio(frame));
-  plate(TIME_X, TIME_WIDTH, rendering::Accent::Green, false);
+  plate(TIME_X, TIME_WIDTH);
   drawing.image(canvas, rendering::Image::HdClock,
                 Vector2(TIME_X + PLATE_ICON_X, BAND_Y + PLATE_ICON_Y));
   drawing.text(canvas, TIME_X + PLATE_WORDS_X, BAND_BASELINE,
@@ -840,7 +846,7 @@ void paint_goal(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   if (!notice.is_empty()) {
     drawing.text(canvas, x + GOAL_PAD, GOAL_Y + (both ? 41.0F : 23.0F), notice,
-                 HAND_OFF_SIZE, tones.gold, CHANGING);
+                 HAND_OFF_SIZE, tones.lime, CHANGING);
   }
 }
 
@@ -886,10 +892,10 @@ void paint_tip(godot::Node2D &canvas, const rendering::Art &drawing,
   if (!place) {
     return;
   }
-  rendering::kit_panel(canvas, *place, rendering::Accent::Green, false);
+  rendering::plate(canvas, *place);
   const float x = place->position.x + TIP_PAD;
   const float baseline = place->position.y + TIP_BASELINE;
-  drawing.text(canvas, x, baseline, TIP_CAPTION, SMALL_SIZE, tones.gold,
+  drawing.text(canvas, x, baseline, TIP_CAPTION, SMALL_SIZE, tones.lime,
                Weight::Bold);
   drawing.text(canvas, x + caption_width, baseline, text, SMALL_SIZE,
                tones.white, CHANGING);
@@ -1020,7 +1026,7 @@ void paint_slots(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto &carry = frame.content.get().companion.exploration.carry;
   for (std::size_t index = 0; index < capacity; ++index) {
     const auto area = slot_area(origin, index);
-    rendering::kit_slot(canvas, area, false);
+    rendering::card(canvas, area, rendering::State::Default);
     if (index < items.size()) {
       const auto item = items.at(index);
       paint_item(canvas, drawing, survival::ingredient_name(item),
@@ -1032,12 +1038,12 @@ void paint_slots(godot::Node2D &canvas, const rendering::Art &drawing,
            area.position.y + SLOT - 5.0F, "1", SMALL_SIZE, tones.white);
       if (!identified(frame.view, item)) {
         chip(canvas, drawing, area.position.x + SLOT - 13.0F,
-             area.position.y + 16.0F, "?", SMALL_SIZE, tones.gold);
+             area.position.y + 16.0F, "?", SMALL_SIZE, tones.lime);
       }
     }
   }
   if (cursor && *cursor < capacity) {
-    canvas.draw_rect(slot_area(origin, *cursor), tones.gold, false, 2.0F);
+    canvas.draw_rect(slot_area(origin, *cursor), tones.lime, false, 2.0F);
   }
 }
 
@@ -1081,7 +1087,7 @@ void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   godot::Array drawn;
   for (const auto &view : transfers(frame)) {
-    rendering::kit_panel(canvas, view.panel, rendering::Accent::Green, false);
+    rendering::plate(canvas, view.panel);
     cover(canvas, view.panel);
     const auto &state = state_of(frame.view, view.actor);
     const float x = view.panel.position.x + INSET;
@@ -1105,7 +1111,7 @@ void paint_transfers(godot::Node2D &canvas, const rendering::Art &drawing,
     const auto &carry = frame.content.get().companion.exploration.carry;
     drawing.text(
         canvas, x, view.weight_line, weight_text(frame, view.actor), SMALL_SIZE,
-        survival::overweight(carry, state.inventory) ? tones.gold : tones.white,
+        survival::overweight(carry, state.inventory) ? tones.lime : tones.white,
         CHANGING);
     drawing.text(canvas, x, view.hint_line, transfer_hint(frame, view.actor),
                  SMALL_SIZE, tones.muted, CHANGING);
@@ -1264,7 +1270,7 @@ void paint_prompts(godot::Node2D &canvas, const rendering::Art &drawing,
                    const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   for (const auto &prompt : prompts(drawing, frame)) {
-    rendering::kit_panel(canvas, prompt.area, rendering::Accent::Green, false);
+    rendering::plate(canvas, prompt.area);
     cover(canvas, prompt.area);
     const float baseline =
         prompt.area.position.y +
@@ -1276,7 +1282,7 @@ void paint_prompts(godot::Node2D &canvas, const rendering::Art &drawing,
       x += drawing.text_width(prompt.tag + String("  "), PROMPT_SIZE,
                               Weight::Bold);
     }
-    drawing.text(canvas, x, baseline, prompt.cap, PROMPT_SIZE, tones.gold,
+    drawing.text(canvas, x, baseline, prompt.cap, PROMPT_SIZE, tones.lime,
                  Weight::Bold);
     x +=
         drawing.text_width(prompt.cap + String(" "), PROMPT_SIZE, Weight::Bold);
@@ -1346,18 +1352,17 @@ godot::Rect2 deck_area(const rendering::Art &drawing, float x, float width) {
 /// The kit panel of the deck over `area`, counted as covered, with its title
 /// on a tab at the top left.
 void deck_panel(godot::Node2D &canvas, const rendering::Art &drawing,
-                godot::Rect2 area, const String &title,
-                rendering::Accent accent, bool drip) {
+                godot::Rect2 area, const String &title) {
   const auto tones = rendering::palette();
-  rendering::kit_panel(canvas, area, accent, drip);
+  rendering::plate(canvas, area);
   cover(canvas, area);
   canvas.draw_rect(
       rect(area.position.x + 12.0F, area.position.y + 8.0F,
            drawing.text_width(title, DECK_TITLE_SIZE, Weight::Bold) + 16.0F,
            30.0F),
-      color(18, 17, 30, 1.0F));
+      tones.background);
   drawing.text(canvas, area.position.x + 20.0F, area.position.y + 31.0F, title,
-               DECK_TITLE_SIZE, tones.white, Weight::Bold);
+               DECK_TITLE_SIZE, tones.white, Weight::Title);
 }
 
 /// Words that end at the panel's right edge, on the title's line.
@@ -1425,8 +1430,7 @@ void paint_appraise(godot::Node2D &canvas, const rendering::Art &drawing,
                     const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto panel = deck_area(drawing, APPRAISE_X, APPRAISE_WIDTH);
-  deck_panel(canvas, drawing, panel, "APPRAISE", rendering::Accent::Green,
-             false);
+  deck_panel(canvas, drawing, panel, "APPRAISE");
   const bool human =
       survival::key_set(frame.control, Actor::Appraiser).has_value();
   deck_right(canvas, drawing, panel, player_tag(frame, Actor::Appraiser),
@@ -1439,12 +1443,14 @@ void paint_appraise(godot::Node2D &canvas, const rendering::Art &drawing,
   float left = slots.position.x;
   for (const auto ingredient : unknown) {
     const auto area = rect(left, slots.position.y, DECK_SLOT, DECK_SLOT);
-    rendering::kit_slot(canvas, area,
-                        next != nullptr && next->ingredient == ingredient);
+    rendering::card(canvas, area,
+                    next != nullptr && next->ingredient == ingredient
+                        ? rendering::State::Focus
+                        : rendering::State::Default);
     paint_item(canvas, drawing, survival::ingredient_name(ingredient),
                area.position + Vector2(-2.0F, -2.0F));
     chip(canvas, drawing, left + DECK_SLOT - 14.0F, slots.position.y + 16.0F,
-         "?", SMALL_SIZE, tones.gold);
+         "?", SMALL_SIZE, tones.lime);
     const String quantity = number(pack.at(ingredient.value));
     chip(canvas, drawing,
          left + DECK_SLOT - drawing.text_width(quantity, SMALL_SIZE, CHANGING) -
@@ -1470,7 +1476,7 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
                 const SurvivalFrame &frame) {
   const auto tones = rendering::palette();
   const auto panel = deck_area(drawing, COOK_X, COOK_WIDTH);
-  deck_panel(canvas, drawing, panel, "COOK", rendering::Accent::Green, false);
+  deck_panel(canvas, drawing, panel, "COOK");
   if (survival::key_set(frame.control, Actor::Chef)) {
     deck_right(canvas, drawing, panel, NEXT_DISH, tones.cyan);
   }
@@ -1486,7 +1492,7 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
     const auto area =
         rect(left + static_cast<float>(index) * (DECK_SLOT + 4.0F), top,
              DECK_SLOT, DECK_SLOT);
-    rendering::kit_slot(canvas, area, false);
+    rendering::card(canvas, area, rendering::State::Default);
     if (index < ingredients.size()) {
       paint_item(canvas, drawing,
                  survival::ingredient_name(ingredients.at(index)),
@@ -1517,11 +1523,11 @@ void paint_cook(godot::Node2D &canvas, const rendering::Art &drawing,
   if (cooking) {
     const float fill = std::clamp(survival::progress_of(*cooking), 0.0F, 1.0F);
     drawing.text(canvas, column, top + 40.0F, cooking_note(fill), DECK_SIZE,
-                 tones.gold, CHANGING);
-    rendering::kit_bar(
+                 tones.lime, CHANGING);
+    rendering::progress(
         canvas,
         rect(column, top + 44.0F, panel.get_end().x - DECK_PAD - column, 8.0F),
-        fill, tones.gold);
+        fill);
   } else {
     drawing.text(canvas, column, top + 46.0F, ready_note(frame), DECK_SIZE,
                  tones.muted, CHANGING);
@@ -1541,9 +1547,9 @@ void paint_feed(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto &workshop = frame.view.workshop;
   const auto &tuning = frame.content.get().companion.workshop;
   const auto panel = deck_area(drawing, FEED_X, FEED_WIDTH);
-  deck_panel(canvas, drawing, panel, "FEED", rendering::Accent::Magenta, true);
+  deck_panel(canvas, drawing, panel, "FEED");
   deck_right(canvas, drawing, panel, "NEEDS " + number(tuning.satisfying_score),
-             tones.gold);
+             tones.lime);
   const float left = panel.position.x + DECK_PAD;
   const float top = panel.position.y + DECK_SLOTS_Y;
   const auto serve = serve_area(drawing);
@@ -1572,15 +1578,14 @@ void paint_feed(godot::Node2D &canvas, const rendering::Art &drawing,
     chip(canvas, drawing,
          x + ICON - drawing.text_width(label, SMALL_SIZE, CHANGING) - 2.0F,
          top + 50.0F, label, SMALL_SIZE,
-         total >= tuning.satisfying_score ? tones.gold : tones.white);
+         total >= tuning.satisfying_score ? tones.lime : tones.white);
     x += pitch;
   }
   const bool ready = feeder(frame).has_value();
   if (ready) {
-    canvas.draw_rect(serve, tones.gold);
-    canvas.draw_rect(serve, tones.ink, false, 2.0F);
+    rendering::button(canvas, serve, rendering::State::Default);
   } else {
-    rendering::kit_slot(canvas, serve, false);
+    rendering::card(canvas, serve, rendering::State::Default);
   }
   const auto words = static_cast<float>(DECK_TITLE_SIZE);
   drawing.text(canvas,
@@ -1608,13 +1613,13 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
       RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 18.0F;
   const float top = RESULT_TOP;
   const auto area = rect(RESULT_X, top, RESULT_WIDTH, height);
-  rendering::kit_panel(canvas, area, rendering::Accent::Green, false);
+  rendering::plate(canvas, area);
   cover(canvas, area);
   float y = top + 10.0F + static_cast<float>(RESULT_SIZE);
   bool headline = true;
   for (const auto &line : lines) {
     drawing.text(canvas, RESULT_X + INSET, y, line, RESULT_SIZE,
-                 headline ? tones.gold : tones.white, CHANGING);
+                 headline ? tones.lime : tones.white, CHANGING);
     headline = false;
     y += RESULT_LINE_HEIGHT;
   }
@@ -2016,19 +2021,26 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
                           SetupEntry selected) {
   const auto tones = rendering::palette();
   paint_title_art(canvas, 0.0F);
-  kit_panel(canvas, rect(SETUP_PANEL_X, SETUP_PANEL_Y, SETUP_PANEL_WIDTH,
-                         SETUP_PANEL_HEIGHT));
-  drawing.text(canvas, SETUP_X, SETUP_PANEL_Y + 60.0F, "Who is playing?", 40,
-               tones.white, Weight::Bold);
+  rendering::fade(canvas,
+                  rect(SETUP_PANEL_X - 120.0F, 0.0F, 120.0F, SCREEN_HEIGHT));
+  paint_panel(canvas, rect(SETUP_PANEL_X, 0.0F, SCREEN_WIDTH - SETUP_PANEL_X,
+                           SCREEN_HEIGHT));
+  drawing.text(canvas, SETUP_X, SETUP_PANEL_Y + 60.0F, "Who is playing", 44,
+               tones.white, Weight::Title);
+  drawing.text(
+      canvas, SETUP_X + drawing.text_width("Who is playing", 44, Weight::Title),
+      SETUP_PANEL_Y + 60.0F, "?", 44, tones.lime, Weight::Title);
+  canvas.draw_rect(rect(SETUP_X, SETUP_PANEL_Y + 76.0F, SETUP_WIDTH, 5.0F),
+                   tones.lime);
   const auto chosen_at = static_cast<float>(
       std::ranges::find(SETUP_ENTRIES, selected) - SETUP_ENTRIES.begin());
   const float cursor =
       SETUP_Y + drawing.glide("setup_cursor", chosen_at) * SETUP_PITCH;
   for (std::size_t index = 0; index < SETUP_ENTRIES.size(); ++index) {
-    kit_button(canvas, setup_area(index), false);
+    paint_card(canvas, setup_area(index), false);
   }
   // The gold button slides to the cursor's entry.
-  kit_button(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT), true);
+  paint_card(canvas, rect(SETUP_X, cursor, SETUP_WIDTH, SETUP_HEIGHT), true);
   float y = SETUP_Y;
   std::size_t number_key = 1;
   const auto figure = [&](rendering::Image image, float x, float top) {
@@ -2040,20 +2052,22 @@ void paint_survival_setup(godot::Node2D &canvas, const rendering::Art &drawing,
     const auto label = setup_label(entry);
     const float top = y + (SETUP_HEIGHT - SETUP_FIGURE_HEIGHT) / 2.0F;
     if (entry == SetupEntry::TwoPlayers) {
-      figure(rendering::Image::ChefIdle, SETUP_X + 16.0F, top);
-      figure(rendering::Image::AppraiserIdle, SETUP_X + 64.0F, top);
+      figure(rendering::Image::ChefIdle, SETUP_X + 64.0F, top);
+      figure(rendering::Image::AppraiserIdle, SETUP_X + 104.0F, top);
     } else {
       figure(entry == SetupEntry::Chef ? rendering::Image::ChefIdle
                                        : rendering::Image::AppraiserIdle,
-             SETUP_X + 28.0F, top);
+             SETUP_X + 72.0F, top);
     }
-    drawing.text(canvas, SETUP_X + 120.0F, y + 46.0F, label.at(0), 32,
-                 chosen ? tones.ink : tones.white, Weight::Bold);
-    drawing.text(canvas, SETUP_X + 120.0F, y + 78.0F, label.at(1), 16,
+    drawing.text(canvas, SETUP_X + 192.0F, y + 46.0F, label.at(0), 32,
+                 chosen ? tones.ink : tones.white, Weight::Title);
+    drawing.text(canvas, SETUP_X + 192.0F, y + 78.0F, label.at(1), 16,
                  chosen ? tones.ink : tones.muted);
-    drawing.text(canvas, SETUP_X + SETUP_WIDTH - 60.0F, y + 62.0F,
-                 "[" + number(number_key) + "]", 24,
-                 chosen ? tones.ink : tones.gold, Weight::Bold);
+    rendering::key_cap(
+        canvas, drawing,
+        rect(SETUP_X + 20.0F, y + (SETUP_HEIGHT - 36.0F) / 2.0F, 36.0F, 36.0F),
+        number(number_key),
+        chosen ? rendering::State::Focus : rendering::State::Default);
     y += SETUP_PITCH;
     ++number_key;
   }
@@ -2090,22 +2104,22 @@ void paint_volumes(godot::Node2D &canvas, const rendering::Art &drawing,
                    const std::vector<DisplayRow> &displays, float lift) {
   const auto tones = rendering::palette();
   const float top = PAUSE_BOX_Y + lift + PAUSE_BOX_HEIGHT - VOLUME_AREA;
-  caption(canvas, drawing, PAUSE_TEXT_X, top, VOLUME_KEYS, tones.gold);
+  caption(canvas, drawing, PAUSE_TEXT_X, top, VOLUME_KEYS, tones.lime);
   float y = top + VOLUME_ROW_HEIGHT;
   for (std::size_t index = 0; index < volumes.size(); ++index) {
     const auto &row = volumes.at(index);
-    const godot::Color lit = row.marked ? tones.gold : tones.cyan;
+    const godot::Color lit = row.marked ? tones.lime : tones.cyan;
     if (row.marked) {
       canvas.draw_rect(rect(PAUSE_TEXT_X - 10.0F, y - VOLUME_ROW_HEIGHT + 10.0F,
                             KEY_ROWS_WIDTH, VOLUME_ROW_HEIGHT),
                        tones.raised);
     }
     drawing.text(canvas, PAUSE_TEXT_X, y, row.name, PAUSE_ROW_SIZE,
-                 row.marked ? tones.gold : tones.white);
+                 row.marked ? tones.lime : tones.white);
     const float blocks = PAUSE_TEXT_X + VOLUME_BLOCKS_X;
     for (std::uint8_t step = 0; step < row.steps; ++step) {
       const auto block = volume_block(index, step, lift);
-      rendering::inset(canvas, block);
+      rendering::card(canvas, block, rendering::State::Default);
       if (step < row.level) {
         canvas.draw_rect(block.grow(-2.0F), lit);
       }
@@ -2136,10 +2150,10 @@ String eaten_mark(const SurvivalFrame &frame, survival::FoodId food) {
 void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
                        const SurvivalFrame &frame, float top) {
   const auto tones = rendering::palette();
-  caption(canvas, drawing, BOOK_X, top - 24.0F, "RECIPE BOOK", tones.gold);
+  caption(canvas, drawing, BOOK_X, top - 24.0F, "RECIPE BOOK", tones.lime);
   caption(canvas, drawing,
           BOOK_RIGHT - drawing.text_width("TASTE", SMALL_SIZE, CHANGING),
-          top - 24.0F, "TASTE", tones.gold);
+          top - 24.0F, "TASTE", tones.lime);
   float y = top;
   bool stripe = false;
   for (const auto &recipe : frame.content.get().companion.workshop.recipes) {
@@ -2158,7 +2172,7 @@ void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
                  needs.is_empty() ? tones.cyan : tones.faint, CHANGING);
     const String mark = eaten_mark(frame, recipe.food);
     drawing.text(canvas, BOOK_X + BOOK_MARK, y, mark, SMALL_SIZE,
-                 mark == "hated" ? tones.danger : tones.muted, CHANGING);
+                 mark == "hated" ? tones.magenta : tones.muted, CHANGING);
     const String taste = number(
         survival::taste_of(recipe, frame.content.get().companion.workshop));
     drawing.text(canvas,
@@ -2172,7 +2186,7 @@ void paint_recipe_book(godot::Node2D &canvas, const rendering::Art &drawing,
     y += 18.0F;
   }
   y += 12.0F;
-  caption(canvas, drawing, BOOK_X, y, "FEEDING", tones.gold);
+  caption(canvas, drawing, BOOK_X, y, "FEEDING", tones.lime);
   for (const auto *rule : FEED_RULES) {
     y += 20.0F;
     drawing.text(canvas, BOOK_X, y, rule, SMALL_SIZE, tones.white);
@@ -2258,7 +2272,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     const std::vector<rendering::Burst> &bursts,
                     std::optional<Tip> tip) {
   canvas.set_meta("hud_panels", godot::Array());
-  canvas.set_meta("interface_frames", godot::Dictionary());
+  canvas.set_meta("interface_stamps", godot::Array());
   drawing.shift(canvas, {});
   const bool city = frame.view.progression.phase == Phase::Exploration;
   if (city) {
@@ -2306,14 +2320,14 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
   canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
                    color(9, 10, 20, 0.72F * shown));
   if (interruption == Interruption::Paused) {
-    rendering::panel(canvas, rect(PAUSE_BOX_X, PAUSE_BOX_Y + lift,
+    rendering::plate(canvas, rect(PAUSE_BOX_X, PAUSE_BOX_Y + lift,
                                   PAUSE_BOX_WIDTH, PAUSE_BOX_HEIGHT));
     drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + lift + 70.0F, text.at(0),
-                 INTERRUPTION_TITLE_SIZE, tones.white, Weight::Bold);
+                 INTERRUPTION_TITLE_SIZE, tones.white, Weight::Title);
     drawing.text(canvas, PAUSE_TEXT_X, PAUSE_BOX_Y + lift + 104.0F,
                  pause_line(text), PAUSE_ROW_SIZE, tones.muted, CHANGING);
     caption(canvas, drawing, PAUSE_TEXT_X, PAUSE_ROWS_Y + lift - 24.0F, "KEYS",
-            tones.gold);
+            tones.lime);
     paint_key_rows(canvas, drawing, key_rows(frame), PAUSE_TEXT_X,
                    PAUSE_ROWS_Y + lift, PAUSE_ROW_HEIGHT);
     paint_recipe_book(canvas, drawing, frame, PAUSE_ROWS_Y + lift);
@@ -2324,10 +2338,10 @@ void paint_interruption(godot::Node2D &canvas, const rendering::Art &drawing,
     paint_volumes(canvas, drawing, volumes, displays, lift);
     return;
   }
-  rendering::panel(canvas, rect(NOTICE_BOX_X, NOTICE_BOX_Y + lift,
+  rendering::plate(canvas, rect(NOTICE_BOX_X, NOTICE_BOX_Y + lift,
                                 NOTICE_BOX_WIDTH, NOTICE_BOX_HEIGHT));
   drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + lift + 70.0F, text.at(0),
-               INTERRUPTION_TITLE_SIZE, tones.white, Weight::Bold);
+               INTERRUPTION_TITLE_SIZE, tones.white, Weight::Title);
   drawing.text(canvas, NOTICE_TEXT_X, NOTICE_BOX_Y + lift + 116.0F, text.at(1),
                INTERRUPTION_LINE_SIZE, tones.muted, CHANGING);
   const auto button = notice_button_area(drawing, text.at(2), lift);
@@ -2412,10 +2426,15 @@ void paint_end_band(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   canvas.draw_rect(
       rect(0.0F, END_BAND_Y, SCREEN_WIDTH, SCREEN_HEIGHT - END_BAND_Y),
-      color(16, 14, 24, 1.0F));
-  canvas.draw_rect(rect(END_TEXT_X - 20.0F, 576.0F, 3.0F, 84.0F), tones.gold);
-  drawing.text(canvas, END_TEXT_X, 614.0F, title, 48, tones.white,
-               Weight::Bold);
+      tones.background);
+  canvas.draw_rect(rect(0.0F, END_BAND_Y, SCREEN_WIDTH, 4.0F), tones.lime);
+  const String words(title);
+  const auto last = words.rfind(" ") + 1;
+  const String lead = words.substr(0, last);
+  drawing.text(canvas, END_TEXT_X, 614.0F, lead, 48, tones.white,
+               Weight::Title);
+  drawing.text(canvas, END_TEXT_X + drawing.text_width(lead, 48, Weight::Title),
+               614.0F, words.substr(last), 48, tones.lime, Weight::Title);
   drawing.text(canvas, END_TEXT_X, 650.0F, line, 24, tones.white);
   paint_button(canvas, drawing, end_button(drawing), END_LEAVE,
                INTERRUPTION_LINE_SIZE, false);
@@ -2457,7 +2476,7 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
                 godot::Vector2(130.0F, 300.0F), 2.0F);
   drawing.image(canvas, rendering::Image::AppraiserIdle,
                 godot::Vector2(280.0F, 300.0F), 2.0F);
-  rendering::panel(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
+  rendering::plate(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
   drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
                Weight::Bold);
   drawing.text(canvas, 130.0F, 230.0F,
@@ -2573,8 +2592,8 @@ void paint_key_rows(godot::Node2D &canvas, const rendering::Art &drawing,
   for (const auto &row : rows) {
     // The heading row names the players, not keys.
     if (row.action.is_empty()) {
-      caption(canvas, drawing, left + KEY_FIRST, y, row.first, tones.gold);
-      caption(canvas, drawing, left + KEY_SECOND, y, row.second, tones.gold);
+      caption(canvas, drawing, left + KEY_FIRST, y, row.first, tones.lime);
+      caption(canvas, drawing, left + KEY_SECOND, y, row.second, tones.lime);
       y += row_height * 0.75F;
       continue;
     }
