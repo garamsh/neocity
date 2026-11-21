@@ -1435,6 +1435,7 @@ godot::Color outline_colour(survival::ControlMap control, Actor actor) {
 /// the chef stays in view in its own shape and its player's colour.
 void paint_hidden_outline(godot::Node2D &canvas, const Art &art,
                           const survival::GameView &view,
+                          survival::ControlMap control,
                           float appraiser_offset) {
   const auto back =
       placement_of(art, view, Actor::Chef, view.exploration.chef.body, 0.0F);
@@ -1446,7 +1447,7 @@ void paint_hidden_outline(godot::Node2D &canvas, const Art &art,
       art.opaque_area(front.image, front.position, front.mirrored);
   if (hidden.intersects(cover)) {
     art.outline(canvas, back.image, back.position, back.mirrored,
-                art.player_colour(true));
+                outline_colour(control, Actor::Chef));
   }
 }
 
@@ -1698,8 +1699,6 @@ Labels label_city(const Art &art, const survival::GameView &view,
                  "BROKEN", 13, red);
     }
   }
-  art.player_colour(true, outline_colour(control, Actor::Chef));
-  art.player_colour(false, outline_colour(control, Actor::Appraiser));
   const auto tag = [&](Actor actor, const survival::Body &body, float offset) {
     const Vector2 feet = to_screen(camera, feet_of(art, actor, body));
     constexpr int TAG_SIZE = 14;
@@ -1972,7 +1971,7 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &everything,
-                const survival::GameView &view,
+                const survival::GameView &view, survival::ControlMap control,
                 const std::vector<survival::ObjectId> &out_of_reach) {
   const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
@@ -2087,7 +2086,8 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                 view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
   }
   if (party.chef_out && party.appraiser_out) {
-    paint_hidden_outline(canvas, art, view, party.shared ? 10.0F : 0.0F);
+    paint_hidden_outline(canvas, art, view, control,
+                         party.shared ? 10.0F : 0.0F);
   }
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {

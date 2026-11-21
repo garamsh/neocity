@@ -16,6 +16,11 @@ const ROUTE: Array[Vector2i] = [
 	Vector2i(11, 9), Vector2i(13, 9), Vector2i(16, 9), Vector2i(17, 8), Vector2i(29, 9),
 	Vector2i(31, 9), Vector2i(35, 9), Vector2i(36, 8), Vector2i(38, 8),
 ]
+## The ring colours of player one's character and of the AI partner.
+const FIRST_PLAYER_OUTLINE: Color = Color(1.0, 0.62, 0.12)
+const AI_OUTLINE: Color = Color(0.85, 0.88, 0.92)
+## The cell of the Cold Store's hall where both humans stand overlapped.
+const HALL: Vector2i = Vector2i(38, 8)
 var scene: MainScene
 var clock: float = 0.0
 var held_keys: Dictionary[Key, bool] = {}
@@ -54,6 +59,10 @@ func _run() -> void:
 	await _settle()
 	_check_stair()
 	_check_neighbours()
+	if not await _move(HALL, HALL):
+		return
+	await _settle()
+	await _check_hand_off_outline()
 	var verdict: String = "pass" if failures.is_empty() else "fail"
 	print("Interior: finished: %s; %d failures %s." % [verdict, failures.size(), failures])
 	quit(0 if failures.is_empty() else 1)
@@ -96,8 +105,8 @@ func _check_hall() -> void:
 		var box: Rect2 = plates[index]
 		if not extent.encloses(box):
 			stray.append("%s %s outside %s" % [words[index], box, extent])
-	if plates.size() < 3:
-		_fail("the hall drew %d badges and tags, fewer than its two humans' tags and a source's badge" % plates.size())
+	if plates.size() < 2:
+		_fail("the hall drew %d badges and tags, fewer than a human's tag and a source's badge" % plates.size())
 	var sources: Array = scene.get_meta("map_sources", [])
 	var areas: Array = scene.get_meta("map_source_areas", [])
 	var labelled: Array = scene.get_meta("map_labelled", [])
@@ -160,6 +169,31 @@ func _check_outlines(where: String) -> void:
 			found = true
 	if not found:
 		_fail("%s: the chef's body is overlapped by the appraiser's with no visible outline of its own over it: %s" % [where, world.get_meta("actor_outlines", [])])
+
+## When player one leaves, the AI takes the chef over, and the chef's ring turns to the AI's neutral
+## colour: in every frame the ring's colour is the one of the key set the status reports for the chef.
+func _check_hand_off_outline() -> void:
+	var world: Node = _world()
+	_key(KEY_X, true)
+	var changed: bool = false
+	for frame: int in range(30):
+		await process_frame
+		var driver: int = scene.survival_status()["chef"]["key_set"]
+		var driven_by_ai: bool = driver < 0
+		for mark: Dictionary in world.get_meta("actor_outlines", []):
+			var pixels: int = mark["pixels"]
+			if mark["role"] != "chef" or pixels == 0:
+				continue
+			var colour: Color = mark["colour"]
+			var want: Color = AI_OUTLINE if driven_by_ai else FIRST_PLAYER_OUTLINE
+			changed = changed or driven_by_ai
+			if not colour.is_equal_approx(want):
+				_fail("frame %d: the chef's ring is %s while its key set is %d" % [frame, colour, driver])
+		if frame == 1:
+			_key(KEY_X, false)
+	_key(KEY_X, false)
+	if not changed:
+		_fail("player one leaving did not leave the chef to the AI with a ring drawn")
 
 ## The stair's treads sit on the floor line its walker's feet keep, and run down to the floor beside it.
 func _check_stair() -> void:

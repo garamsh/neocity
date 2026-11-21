@@ -129,7 +129,7 @@ test-startup: build
 test-title: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 55 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 58 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).' "$$log"
 
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop DisplayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
@@ -189,6 +189,13 @@ test-escape: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape real frames: 4 live checks passed.' "$$log"
+
+# SurvivalBalanceCheck follows only the NEXT line on three fixed seeds, headless, to the ending each
+# is recorded to reach (docs/architecture/survival.md, Ending values), so a rebalance that moves a
+# seed's ending fails here by name. It runs in this target because the CI jobs name their targets.
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalBalanceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Balance: finished: pass; seed 1 monster_satisfied on day 10, seed 26 vomited_out on day 31, seed 81 acid loss on day 31.' "$$log"
 
 # EscapeDeviceCheck walks both humans to the broken device on real keys, collects its three parts and uses
 # it, headless. The finished line names the day the run ended on, so the check reads its verdict.

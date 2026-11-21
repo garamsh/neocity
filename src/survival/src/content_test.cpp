@@ -639,6 +639,43 @@ TEST(TemporaryContent, NoTwoSourcesShareACellOfAMapWhileEitherIsOnIt) {
   }
 }
 
+/// Fixed sources only: a washed-up bag lands by the tide's lanes on the day it
+/// is exposed, and the kitchen loft lane lands some inside the shop's row.
+TEST(TemporaryContent, NoFixedSourceStandsInsideABuildingItDoesNotBelongTo) {
+  const auto content = short_days(1);
+  const auto inside = [](const ObjectDefinition &object,
+                         const Interior &interior) {
+    return object.map == interior.map &&
+           distance({.x = object.area.x, .y = object.area.y}, interior.area) ==
+               0;
+  };
+  // A source belongs to a building when the building supports it or when
+  // what supports it stands inside the building too, as a vendor does.
+  const auto belongs = [&](const ObjectDefinition &source,
+                           const Interior &interior) {
+    if (source.supported_by == interior.building) {
+      return true;
+    }
+    const auto owner =
+        std::ranges::find(content.objects, source.supported_by,
+                          [](const auto &object) { return object.id; });
+    return source.supported_by && owner != content.objects.end() &&
+           inside(*owner, interior);
+  };
+  std::vector<std::string> strays;
+  for (const auto &interior : content.companion.exploration.interiors) {
+    for (const auto &object : content.objects) {
+      if (object.kind == ObjectKind::MaterialSource &&
+          !object.exposed_from_day && inside(object, interior) &&
+          !belongs(object, interior)) {
+        strays.emplace_back(std::string(object_name(object.id)) + " in " +
+                            std::string(object_name(interior.building)));
+      }
+    }
+  }
+  EXPECT_TRUE(strays.empty()) << ::testing::PrintToString(strays);
+}
+
 TEST(TemporaryContent, TheCrackedStageBringsTheFerryAndItsStock) {
   const auto content = short_days(1);
   const auto before = on_day(content, STAGE_FIRST_DAY.at(1) - 1);

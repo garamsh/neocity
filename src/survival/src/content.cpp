@@ -538,7 +538,7 @@ std::vector<ObjectDefinition> street() {
       terrain(TOP_CATWALK, {.x = 53, .y = 2, .width = 8}),
       ladder(DOCK_LADDER, {.x = 60, .y = 5, .height = 7}),
       terrain(DOCK, {.x = 56, .y = 11, .width = 8}),
-      ingredient_source(TERMINAL_MACHINE, {.x = 44, .y = 8}, PICKLES),
+      ingredient_source(TERMINAL_MACHINE, {.x = 49, .y = 8}, PICKLES),
       ingredient_source(DECK_BAG, {.x = 58, .y = 5}, MUSHROOM),
       ingredient_source(DOCK_CRATE, {.x = 57, .y = 11}, TOMATO),
   };
