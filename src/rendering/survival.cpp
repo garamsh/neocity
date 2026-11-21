@@ -62,20 +62,6 @@ constexpr float OUTLINE = 1.0F;
 constexpr Vector2 THROAT_AT(333.0F, 0.0F);
 constexpr Vector2 CITY_AT(-224.0F, -10.0F);
 constexpr float BAND_LEFT = -384.0F;
-/// The base's floor row, the workers' height standing on it and their left
-/// edges, in layout units over the kitchen picture.
-constexpr float BASE_FLOOR = 528.0F;
-constexpr float FIGURE_HEIGHT = 150.0F;
-constexpr float APPRAISER_X = 150.0F;
-constexpr float CHEF_X = 520.0F;
-/// The feed crane: its beam, where its trolley hangs, and the hook's highest
-/// and lowest rows over the monster's mouth.
-constexpr float CRANE_LEFT = 830.0F;
-constexpr float CRANE_WIDTH = 440.0F;
-constexpr float CRANE_BEAM = 150.0F;
-constexpr float CRANE_X = 1000.0F;
-constexpr float CRANE_REST = 190.0F;
-constexpr float CRANE_LOW = 330.0F;
 /// The chef and appraiser frames' foot pivot (128, 204 picture pixels in the
 /// character manifests), in layout units.
 constexpr Vector2 ACTOR_PIVOT(128.0F / (2.0F * ART_SCALE),
@@ -2354,46 +2340,6 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   canvas.set_meta("map_pointers", pointed);
   canvas.set_meta("map_view", transform(shot.camera));
   canvas.set_meta("map_heading", transform(shot.heading));
-}
-
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready,
-                    float lowering) {
-  canvas.set_meta("character_layers", godot::Array());
-  art.image(canvas, Image::BaseKitchen, Vector2(0.0F, 0.0F), 1.0F);
-  // The two workers stand on the kitchen's floor, the appraiser in the left
-  // room and the chef at the stove.
-  const float scale = FIGURE_HEIGHT / art.size(Image::ChefIdle).y;
-  const Vector2 figure = art.size(Image::ChefIdle) * scale;
-  const float figure_top = BASE_FLOOR - ACTOR_PIVOT.y * scale;
-  art.image(canvas, Image::AppraiserIdle, Vector2(APPRAISER_X, figure_top),
-            scale);
-  art.image(canvas, Image::ChefIdle, Vector2(CHEF_X, figure_top), scale);
-  // The feed crane over the monster's mouth: a beam with a trolley, a cable
-  // and a hook, with the stored dish hung from it, lowered into the mouth
-  // as the dish is fed.
-  const float hook =
-      CRANE_REST + std::clamp(lowering, 0.0F, 1.0F) * (CRANE_LOW - CRANE_REST);
-  const auto steel = color(70, 78, 96, 1.0F);
-  canvas.draw_rect(rect(CRANE_LEFT, CRANE_BEAM, CRANE_WIDTH, 12.0F), steel);
-  canvas.draw_rect(rect(CRANE_LEFT, CRANE_BEAM + 12.0F, CRANE_WIDTH, 2.0F),
-                   color(66, 222, 255, 1.0F));
-  canvas.draw_rect(rect(CRANE_X - 12.0F, CRANE_BEAM + 12.0F, 24.0F, 10.0F),
-                   steel);
-  canvas.draw_line(Vector2(CRANE_X, CRANE_BEAM + 22.0F), Vector2(CRANE_X, hook),
-                   color(176, 186, 204, 1.0F), 2.0F);
-  canvas.draw_circle(Vector2(CRANE_X, hook + 6.0F), 7.0F, steel);
-  if (dish_ready || lowering > 0.0F) {
-    canvas.draw_circle(Vector2(CRANE_X, hook + 26.0F), 18.0F,
-                       color(255, 196, 72, 1.0F));
-    canvas.draw_circle(Vector2(CRANE_X, hook + 26.0F), 11.0F,
-                       color(255, 142, 72, 1.0F));
-  }
-  godot::Array figures;
-  figures.push_back(rect(APPRAISER_X, figure_top, figure.x, figure.y));
-  figures.push_back(rect(CHEF_X, figure_top, figure.x, figure.y));
-  canvas.set_meta("workshop_figures", figures);
-  canvas.set_meta("feed_crane", rect(CRANE_LEFT, CRANE_BEAM, CRANE_WIDTH,
-                                     hook + 44.0F - CRANE_BEAM));
 }
 
 } // namespace neocity::rendering

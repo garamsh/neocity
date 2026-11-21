@@ -300,8 +300,6 @@ const char *path(Image image) {
     return "icons/dish_truffle_soup.png";
   case Image::DishSurfAndTurf:
     return "icons/dish_surf_and_turf.png";
-  case Image::BaseKitchen:
-    return "base/kitchen.png";
   case Image::TitleKeyArt:
     return "title/key_art.png";
   case Image::TitleLogo:

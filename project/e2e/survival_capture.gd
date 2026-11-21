@@ -26,9 +26,11 @@ extends SceneTree
 ## game and the actors' steering run on frames, so pass --fixed-fps 60 to Godot:
 ## on real frame times a loaded machine moves the actors, and the camera with
 ## them, to places no other run reaches, and the run fails at once without it.
-## Run it where the screen never locks, such as kwin_wayland --virtual
-## --no-lockscreen: a locked screen stops the window drawing, and the capture
-## then waits on a frame that never comes.
+## Run it through tools/private-display.sh with --display-driver x11, the only way this project starts a
+## compositor: it gives kwin its own session bus and an empty config, so the
+## screen never locks and no input method of the user's is touched. A locked
+## screen stops the window drawing, and the capture then waits on a frame that
+## never comes.
 ## On Wayland, Godot 4.7.2 can hang after quit() (godotengine/godot#123059,
 ## docs/architecture/godot-runtime.md), so run it under a watchdog that ends
 ## Godot 30 seconds after it prints "Capture: finished: pass" or

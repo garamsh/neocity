@@ -234,7 +234,6 @@ enum class Image : std::uint8_t {
   SpanWreck,
   KioskRuined,
   FireEscape,
-  BaseKitchen,
   TitleKeyArt,
   TitleLogo
 };
