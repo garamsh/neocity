@@ -110,8 +110,9 @@ func _play_to_the_ending() -> void:
 	_check(_str("ending") == "monster_satisfied" and _int("satisfied_days") >= 7, "the run ends as monster satisfied on at least seven satisfied days")
 
 func _fallback_ending() -> void:
-	var has_art: bool = await _check_ending_art("satisfied", "SATISFIED")
-	if not _check(has_art and _str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the illustrated satisfaction card"):
+	await _frames(2)
+	var shown: String = EndScreenCheck.problem(scene, "satisfied", "Monster satisfied", "The monster has had enough after ")
+	if not _check(shown.is_empty() and _str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the illustrated satisfaction card"):
 		return
 	if not _check(_str("dish_offered") == "", "an ended run is offered no dish"):
 		return
@@ -123,7 +124,7 @@ func _fallback_ending() -> void:
 	await _frames(30)
 	if not _check(_same_state(before), "no key changes an ended run"):
 		return
-	if not _check(not _target("party_interact").is_empty() and not _target("menu").is_empty() and _card_names_no_key(), "the ending card offers its skip and the main menu to a click, naming no key"):
+	if not _check(_target("party_interact").is_empty() and not _target("menu").is_empty(), "the ending card offers the main menu alone to a click, naming no key"):
 		return
 	if not await _until("the ending card times out", func() -> bool: return scene.screen_name() == "main", ENDING_CARD_FRAMES + CARD_FRAME_MARGIN):
 		return
@@ -444,12 +445,3 @@ func _card_names_no_key() -> bool:
 		if line.contains("E:") or line.contains("M:"):
 			keyed.append(line)
 	return lines.has(CARD_BUTTON) and keyed.is_empty()
-
-## Checks the ending texture path and words actually submitted by the HUD.
-func _check_ending_art(name: String, title: String) -> bool:
-	await _frames(2)
-	var path: String = "res://levels/monster_mouth_escape/art_hd/endings/%s.png" % name
-	var texture: Texture2D = scene.get_meta("ending_art", null)
-	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
-	var drawn_path: String = scene.get_meta("ending_image", "")
-	return drawn_path == path and texture != null and texture.resource_path == path and lines.has(title)

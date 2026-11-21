@@ -205,6 +205,15 @@ constexpr const char *CARD_BUTTON = "Skip     Main menu";
 constexpr const char *CARD_LEAVE = "Main menu";
 constexpr float CARD_BUTTON_X = 130.0F;
 constexpr float CARD_BUTTON_Y = 610.0F;
+/// The end screen: the picture scaled to the screen's width from the top, and
+/// a fixed band over its foot holding the title, the description and the way
+/// to the main menu.
+constexpr float END_BAND_Y = 534.0F;
+constexpr float END_TEXT_X = 85.0F;
+constexpr float END_RIGHT = 1216.0F;
+constexpr float END_BUTTON_Y = 614.0F;
+constexpr float END_BUTTON_HEIGHT = 48.0F;
+constexpr const char *END_LEAVE = "Main menu";
 /// The choice of players: a panel at the right of the title art, holding the
 /// heading, one row per entry and a hint line.
 constexpr float SETUP_PANEL_X = 740.0F;
@@ -888,6 +897,12 @@ void paint_tip(godot::Node2D &canvas, const rendering::Art &drawing,
   drawn.set("rect", *place);
   drawn.set("text", text);
   canvas.set_meta("hud_tip", drawn);
+}
+
+/// The end screen's Main menu button, at the band's right.
+godot::Rect2 end_button(const rendering::Art &drawing) {
+  const float width = button_width(drawing, END_LEAVE, INTERRUPTION_LINE_SIZE);
+  return rect(END_RIGHT - width, END_BUTTON_Y, width, END_BUTTON_HEIGHT);
 }
 
 /// The placeholder card's button, under its lines.
@@ -2223,11 +2238,11 @@ const char *ending_title(std::optional<survival::Ending> ending) {
   }
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
-    return "SATISFIED";
+    return "Monster satisfied";
   case survival::Ending::VomitedOut:
-    return "VOMITED OUT";
+    return "Vomited out";
   case survival::Ending::Escaped:
-    return "ESCAPED";
+    return "Escaped";
   }
   std::abort();
 }
@@ -2238,7 +2253,8 @@ String ending_line(std::optional<survival::Ending> ending, std::uint64_t days) {
   }
   switch (*ending) {
   case survival::Ending::MonsterSatisfied:
-    return "The monster was satisfied after " + number(days) + String(" days.");
+    return "The monster has had enough after " + number(days) +
+           String(" days. Your feeding is over.");
   case survival::Ending::VomitedOut:
     return "After " + number(days) +
            String(" days, the monster spat the party back into the night.");
@@ -2264,32 +2280,36 @@ const char *ending_image(std::optional<survival::Ending> ending) {
   std::abort();
 }
 
-/// The escape device in one teal colour on the dark stage, drawn in code until
-/// the ending's picture exists.
-void paint_device_silhouette(godot::Node2D &canvas) {
-  const auto teal = color(52, 196, 186, 1.0F);
-  canvas.draw_rect(rect(520.0F, 230.0F, 240.0F, 40.0F), teal);
-  canvas.draw_rect(rect(620.0F, 130.0F, 40.0F, 100.0F), teal);
-  canvas.draw_rect(rect(560.0F, 90.0F, 160.0F, 40.0F), teal);
-  canvas.draw_rect(rect(590.0F, 270.0F, 20.0F, 70.0F), teal);
-  canvas.draw_rect(rect(670.0F, 270.0F, 20.0F, 70.0F), teal);
-}
-
+/// Draws the ending's picture at the screen's width from the top, its aspect
+/// kept, and records where, so a check can read it. A missing picture aborts.
 void paint_ending_art(godot::Node2D &canvas, const char *path) {
-  if (!godot::ResourceLoader::get_singleton()->exists(path) &&
-      std::string_view(path).ends_with("/escaped.png")) {
-    paint_device_silhouette(canvas);
-    canvas.set_meta("ending_image", "");
-    return;
-  }
   const godot::Ref<godot::Texture2D> art =
       godot::ResourceLoader::get_singleton()->load(path);
   CRASH_COND_MSG(art.is_null(), "Ending art must load");
   // Keep the texture alive until Godot renders the canvas commands.
   canvas.set_meta("ending_art", art);
-  const auto screen = rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT);
-  canvas.draw_texture_rect(art, screen, false);
+  const auto size = art->get_size();
+  const auto area =
+      rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_WIDTH * size.y / size.x);
+  canvas.draw_texture_rect(art, area, false);
   canvas.set_meta("ending_image", path);
+  canvas.set_meta("ending_picture", area);
+}
+
+/// The band under the picture: a gold rule, the title on one line and the
+/// description under it, with the Main menu button at the right.
+void paint_end_band(godot::Node2D &canvas, const rendering::Art &drawing,
+                    const char *title, const String &line) {
+  const auto tones = rendering::palette();
+  canvas.draw_rect(
+      rect(0.0F, END_BAND_Y, SCREEN_WIDTH, SCREEN_HEIGHT - END_BAND_Y),
+      color(16, 14, 24, 1.0F));
+  canvas.draw_rect(rect(END_TEXT_X - 20.0F, 576.0F, 3.0F, 84.0F), tones.gold);
+  drawing.text(canvas, END_TEXT_X, 614.0F, title, 48, tones.white,
+               Weight::Bold);
+  drawing.text(canvas, END_TEXT_X, 650.0F, line, 24, tones.white);
+  paint_button(canvas, drawing, end_button(drawing), END_LEAVE,
+               INTERRUPTION_LINE_SIZE, false);
 }
 
 } // namespace
@@ -2305,51 +2325,35 @@ void paint_cinematic(godot::Node2D &canvas, const rendering::Art &drawing,
   const auto tones = rendering::palette();
   const auto &progression = frame.view.progression;
   drawing.shift(canvas, {});
-  if (cinematic == Cinematic::Intro) {
-    rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
-                           rendering::whole_scene());
-    drawing.shift(canvas, {});
-    canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
-                     color(14, 12, 26, 0.6F));
-    drawing.image(canvas, rendering::Image::ChefIdle,
-                  godot::Vector2(130.0F, 300.0F), 2.0F);
-    drawing.image(canvas, rendering::Image::AppraiserIdle,
-                  godot::Vector2(280.0F, 300.0F), 2.0F);
-  } else {
-    paint_ending_art(canvas, cinematic == Cinematic::Loss
-                                 ? "res://levels/monster_mouth_escape/art_hd/"
-                                   "endings/acid_failure.png"
-                                 : ending_image(progression.ending));
-    rendering::panel(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
+  if (cinematic == Cinematic::Ending) {
+    paint_ending_art(canvas, ending_image(progression.ending));
+    paint_end_band(canvas, drawing, ending_title(progression.ending),
+                   ending_line(progression.ending, progression.day - 1));
+    return;
   }
-  switch (cinematic) {
-  case Cinematic::Intro:
-    drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
-                 Weight::Bold);
-    drawing.text(canvas, 130.0F, 230.0F,
-                 "A monster ate the city. Keep it fed, and look for a way out.",
-                 24, tones.white);
-    break;
-  case Cinematic::Ending:
-    drawing.text(canvas, 130.0F, 492.0F, ending_title(progression.ending), 48,
-                 tones.gold, Weight::Bold);
-    drawing.text(canvas, 130.0F, 536.0F,
-                 ending_line(progression.ending, progression.day - 1), 24,
-                 tones.white);
-    break;
-  case Cinematic::Loss:
-    drawing.text(canvas, 130.0F, 492.0F, "DISSOLVED", 48, tones.success,
-                 Weight::Bold);
-    drawing.text(canvas, 130.0F, 536.0F,
-                 "The acid filled the monster's mouth after " +
-                     number(progression.day - 1) + String(" days."),
-                 24, tones.white);
-    break;
+  if (cinematic == Cinematic::Loss) {
+    paint_ending_art(canvas, "res://levels/monster_mouth_escape/art_hd/"
+                             "endings/acid_failure.png");
+    paint_end_band(canvas, drawing, "Dissolved",
+                   "The acid filled the monster's mouth after " +
+                       number(progression.day - 1) + String(" days."));
+    return;
   }
-  if (cinematic == Cinematic::Intro) {
-    drawing.text(canvas, 130.0F, 560.0F, "Placeholder card: no cinematic yet.",
-                 24, tones.muted);
-  }
+  rendering::paint_mouth(canvas, drawing, acid_ratio(frame),
+                         rendering::whole_scene());
+  drawing.shift(canvas, {});
+  canvas.draw_rect(rect(0.0F, 0.0F, SCREEN_WIDTH, SCREEN_HEIGHT),
+                   color(14, 12, 26, 0.6F));
+  drawing.image(canvas, rendering::Image::ChefIdle,
+                godot::Vector2(130.0F, 300.0F), 2.0F);
+  drawing.image(canvas, rendering::Image::AppraiserIdle,
+                godot::Vector2(280.0F, 300.0F), 2.0F);
+  rendering::panel(canvas, rect(100.0F, 440.0F, 1080.0F, 225.0F));
+  drawing.text(canvas, 130.0F, 170.0F, "SWALLOWED", 48, tones.white,
+               Weight::Bold);
+  drawing.text(canvas, 130.0F, 230.0F,
+               "A monster ate the city. Keep it fed, and look for a way out.",
+               24, tones.white);
   paint_button(canvas, drawing, card_button(drawing), CARD_BUTTON,
                INTERRUPTION_LINE_SIZE, false);
 }
@@ -2922,7 +2926,11 @@ std::vector<Target> survival_targets(const rendering::Art &drawing,
   return targets;
 }
 
-std::vector<Target> cinematic_targets(const rendering::Art &drawing) {
+std::vector<Target> cinematic_targets(const rendering::Art &drawing,
+                                      Cinematic cinematic) {
+  if (cinematic != Cinematic::Intro) {
+    return {{.area = end_button(drawing), .press = MenuKey::Menu}};
+  }
   const auto [skip, leave] =
       split_button(drawing, card_button(drawing), CARD_BUTTON, CARD_LEAVE,
                    INTERRUPTION_LINE_SIZE);
