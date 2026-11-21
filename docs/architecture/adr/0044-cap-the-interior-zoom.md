@@ -11,11 +11,12 @@ Supersedes the zoom range of the **Camera** decision in [ADR 0042](0042-explore-
 
 ## Decision
 
-The camera frames the bright floors together at the largest whole zoom from 1 to 3 at which they fit the play area, centred on them and kept to the building's sides. 3 is one and a half times the street's close zoom of 2, so a character is drawn at most one and a half times as tall inside any building as on the street, and as tall in every building whose lit floors fit at 3. Zoom stays a whole number. `rendering::inside_of` still frames the lit floors and `rendering::aim` chooses the zoom. Room art is neither redrawn nor stretched, and the area outside the room stays masked.
+The camera frames the bright floors together at the largest whole zoom from 1 to 3 at which they fit the play area, centred on them and kept to the building's sides. 3 is one and a half times the street's close zoom of 2, so a character is drawn at most one and a half times as tall inside any building as on the street, and as tall in every building whose lit floors fit at 3. The lit floors stay centred on the play area at that zoom, so a room smaller than the screen sits in the middle of it with the masked dark evenly around it, not in a corner. Zoom stays a whole number. `rendering::inside_of` still frames the lit floors and `rendering::aim` chooses the zoom. Room art is neither redrawn nor stretched, and the area outside the room stays masked.
 
 ## Consequences
 
 - A small shop's room fills less of the play area (576 of 1280 units wide for the kitchen), with the masked dark around it; characters stay the size they are in the next room.
+- `--interior-zoom` also fails when a building's lit rooms are centred more than one cell (32 layout units) from the middle of the play area.
 - Two lit floors that fit only at zoom 2 are drawn at 2, still within the cap but smaller than a single room.
 - `StairsCheck -- --interior-zoom` runs headless in `make test-survival`: it reads the zoom the camera chooses on the street and in each building and fails when a building exceeds 1.5 times the street's or two buildings differ.
 
