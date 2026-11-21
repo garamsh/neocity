@@ -2219,14 +2219,14 @@
         1920,
         1080
       ],
-      "issue": 274,
-      "role": "Toxic Night kitchen without characters, crane or interface",
-      "sha256": "d6bdd631d52b14fd2ac5d89edbc5f23946884fc87f785c9685fb63594004502e",
-      "source": "docs/art/production/toxic-night-screens/base-source.png",
-      "source_sha256": "306620f3f12f092009de1a2dd34fd7bf47b28f7bc94901c671ecb32a67aa4041",
-      "crop": null,
-      "resize": "nearest 1920x1024; dark bottom padding to 1920x1080",
-      "provenance": "docs/art/production/toxic-night-screens/provenance.txt"
+      "issue": 268,
+      "role": "Shelter under the teeth; no characters, foreground counter or crane",
+      "source": "docs/art/production/base-shelter-268/background-source.png",
+      "source_sha256": "fe8a0a5650428968832491fef00b43b5937dbecaae61453c36e3995fed46948a",
+      "sha256": "3615d4bcb073843908c3f22231d93fe4f46835c87f0f6c8142702184d14c2baf",
+      "export": "python3 docs/art/production/base-shelter-268/export.py",
+      "retouch": "nearest 1920x1104; crop bottom 24px to align the runtime floor without padding",
+      "provenance": "docs/art/production/base-shelter-268/README.md"
     },
     {
       "path": "world/interior_service.png",
@@ -2276,15 +2276,61 @@
       "path": "base/feed_crane.png",
       "size": [
         660,
-        224
+        642
       ],
-      "role": "Corroded feeding crane; engine placement pending, not drawn by this PR",
-      "issue": 262,
-      "source": "docs/art/production/art-polish-262/crane-source.png",
-      "source_sha256": "5c5c6f7859e1bce9ebf773ac6be1c7a1e7d6874a1c27281ea47700c56c2bfd37",
-      "sha256": "8872fa60dcf27a0345506171d1b01aa61c9fc832c189e0a7bb03490ff8aaca2f",
-      "export": "python3 tools/art/toxic_night.py",
-      "retouch": "nearest 660x224; binary alpha"
+      "issue": 268,
+      "role": "Fixed hoist and mast; canvas placement 1240,150; engine connection pending",
+      "source": "docs/art/production/base-shelter-268/crane-source.png",
+      "source_sha256": "bebaa514fc4f447a211b925fd50a4eb45788d24136d00840780071ad355fe3d5",
+      "sha256": "68b742e727ff1283ce3bffe2a1836d4dfd9058997ebd569f2ba0ac3b920657cb",
+      "export": "python3 docs/art/production/base-shelter-268/export.py",
+      "retouch": "nearest 660x642; binary alpha; remove moving cable and cradle region",
+      "provenance": "docs/art/production/base-shelter-268/README.md"
+    },
+    {
+      "path": "base/kitchen_front.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "issue": 268,
+      "role": "Transparent near workbenches, produce crates and platform fascia; draw after actors",
+      "source": "docs/art/production/base-shelter-268/front-source.png",
+      "source_sha256": "c3a775cb156607827363420c12e824eab0b65dc5850d768488d6f2cb87ec12e0",
+      "sha256": "2f9acb63307e5e1cc2fd22d8811b7d55c11e914a9a0cc387acc8eaba5ddd22e2",
+      "export": "python3 docs/art/production/base-shelter-268/export.py",
+      "retouch": "binary alpha; two nearest crops align worktop and fascia to the 792px floor",
+      "provenance": "docs/art/production/base-shelter-268/README.md"
+    },
+    {
+      "path": "base/feed_crane_cable.png",
+      "size": [
+        32,
+        230
+      ],
+      "issue": 268,
+      "role": "Vertical cable; extend downward from canvas 1650,275 to cradle ring",
+      "source": "docs/art/production/base-shelter-268/crane-source.png",
+      "source_sha256": "bebaa514fc4f447a211b925fd50a4eb45788d24136d00840780071ad355fe3d5",
+      "sha256": "337a475d7046618ec4493103be57d9b7aa1fe38f672956fc49c852d5110f8dcf",
+      "export": "python3 docs/art/production/base-shelter-268/export.py",
+      "retouch": "nearest 660x642; binary alpha; cable crop 410,125,442,355",
+      "provenance": "docs/art/production/base-shelter-268/README.md"
+    },
+    {
+      "path": "base/feed_crane_cradle.png",
+      "size": [
+        280,
+        220
+      ],
+      "issue": 268,
+      "role": "Empty triangular cradle; rest canvas placement 1530,505; translate on feeding",
+      "source": "docs/art/production/base-shelter-268/crane-source.png",
+      "source_sha256": "bebaa514fc4f447a211b925fd50a4eb45788d24136d00840780071ad355fe3d5",
+      "sha256": "7b4822824247034221234cdfc4f7369e23ad87d7437577702ef40d45da1b8031",
+      "export": "python3 docs/art/production/base-shelter-268/export.py",
+      "retouch": "nearest 660x642; binary alpha; cradle crop 290,355,570,575",
+      "provenance": "docs/art/production/base-shelter-268/README.md"
     }
   ],
   "system_assets": {
