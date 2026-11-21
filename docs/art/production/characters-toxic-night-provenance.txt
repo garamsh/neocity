@@ -1,0 +1,79 @@
+Provenance and export instructions for the Toxic Night character redraw in issue #269.
+
+Task: https://github.com/garamsh/neocity/issues/269
+Direction and creative authority: https://github.com/garamsh/neocity/issues/268
+Base: garamsh/neocity at fc43577baa32db564805dd482ab04f29fa90a4f5.
+Generated: 2026-11-18, Codex built-in ImageGen, two calls.
+Status: candidate character exports implementing the selected direction;
+the user retains creative acceptance. Preview boards are not runtime captures.
+
+Identity references
+- Chef: docs/art/concept-art/characters/chef-sheet-v1.png.
+- Appraiser: docs/art/concept-art/characters/detective-sheet-v1.png.
+- Both calls also received the original game concept, extracted with:
+  git show 241124d5ba2dcef937c904623f1e5e3cb03fbcf5:docs/art/concept-art/monster-mouth-escape/concept-v1.png
+  Its byte-identical repository copy is concept-art/toxic-night/original-concept-v1.png.
+- The prompts explicitly reject the old in-game sprites as wrong identity
+  references. No old runtime pixels were used to generate or export new frames.
+- Chef: broad stocky middle-aged man, heavy jaw/cheeks, staring eyes, manic
+  grin, yellow skin and green hair. Appraiser: hulking stooped man, long heavy
+  arms, green skin, bolts, X eye, cyan magnifier, dark suit and magenta lapels.
+
+Generation record
+- Exact submitted prompts and reference roles: characters-toxic-night-prompts.json.
+- Original returned 1536x1024 RGBA files, retained byte-for-byte:
+  characters-toxic-night-chef-source.png
+  characters-toxic-night-appraiser-source.png
+- transparent_background=true on both calls. Model identifier, seed and
+  quality setting were not exposed and are not inferred.
+- No paid-credit service, API fallback or external image host was used.
+
+Reproduction
+- Export tool: tools/art/characters_toxic_night.py (requires Pillow).
+- Local environment creation and dependency install:
+  UV_CACHE_DIR=/tmp/w269-uv-cache uv venv /tmp/w269-venv
+  UV_CACHE_DIR=/tmp/w269-uv-cache uv pip install --python /tmp/w269-venv/bin/python pillow==13.0.0
+- Export, cut, resample, manifest and comparison command:
+  /tmp/w269-venv/bin/python tools/art/characters_toxic_night.py
+- The script records each source crop, source silhouette bounds, scale,
+  placement, source digest and output digest in characters/manifest.json.
+- Four columns, three rows. Pose order: idle, walk_1 through walk_4,
+  run_1, run_2, jump, fall, land, climb; last cell unused.
+- Threshold alpha at 128; keep the largest four-connected silhouette to
+  remove detached generation debris. For the appraiser, erode the binary
+  silhouette by one source pixel to remove the white matte fringe.
+- Chef rows use y ranges [0,335), [342,674), [675,1024) to keep the climbing
+  hat complete and avoid borrowing it into run_2. Appraiser row boundaries
+  are 0,341,682,1024. Horizontal cells are 384 source pixels wide.
+- Each actor uses one scale from idle silhouette height: chef 172 pixels,
+  appraiser 166 pixels. Each pose is cropped to its own silhouette and
+  resampled once with nearest sampling, then horizontally centered at x=128.
+- Preserve 256x224 canvas, pivot [128,204], virtual baseline y=204, filenames
+  and all 22 import identities. Grounded silhouette ends at exclusive row 204,
+  jump at 186, fall at 196. All alpha values after export are 0 or 255.
+- New source/output digests and measured visible bounds replace old entries
+  in the existing character manifest; the environment manifest is untouched.
+
+Inspection and evidence
+- Opened both original sheets, original game concept, both generated source
+  sheets on a flat background, both exported idles, and both full motion strips.
+- characters-toxic-night-comparison.png: original sheet main figure, first
+  concept crop, new idle at nearest 2x and replaced idle at 1x. Pixel heights
+  are labeled. Old idles are read from the base revision above.
+- characters-toxic-night-{chef,appraiser}-motion.png: 11 adjacent 256x224 cells,
+  native pixels, dark background; pose order as above. These are asset previews.
+- The appraiser is now nearly the chef's hat-inclusive height, rather than
+  the old 108-pixel small companion. Chef retains spatula, coat and grin;
+  appraiser retains lens, bolts, X and two arms including the climbing pose.
+- Generated pose details vary slightly (hat tilt, fingers, coat buttons and
+  facial contour); common scale does not guarantee rigid frame-to-frame shapes.
+- This task does not establish runtime animation timing, overlap with HUD
+  or scenery, two-player framing, base portrait readability or final approval.
+  Those remain bundle runtime review work. No new animation states are added.
+
+Direction mockups
+- concept-art/toxic-night/f-{street,building,base}.png are byte copies of the
+  final supplied PM scratch images. Their source paths and digests are recorded
+  in concept-art/toxic-night/provenance.json. No scratch source was modified.
+- The mockups set Toxic Night's environment/light direction; original sheets
+  and the first game concept control character identity when they differ.

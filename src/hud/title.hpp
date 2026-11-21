@@ -42,10 +42,14 @@ void paint_title(godot::Node2D &canvas, const rendering::Art &drawing,
 /// Draws the title picture across the whole screen, under a dark `veil` of
 /// 0 to 1 that lets a page's panels stand out on it.
 void paint_title_art(godot::Node2D &canvas, float veil);
+/// Draws an HD asset into its layout area and retains it through the frame.
+void paint_hd_art(godot::Node2D &canvas, const godot::String &path,
+                  godot::Rect2 area);
 /// Draws a riveted dark metal panel with worn edges and a magenta drip at its
 /// top right, filling `area`, the way the UI kit's panels are.
 void kit_panel(godot::Node2D &canvas, godot::Rect2 area);
-/// Draws a dark metal button filling `area`, or the gold one when `selected`.
+/// Draws a dark metal button filling `area`, or the acid-green one when
+/// `selected`.
 void kit_button(godot::Node2D &canvas, godot::Rect2 area, bool selected);
 
 } // namespace neocity::hud
