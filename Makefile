@@ -5,7 +5,7 @@ PYTHON ?= python3
 # The Godot checks play an 18 second day with no base clock and instant cooking
 # (src/session/survival_run.cpp reads these); `run` gets none, so a run played
 # by hand has 5 minutes of each and a cook of seconds.
-GODOT_CHECKS := test-startup test-title test-timing test-survival test-escape test-endings test-loss test-audio
+GODOT_CHECKS := test-startup test-title test-timing test-survival test-escape-route test-escape-cinematics test-balance test-endings test-loss test-audio
 $(GODOT_CHECKS): export NEOCITY_EXPLORATION_SECONDS := 18
 $(GODOT_CHECKS): export NEOCITY_BASE_SECONDS := 0
 $(GODOT_CHECKS): export NEOCITY_COOK_SECONDS := 0
@@ -41,7 +41,7 @@ ifeq ($(shell uname -s),Darwin)
 CLANG_TIDY_FLAGS += --extra-arg=-isysroot$(shell xcrun --show-sdk-path)
 endif
 
-.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-endings test-loss test-audio ci run
+.PHONY: lint format build test test-unit test-startup test-title test-timing test-survival test-escape test-escape-route test-escape-cinematics test-balance test-endings test-loss test-audio ci run
 
 $(TOOLS_STAMP): Makefile
 	$(PYTHON) -m venv $(TOOLS)
@@ -177,10 +177,13 @@ test-survival: build
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop InteriorCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Interior: finished: pass; 0 failures [].' "$$log"
 
-test-escape: build
+# Each part plays at least one whole run to its end, so CI runs each in a job of its own.
+test-escape: test-escape-route test-escape-cinematics test-balance
+
+test-escape-route: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
-	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape: 31 live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).' "$$log"
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 -- route > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape route: 12 live checks passed (fallback, input block, days, ending).' "$$log"
 
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 5 > "$$log" 2>&1; status=$$?; \
@@ -190,18 +193,24 @@ test-escape: build
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck -- real-clock > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape real frames: 4 live checks passed.' "$$log"
 
-# SurvivalBalanceCheck follows only the NEXT line on three fixed seeds, headless, to the ending each
-# is recorded to reach (docs/architecture/survival.md, Ending values), so a rebalance that moves a
-# seed's ending fails here by name. It runs in this target because the CI jobs name their targets.
-	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
-	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalBalanceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Balance: finished: pass; seed 1 monster_satisfied on day 10, seed 26 vomited_out on day 31, seed 81 acid loss on day 31.' "$$log"
-
 # EscapeDeviceCheck walks both humans to the broken device on real keys, collects its three parts and uses
 # it, headless. The finished line names the day the run ended on, so the check reads its verdict.
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop EscapeDeviceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
 	cat "$$log"; test "$$status" -eq 0 && grep -Eq '^Escape device: finished: pass; the run ended as escaped on day [0-9]+ with 3 parts\.' "$$log"
+
+test-escape-cinematics: build
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalEscapeCheck --fixed-fps 60 -- cinematics > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Escape cinematics: 20 live checks passed (scene, skip, broken assets, click, menu, instant finish).' "$$log"
+
+# SurvivalBalanceCheck follows only the NEXT line on three fixed seeds, headless, to the ending each
+# is recorded to reach (docs/architecture/survival.md, Ending values), so a rebalance that moves a
+# seed's ending fails here by name.
+test-balance: build
+	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
+	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalBalanceCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Balance: finished: pass; seed 1 monster_satisfied on day 10, seed 26 vomited_out on day 31, seed 81 acid loss on day 31.' "$$log"
 
 # SurvivalEndingsCheck follows NEXT through thirty days to the vomited-out screen, so it has its own target
 # and its own time budget.
