@@ -129,11 +129,6 @@ constexpr const char *NEXT_DISH = "NEXT DISH";
 constexpr const char *NO_DISH_OFFERED = "No dish";
 constexpr const char *NOTHING_TO_APPRAISE = "Nothing to appraise.";
 constexpr const char *AI_APPRAISES = "The AI appraiser works here.";
-/// Where the chef stands in the kitchen art, as a target of its own.
-constexpr float CHEF_AREA_X = 536.0F;
-constexpr float CHEF_AREA_Y = 280.0F;
-constexpr float CHEF_AREA_WIDTH = 110.0F;
-constexpr float CHEF_AREA_HEIGHT = 170.0F;
 /// A transfer screen: slots in rows of eight under a title, the container's
 /// (or the fridge's) over the actor's own.
 constexpr float SLOT = 58.0F;
@@ -143,7 +138,8 @@ constexpr float TRANSFER_WIDTH =
     static_cast<float>(SLOT_COLUMNS) * SLOT_PITCH - 2.0F + 2.0F * INSET;
 constexpr float TRANSFER_Y = 116.0F;
 constexpr float DECK_INNER = COOK_WIDTH - 2.0F * DECK_PAD;
-/// The day's result occupies the header, above the kitchen and its workers.
+/// The day's result is a card under the tip, sized to its longest line up to
+/// this width and clear of the kitchen's workers.
 constexpr float RESULT_WIDTH = 800.0F;
 constexpr float RESULT_X = APPRAISE_X;
 constexpr float RESULT_TOP = 162.0F;
@@ -214,6 +210,9 @@ constexpr float CARD_BUTTON_Y = 610.0F;
 /// to the main menu.
 constexpr float END_BAND_Y = 534.0F;
 constexpr float END_TEXT_X = 85.0F;
+/// The outcome title, as large as the picked mockup's.
+constexpr int END_TITLE_SIZE = 8 * rendering::TYPE_UNIT;
+constexpr float END_TITLE_BASELINE = 622.0F;
 constexpr float END_RIGHT = 1216.0F;
 constexpr float END_BUTTON_Y = 614.0F;
 constexpr float END_BUTTON_HEIGHT = 48.0F;
@@ -436,7 +435,8 @@ void paint_button(godot::Node2D &canvas, const rendering::Art &drawing,
 /// How wide a button must be to hold `text` at `size`.
 float button_width(const rendering::Art &drawing, const String &text,
                    int size) {
-  return drawing.text_width(text, size, CHANGING) + 2.0F * BUTTON_PAD;
+  return drawing.text_width(text, size, CHANGING) + 2.0F * BUTTON_PAD +
+         rendering::ARROW_ROOM;
 }
 
 /// How far below its place the panel `name` still is as it comes in; its
@@ -1588,9 +1588,10 @@ void paint_feed(godot::Node2D &canvas, const rendering::Art &drawing,
     rendering::card(canvas, serve, rendering::State::Default);
   }
   const auto words = static_cast<float>(DECK_TITLE_SIZE);
+  const float arrow = ready ? rendering::ARROW_ROOM : 0.0F;
   drawing.text(canvas,
                serve.position.x +
-                   (serve.size.x -
+                   (serve.size.x - arrow -
                     drawing.text_width(SERVE, DECK_TITLE_SIZE, Weight::Bold)) /
                        2.0F,
                serve.position.y + (serve.size.y + words * CAP_HEIGHT) / 2.0F,
@@ -1612,9 +1613,15 @@ void paint_day_result(godot::Node2D &canvas, const rendering::Art &drawing,
   const float height =
       RESULT_LINE_HEIGHT * static_cast<float>(lines.size()) + 18.0F;
   const float top = RESULT_TOP;
-  const auto area = rect(RESULT_X, top, RESULT_WIDTH, height);
+  float widest = 0.0F;
+  for (const auto &line : lines) {
+    widest = std::max(widest, drawing.text_width(line, RESULT_SIZE, CHANGING));
+  }
+  const auto area = rect(RESULT_X, top,
+                         std::min(RESULT_WIDTH, widest + 2.0F * INSET), height);
   rendering::plate(canvas, area);
   cover(canvas, area);
+  canvas.set_meta("day_result", area);
   float y = top + 10.0F + static_cast<float>(RESULT_SIZE);
   bool headline = true;
   for (const auto &line : lines) {
@@ -1750,6 +1757,17 @@ constexpr std::array BASE_LAYERS{
               .stretches = 0.0F,
               .crane = false},
 };
+
+/// Where `BASE_LAYERS` draws the layer called `name` at rest, in layout
+/// units; a worker's click target is this area.
+godot::Rect2 base_layer_area(std::string_view name) {
+  const auto *const layer = std::ranges::find_if(
+      BASE_LAYERS, [name](const BaseLayer &each) { return each.name == name; });
+  if (layer == BASE_LAYERS.end()) {
+    std::abort();
+  }
+  return {layer->at / rendering::ART_SCALE, layer->size / rendering::ART_SCALE};
+}
 
 /// Draws the base scene beneath its interface: every layer of `BASE_LAYERS` in
 /// order, moved and stretched by how far the feed has lowered the crane.
@@ -2273,6 +2291,7 @@ void paint_survival(godot::Node2D &canvas, const rendering::Art &drawing,
                     std::optional<Tip> tip) {
   canvas.set_meta("hud_panels", godot::Array());
   canvas.set_meta("interface_stamps", godot::Array());
+  canvas.set_meta("day_result", godot::Rect2());
   drawing.shift(canvas, {});
   const bool city = frame.view.progression.phase == Phase::Exploration;
   if (city) {
@@ -2431,11 +2450,15 @@ void paint_end_band(godot::Node2D &canvas, const rendering::Art &drawing,
   const String words(title);
   const auto last = words.rfind(" ") + 1;
   const String lead = words.substr(0, last);
-  drawing.text(canvas, END_TEXT_X, 614.0F, lead, 48, tones.white,
-               Weight::Title);
-  drawing.text(canvas, END_TEXT_X + drawing.text_width(lead, 48, Weight::Title),
-               614.0F, words.substr(last), 48, tones.lime, Weight::Title);
-  drawing.text(canvas, END_TEXT_X, 650.0F, line, 24, tones.white);
+  drawing.text(canvas, END_TEXT_X, END_TITLE_BASELINE, lead, END_TITLE_SIZE,
+               tones.white, Weight::Title);
+  drawing.text(canvas,
+               END_TEXT_X +
+                   drawing.text_width(lead, END_TITLE_SIZE, Weight::Title),
+               END_TITLE_BASELINE, words.substr(last), END_TITLE_SIZE,
+               tones.lime, Weight::Title);
+  drawing.text(canvas, END_TEXT_X, END_TITLE_BASELINE + 40.0F, line, 24,
+               tones.white);
   paint_button(canvas, drawing, end_button(drawing), END_LEAVE,
                INTERRUPTION_LINE_SIZE, false);
 }
@@ -2780,7 +2803,7 @@ std::vector<survival::ObjectId> out_of_reach(const SurvivalFrame &frame) {
 
 std::vector<FittedText> changing_text(const SurvivalFrame &frame) {
   // Words on a button stay inside its padding.
-  const float padding = 2.0F * BUTTON_PAD;
+  const float padding = 2.0F * BUTTON_PAD + rendering::ARROW_ROOM;
   const float goal_inner = GOAL_WIDTH - 2.0F * GOAL_PAD;
   const auto places = named_once(frame);
   std::vector<FittedText> lines;
@@ -2989,29 +3012,33 @@ void workshop_targets(std::vector<Target> &targets,
       refusal = "No dish can be cooked now.";
     }
     targets.push_back(
-        {.area =
-             rect(CHEF_AREA_X, CHEF_AREA_Y, CHEF_AREA_WIDTH, CHEF_AREA_HEIGHT),
+        {.area = base_layer_area("chef"),
          .press = PlayerPress{.actor = Actor::Chef, .key = PlayerKey::Interact},
          .refusal = refusal});
   }
   const auto unknown = unidentified(frame).size();
+  const bool human =
+      survival::key_set(frame.control, Actor::Appraiser).has_value();
+  const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
+  String refusal;
+  if (unknown > 0 && !human) {
+    refusal = AI_APPRAISES;
+  } else if (unknown > 0 && frame.screens.at(index_of(Actor::Appraiser)).open) {
+    refusal = CLOSE_FIRST;
+  } else if (unknown == 0 || !offer ||
+             !std::holds_alternative<survival::Appraise>(*offer)) {
+    refusal = "Nothing to appraise now.";
+  }
+  const PlayerPress appraise{.actor = Actor::Appraiser,
+                             .key = PlayerKey::Interact};
   if (unknown > 0) {
-    const bool human =
-        survival::key_set(frame.control, Actor::Appraiser).has_value();
-    const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
-    String refusal;
-    if (!human) {
-      refusal = AI_APPRAISES;
-    } else if (frame.screens.at(index_of(Actor::Appraiser)).open) {
-      refusal = CLOSE_FIRST;
-    } else if (!offer || !std::holds_alternative<survival::Appraise>(*offer)) {
-      refusal = "Nothing to appraise now.";
-    }
     targets.push_back({.area = appraisal_area(drawing, unknown),
-                       .press = PlayerPress{.actor = Actor::Appraiser,
-                                            .key = PlayerKey::Interact},
+                       .press = appraise,
                        .refusal = refusal});
   }
+  targets.push_back({.area = base_layer_area("appraiser"),
+                     .press = appraise,
+                     .refusal = refusal});
   // The prompts of a human at base open the fridge, or close the screen.
   city_targets(targets, drawing, frame);
 }

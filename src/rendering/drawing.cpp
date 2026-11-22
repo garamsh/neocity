@@ -37,13 +37,26 @@ constexpr std::uint64_t ENTRANCE_MICROSECONDS = 220000;
 constexpr std::array<const char *, 3> FACES{"body.tres", "strong.tres",
                                             "title.tres"};
 
-/// How far each state's shadow falls down and to the right.
-constexpr float SHADOW = 3.0F;
+/// How far a focused or resting main control's shadow falls down and to the
+/// right: 7.5 pixels at 1080p.
+constexpr float SHADOW = 5.0F;
 constexpr float RADIUS = 8.0F;
 constexpr float RING = 2.0F;
 
+/// The glyph a stamped control carries in ink at its right end.
+enum class Mark : std::uint8_t { None, Arrow, Chevron };
+
+/// The narrowest card that carries its chevron; narrower ones are slots.
+constexpr float CHEVRON_MIN_WIDTH = 120.0F;
+constexpr float MARK_INSET = 14.0F;
+constexpr float ARROW_LENGTH = 14.0F;
+constexpr float ARROW_HEAD = 4.0F;
+constexpr float CHEVRON_REACH = 16.0F;
+constexpr float CHEVRON_DEPTH = 5.0F;
+constexpr float MARK_WIDTH = 2.0F;
+
 /// How a stamped control is drawn in one state: a shadow, a ring outside it,
-/// an edge and a fill.
+/// an edge, a fill and the mark at its right end.
 struct Stamp {
   godot::Color shadow;
   float shadow_offset = 0.0F;
@@ -52,12 +65,40 @@ struct Stamp {
   godot::Color fill;
   /// How far the control has dropped.
   float drop = 0.0F;
+  Mark mark = Mark::None;
 };
+
+/// Draws `mark` in `ink` at the right end of `area`.
+void marked(godot::Node2D &canvas, godot::Rect2 area, Mark mark,
+            godot::Color ink) {
+  const float middle = area.position.y + area.size.y / 2.0F;
+  godot::PackedVector2Array head;
+  if (mark == Mark::Arrow) {
+    const float end = area.get_end().x - MARK_INSET;
+    canvas.draw_line({end - ARROW_LENGTH, middle}, {end, middle}, ink,
+                     MARK_WIDTH);
+    head.push_back({end - ARROW_HEAD, middle - ARROW_HEAD});
+    head.push_back({end, middle});
+    head.push_back({end - ARROW_HEAD, middle + ARROW_HEAD});
+  } else if (mark == Mark::Chevron) {
+    const float x = area.get_end().x - CHEVRON_REACH - CHEVRON_DEPTH;
+    head.push_back({x, middle - CHEVRON_DEPTH * 1.4F});
+    head.push_back({x + CHEVRON_DEPTH, middle});
+    head.push_back({x, middle + CHEVRON_DEPTH * 1.4F});
+  }
+  if (!head.is_empty()) {
+    canvas.draw_polyline(head, ink, MARK_WIDTH);
+  }
+}
 
 /// Draws a control filling `area` as `stamp` says, and notes it in the canvas's
 /// `interface_stamps` for the checks that read the screen.
 void stamped(godot::Node2D &canvas, const char *kind, State state,
              godot::Rect2 area, const Stamp &stamp) {
+  const Mark mark =
+      stamp.mark == Mark::Chevron && area.size.x < CHEVRON_MIN_WIDTH
+          ? Mark::None
+          : stamp.mark;
   godot::Array noted = canvas.get_meta("interface_stamps", godot::Array());
   godot::Dictionary entry;
   entry.set("kind", kind);
@@ -65,6 +106,7 @@ void stamped(godot::Node2D &canvas, const char *kind, State state,
   entry.set("fill", stamp.fill);
   entry.set("shadow_offset", stamp.shadow_offset);
   entry.set("drop", stamp.drop);
+  entry.set("mark", static_cast<int>(mark));
   noted.push_back(entry);
   canvas.set_meta("interface_stamps", noted);
   area.position.y += stamp.drop;
@@ -76,6 +118,7 @@ void stamped(godot::Node2D &canvas, const char *kind, State state,
   rounded(canvas, area.grow(RING), RADIUS + RING, stamp.ring);
   rounded(canvas, area, RADIUS, stamp.edge);
   rounded(canvas, area.grow(-RING), RADIUS - RING, stamp.fill);
+  marked(canvas, area, mark, palette().ink);
 }
 
 constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
@@ -465,6 +508,12 @@ void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
   canvas.draw_colored_polygon(rounded_outline(area, radius), fill);
 }
 
+void hover(godot::Node2D &canvas, godot::Rect2 area) {
+  auto outline = rounded_outline(area.grow(RING), RADIUS + RING);
+  outline.push_back(outline.get(0));
+  canvas.draw_polyline(outline, palette().lime, RING);
+}
+
 State stand(const godot::Node2D &canvas, godot::Rect2 area, bool focused) {
   const bool held = godot::Input::get_singleton()->is_mouse_button_pressed(
       godot::MOUSE_BUTTON_LEFT);
@@ -488,13 +537,15 @@ void card(godot::Node2D &canvas, godot::Rect2 area, State state) {
        .ring = tones.white,
        .edge = tones.outline,
        .fill = tones.lime,
-       .drop = 0.0F},
+       .drop = 0.0F,
+       .mark = Mark::Chevron},
       {.shadow = tones.magenta,
        .shadow_offset = 1.0F,
        .ring = tones.lime_pressed,
        .edge = tones.lime_pressed,
        .fill = tones.lime_pressed,
-       .drop = PRESS_DROP},
+       .drop = PRESS_DROP,
+       .mark = Mark::Chevron},
   }};
   stamped(canvas, "card", state, area.grow(-RING),
           stamps.at(static_cast<std::size_t>(state)));
@@ -508,19 +559,22 @@ void button(godot::Node2D &canvas, godot::Rect2 area, State state) {
        .ring = tones.outline,
        .edge = tones.lime,
        .fill = tones.lime,
-       .drop = 0.0F},
+       .drop = 0.0F,
+       .mark = Mark::Arrow},
       {.shadow = tones.magenta,
        .shadow_offset = SHADOW,
        .ring = tones.white,
        .edge = tones.outline,
        .fill = tones.lime,
-       .drop = 0.0F},
+       .drop = 0.0F,
+       .mark = Mark::Arrow},
       {.shadow = tones.magenta,
        .shadow_offset = 1.0F,
        .ring = tones.outline,
        .edge = tones.lime_pressed,
        .fill = tones.lime_pressed,
-       .drop = PRESS_DROP},
+       .drop = PRESS_DROP,
+       .mark = Mark::Arrow},
   }};
   stamped(canvas, "button", state, area.grow(-RING),
           stamps.at(static_cast<std::size_t>(state)));

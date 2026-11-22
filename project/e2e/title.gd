@@ -10,6 +10,10 @@ extends SceneTree
 ## How long, in milliseconds of the real clock, a panel takes to rise into
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
 const ENTRANCE_MS: int = 300
+## The marks a stamp notes, in the order of the C++ `Mark`.
+const MARK_NONE: int = 0
+const MARK_ARROW: int = 1
+const MARK_CHEVRON: int = 2
 ## A word of each concept the How to play page explains, in its order: set
 ## out, move, collect, appraise, cook, feed, a hated dish, acid,
 ## and the ending.
@@ -72,6 +76,8 @@ func _title_draws_the_kit() -> bool:
 		return false
 	if not _check(_frames_of("selected") == [entries[0]] and await _stamps_tell_the_states(), "the lime card stands on New game and is stamped differently from the idle cards: %s" % [_frames_of("selected")]):
 		return false
+	if not _check(_mark("card", 1) == MARK_CHEVRON and _mark("card", 0) == MARK_NONE, "the focused card draws the chevron and an idle card draws none: %s against %s" % [_stamp("card", 1), _stamp("card", 0)]):
+		return false
 	await _tap(KEY_W)
 	OS.delay_msec(ENTRANCE_MS)
 	await _frames(2)
@@ -82,6 +88,8 @@ func _title_draws_the_kit() -> bool:
 	var page: Array[Rect2] = _frames_of("panel")
 	var way_back: Rect2 = _target("menu")["rect"]
 	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no lime card: %s" % [page]):
+		return false
+	if not _check(_mark("button", 0) == MARK_ARROW, "the main button draws its arrow: %s" % [_stamp("button", 0)]):
 		return false
 	await _tap(KEY_ESCAPE)
 	return _check(scene.screen_name() == "main", "setup: the title is back with the cursor on New game")
@@ -117,6 +125,10 @@ func _stamps_tell_the_states() -> bool:
 	await _tap(KEY_ESCAPE)
 	control = control and scene.screen_name() == "main"
 	return control and not pressed.is_empty() and pressed["drop"] > 0.0 and pressed["shadow_offset"] < focus["shadow_offset"] and pressed["fill"] != focus["fill"]
+
+## The mark of the first stamp of `kind` in `state`, or -1 for none noted.
+func _mark(kind: String, state: int) -> int:
+	return _stamp(kind, state).get("mark", -1)
 
 ## The first stamp of `kind` in `state` the last frame noted, or empty.
 func _stamp(kind: String, state: int) -> Dictionary:

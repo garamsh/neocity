@@ -98,6 +98,8 @@ const VOLUME_NAME_OFFSET: float = 200.0
 ## The screen's middle height: the kitchen's people stand above it and the
 ## deck's panels sit below it.
 const SCREEN_MIDDLE: float = 360.0
+## Where the base's deck of plates begins, in layout units.
+const DECK_TOP: float = 556.0
 ## What the chef says at base while the inventory is open: the screen takes the
 ## interact key, so cooking waits for it to close.
 const CLOSE_FIRST: String = "Close the inventory first."
@@ -295,7 +297,7 @@ func _a_refused_click_presses_nothing() -> bool:
 
 ## A click on the chef standing in the kitchen cooks the offered dish, as E does.
 func _a_click_on_the_chef_cooks() -> bool:
-	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
+	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP)
 	if not _check(not chef.is_empty() and str(chef["refusal"]) == "" and _str("dish_offered") != "", "setup: the chef in the kitchen can cook: %s" % [_base_state()]):
 		return false
 	var chosen: String = _str("dish_offered")
@@ -986,8 +988,25 @@ func _base_figures_drawn() -> bool:
 		var figure: Rect2 = layers[worker]["area"]
 		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
 			return false
+	if not _workers_are_clickable_where_drawn(layers):
+		return false
 	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
 	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
+
+
+## Whether a click target of each worker lies inside, or equals, the area of
+## the layer that draws that worker, so the click lands on the figure.
+func _workers_are_clickable_where_drawn(layers: Dictionary) -> bool:
+	for worker: String in ["chef", "appraiser"]:
+		var figure: Rect2 = _layer_area(layers, worker)
+		var found: bool = false
+		for shown: Dictionary in scene.get_meta("pointer_targets", []):
+			var area: Rect2 = shown["rect"]
+			if shown["press"] == worker + "_interact" and figure.encloses(area):
+				found = true
+		if not _check(found and figure.size.y > 100.0, "a click target of the %s lies inside its drawn area %s" % [worker, figure]):
+			return false
+	return true
 
 
 ## The base scene's layers as the last frame drew them: name to its draw order
@@ -1018,6 +1037,21 @@ func _base_layers_hold(rest: Dictionary, lowered: Dictionary) -> bool:
 	var fixed: bool = _layer_area(lowered, "mast") == _layer_area(rest, "mast") and _layer_area(lowered, "cable").position == _layer_area(rest, "cable").position
 	var follows: bool = (lowered.has("dish") and is_equal_approx(_layer_area(lowered, "dish").position.y - _layer_area(rest, "dish").position.y, down)) and is_equal_approx(_layer_area(lowered, "cable").size.y - _layer_area(rest, "cable").size.y, down) and _layer_area(lowered, "cradle").position.x == _layer_area(rest, "cradle").position.x
 	return _check(ordered and down > 20.0 and fixed and follows, "the workbench front is drawn after both workers, and the mast and cable top stay while the cradle, dish and cable go down by %s: %s then %s" % [down, rest, lowered])
+
+
+## Whether the day's result card is drawn, is narrower than the widest line
+## it may hold (800 units) because it is sized to its words, and leaves the
+## chef's and the appraiser's drawn areas clear.
+func _result_clears_the_workers() -> bool:
+	var card: Rect2 = scene.get_meta("day_result", Rect2())
+	if not _check(card.size.x > 100.0 and card.size.x < 800.0 and card.size.y > 40.0, "the day's result is drawn as a card sized to its text: %s" % card):
+		return false
+	var layers: Dictionary = _base_layers()
+	for worker: String in ["appraiser", "chef"]:
+		var figure: Rect2 = _layer_area(layers, worker)
+		if not _check(figure.size.y > 100.0 and not card.intersects(figure), "the day's result stays clear of the %s: %s against %s" % [worker, card, figure]):
+			return false
+	return true
 
 
 ## How far down the feed crane's hook and dish hang.
@@ -1065,6 +1099,8 @@ func _workshop_day_one() -> void:
 	if not _check(_result_says("Day 1: " + fed) and _int("remaining_ms") == 18000, "the result stands on screen and spends no time"):
 		return
 	if not _text_fits("the day's result"):
+		return
+	if not _result_clears_the_workers():
 		return
 	if not _check(_str("reaction") == "satisfied" and _int("score") >= 100, "a new dish satisfies the monster"):
 		return
@@ -1770,14 +1806,14 @@ func _search_screen_and_fridge() -> void:
 	# while it is open the chef refuses a click until it is closed.
 	if not _check(await _click("chef_search") and _screen_open(0), "a click on the chef's fridge button opens the inventory and the fridge at base"):
 		return
-	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
+	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP)
 	if not _check(not kitchen_chef.is_empty() and str(kitchen_chef["refusal"]) == CLOSE_FIRST, "with the fridge open a click on the chef is refused with the close step: %s" % [_base_state()]):
 		return
 	if not _check(await _click("chef_other_%d" % fridge) and _int("fridge") == fridge and _actor("chef", "ingredients") == 1, "a click on a fridge slot withdraws the item into the pack"):
 		return
 	if not _check(await _click("chef_mine_0") and _int("fridge") == fridge + 1 and _actor("chef", "ingredients") == 0, "a click on a pack slot stores the item in the fridge"):
 		return
-	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
+	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
 		return
 	var day: int = _int("day")
 	await _tap(KEY_G)
