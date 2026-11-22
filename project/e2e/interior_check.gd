@@ -50,9 +50,15 @@ var street_height: Dictionary[String, float] = {}
 var sampled: int = 0
 ## With `--capture=<folder>` on a real window, each stop in the shops is saved there as a PNG, and the run ends after the noodle shop.
 var capture: String = ""
+## With `--capture-split=<folder>` on a real window, the split route alone runs and saves its stages and every few frames of the second human's entry there.
+var capture_split: String = ""
+var entering: bool = false
+var entry_frames: int = 0
 
 func _initialize() -> void:
 	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture-split="):
+			capture_split = argument.trim_prefix("--capture-split=")
 		if argument.begins_with("--capture="):
 			capture = argument.trim_prefix("--capture=")
 	Engine.max_fps = 60
@@ -73,6 +79,12 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
+	if not capture_split.is_empty():
+		capture = capture_split
+		var passed: bool = await _check_split_route()
+		print("Interior: split capture finished: %s; %d failures %s." % ["pass" if failures.is_empty() else "fail", failures.size(), failures])
+		quit(0 if passed and failures.is_empty() else 1)
+		return
 	if not await _check_kitchen_camera():
 		return
 	if not capture.is_empty():
@@ -147,14 +159,18 @@ func _check_split_route() -> bool:
 			return false
 		chef_at = target
 	await _settle()
+	await _save("split-1-chef-in-appraiser-out")
 	if _world().get_meta("inside_view", false):
 		_fail("split: the view was only the inside with the appraiser outside")
 	# The appraiser follows: both are inside, and the room fills the width.
+	entering = true
 	for target: Vector2i in [Vector2i(3, 6), Vector2i(5, 6)]:
 		if not await _move(chef_at, target):
 			return false
 		appraiser_at = target
+	entering = false
 	await _settle()
+	await _save("split-3-both-in")
 	if not _world().get_meta("inside_view", false):
 		_fail("split: both humans in the kitchen did not leave only the inside on screen")
 	_check_fills("split: both inside")
@@ -509,6 +525,10 @@ func _move(target: Vector2i, partner: Vector2i) -> bool:
 		await process_frame
 		if sampling:
 			_sample()
+		if entering and not capture.is_empty():
+			entry_frames += 1
+			if entry_frames % 3 == 0:
+				await _save("split-2-entry-%03d" % entry_frames)
 	_abort("did not reach %s: %s" % [target, scene.survival_status()])
 	return false
 
