@@ -26,9 +26,11 @@ extends SceneTree
 ## game and the actors' steering run on frames, so pass --fixed-fps 60 to Godot:
 ## on real frame times a loaded machine moves the actors, and the camera with
 ## them, to places no other run reaches, and the run fails at once without it.
-## Run it where the screen never locks, such as kwin_wayland --virtual
-## --no-lockscreen: a locked screen stops the window drawing, and the capture
-## then waits on a frame that never comes.
+## Run it through tools/private-display.sh with --display-driver x11, the only way this project starts a
+## compositor: it gives kwin its own session bus and an empty config, so the
+## screen never locks and no input method of the user's is touched. A locked
+## screen stops the window drawing, and the capture then waits on a frame that
+## never comes.
 ## On Wayland, Godot 4.7.2 can hang after quit() (godotengine/godot#123059,
 ## docs/architecture/godot-runtime.md), so run it under a watchdog that ends
 ## Godot 30 seconds after it prints "Capture: finished: pass" or
@@ -288,10 +290,10 @@ func _run() -> void:
 		return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("user://survival"))
 	await _save("1-main-menu")
-	await _tap(KEY_2)
+	await _title_entry(2)
 	await _save("25-controls")
 	await _tap(KEY_ESCAPE)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _save("2-choose-players")
 	await _tap(KEY_1)
 	await _save("12-intro-card")
@@ -426,7 +428,7 @@ func _run() -> void:
 	await _frames(4)
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 	await _save("15-two-players-workshop")
@@ -446,7 +448,7 @@ func _run() -> void:
 	# day's base shows the day's result beside several finds in packs and fridge.
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -469,7 +471,7 @@ func _run() -> void:
 		return
 	await _tap(KEY_M)
 	await _tap(KEY_ENTER)
-	await _tap(KEY_1)
+	await _title_entry(1)
 	scene.pin_survival_seed(ENDING_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -509,7 +511,7 @@ func _timed_cook_capture() -> bool:
 	await _tap(KEY_ENTER)
 	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
 	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
-	await _tap(KEY_1)
+	await _title_entry(1)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -547,6 +549,9 @@ func _scales_canvas() -> bool:
 		_fail("the window did not leave full screen: mode %d" % DisplayServer.window_get_mode())
 		return false
 	for size: Vector2i in WINDOW_SIZES:
+		if DisplayServer.get_name() == "X11":
+			# A rootless Xwayland window is clamped to the work area; the sizes are measured on Wayland.
+			continue
 		DisplayServer.window_set_size(size)
 		for frame: int in range(RESIZE_FRAMES):
 			if DisplayServer.window_get_size() == size:
@@ -582,6 +587,15 @@ func _shown_canvas(window: String) -> bool:
 	if ProjectSettings.get_setting("display/window/size/viewport_width") != CANVAS.x or ProjectSettings.get_setting("display/window/size/viewport_height") != CANVAS.y or ProjectSettings.get_setting("display/window/stretch/mode") != "canvas_items":
 		_fail("authored canvas settings differ from 1920x1080 canvas_items")
 		return false
+	if DisplayServer.get_name() == "X11":
+		# A rootless Xwayland window is not the size asked for, so the drawn canvas is the measure:
+		# its aspect is the canvas's and the scene's scale is its width over the canvas's.
+		var ratio: float = float(drawn.x) / float(drawn.y)
+		var drawn_scale: float = float(drawn.x) / CANVAS.x
+		if absf(ratio - float(CANVAS.x) / CANVAS.y) > 0.02 or absf(shown.get_scale().x - drawn_scale * CANVAS_SCALE) > 0.02:
+			_fail("%s: the drawn canvas %s is not the canvas's shape at its scale %s" % [window, drawn, shown.get_scale()])
+			return false
+		return true
 	if not Vector2(drawn).is_equal_approx(content) or not shown.origin.is_equal_approx(origin) or not shown.get_scale().is_equal_approx(Vector2.ONE * scale * CANVAS_SCALE):
 		_fail("%s: output scale or centered letterbox differs" % window)
 		return false
@@ -1906,6 +1920,13 @@ func _finish(result: String) -> void:
 		if not diagnostic_findings.is_empty():
 			result = "fail: %d diagnostic findings: %s" % [diagnostic_findings.size(), diagnostic_findings]
 		print("Capture: finished: ", result)
+
+## Presses the title entry that is `number` on a title with no saved day: a saved day
+## draws Continue first, which moves every other entry down one.
+func _title_entry(number: int) -> void:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var shift: int = 1 if lines.find("CONTINUE") >= 0 else 0
+	await _tap((KEY_1 + number - 1 + shift) as Key)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

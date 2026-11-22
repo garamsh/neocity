@@ -3,6 +3,8 @@
 #include "camera.hpp"
 
 #include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
@@ -60,20 +62,6 @@ constexpr float OUTLINE = 1.0F;
 constexpr Vector2 THROAT_AT(333.0F, 0.0F);
 constexpr Vector2 CITY_AT(-224.0F, -10.0F);
 constexpr float BAND_LEFT = -384.0F;
-/// The base's floor row, the workers' height standing on it and their left
-/// edges, in layout units over the kitchen picture.
-constexpr float BASE_FLOOR = 528.0F;
-constexpr float FIGURE_HEIGHT = 150.0F;
-constexpr float APPRAISER_X = 150.0F;
-constexpr float CHEF_X = 520.0F;
-/// The feed crane: its beam, where its trolley hangs, and the hook's highest
-/// and lowest rows over the monster's mouth.
-constexpr float CRANE_LEFT = 830.0F;
-constexpr float CRANE_WIDTH = 440.0F;
-constexpr float CRANE_BEAM = 150.0F;
-constexpr float CRANE_X = 1000.0F;
-constexpr float CRANE_REST = 190.0F;
-constexpr float CRANE_LOW = 330.0F;
 /// The chef and appraiser frames' foot pivot (128, 204 picture pixels in the
 /// character manifests), in layout units.
 constexpr Vector2 ACTOR_PIVOT(128.0F / (2.0F * ART_SCALE),
@@ -1009,11 +997,60 @@ const std::map<std::string_view, Image> &interior_pictures() {
   return PICTURES;
 }
 
+/// Where a room picture's street door opens, in layout units from the
+/// picture's top left corner: every interior has one at its left end.
+struct Doorway {
+  Image image;
+  godot::Rect2 opening;
+};
+constexpr std::array DOORWAYS{Doorway{.image = Image::InteriorKitchen,
+                                      .opening = {4.0F, 19.0F, 14.5F, 36.0F}},
+                              Doorway{.image = Image::InteriorNoodle,
+                                      .opening = {3.0F, 21.0F, 8.5F, 33.5F}},
+                              Doorway{.image = Image::InteriorColdStore,
+                                      .opening = {3.0F, 39.0F, 13.0F, 31.5F}},
+                              Doorway{.image = Image::InteriorService,
+                                      .opening = {3.0F, 33.0F, 14.0F, 29.5F}}};
+/// The part of the city picture seen through a door, in layout units, and how
+/// much of the opening's bottom the acid's glow fills.
+constexpr godot::Rect2 DOOR_CITY_VIEW{985.0F, 200.0F, 96.0F, 240.0F};
+constexpr float DOOR_ACID_SHARE = 0.18F;
+/// The share of the opening the swung-open door leaf covers, from its hinge.
+constexpr float DOOR_LEAF_SHARE = 0.22F;
+
+/// Draws the door of the room picture at `room` open: the street seen through
+/// it, taken from the city layer with the acid's glow at its foot, and the
+/// door leaf swung back against the wall.
+void paint_open_door(godot::Node2D &canvas, const Art &art, Image image,
+                     const godot::Rect2 &room) {
+  const auto *doorway = std::ranges::find(DOORWAYS, image, &Doorway::image);
+  if (doorway == DOORWAYS.end()) {
+    return;
+  }
+  const godot::Rect2 opening{room.position + doorway->opening.position,
+                             doorway->opening.size};
+  canvas.draw_rect(opening, palette().background);
+  art.image_part(canvas, Image::City, DOOR_CITY_VIEW, opening);
+  const float glow = opening.size.y * DOOR_ACID_SHARE;
+  canvas.draw_rect(rect(opening.position.x, opening.get_end().y - glow,
+                        opening.size.x, glow),
+                   color(110, 255, 90, 0.35F));
+  canvas.draw_rect(rect(opening.position.x, opening.position.y,
+                        opening.size.x * DOOR_LEAF_SHARE, opening.size.y),
+                   color(58, 42, 52, 1.0F));
+  if (canvas.has_meta("measure_art")) {
+    godot::Dictionary drawn;
+    drawn.set("area", opening);
+    drawn.set("street", godot::String("City"));
+    canvas.set_meta("open_door", drawn);
+  }
+}
+
 /// Draws the picture of every building an actor is in, floor by floor aligned
 /// to the real floors.
 void paint_interiors(godot::Node2D &canvas, const Art &art,
                      const survival::Content &content,
-                     const survival::GameView &view) {
+                     const survival::GameView &view, bool open_door) {
   for (const auto &interior : content.companion.exploration.interiors) {
     const auto feet = feet_in(view, interior.building);
     if (interior.map != view.exploration.map || feet.empty()) {
@@ -1024,12 +1061,25 @@ void paint_interiors(godot::Node2D &canvas, const Art &art,
     if (interior.floors.empty()) {
       const Vector2 size = art.size(image);
       const auto box = area_rect(interior.area);
-      art.image(canvas, image,
-                Vector2(box.position.x, box.position.y + box.size.y - size.y));
+      const Vector2 corner(box.position.x,
+                           box.position.y + box.size.y - size.y);
+      art.image(canvas, image, corner);
+      if (open_door) {
+        paint_open_door(canvas, art, image, {corner, size});
+      }
       continue;
     }
-    for (const auto &room : inside_building(interior, feet).rooms) {
+    const auto rooms = inside_building(interior, feet).rooms;
+    for (const auto &room : rooms) {
       paint_room(canvas, art, image, room.area);
+    }
+    // The ground floor's door is the way in from the street.
+    if (open_door) {
+      const auto &ground = rooms.back().area;
+      paint_open_door(canvas, art, image,
+                      {ground.position.x,
+                       ground.get_end().y - art.size(image).y,
+                       art.size(image).x, art.size(image).y});
     }
   }
 }
@@ -1114,6 +1164,67 @@ void paint_interior_mask(godot::Node2D &canvas, const godot::Rect2 &extent) {
                    tone);
 }
 
+/// The soft oval over the screen's edges while it shows only a building's
+/// inside: clear within `VIGNETTE_RINGS`'s first ring, darkening through the
+/// rest until past the corners it is the background's own colour. Each ring is
+/// a share of the screen's half size and the background's opacity there.
+struct VignetteRing {
+  float reach;
+  float opacity;
+};
+constexpr std::array VIGNETTE_RINGS{
+    VignetteRing{.reach = 0.4F, .opacity = 0.0F},
+    VignetteRing{.reach = 0.75F, .opacity = 0.4F},
+    VignetteRing{.reach = 1.0F, .opacity = 0.75F},
+    VignetteRing{.reach = 1.45F, .opacity = 1.0F}};
+constexpr int VIGNETTE_STEPS = 48;
+
+void paint_vignette(godot::Node2D &canvas, const Art &art,
+                    const godot::Rect2 &room) {
+  const auto kept = art.looking();
+  art.look(canvas, Vector2(), 1.0F);
+  const Vector2 middle(SCREEN_WIDTH / 2.0F, SCREEN_HEIGHT / 2.0F);
+  // The oval's half size: the screen's width, and the room's height on the
+  // screen where it is shorter than the screen, so the room's top and bottom
+  // darken as its sides do.
+  const Vector2 half(middle.x,
+                     std::min(middle.y, room.size.y * kept.zoom / 2.0F));
+  const auto tone = palette().background;
+  const auto point = [&](const VignetteRing &ring, int step) {
+    const float angle = 2.0F * std::numbers::pi_v<float> *
+                        static_cast<float>(step) /
+                        static_cast<float>(VIGNETTE_STEPS);
+    return middle + Vector2(std::cos(angle) * half.x * ring.reach,
+                            std::sin(angle) * half.y * ring.reach);
+  };
+  const auto shade = [&](const VignetteRing &ring) {
+    auto edge = tone;
+    edge.a = ring.opacity;
+    return edge;
+  };
+  for (std::size_t ring = 0; ring + 1 < VIGNETTE_RINGS.size(); ++ring) {
+    const auto &in = VIGNETTE_RINGS.at(ring);
+    const auto &out = VIGNETTE_RINGS.at(ring + 1);
+    for (int step = 0; step < VIGNETTE_STEPS; ++step) {
+      godot::PackedVector2Array corners;
+      corners.push_back(point(in, step));
+      corners.push_back(point(out, step));
+      corners.push_back(point(out, step + 1));
+      corners.push_back(point(in, step + 1));
+      godot::PackedColorArray shades;
+      shades.push_back(shade(in));
+      shades.push_back(shade(out));
+      shades.push_back(shade(out));
+      shades.push_back(shade(in));
+      canvas.draw_polygon(corners, shades);
+    }
+  }
+  art.look(canvas, kept.origin, kept.zoom);
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("vignette", VIGNETTE_RINGS.back().opacity);
+  }
+}
+
 void paint_passage(godot::Node2D &canvas, const Art &art,
                    const ObjectSnapshot &object, bool ladder) {
   const auto box = area_rect(object.area);
@@ -1170,6 +1281,22 @@ std::optional<Image> supply_icon(const ObjectSnapshot &source) {
     name = survival::ingredient_name(*source.ingredient);
   }
   return item_icon(name);
+}
+
+/// Where `area` stands when it is drawn inside a building, scaled by `scale`
+/// about the middle of its bottom edge within `extent`: whole objects stand on
+/// the room's floor, and one reaching below the room, as a ladder does, keeps
+/// the part that is in the room.
+Vector2 indoor_pivot(const godot::Rect2 &area, const godot::Rect2 &extent) {
+  const auto shown = area.intersection(extent);
+  return {area.get_center().x,
+          shown.has_area() ? shown.get_end().y : area.get_end().y};
+}
+
+godot::Rect2 indoors(const godot::Rect2 &area, const godot::Rect2 &extent,
+                     float scale) {
+  const Vector2 pivot = indoor_pivot(area, extent);
+  return {pivot + (area.position - pivot) * scale, area.size * scale};
 }
 
 /// One source as the map shows it.
@@ -1236,7 +1363,7 @@ void paint_source(godot::Node2D &canvas, const Art &art, const Marker &marker) {
     stand_on_floor(canvas, art, source_image(marker.stock.kind), cell, tint);
   }
   if (marker.promised) {
-    canvas.draw_rect(cell, tones.gold, false, 2.0F);
+    canvas.draw_rect(cell, tones.lime, false, 2.0F);
   } else if (marker.stocked_open) {
     dashed_frame(canvas, cell, tones.white);
   }
@@ -1390,20 +1517,70 @@ Vector2 feet_of(const Art &art, Actor actor, const survival::Body &body) {
           art.glide(chef ? "chef_feet_y" : "appraiser_feet_y", point.y)};
 }
 
-/// Draws an actor taller than its cell, its frame's bottom edge on its feet,
-/// in the pose its body and its motion call for.
-void paint_actor(godot::Node2D &canvas, const Art &art,
-                 const survival::GameView &view, Actor actor,
-                 const survival::Body &body, float offset) {
+/// Where an actor's frame is drawn and which one.
+struct Placement {
+  Image image{};
+  bool mirrored = false;
+  Vector2 position;
+  float scale = 1.0F;
+};
+
+Placement placement_of(const Art &art, const survival::GameView &view,
+                       Actor actor, const survival::Body &body, float offset,
+                       float scale) {
   const auto now = view.progression.world_time;
   const auto shown = pose(actor, body, art.track(actor, body, now), now);
   const Vector2 size = art.size(shown.image);
   const Vector2 feet = feet_of(art, actor, body);
   const float anchor = ACTOR_PIVOT.x;
-  const float pivot = shown.mirrored ? size.x - anchor : anchor;
-  art.image(canvas, shown.image,
-            Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y), 1.0F,
-            shown.mirrored);
+  const float pivot = (shown.mirrored ? size.x - anchor : anchor) * scale;
+  return {.image = shown.image,
+          .mirrored = shown.mirrored,
+          .position =
+              Vector2(feet.x - pivot + offset, feet.y - ACTOR_PIVOT.y * scale),
+          .scale = scale};
+}
+
+/// Draws an actor taller than its cell, its frame's bottom edge on its feet,
+/// in the pose its body and its motion call for.
+void paint_actor(godot::Node2D &canvas, const Art &art,
+                 const survival::GameView &view, Actor actor,
+                 const survival::Body &body, float offset, float scale) {
+  const auto at = placement_of(art, view, actor, body, offset, scale);
+  art.image(canvas, at.image, at.position, at.scale, at.mirrored);
+}
+
+/// The colour of the outline that keeps a hidden human findable: the
+/// player's own, a neutral one for the AI partner.
+godot::Color outline_colour(survival::ControlMap control, Actor actor) {
+  const auto keys = survival::key_set(control, actor);
+  if (!keys) {
+    return {0.85F, 0.88F, 0.92F};
+  }
+  return *keys == 0 ? godot::Color(1.0F, 0.62F, 0.12F)
+                    : godot::Color(0.25F, 0.85F, 1.0F);
+}
+
+/// The chef is drawn first and the appraiser over it. Where the appraiser's
+/// body covers the chef's, the chef's outline is drawn over the appraiser, so
+/// the chef stays in view in its own shape and its player's colour.
+void paint_hidden_outline(godot::Node2D &canvas, const Art &art,
+                          const survival::GameView &view,
+                          survival::ControlMap control, float appraiser_offset,
+                          float scale) {
+  const auto back = placement_of(art, view, Actor::Chef,
+                                 view.exploration.chef.body, 0.0F, scale);
+  const auto front =
+      placement_of(art, view, Actor::Appraiser, view.exploration.appraiser.body,
+                   appraiser_offset, scale);
+  const auto hidden =
+      art.opaque_area(back.image, back.position, back.mirrored, scale);
+  const auto cover =
+      art.opaque_area(front.image, front.position, front.mirrored, scale);
+  if (hidden.intersects(cover)) {
+    art.outline(canvas, back.image, back.position, back.mirrored,
+                outline_colour(control, Actor::Chef), scale);
+  }
 }
 
 godot::String tag_of(survival::ControlMap control, Actor actor) {
@@ -1534,7 +1711,10 @@ Labels label_city(const Art &art, const survival::GameView &view,
   const auto red = color(255, 150, 150, 1.0F);
   const auto party = party_of(view);
   const auto on_screen = [&](const survival::WorldArea &area) {
-    return to_screen(camera, area_rect(area));
+    const auto box = area_rect(area);
+    return to_screen(camera, camera.inside ? indoors(box, camera.room,
+                                                     actor_scale(camera.zoom))
+                                           : box);
   };
   Labels labels{.plates = {},
                 .pointers = camera.inside
@@ -1566,6 +1746,7 @@ Labels label_city(const Art &art, const survival::GameView &view,
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
   }
+  const float scale = actor_scale(camera.zoom);
   const auto actor_box = [&](Actor actor, const survival::Body &body,
                              float offset) {
     const auto now = view.progression.world_time;
@@ -1573,10 +1754,11 @@ Labels label_city(const Art &art, const survival::GameView &view,
     const Vector2 size = art.size(shown.image);
     const Vector2 feet = feet_of(art, actor, body);
     const float anchor = ACTOR_PIVOT.x;
-    const float pivot = shown.mirrored ? size.x - anchor : anchor;
-    return to_screen(camera, godot::Rect2(Vector2(feet.x - pivot + offset,
-                                                  feet.y - ACTOR_PIVOT.y),
-                                          size));
+    const float pivot = (shown.mirrored ? size.x - anchor : anchor) * scale;
+    return to_screen(camera,
+                     godot::Rect2(Vector2(feet.x - pivot + offset * scale,
+                                          feet.y - ACTOR_PIVOT.y * scale),
+                                  size * scale));
   };
   const auto keep_actor = [&](Actor actor, const survival::Body &body,
                               float offset) {
@@ -1857,6 +2039,7 @@ std::optional<Inside> inside_of(const survival::Content &content,
 
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
                  const View &camera) {
+  art.note_room(camera.inside ? std::optional(camera.room) : std::nullopt);
   if (camera.inside) {
     // Only the building's inside is on the screen: no throat, city or acid.
     art.look(canvas, Vector2(), 1.0F);
@@ -1926,7 +2109,7 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &everything,
-                const survival::GameView &view,
+                const survival::GameView &view, survival::ControlMap control,
                 const std::vector<survival::ObjectId> &out_of_reach) {
   const auto &content = survival::map_of(everything, view.exploration.map);
   canvas.set_meta("deck_layers", godot::Array());
@@ -1965,7 +2148,8 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                    static_cast<float>(everything.run.full_acid.value));
   canvas.set_texture_filter(
       godot::CanvasItem::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
-  const auto inside = inside_of(everything, view);
+  // The view's state is the camera's, which `paint_mouth` noted for this frame.
+  const auto inside = art.room();
   if (inside) {
     canvas.draw_rect(
         rect(-MASK_REACH, -MASK_REACH, 2.0F * MASK_REACH, 2.0F * MASK_REACH),
@@ -1987,7 +2171,9 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       paint_shop_front(canvas, art, objects, marker);
     }
   }
-  paint_interiors(canvas, art, everything, view);
+  if (!inside) {
+    paint_interiors(canvas, art, everything, view, false);
+  }
   std::vector<survival::GridPosition> stairs;
   for (const auto &object : objects) {
     if (object.kind == ObjectKind::Terrain &&
@@ -2005,6 +2191,11 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   paint_ground(canvas, art, content, objects, ground,
                {.stairs = stairs, .hollow = hollow}, surface);
   paint_buildings(true);
+  // The room's picture holds its own floor and ceiling, so it is drawn over
+  // the map's decks that reach into it.
+  if (inside) {
+    paint_interiors(canvas, art, everything, view, true);
+  }
   if (!inside) {
     paint_obstacles(canvas, art, view.exploration.map, content);
   }
@@ -2018,33 +2209,67 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       paint_passage(canvas, art, object, false);
     }
   });
+  // Inside a building the map's objects are drawn at the actors' size, each
+  // on the floor of its room, as the room's picture is at a quarter of theirs.
+  const auto at_room_scale = [&](survival::WorldArea where, auto &&draw) {
+    if (!inside) {
+      draw();
+      return;
+    }
+    const auto kept = art.looking();
+    const float scale = actor_scale(kept.zoom);
+    const Vector2 pivot = indoor_pivot(area_rect(where), *inside);
+    art.look(canvas, (kept.origin + pivot * kept.zoom * (1.0F - scale)).round(),
+             kept.zoom * scale);
+    draw();
+    art.look(canvas, kept.origin, kept.zoom);
+  };
   paint_kind(ObjectKind::Ladder, [&](const ObjectSnapshot &object) {
-    paint_passage(canvas, art, object, true);
+    at_room_scale(object.area,
+                  [&] { paint_passage(canvas, art, object, true); });
   });
   paint_kind(ObjectKind::Npc, [&](const ObjectSnapshot &object) {
-    paint_npc(canvas, art, object);
+    at_room_scale(object.area, [&] { paint_npc(canvas, art, object); });
   });
   for (const auto &marker : markers) {
-    paint_source(canvas, art, marker);
+    at_room_scale(marker.object.area,
+                  [&] { paint_source(canvas, art, marker); });
   }
   paint_mutants(canvas, art, view);
+  // The room darkens toward the screen's edges under the actors, so they and
+  // the words stay readable.
+  if (inside) {
+    paint_vignette(canvas, art, *inside);
+  }
   canvas.set_meta("character_layers", godot::Array());
+  if (canvas.has_meta("measure_art")) {
+    canvas.set_meta("actor_outlines", godot::Array());
+  }
+  const float scale = actor_scale(art.looking().zoom);
+  const float apart = party.shared ? 10.0F * scale : 0.0F;
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,
-                0.0F);
+                0.0F, scale);
   }
   if (party.appraiser_out) {
     paint_actor(canvas, art, view, Actor::Appraiser,
-                view.exploration.appraiser.body, party.shared ? 10.0F : 0.0F);
+                view.exploration.appraiser.body, apart, scale);
+  }
+  if (party.chef_out && party.appraiser_out) {
+    paint_hidden_outline(canvas, art, view, control, apart, scale);
   }
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {
-    paint_interior_mask(canvas, inside->extent);
+    paint_interior_mask(canvas, *inside);
   }
   // The measuring checks read whether the screen is only an inside.
   if (canvas.has_meta("measure_art")) {
     canvas.set_meta("inside_view", inside.has_value());
-    canvas.set_meta("inside_extent", inside ? inside->extent : godot::Rect2());
+    if (!inside) {
+      canvas.set_meta("vignette", 0.0F);
+      canvas.set_meta("open_door", godot::Dictionary());
+    }
+    canvas.set_meta("inside_extent", inside ? *inside : godot::Rect2());
   }
 }
 
@@ -2100,7 +2325,11 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   godot::Array areas;
   for (const auto &marker : markers) {
     drawn.push_back(from(survival::object_name(marker.object.id)));
-    areas.push_back(to_screen(shot.camera, area_rect(marker.object.area)));
+    const auto box = area_rect(marker.object.area);
+    areas.push_back(to_screen(
+        shot.camera, shot.camera.inside ? indoors(box, shot.camera.room,
+                                                  actor_scale(shot.camera.zoom))
+                                        : box));
   }
   canvas.set_meta("map_plates", labels.plates.boxes());
   canvas.set_meta("map_words", labels.plates.words());
@@ -2111,46 +2340,6 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   canvas.set_meta("map_pointers", pointed);
   canvas.set_meta("map_view", transform(shot.camera));
   canvas.set_meta("map_heading", transform(shot.heading));
-}
-
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready,
-                    float lowering) {
-  canvas.set_meta("character_layers", godot::Array());
-  art.image(canvas, Image::BaseKitchen, Vector2(0.0F, 0.0F), 1.0F);
-  // The two workers stand on the kitchen's floor, the appraiser in the left
-  // room and the chef at the stove.
-  const float scale = FIGURE_HEIGHT / art.size(Image::ChefIdle).y;
-  const Vector2 figure = art.size(Image::ChefIdle) * scale;
-  const float figure_top = BASE_FLOOR - ACTOR_PIVOT.y * scale;
-  art.image(canvas, Image::AppraiserIdle, Vector2(APPRAISER_X, figure_top),
-            scale);
-  art.image(canvas, Image::ChefIdle, Vector2(CHEF_X, figure_top), scale);
-  // The feed crane over the monster's mouth: a beam with a trolley, a cable
-  // and a hook, with the stored dish hung from it, lowered into the mouth
-  // as the dish is fed.
-  const float hook =
-      CRANE_REST + std::clamp(lowering, 0.0F, 1.0F) * (CRANE_LOW - CRANE_REST);
-  const auto steel = color(70, 78, 96, 1.0F);
-  canvas.draw_rect(rect(CRANE_LEFT, CRANE_BEAM, CRANE_WIDTH, 12.0F), steel);
-  canvas.draw_rect(rect(CRANE_LEFT, CRANE_BEAM + 12.0F, CRANE_WIDTH, 2.0F),
-                   color(66, 222, 255, 1.0F));
-  canvas.draw_rect(rect(CRANE_X - 12.0F, CRANE_BEAM + 12.0F, 24.0F, 10.0F),
-                   steel);
-  canvas.draw_line(Vector2(CRANE_X, CRANE_BEAM + 22.0F), Vector2(CRANE_X, hook),
-                   color(176, 186, 204, 1.0F), 2.0F);
-  canvas.draw_circle(Vector2(CRANE_X, hook + 6.0F), 7.0F, steel);
-  if (dish_ready || lowering > 0.0F) {
-    canvas.draw_circle(Vector2(CRANE_X, hook + 26.0F), 18.0F,
-                       color(255, 196, 72, 1.0F));
-    canvas.draw_circle(Vector2(CRANE_X, hook + 26.0F), 11.0F,
-                       color(255, 142, 72, 1.0F));
-  }
-  godot::Array figures;
-  figures.push_back(rect(APPRAISER_X, figure_top, figure.x, figure.y));
-  figures.push_back(rect(CHEF_X, figure_top, figure.x, figure.y));
-  canvas.set_meta("workshop_figures", figures);
-  canvas.set_meta("feed_crane", rect(CRANE_LEFT, CRANE_BEAM, CRANE_WIDTH,
-                                     hook + 44.0F - CRANE_BEAM));
 }
 
 } // namespace neocity::rendering

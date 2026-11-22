@@ -2,7 +2,7 @@ class_name TitleCapture
 extends SceneTree
 ## Saves the title screen and its pages at 1920x1080 on a real window, each
 ## after the cursor has come to rest, and reads the saved pixels where the
-## screen says it drew the UI kit: gold under the marked entry, dark metal under
+## screen says it drew the UI kit: lime under the marked entry, dark cards under
 ## the others, the title picture's logo across the top left, and the panel's
 ## rim. `--out=<folder>` names where the PNGs go; the default is `user://title`.
 ## Run it on a window of 1920x1080 with `--fixed-fps 60`.
@@ -81,18 +81,18 @@ func _frames_of(kind: String) -> Array[Rect2]:
 func _title_reads_as_the_kit(frame: Image, marked: int) -> bool:
 	var buttons: Array[Rect2] = _frames_of("button")
 	var selected: Array[Rect2] = _frames_of("selected")
-	if not _check(buttons.size() == 5 and selected.size() == 1, "the title notes five buttons and one gold one: %s, %s" % [buttons, selected]):
+	if not _check(buttons.size() == 5 and selected.size() == 1, "the title notes five cards and one lime one: %s, %s" % [buttons, selected]):
 		return false
 	for index: int in range(buttons.size()):
-		# Just inside the left rim, clear of the rivet and the words.
+		# Just inside the left edge, clear of the key cap and the words.
 		var inside: Vector2 = (buttons[index].position + Vector2(10.0, buttons[index].size.y / 2.0 + 10.0)) * SCALE
 		var pixel: Color = frame.get_pixelv(Vector2i(inside))
 		if index == marked:
-			if not _check(pixel.r > 0.8 and pixel.g > 0.45 and pixel.b < 0.35, "the marked entry %d is gold on the screen: %s" % [index, pixel]):
+			if not _check(pixel.r > 0.6 and pixel.g > 0.8 and pixel.b < 0.45, "the marked entry %d is lime on the screen: %s" % [index, pixel]):
 				return false
-		elif not _check(pixel.r < 0.3 and pixel.g < 0.3 and pixel.b < 0.35, "entry %d is dark metal on the screen: %s" % [index, pixel]):
+		elif not _check(pixel.r < 0.3 and pixel.g < 0.3 and pixel.b < 0.35, "entry %d is a dark card on the screen: %s" % [index, pixel]):
 			return false
-	if not _check(selected[0].position.y == buttons[marked].position.y, "the gold button rests on entry %d" % marked):
+	if not _check(selected[0].position.y == buttons[marked].position.y, "the lime card rests on entry %d" % marked):
 		return false
 	return _logo_and_panel(frame)
 
@@ -100,25 +100,25 @@ func _page_reads_as_the_kit(frame: Image, page: String) -> bool:
 	var panels: Array[Rect2] = _frames_of("panel")
 	if not _check(panels.size() == 1 and _frames_of("button").size() >= 1, "the %s page notes one panel and its way back: %s" % [page, panels]):
 		return false
-	var rim: Color = frame.get_pixelv(Vector2i((panels[0].position + Vector2(5.0, panels[0].size.y / 2.0)) * SCALE))
-	return _check(absf(rim.r - rim.b) < 0.2 and rim.r > 0.25 and rim.r < 0.6, "the %s page's panel has a steel rim on the screen: %s" % [page, rim])
+	var rim: Color = frame.get_pixelv(Vector2i((panels[0].position + Vector2(0.4, panels[0].size.y / 2.0)) * SCALE))
+	return _check(rim.b > rim.g + 0.15 and rim.r > 0.3, "the %s page's panel has a lavender outline on the screen: %s" % [page, rim])
 
-## The picture's gold lettering stands where the logo is, and the menu
-## panel's steel rim along its left edge.
+## The picture's lettering stands where the logo is, and the menu
+## panel's ink behind the cards.
 func _logo_and_panel(frame: Image) -> bool:
 	var golds: int = 0
 	for y: int in range(int(LOGO.position.y * SCALE), int(LOGO.end.y * SCALE), 3):
 		for x: int in range(int(LOGO.position.x * SCALE), int(LOGO.end.x * SCALE), 3):
 			var pixel: Color = frame.get_pixel(x, y)
-			if pixel.r > 0.85 and pixel.g > 0.55 and pixel.b < 0.35:
+			if pixel.g > 0.8 and pixel.r > 0.35 and pixel.r < 0.85 and pixel.b < 0.4:
 				golds += 1
-	if not _check(golds > 1500, "the title picture's gold logo is on the screen: %d gold samples" % golds):
+	if not _check(golds > 1500, "the title picture's lime logo is on the screen: %d lime samples" % golds):
 		return false
 	var panels: Array[Rect2] = _frames_of("panel")
 	if not _check(panels.size() == 2, "the title notes the menu panel and the foot panel: %s" % [panels]):
 		return false
-	var rim: Color = frame.get_pixelv(Vector2i((panels[0].position + Vector2(5.0, panels[0].size.y / 2.0)) * SCALE))
-	return _check(absf(rim.r - rim.b) < 0.2 and rim.r > 0.25 and rim.r < 0.6, "the menu panel has a steel rim on the screen: %s" % rim)
+	var ink: Color = frame.get_pixelv(Vector2i((panels[0].position + Vector2(40.0, 40.0)) * SCALE))
+	return _check(ink.r < 0.12 and ink.g < 0.1 and ink.b < 0.2 and ink.b > ink.g, "the menu panel is near-black purple ink on the screen: %s" % ink)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

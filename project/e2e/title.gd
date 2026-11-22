@@ -4,11 +4,16 @@ extends SceneTree
 ## number, the controls page and back, the How to play page and back, the
 ## choice of players by cursor, the controls page against the pause screen's
 ## keys, a new game, the same entries with real mouse events, and quitting. It
-## also reads back the frames of the UI kit the title and its pages note.
+## also reads back the frames of the UI kit the title and its pages note,
+## and reopens a saved run through the first title entry, Continue.
 
 ## How long, in milliseconds of the real clock, a panel takes to rise into
 ## place, with a margin over the 220 of src/rendering/drawing.cpp.
 const ENTRANCE_MS: int = 300
+## The marks a stamp notes, in the order of the C++ `Mark`.
+const MARK_NONE: int = 0
+const MARK_ARROW: int = 1
+const MARK_CHEVRON: int = 2
 ## A word of each concept the How to play page explains, in its order: set
 ## out, move, collect, appraise, cook, feed, a hated dish, acid,
 ## and the ending.
@@ -26,7 +31,7 @@ func _initialize() -> void:
 ## Only the game's own quit reaches here with the pass line owed.
 func _finalize() -> void:
 	if awaiting_quit and not failed:
-		print("Title: ", checks, " live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, quit).")
+		print("Title: ", checks, " live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).")
 
 func _run() -> void:
 	await _frames(2)
@@ -49,10 +54,12 @@ func _run() -> void:
 		return
 	if not await _mouse_drives_the_menus():
 		return
+	if not await _continue_is_first_and_resumes_the_saved_day():
+		return
 	await _quit_ends_the_game()
 
 ## The title notes each frame of the UI kit it draws: the picture, the menu
-## panel and the foot panel, an idle button on each entry's own area and the gold
+## panel and the foot panel, an idle card on each entry's own area and the lime
 ## one on the marked entry, which follows the cursor. A page notes its panel
 ## and its way back. Starts and ends on the title with New game marked.
 func _title_draws_the_kit() -> bool:
@@ -67,21 +74,68 @@ func _title_draws_the_kit() -> bool:
 		entries.append(_target("option_%d" % number)["rect"])
 	if not _check(buttons == entries, "an idle button stands on each of the five entries: %s against %s" % [buttons, entries]):
 		return false
-	if not _check(_frames_of("selected") == [entries[0]], "the gold button stands on New game: %s" % [_frames_of("selected")]):
+	if not _check(_frames_of("selected") == [entries[0]] and await _stamps_tell_the_states(), "the lime card stands on New game and is stamped differently from the idle cards: %s" % [_frames_of("selected")]):
+		return false
+	if not _check(_mark("card", 1) == MARK_CHEVRON and _mark("card", 0) == MARK_NONE, "the focused card draws the chevron and an idle card draws none: %s against %s" % [_stamp("card", 1), _stamp("card", 0)]):
 		return false
 	await _tap(KEY_W)
 	OS.delay_msec(ENTRANCE_MS)
 	await _frames(2)
-	if not _check(_frames_of("selected") == [entries[4]] and _frames_of("button") == entries, "the gold button follows the cursor to Settings"):
+	if not _check(_frames_of("selected") == [entries[4]] and _frames_of("button") == entries, "the lime card follows the cursor to Settings"):
 		return false
 	await _tap(KEY_S)
 	await _tap(KEY_2)
 	var page: Array[Rect2] = _frames_of("panel")
 	var way_back: Rect2 = _target("menu")["rect"]
-	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no gold button: %s" % [page]):
+	if not _check(scene.screen_name() == "controls" and page.size() == 1 and _frames_of("button") == [way_back] and _frames_of("selected").is_empty(), "the controls page draws one panel and its way back, and no lime card: %s" % [page]):
+		return false
+	if not _check(_mark("button", 0) == MARK_ARROW, "the main button draws its arrow: %s" % [_stamp("button", 0)]):
 		return false
 	await _tap(KEY_ESCAPE)
 	return _check(scene.screen_name() == "main", "setup: the title is back with the cursor on New game")
+
+## Whether the stamps the last frame noted tell the three states apart: the
+## focused card is lime on a magenta shadow, the idle cards are dark with a
+## smaller one, and a card under a held left button has dropped with its shadow
+## shrunk. A press on the first entry acts at once, so the pressed card is read
+## on the choice of players it opens, under the same held button; Esc returns.
+func _stamps_tell_the_states() -> bool:
+	var rest: Dictionary = _stamp("card", 0)
+	var focus: Dictionary = _stamp("card", 1)
+	if rest.is_empty() or focus.is_empty() or rest["fill"] == focus["fill"] or rest["shadow_offset"] >= focus["shadow_offset"] or rest["drop"] != 0.0 or focus["drop"] != 0.0:
+		return false
+	var target: Dictionary = _target("option_1")
+	var area: Rect2 = target["rect"]
+	var motion: InputEventMouseMotion = InputEventMouseMotion.new()
+	motion.position = root.get_final_transform() * area.get_center()
+	motion.global_position = motion.position
+	Input.parse_input_event(motion)
+	var press: InputEventMouseButton = InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = motion.position
+	press.global_position = motion.position
+	Input.parse_input_event(press)
+	await _frames(2)
+	var pressed: Dictionary = _stamp("card", 2)
+	var control: bool = scene.screen_name() == "survival_setup"
+	press.pressed = false
+	Input.parse_input_event(press)
+	await _frames(2)
+	await _tap(KEY_ESCAPE)
+	control = control and scene.screen_name() == "main"
+	return control and not pressed.is_empty() and pressed["drop"] > 0.0 and pressed["shadow_offset"] < focus["shadow_offset"] and pressed["fill"] != focus["fill"]
+
+## The mark of the first stamp of `kind` in `state`, or -1 for none noted.
+func _mark(kind: String, state: int) -> int:
+	return _stamp(kind, state).get("mark", -1)
+
+## The first stamp of `kind` in `state` the last frame noted, or empty.
+func _stamp(kind: String, state: int) -> Dictionary:
+	for stamp: Dictionary in scene.get_meta("interface_stamps", []):
+		if stamp["kind"] == kind and stamp["state"] == state:
+			return stamp
+	return {}
 
 ## The frames of the kit the last frame noted, of one `kind`.
 func _frames_of(kind: String) -> Array[Rect2]:
@@ -99,6 +153,8 @@ func _cursor_chooses_each_entry() -> bool:
 	if not _check(scene.screen_name() == "survival_setup", "Enter on the first entry, New game, opens the choice of players"):
 		return false
 	if not _names_no_key("the choice of players", "Click who is playing."):
+		return false
+	if not _choice_lists_its_entries():
 		return false
 	await _tap(KEY_ESCAPE)
 	if not _check(scene.screen_name() == "main", "Esc goes back from the choice of players"):
@@ -139,6 +195,28 @@ func _numbers_choose_entries() -> bool:
 	await _tap(KEY_1)
 	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players")
 
+## The choice of players reads, from the drawn text and the click targets, the
+## heading and then each entry's name and one-line role with its number key, the
+## entries stacked down the right half in the order their keys number them.
+func _choice_lists_its_entries() -> bool:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	var wanted: Array[String] = ["Who is playing?", "Chef", "You cook. AI appraises.", "1", "Appraiser", "You appraise. AI cooks.", "2", "Two players", "Play together on one keyboard.", "3"]
+	var at: int = lines.find(wanted[0])
+	var drawn: Array[String] = []
+	if at >= 0:
+		for line: String in lines.slice(at, at + wanted.size()):
+			drawn.append(line)
+	if not _check(drawn == wanted, "the choice of players draws its heading, then each entry's name, role and number key: %s" % [lines]):
+		return false
+	var rows: Array[Rect2] = []
+	for number: int in range(1, 4):
+		rows.append(_target("option_%d" % number)["rect"])
+	var stacked: bool = rows[0].position.x > 640.0 and rows[0].position.x == rows[1].position.x and rows[1].position.x == rows[2].position.x
+	stacked = stacked and rows[0].end.y <= rows[1].position.y and rows[1].end.y <= rows[2].position.y and rows[2].end.x <= 1280.0
+	if not _check(stacked and _frames_of("selected") == [rows[0]], "the three entries are click targets stacked down the right half, the lime card on the first: %s %s" % [rows, _frames_of("selected")]):
+		return false
+	return _check(_target("option_4").is_empty() and _target("option_0").is_empty(), "the choice has three click targets and no more")
+
 ## Starts and ends on the choice of players. 3 opens the How to play page,
 ## which draws a line on each concept and names no key, and Esc and M go back.
 func _how_to_play_explains_each_concept() -> bool:
@@ -176,29 +254,29 @@ func _cursor_chooses_each_player() -> bool:
 	if not _check(scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 0 and _actor("chef", "key_set") == -1, "S then Enter on the choice of players plays the appraiser"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_UP)
 	await _tap(KEY_W)
 	await _tap(KEY_ENTER)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "the choice keeps its cursor, and up then W wrap to two players"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_DOWN)
 	await _tap(KEY_ENTER)
 	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == -1, "down wraps past two players back to the chef"):
 		return false
 	await _tap(KEY_M)
-	await _tap(KEY_1)
-	return _check(scene.screen_name() == "survival_setup", "1 opens the choice of players again")
+	await _tap(KEY_2)
+	return _check(scene.screen_name() == "survival_setup", "2 opens the choice of players again beside Continue")
 
 ## The controls page lists the pause screen's two-player rows, then the pause
 ## and leave keys.
 func _controls_list_the_pause_keys() -> bool:
-	await _tap(KEY_2)
+	await _tap(KEY_3)
 	var controls: PackedStringArray = MainScene.controls_keys()
 	await _tap(KEY_ESCAPE)
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_3)
 	if not _check(scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "3 starts two players"):
 		return false
@@ -216,7 +294,7 @@ func _controls_list_the_pause_keys() -> bool:
 func _new_game_starts_a_run() -> bool:
 	await _tap(KEY_1)
 	await _tap(KEY_E)
-	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "New game then 1 starts the survival game as the chef"):
+	if not _check(scene.screen_name() == "survival" and _actor("chef", "key_set") == 0, "1 on the choice of players starts the survival game as the chef"):
 		return false
 	# The first question of the process rises into place on the real clock, and
 	# headless frames take far less than its 220 ms.
@@ -227,7 +305,7 @@ func _new_game_starts_a_run() -> bool:
 	var rising: Rect2 = scene.get_meta("interruption_button", Rect2())
 	await _click_at(Vector2(rising.position.x + 12.0, rising.end.y - 2.0))
 	var left_by_click: bool = scene.screen_name() == "main"
-	await _tap(KEY_1)
+	await _tap(KEY_2)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_M)
@@ -245,19 +323,19 @@ func _new_game_starts_a_run() -> bool:
 ## chooses; the controls page's way back goes back. The mouse leaves the
 ## entries before the keys take over again.
 func _mouse_drives_the_menus() -> bool:
-	_point_at(_target("option_2"))
+	_point_at(_target("option_3"))
 	await _frames(4)
-	if not _check(_hovered() == "option_2", "the entry under the mouse lights"):
+	if not _check(_hovered() == "option_3", "the entry under the mouse lights"):
 		return false
-	if not _check(await _click("option_2") and scene.screen_name() == "controls", "a click on Controls opens the controls"):
+	if not _check(await _click("option_3") and scene.screen_name() == "controls", "a click on Controls opens the controls"):
 		return false
 	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the way back returns to the title"):
 		return false
-	if not _check(await _click("option_3") and scene.screen_name() == "how_to_play", "a click on How to play opens its page"):
+	if not _check(await _click("option_4") and scene.screen_name() == "how_to_play", "a click on How to play opens its page"):
 		return false
 	if not _check(await _click("menu") and scene.screen_name() == "main", "a click on the How to play page's way back returns to the title"):
 		return false
-	if not _check(await _click("option_1") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
+	if not _check(await _click("option_2") and scene.screen_name() == "survival_setup", "a click on New game opens the choice of players"):
 		return false
 	if not _check(await _click("option_3") and scene.screen_name() == "survival" and _actor("appraiser", "key_set") == 1, "a click on Two players starts two players"):
 		return false
@@ -267,9 +345,36 @@ func _mouse_drives_the_menus() -> bool:
 	await _frames(4)
 	return _check(scene.screen_name() == "main" and _hovered() == "", "the run is left and nothing is lit away from the entries")
 
-## New game is marked after the run; three steps down mark Quit. The pass
+## A real new game has written this process's isolated slot; reopening the
+## shipped scene must read it and show Continue before New game.
+func _continue_is_first_and_resumes_the_saved_day() -> bool:
+	if not _check(FileAccess.file_exists("user://day.save"), "setup: a new game wrote its day slot"):
+		return false
+	if not _check(reload_current_scene() == OK, "setup: the shipped scene reopens with the saved slot"):
+		return false
+	await _frames(2)
+	scene = current_scene as MainScene
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	if not _check(lines.find("CONTINUE") >= 0 and lines.find("NEW GAME") > lines.find("CONTINUE"), "Continue is drawn before New game: %s" % [lines]):
+		return false
+	var buttons: Array[Rect2] = _frames_of("button")
+	var first_rect: Rect2 = _target("option_1")["rect"]
+	var second_rect: Rect2 = _target("option_2")["rect"]
+	if not _check(buttons.size() == 6 and buttons[0] == first_rect and buttons[1] == second_rect, "the saved title draws six entries with Continue first"):
+		return false
+	await _tap(KEY_1)
+	var status: Dictionary = scene.survival_status()
+	var day: int = status.get("day", 0)
+	if not _check(scene.screen_name() == "survival" and not status.has("cinematic") and day == 1 and _actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "1 resumes day one with the saved two-player roles and no intro: %s" % status):
+		return false
+	await _tap(KEY_M)
+	await _tap(KEY_ENTER)
+	return _check(scene.screen_name() == "main", "leaving Continue returns to the saved title")
+
+## Continue is marked after reopening; four steps down mark Quit. The pass
 ## line prints from `_finalize` only.
 func _quit_ends_the_game() -> void:
+	await _tap(KEY_DOWN)
 	await _tap(KEY_DOWN)
 	await _tap(KEY_S)
 	await _tap(KEY_DOWN)

@@ -30,29 +30,42 @@ godot::Rect2 rect(float x, float y, float w, float h);
 /// Fills `area` on `canvas` with `fill`, its corners rounded by `radius`.
 void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
              godot::Color fill);
-/// Draws an opaque pixel panel filling `area`: a dark fill inside a thick
-/// original mockup rim, repeating native edge pixels between cut corners.
-void panel(godot::Node2D &canvas, godot::Rect2 area);
-/// Draws a dark button in the original mockup frame, with a gold mark along
-/// its left interior edge when `marked`.
-void button(godot::Node2D &canvas, godot::Rect2 area, bool marked);
-/// Draws a dark slot sunk into a panel, filling `area`.
-void inset(godot::Node2D &canvas, godot::Rect2 area);
+/// How far a pressed control drops, in layout units.
+inline constexpr float PRESS_DROP = 3.0F;
 
-/// The neon line a kit panel is edged with.
-enum class Accent : std::uint8_t { Cyan, Magenta, Gold, Green };
-/// The colour of `accent`.
-godot::Color accent_colour(Accent accent);
-/// Draws an opaque panel of the UI kit filling `area`: navy, a steel rim with
-/// rivets in its corners, a neon `accent` line inside the rim and a slime drip
-/// off the top edge when `drip`.
-void kit_panel(godot::Node2D &canvas, godot::Rect2 area, Accent accent,
-               bool drip);
-/// Draws a kit slot filling `area`, ringed in gold when `marked`.
-void kit_slot(godot::Node2D &canvas, godot::Rect2 area, bool marked);
-/// Draws a kit bar filling `area`, `fill` of it (0 to 1) lit in `tint`.
-void kit_bar(godot::Node2D &canvas, godot::Rect2 area, float fill,
-             godot::Color tint);
+/// How a stamped control stands: at rest, chosen or hovered, or pressed.
+enum class State : std::uint8_t { Default, Focus, Pressed };
+
+/// How `area` stands: pressed while the left mouse button is held over it,
+/// else focused when `focused`, else at rest.
+[[nodiscard]] State stand(const godot::Node2D &canvas, godot::Rect2 area,
+                          bool focused);
+/// Draws a choice card filling `area`: dark with a lavender outline at rest,
+/// lime on a magenta offset shadow with a white ring and a chevron at its
+/// right edge when focused, and dropped on a shrunk shadow when pressed.
+void card(godot::Node2D &canvas, godot::Rect2 area, State state);
+/// How much width a main button keeps at its right for its arrow: its words
+/// centre in the button less this.
+inline constexpr float ARROW_ROOM = 22.0F;
+/// Draws the main action button filling `area`: lime on a purple offset
+/// shadow with an arrow at its right end, a white ring and a magenta shadow
+/// when focused, dropped when pressed.
+void button(godot::Node2D &canvas, godot::Rect2 area, State state);
+/// Draws the ring round a target the mouse is over and can press: a lime
+/// rounded outline just outside `area`.
+void hover(godot::Node2D &canvas, godot::Rect2 area);
+/// Draws a plate filling `area`: near-black ink in a lavender outline, for
+/// the HUD and every panel.
+void plate(godot::Node2D &canvas, godot::Rect2 area);
+/// Draws a danger plate filling `area`: a magenta outline round a dark
+/// magenta fill, with a magenta triangle at its left end; the warning word is
+/// the caller's.
+void warning(godot::Node2D &canvas, godot::Rect2 area);
+/// Draws a progress track filling `area`, `fill` of it (0 to 1) cyan.
+void progress(godot::Node2D &canvas, godot::Rect2 area, float fill);
+/// Draws a fade from clear at the left of `area` to ink at its right edge,
+/// where the key art meets a panel.
+void fade(godot::Node2D &canvas, godot::Rect2 area);
 /// The one name the screen gives a city object, so the map, the goal line,
 /// the action button and the log agree: a source by what it holds and what it
 /// is, "Fish cart", anything else by `survival::object_name`; see
@@ -60,44 +73,53 @@ void kit_bar(godot::Node2D &canvas, godot::Rect2 area, float fill,
 [[nodiscard]] godot::String place_name(const survival::GameView &view,
                                        survival::ObjectId object);
 
-/// The colour tokens of the world's labels and the interface.
+/// The colour tokens of the world's labels and the interface: the one set the
+/// primitives and every screen draw from.
 struct Palette {
-  /// Primary text.
+  /// Primary text, a cream.
   godot::Color white;
   /// Secondary text.
   godot::Color muted;
-  /// Information: a human's controller, a place, a ready dish.
+  /// Progress and information: a controller, a place, a ready dish.
   godot::Color cyan;
-  /// The accent: titles' marks, a marked button, a promise of stock.
-  godot::Color gold;
-  /// Words on the accent.
+  /// The selection: a focused card, the main button, a title's mark.
+  godot::Color lime;
+  /// Words and marks on the lime, and a key cap's fill.
   godot::Color ink;
-  /// The veil behind an overlay.
+  /// The near-black purple behind panels and the veil behind an overlay.
   godot::Color background;
-  /// A panel.
+  /// A card at rest.
   godot::Color surface;
-  /// A row, slot, chip or idle button on a panel.
+  /// A row, slot or chip on a plate.
   godot::Color raised;
-  /// The dark lines around a frame and a slot.
+  /// The dark line round a stamped control.
   godot::Color outline;
-  /// The light rim of a panel or an idle button.
-  godot::Color rim;
-  /// The least important text.
+  /// The thin lavender outline of a plate, a card at rest and a rule.
+  godot::Color lavender;
+  /// The least important text, and an empty track.
   godot::Color faint;
-  godot::Color danger;
+  /// Danger, and the focus shadow.
+  godot::Color magenta;
+  /// A danger plate's fill.
+  godot::Color warn_fill;
+  /// The main button's shadow at rest.
+  godot::Color shadow;
+  /// A pressed lime control's fill.
+  godot::Color lime_pressed;
+  /// Done and ready, drawn in the selection's lime.
   godot::Color success;
 };
 
 /// How far a panel's words stay inside its edge.
 inline constexpr float PANEL_INSET = 16.0F;
 
-/// How words are drawn in the interface's one face: `Bold` draws them again
-/// one pixel to the right.
-enum class Weight : std::uint8_t { Regular, Bold };
+/// The interface's faces: `Regular` and `Bold` are Chivo for body, buttons,
+/// keys and numbers; `Title` is Bricolage Grotesque ExtraBold for titles, role
+/// names and outcome titles.
+enum class Weight : std::uint8_t { Regular, Bold, Title };
 
-/// The interface face's pixels per em when one of its design pixels is one
-/// screen pixel; words are drawn at whole multiples of it.
-inline constexpr int FONT_GRID = 8;
+/// The step interface sizes are chosen in, in layout units.
+inline constexpr int TYPE_UNIT = 7;
 
 Palette palette();
 
@@ -169,9 +191,6 @@ enum class Image : std::uint8_t {
   DishMeatStew,
   DishTruffleSoup,
   DishSurfAndTurf,
-  FramePanel,
-  FrameButton,
-  FrameSlot,
   HdChefIdle,
   HdChefWalk1,
   HdChefWalk2,
@@ -221,7 +240,6 @@ enum class Image : std::uint8_t {
   SpanWreck,
   KioskRuined,
   FireEscape,
-  BaseKitchen,
   TitleKeyArt,
   TitleLogo
 };
@@ -256,11 +274,11 @@ struct Waterline {
 /// remembers how each actor moved between frames.
 class Art {
 public:
-  /// Loads every picture of the art set and the interface font.
+  /// Loads every picture of the art set and the interface faces.
   static Art load();
 
   /// Draws `text` with the left end of its baseline on the whole pixel
-  /// nearest (`x`, `y`), at the whole multiple of `FONT_GRID` nearest `size`.
+  /// nearest (`x`, `y`), at `size` in the face `weight` names.
   void text(godot::Node2D &canvas, float x, float y, const godot::String &text,
             int size, godot::Color tint, Weight weight = Weight::Regular) const;
   /// How wide `text` draws at `size` in `weight`.
@@ -269,16 +287,28 @@ public:
   /// The lines drawn since the last call, in drawing order; words drawn on a
   /// line's baseline where it ends continue that line.
   [[nodiscard]] std::vector<godot::String> take_written() const;
-  /// The sizes `text` actually drew at, one per call since the last call, in
-  /// drawing order: each is the grid size, not the one asked for.
+  /// The sizes `text` drew at, one per call since the last call, in drawing
+  /// order.
   [[nodiscard]] std::vector<int> take_sizes() const;
-  /// Draws `image` at its own size times a whole `scale`, its top-left corner
-  /// on the pixel at `position`; `mirrored` flips it horizontally in place.
-  /// Each colour is multiplied by `tint`. A canvas with `character_layers`
-  /// receives the drawn character texture, screen area and reflection there.
+  /// Draws `image` at its own size times `scale` (a whole number, except for
+  /// the characters inside a building), its top-left corner on the pixel at
+  /// `position`; `mirrored` flips it horizontally in place. Each colour is
+  /// multiplied by `tint`. A canvas with `character_layers` receives the drawn
+  /// character texture, screen area and reflection there.
   void image(godot::Node2D &canvas, Image image, godot::Vector2 position,
              float scale = 1.0F, bool mirrored = false,
              godot::Color tint = godot::Color(1.0F, 1.0F, 1.0F)) const;
+  /// Draws the outline of `image`'s opaque shape, a ring of `colour` just
+  /// outside it, where `image` would be drawn at `position`; a canvas with
+  /// `actor_outlines` receives the character's role, screen area, colour and
+  /// the ring's pixel count there. Returns whether a ring was drawn.
+  bool outline(godot::Node2D &canvas, Image image, godot::Vector2 position,
+               bool mirrored, godot::Color colour, float scale = 1.0F) const;
+  /// The screen area of `image`'s opaque pixels when drawn at `position`
+  /// (mirrored or not) at `scale`, in the units `size` gives.
+  [[nodiscard]] godot::Rect2 opaque_area(Image image, godot::Vector2 position,
+                                         bool mirrored,
+                                         float scale = 1.0F) const;
   /// Draws the `source` part of `image`, in the units `size` gives, into
   /// `destination`, each colour multiplied by `tint`; a negative destination
   /// width or height reflects that axis about its position. A canvas with
@@ -301,6 +331,11 @@ public:
   /// Where the last look put the scene's origin, without the last shift's
   /// offset, and its zoom, so drawing can return to it with `look`.
   [[nodiscard]] Look looking() const;
+  /// Notes the whole extent of the building whose inside alone the camera
+  /// shows this frame, or none while it shows the street, for what is drawn
+  /// after the backdrop to follow the camera's view state.
+  void note_room(std::optional<godot::Rect2> room) const;
+  [[nodiscard]] std::optional<godot::Rect2> room() const;
   /// Eases from the value `name` last showed toward `target` whenever the
   /// target changes, on the clock `seconds` reads; a value missing from the
   /// frame before starts at its target.
@@ -365,7 +400,7 @@ private:
                        godot::Rect2 destination, bool mirrored = false) const;
 
   Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-      godot::Ref<godot::Font> face);
+      std::array<godot::Ref<godot::Font>, 3> faces);
 
   /// The tween of `name`, restarted when it was not drawn for a moment.
   Tween &tween(const godot::String &name, float target) const;
@@ -373,7 +408,8 @@ private:
   [[nodiscard]] std::uint64_t clock() const;
 
   std::vector<godot::Ref<godot::Texture2D>> images;
-  godot::Ref<godot::Font> font;
+  /// One per `Weight`.
+  std::array<godot::Ref<godot::Font>, 3> fonts;
   /// Painting is const; the trails, tweens and written lines are what the
   /// screen saw, not art.
   mutable std::array<Trail, 2> trails{};
@@ -381,6 +417,16 @@ private:
   mutable std::vector<Written> written;
   mutable std::vector<int> sizes;
   mutable std::optional<Waterline> waterline;
+  mutable std::optional<godot::Rect2> noted_room;
+  /// What `outline` and `opaque_area` read of a picture, found once.
+  struct Silhouette {
+    /// The ring as runs of picture pixels, one row high.
+    std::vector<godot::Rect2> ring;
+    godot::Rect2 opaque;
+    std::int64_t ring_pixels = 0;
+  };
+  [[nodiscard]] const Silhouette &silhouette(Image image) const;
+  mutable std::map<std::size_t, Silhouette> silhouettes;
   /// The steady clock's reading when the art loaded.
   std::uint64_t loaded;
   std::optional<float> pinned;
@@ -391,5 +437,10 @@ private:
   mutable godot::Vector2 shaken;
   mutable godot::Transform2D placed;
 };
+
+/// Draws a key cap filling `area`: an ink square in a pale outline with `label`
+/// centred in it, cream at rest and lime when focused or pressed.
+void key_cap(godot::Node2D &canvas, const Art &art, godot::Rect2 area,
+             const godot::String &label, State state);
 
 } // namespace neocity::rendering

@@ -259,6 +259,7 @@ constexpr std::array INGREDIENT_NAMES{
     Named<IngredientId>{.id = PICKLES, .name = "Pickles"},
     Named<IngredientId>{.id = MEAT, .name = "Meat"},
     Named<IngredientId>{.id = TRUFFLE, .name = "Truffle"},
+    Named<IngredientId>{.id = ESCAPE_PART, .name = "Part"},
 };
 
 constexpr std::array FOOD_NAMES{
@@ -537,7 +538,7 @@ std::vector<ObjectDefinition> street() {
       terrain(TOP_CATWALK, {.x = 53, .y = 2, .width = 8}),
       ladder(DOCK_LADDER, {.x = 60, .y = 5, .height = 7}),
       terrain(DOCK, {.x = 56, .y = 11, .width = 8}),
-      ingredient_source(TERMINAL_MACHINE, {.x = 44, .y = 8}, PICKLES),
+      ingredient_source(TERMINAL_MACHINE, {.x = 49, .y = 8}, PICKLES),
       ingredient_source(DECK_BAG, {.x = 58, .y = 5}, MUSHROOM),
       ingredient_source(DOCK_CRATE, {.x = 57, .y = 11}, TOMATO),
   };
@@ -812,7 +813,35 @@ std::vector<SourceStock> stocked(std::vector<SourceStock> sources,
   return sources;
 }
 
-/// Temporary weights: the light ones weigh 1, the middling 2, the heavy 3.
+/// The containers that each hold one part of the escape device in place of a
+/// food, one on the cold store's upper floor and two in the aquarium's service
+/// room.
+constexpr std::array PART_CONTAINERS{COLD_UPPER_SHELF, SERVICE_SHELF,
+                                     SERVICE_ROOF_CRATE};
+
+/// `sources` with the last slot of each of `PART_CONTAINERS` a part.
+std::vector<SourceStock> with_parts(std::vector<SourceStock> sources) {
+  for (const auto container : PART_CONTAINERS) {
+    const auto stock = std::ranges::find(sources, container, &SourceStock::id);
+    if (stock == sources.end() || stock->items.empty()) {
+      throw std::logic_error("a part container must be a stocked source");
+    }
+    stock->items.back() = ESCAPE_PART;
+  }
+  return sources;
+}
+
+/// The broken device on the aquarium's service roof, at the end of the rooftop
+/// route.
+EscapeDevice escape_device(std::uint32_t from_day) {
+  return {.map = MapId::Aquarium,
+          .area = {.x = 6, .y = 4},
+          .parts_needed = 3,
+          .from_day = from_day};
+}
+
+/// Temporary weights: the light ones weigh 1, the middling 2, the heavy 3; a
+/// part of the escape device weighs 2.
 std::vector<IngredientWeight> weights() {
   return {{.ingredient = KELP, .weight = 1},
           {.ingredient = MUSHROOM, .weight = 1},
@@ -820,7 +849,8 @@ std::vector<IngredientWeight> weights() {
           {.ingredient = TOMATO, .weight = 2},
           {.ingredient = FISH, .weight = 2},
           {.ingredient = MEAT, .weight = 3},
-          {.ingredient = TRUFFLE, .weight = 3}};
+          {.ingredient = TRUFFLE, .weight = 3},
+          {.ingredient = ESCAPE_PART, .weight = 2}};
 }
 
 /// The way to the aquarium at the end of the dock and the way back by its
@@ -946,7 +976,7 @@ Content temporary_content(std::uint32_t seed, const DayLengths &lengths) {
   const auto base = lengths.base;
   const auto cook = lengths.cook;
   auto objects = city();
-  auto sources = stocked(stock(), objects);
+  auto sources = with_parts(stocked(stock(), objects));
   auto street_cells = street_ground(objects);
   auto aquarium_cells = ground_of_terrain(objects, MapId::Aquarium, 0);
   return {
@@ -968,7 +998,8 @@ Content temporary_content(std::uint32_t seed, const DayLengths &lengths) {
                                      .overweight_percent = 60},
                            .obstacles = obstacles(),
                            .patrols = patrols(),
-                           .absence = 10s},
+                           .absence = 10s,
+                           .escape = escape_device(lengths.escape_day)},
            .workshop = {.recipes = recipes(),
                         .new_food_score = 50,
                         .new_ingredient_score = 5,

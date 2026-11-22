@@ -70,22 +70,38 @@ The following are temporary values that make the prototype playable and are not 
 
 ### Endings
 
-- An ending is a value of `Ending`, today only `MonsterSatisfied`, and a judgment is a function from the `Workshop` snapshot and the `EndingConfig` to whether that ending is reached. `Endings` holds the rules as a table pairing each `Ending` with its judgment, so a new ending is one enumerator, one judgment and one presentation in the HUD, as [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) decides.
-- `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. `check()` applies only in the workshop phase, so it waits while the party is in the city and draws nothing after the run is over. The first judgment reached ends the run through `Simulation::end`, which sets `Phase::Ended` and `Snapshot::ending`, and `check()` returns the ending. The host checks after every command.
-- `Phase::Ended` means the run reached an ending, and `Snapshot::ending` holds which one exactly then. A loss is `Phase::Lost`, never an ending.
+- An ending is a value of `Ending`: `MonsterSatisfied`, `VomitedOut` or `Escaped`. `Endings` holds an ordered table pairing each ending with its judgment, reading the public progression and workshop snapshots and `EndingConfig`. [ADR 0038](adr/0038-end-day-thirty-by-vomiting-and-illustrate-the-three-outcomes.md) extends [ADR 0033](adr/0033-end-the-run-in-a-table-of-endings-judged-after-each-command.md) with the day limit and progression input.
+- `Endings` does not own the `Simulation` or the `Workshop` it receives and holds no state of its own. It judges only in the workshop, waits while the party is in the city and changes nothing after the run is over. The host checks after commands and after base time advances, including an automatic end of day.
+- The first judgment reached sets `Phase::Ended` and `Snapshot::ending`. Satisfaction takes precedence over vomiting when both hold. Full acid is already `Phase::Lost` before the check, and cannot be replaced by either ending.
+- Satisfaction, vomiting, escape and acid failure each show their own picture with a title and a description on the ending or loss card, laid out as [presentation](presentation.md) states. Acid failure remains a loss with no `Ending` value. The existing cinematic skip and return contract still applies.
+- `project/e2e/endings.gd` (`make test-endings`) follows the NEXT line on real keys, climbing, jumping and closing the transfer screen as it names them, and choosing dishes that keep the monster short of seven satisfied days, to the thirtieth day, where it checks the vomited-out screen with `project/e2e/end_screen_check.gd`. It is its own target because the run takes minutes, and it fails when the route stalls or the screen breaks.
 
 #### Monster satisfied
 
-- `MonsterSatisfied` is reached when the days the monster was fed to satisfaction total `EndingConfig::satisfied_days`. `WorkshopSnapshot::satisfied_days` counts them: a feeding whose score reaches `WorkshopConfig::satisfying_score` is `MonsterReaction::Satisfied` and adds one. The days need not follow each other, and an unfed, disliked or unsatisfied day neither adds nor resets the count.
+- `MonsterSatisfied` is reached when the days fed to satisfaction total `EndingConfig::satisfied_days`. `WorkshopSnapshot::satisfied_days` counts them: a feeding whose score reaches `WorkshopConfig::satisfying_score` is `MonsterReaction::Satisfied` and adds one. The days need not follow each other, and an unfed, disliked or unsatisfied day neither adds nor resets the count.
 - The run ends when the day that adds the last one ends, because feeding finishes the day and the host checks at once.
-- A satisfied feeding raises no acid, so such a day cannot also fill it; the loss-first rule below is reachable only when an earlier unfed or unsatisfied day filled the acid before the check.
+- A satisfied feeding lowers acid, so that feeding cannot fill it.
 
-#### Temporary ending values
+#### Vomited out
 
-These make the ending reachable and are not final balance confirmed by the user.
+- `VomitedOut` is reached after day thirty finishes, if the run has not already ended. The next-day counter is then 31; opening day thirty is not sufficient.
+- The limit is deterministic, with no random escape draw. Satisfaction on the last day still wins, and acid filling on that day still loses.
 
-- The monster is satisfied on 7 days. The value is `TEMPORARY_ENDING` in `ending.hpp`. The satisfying score stays `WorkshopConfig::satisfying_score`.
-- The random escape after day 30 is gone: there is no draw and no day on which the run may end by chance.
+#### Escaped
+
+- `Escaped` is the one ending reached in the city, as [ADR 0045](adr/0045-end-the-run-at-a-repaired-escape-device.md) decides. `Exploration::escape` ends the run through `Simulation::escape`; it is not a row of the `Endings` table, which judges only in the workshop. The host runs it when a human presses the interact key beside the device: `Action` gives `UseDevice`, which only the interact key in the city produces.
+- The device is one `EscapeDevice` in `ExplorationConfig`: a map, an area, the parts it needs and its first day. The actor must be on the map, off any search, within `collection_distance` of the area, on or after the first day and carrying that many `ESCAPE_PART`. Refusals are `Result::NotExploring`, `Busy`, `NotAtDevice`, `TooEarly` and `MissingIngredients`, and a refusal changes nothing.
+- A run that is already over answers `RunOver`, so an acid loss beats an escape, and the workshop endings are judged only at base, so satisfaction and escape never hold in one command. There is no random draw.
+- `ESCAPE_PART` is an ingredient identity that is no food: no recipe, flavor or appraisal reads it, the appraiser's lists skip it, and AI never takes it, nor visits a container that holds nothing else. It has a weight like any carried item.
+
+#### Ending values
+
+- The monster is satisfied on 7 days, a temporary balance value in `TEMPORARY_ENDING`, not final balance confirmed by the user. The satisfying score stays `WorkshopConfig::satisfying_score`.
+- `EndingConfig::vomited_out_day` is 30, the chosen completed-day limit rather than a random chance or an additional satisfied-day requirement.
+- The escape device needs 3 parts from day 10, and a part weighs 2: temporary values the PM set under goal #268, held in `EscapeDevice`, `temporary_content` and `weights()`. The device stands on the aquarium's service roof at cell (6,4). The parts lie one in the cold store's upper shelf and two in the aquarium service room's shelf and roof crate, each replacing the last slot of its container, so every one lies on the route the map tour already walks. `NEOCITY_ESCAPE_DAY` sets the first day for the Godot checks only, through `DayLengths::escape_day`.
+- Balance is shown on three fixed seeds that `project/e2e/balance.gd` plays headless, pressing only the key the NEXT line names, in `make test-balance`, a part of `make test-escape`: seed 1 ends as `MonsterSatisfied` on day 10 with 7 satisfied days and no acid, seed 26 as `VomitedOut` on day 31 with 6 satisfied days and acid 70, and seed 81 as an acid loss on day 31 with 5 satisfied days. A seed's record is its day, its phase and ending, and its satisfied days; the check fails when a value of this section moves one.
+- Why these seeds: of seeds 1 to 96 followed by NEXT with 18-second days, 85 end satisfied (34 on day 21, 13 on day 10, the rest on days 11, 12 and 22 to 28), 10 end vomited out with 5 or 6 satisfied days, and one, seed 81, fills the acid on the thirtieth day. A seed that reaches the rarer ending is the one that earns its place, and the satisfied seed is the one that ends soonest. The scan was run with the Terminal Machine at its earlier cell, and the three seeds were re-run with it moved.
+- No fixed source stands inside a building's extent unless the building, or something standing in it, owns it, so the Terminal Machine stands at (49,8) beyond the Cold Store's extent and is not drawn in its hall. A content test, `NoFixedSourceStandsInsideABuildingItDoesNotBelongTo`, names any source that does; washed-up bags are left out because the kitchen loft lane lands some of them in the shop's row.
 
 ### Loss
 
@@ -172,7 +188,7 @@ The world, exploration, workshop, ending, companion, and screen files in the fol
 - The distinction between both actors briefly returning and actual cooking. Currently both at base is the workshop phase, with its own five minutes.
 - The real exploration budget, acid units, the final rise formula, arrival timing, next-day start conditions, the final movement speeds and jump reach, and later feature-specific result types. Test inputs do not imply balance decisions.
 - Whether appraisal failure is misinformation or a failure indication, retry limits, the final result of cooking failure, and the unfed acid penalty and feedings per day.
-- The final satisfaction score and the number of satisfied days, and what the satisfied ending depicts. Other endings, such as the monster vomiting the party out or a way out of the map, are later goals.
+- The final satisfaction score and the number of satisfied days, and what the satisfied ending depicts. The escape device's numbers are temporary and wait for the balance pass.
 - Whether AI should end the day or set out on its own when its human partner stays idle. Currently AI waits for the human.
 - Whether a human appraiser can direct an AI chef's dish. Currently the AI chef picks its own.
 - The save and restore format. Current snapshots are read-only value passing and not a save file or restore.

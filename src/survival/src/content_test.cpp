@@ -639,6 +639,43 @@ TEST(TemporaryContent, NoTwoSourcesShareACellOfAMapWhileEitherIsOnIt) {
   }
 }
 
+/// Fixed sources only: a washed-up bag lands by the tide's lanes on the day it
+/// is exposed, and the kitchen loft lane lands some inside the shop's row.
+TEST(TemporaryContent, NoFixedSourceStandsInsideABuildingItDoesNotBelongTo) {
+  const auto content = short_days(1);
+  const auto inside = [](const ObjectDefinition &object,
+                         const Interior &interior) {
+    return object.map == interior.map &&
+           distance({.x = object.area.x, .y = object.area.y}, interior.area) ==
+               0;
+  };
+  // A source belongs to a building when the building supports it or when
+  // what supports it stands inside the building too, as a vendor does.
+  const auto belongs = [&](const ObjectDefinition &source,
+                           const Interior &interior) {
+    if (source.supported_by == interior.building) {
+      return true;
+    }
+    const auto owner =
+        std::ranges::find(content.objects, source.supported_by,
+                          [](const auto &object) { return object.id; });
+    return source.supported_by && owner != content.objects.end() &&
+           inside(*owner, interior);
+  };
+  std::vector<std::string> strays;
+  for (const auto &interior : content.companion.exploration.interiors) {
+    for (const auto &object : content.objects) {
+      if (object.kind == ObjectKind::MaterialSource &&
+          !object.exposed_from_day && inside(object, interior) &&
+          !belongs(object, interior)) {
+        strays.emplace_back(std::string(object_name(object.id)) + " in " +
+                            std::string(object_name(interior.building)));
+      }
+    }
+  }
+  EXPECT_TRUE(strays.empty()) << ::testing::PrintToString(strays);
+}
+
 TEST(TemporaryContent, TheCrackedStageBringsTheFerryAndItsStock) {
   const auto content = short_days(1);
   const auto before = on_day(content, STAGE_FIRST_DAY.at(1) - 1);
@@ -699,14 +736,38 @@ TEST(TemporaryContent, TheCarryRulesAndSlotCountsAreThePmsTemporaryNumbers) {
   EXPECT_EQ(content.run.fridge_slots, 30U);
   EXPECT_EQ(carry.max_weight, 20U);
   EXPECT_EQ(carry.overweight_percent, 60U);
-  EXPECT_EQ(carry.weights.size(), 7U);
+  EXPECT_EQ(carry.weights.size(), 8U);
   std::map<std::uint32_t, int> tally;
   for (const auto &entry : carry.weights) {
     ++tally[entry.weight];
   }
   EXPECT_EQ(tally[1], 3);
-  EXPECT_EQ(tally[2], 2);
+  EXPECT_EQ(tally[2], 3);
   EXPECT_EQ(tally[3], 2);
+  EXPECT_EQ(weight_of(carry, ESCAPE_PART), 2U);
+}
+
+TEST(TemporaryContent,
+     ThreePartsOfTheEscapeDeviceLieInBothMapsAndWeighSomething) {
+  const auto content = short_days(1);
+  const auto &exploration = content.companion.exploration;
+  ASSERT_TRUE(exploration.escape.has_value());
+  const auto device = exploration.escape.value_or(EscapeDevice{});
+  EXPECT_EQ(device.parts_needed, 3U);
+  EXPECT_EQ(device.from_day, 10U);
+  EXPECT_EQ(device.map, MapId::Aquarium);
+  std::map<MapId, std::uint32_t> parts;
+  for (const auto &source : exploration.sources) {
+    const auto object =
+        std::ranges::find(content.objects, source.id, &ObjectDefinition::id);
+    ASSERT_NE(object, content.objects.end());
+    parts[object->map] += static_cast<std::uint32_t>(
+        std::ranges::count(source.items, ESCAPE_PART));
+  }
+  EXPECT_GE(parts[MapId::Street], 1U);
+  EXPECT_GE(parts[MapId::Aquarium], 1U);
+  EXPECT_EQ(parts[MapId::Street] + parts[MapId::Aquarium], 3U);
+  EXPECT_GT(weight_of(exploration.carry, ESCAPE_PART), 0U);
 }
 
 TEST(TemporaryContent, TheFirstDayReachesASourceOfEveryKind) {
@@ -1265,8 +1326,11 @@ TEST(TemporaryContent, AnAiPartySearchesEveryColdStoreFloorAndRoof) {
        ++step) {
     game.step(ALL_AI);
   }
+  // AI takes every food and leaves a part of the escape device to a human.
   for (const auto &source : game.exploration().snapshot().sources) {
-    EXPECT_TRUE(source.items.empty()) << object_name(source.id);
+    EXPECT_TRUE(std::ranges::all_of(source.items, [](IngredientId item) {
+      return item == ESCAPE_PART;
+    })) << object_name(source.id);
   }
   EXPECT_EQ(game.simulation().snapshot().phase, Phase::Workshop);
 }

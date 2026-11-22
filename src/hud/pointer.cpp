@@ -13,7 +13,7 @@ namespace {
 
 using godot::String;
 
-constexpr int REFUSAL_SIZE = 2 * rendering::FONT_GRID;
+constexpr int REFUSAL_SIZE = 2 * rendering::TYPE_UNIT;
 constexpr float REFUSAL_PAD = 10.0F;
 constexpr float REFUSAL_HEIGHT = 30.0F;
 using rendering::SCREEN_WIDTH;
@@ -139,8 +139,7 @@ void paint_pointer(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto &area = hovered->area;
   if (hovered->refusal.is_empty()) {
-    canvas.draw_rect(area, godot::Color(tones.gold, 0.18F));
-    canvas.draw_rect(area, tones.gold, false, 2.0F);
+    rendering::hover(canvas, area);
     return;
   }
   canvas.draw_rect(area, tones.faint, false, 2.0F);
@@ -149,7 +148,7 @@ void paint_pointer(godot::Node2D &canvas, const rendering::Art &drawing,
       drawing.text_width(hovered->refusal, REFUSAL_SIZE) + 2.0F * REFUSAL_PAD;
   const float x = std::clamp(area.position.x, 0.0F, SCREEN_WIDTH - width);
   const float y = std::max(0.0F, area.position.y - REFUSAL_HEIGHT - 4.0F);
-  rendering::panel(canvas, godot::Rect2(x, y, width, REFUSAL_HEIGHT));
+  rendering::plate(canvas, godot::Rect2(x, y, width, REFUSAL_HEIGHT));
   drawing.text(canvas, x + REFUSAL_PAD, y + 21.0F, hovered->refusal,
                REFUSAL_SIZE, tones.white);
 }

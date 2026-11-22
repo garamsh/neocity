@@ -561,8 +561,11 @@ func _same_frame_tap(code: Key) -> void:
 		event.pressed = pressed
 		Input.parse_input_event(event)
 
+## Starts a new run: a saved day puts Continue first on the title screen, so
+## New game is then the second entry.
 func _start(option: int) -> void:
-	await _one_frame("option_1")
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _one_frame("option_2" if lines.find("CONTINUE") >= 0 else "option_1")
 	await _frames(4)
 	await _one_frame("option_" + str(option))
 	await _frames(4)

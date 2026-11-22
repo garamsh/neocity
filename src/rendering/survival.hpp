@@ -43,9 +43,10 @@ struct Inside {
 
 /// The inside of the building every actor in the city is in, when there is an
 /// actor in the city and all of them are in the same building of the map: the
-/// screen then shows only that inside. Nullopt otherwise, including while one
-/// actor is outside, which the outside view shows with only the occupied
-/// rooms lit.
+/// camera then heads for only that inside, which it shows once the entry into
+/// the building has eased halfway (`follow`). Nullopt otherwise, including
+/// while one actor is outside, which the outside view shows with only the
+/// occupied rooms lit.
 [[nodiscard]] std::optional<Inside> inside_of(const survival::Content &content,
                                               const survival::GameView &view);
 
@@ -87,10 +88,11 @@ void paint_city_glow(godot::Node2D &canvas, const Art &art,
 /// carried off, is not drawn. A source in `out_of_reach` has stock no player
 /// can walk to: it loses the gold frame. Each actor faces the way it last
 /// walked, alternates its walking frames while it moves, and climbs on a
-/// ladder.
+/// ladder. Where the two actors' bodies overlap, `control` gives the colour of
+/// the hidden one's outline: its player's, or a neutral one for the AI.
 void paint_city(godot::Node2D &canvas, const Art &art,
                 const survival::Content &everything,
-                const survival::GameView &view,
+                const survival::GameView &view, survival::ControlMap control,
                 const std::vector<survival::ObjectId> &out_of_reach);
 /// The icon of the ingredient or dish the `survival` library names
 /// `name`, if the art set has one.
@@ -114,11 +116,5 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
                        const survival::GameView &view,
                        survival::ControlMap control, const Shot &shot,
                        std::span<const godot::Rect2> covered);
-/// Draws the base: the kitchen art over the whole screen, the chef and the
-/// appraiser standing on its floor, and the feed crane over the monster's
-/// mouth, with its dish lowered by `lowering` from 0 (rest) to 1 (fed).
-/// `dish_ready` hangs the stored dish on the crane.
-void paint_workshop(godot::Node2D &canvas, const Art &art, bool dish_ready,
-                    float lowering);
 
 } // namespace neocity::rendering

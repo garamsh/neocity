@@ -15,7 +15,7 @@ const SEARCH_ATTEMPTS: int = 12
 ## full container holds it about this long.
 const REST_FRAMES: int = 30
 ## On this seed a party following NEXT alone meets a hated dish, then ends the run satisfied.
-const LONG_RUN_SEED: int = 18
+const LONG_RUN_SEED: int = 4
 const LONG_RUN_DAYS: int = 60
 const DAY_STEPS: int = 400
 const GATHERING_DAYS: int = 3
@@ -98,17 +98,16 @@ const VOLUME_NAME_OFFSET: float = 200.0
 ## The screen's middle height: the kitchen's people stand above it and the
 ## deck's panels sit below it.
 const SCREEN_MIDDLE: float = 360.0
+## Where the base's deck of plates begins, in layout units.
+const DECK_TOP: float = 556.0
 ## What the chef says at base while the inventory is open: the screen takes the
 ## interact key, so cooking waits for it to close.
 const CLOSE_FIRST: String = "Close the inventory first."
 ## The face the screen draws every changing line in.
-const CHANGING_FONT: String = "res://levels/monster_mouth_escape/fonts/Tiny5-Regular.ttf"
-## The face's grid, in layout units per em, which every drawn size is a multiple of.
-## A layout unit is 1.5 canvas pixels, so this keeps the face's pixels square on
-## the layout grid and not on the screen's, as ADR 0024 records.
-const FONT_GRID: int = 8
+const FONTS: String = "res://levels/monster_mouth_escape/fonts/"
+const CHANGING_FONT: String = FONTS + "body.tres"
 ## The smallest size, in layout units, the interface draws a word at.
-const MIN_TEXT_SIZE: int = 16
+const MIN_TEXT_SIZE: int = 14
 ## What ends the run well, which the pause screen names.
 const ENDING_GOAL: String = "Satisfy the monster on 7 days"
 ## How many first-play tips there are, one per concept that base shows; the
@@ -119,6 +118,8 @@ const SCREEN: Rect2 = Rect2(0, 0, 1280, 720)
 ## The key caps the action prompts draw: the search and travel keys of each key
 ## set.
 const PROMPT_CAPS: Array[String] = ["[R]", "[P]", "[Q]", "[U]"]
+## The set-out tip's words, which the tip draws its key after.
+const SET_OUT_TIP: String = "Set out into the city to gather food. The day's clock runs only there."
 ## The top band's lower edge, which holds the day, acid and clock plates alone.
 const TOP_BAND_END: float = 56.0
 ## The words of a source's kind the map once wrote beside its supply.
@@ -296,7 +297,7 @@ func _a_refused_click_presses_nothing() -> bool:
 
 ## A click on the chef standing in the kitchen cooks the offered dish, as E does.
 func _a_click_on_the_chef_cooks() -> bool:
-	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
+	var chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP)
 	if not _check(not chef.is_empty() and str(chef["refusal"]) == "" and _str("dish_offered") != "", "setup: the chef in the kitchen can cook: %s" % [_base_state()]):
 		return false
 	var chosen: String = _str("dish_offered")
@@ -308,7 +309,7 @@ func _a_click_on_the_chef_cooks() -> bool:
 ## cancel answer clicks, and the keys alone pause and return.
 func _mouse_in_the_city() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	walker = "chef"
@@ -403,7 +404,7 @@ func _two_players_share_the_mouse() -> void:
 ## Real keys: Esc, M and Enter over a run, and over a cinematic.
 func _pause_and_leave() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_ESCAPE)
 	if not _check(_str("cinematic") == "intro" and _str("interruption") == "", "Esc does not pause a cinematic"):
@@ -411,7 +412,7 @@ func _pause_and_leave() -> void:
 	await _tap(KEY_M)
 	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M during a cinematic leaves at once"):
 		return
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -462,7 +463,7 @@ func _pause_and_leave() -> void:
 		return
 	_key(KEY_ENTER, false)
 	await _frames(4)
-	await _tap(KEY_1)
+	await _new_game()
 	if not _check(scene.screen_name() == "survival_setup", "the main menu answers once Enter is up"):
 		return
 	await _tap(KEY_M)
@@ -529,7 +530,7 @@ func _hand_off_shows_the_keys_left() -> void:
 	if not _check(_str("hand_off").contains("Appraiser"), "the notice follows a swap"):
 		return
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_TAB)
@@ -542,7 +543,7 @@ func _hand_off_shows_the_keys_left() -> void:
 ## the AI appraiser, which fills the log, and sets out again.
 func _repeated_note_appears() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -563,7 +564,7 @@ func _repeated_note_appears() -> void:
 
 func _start_two_players() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_3)
 	await _tap(KEY_E)
 
@@ -613,19 +614,52 @@ func _watch_tips() -> void:
 		tip_overlaps.append("%s off the screen at %s" % [text, area])
 	tip_frames += 1
 
+## The set-out key of each key set, from the controls table: its travel row.
+func _set_out_keys() -> Array[String]:
+	var keys: Array[String] = []
+	for row: String in MainScene.controls_keys():
+		if row.begins_with("Set out or return to base: "):
+			for key: String in row.trim_prefix("Set out or return to base: ").split(" / "):
+				if key != "":
+					keys.append(key)
+	return keys
+
+## The endings the set-out tip may draw: the set-out key of one human, or of two.
+func _set_out_endings() -> Array[String]:
+	var keys: Array[String] = _set_out_keys()
+	var endings: Array[String] = []
+	for key: String in keys:
+		endings.append(" Set out with [%s]." % key)
+	if keys.size() == 2:
+		endings.append(" Set out with [%s] (P1) or [%s] (P2)." % [keys[0], keys[1]])
+	return endings
+
+## `line` without the set-out key the set-out tip ends in; any other line, and a
+## set-out tip ending in anything else, stays as drawn.
+func _without_set_out_key(line: String) -> String:
+	if line.begins_with(SET_OUT_TIP) and _set_out_endings().has(line.trim_prefix(SET_OUT_TIP)):
+		return SET_OUT_TIP
+	return line
+
 ## Every concept's tip opened, none twice in one run, a later run opened one
 ## again, and no drawn tip covered the HUD or a target; the control is that
 ## tips were drawn.
 func _tips_opened_once_each() -> bool:
-	if not _check(every_tip.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
+	var opened: Dictionary[String, bool] = {}
+	for line: String in every_tip:
+		opened[_without_set_out_key(line)] = true
+	if not _check(opened.size() == TIP_COUNT, "every concept's tip opened: %s" % [every_tip.keys()]):
 		return false
 	if not _check(repeated_tips.is_empty() and tip_reopened, "no tip opened twice in one run, and a new run opened one again: %s" % [repeated_tips]):
 		return false
 	var keyed: Array[String] = []
+	var lines: Dictionary[String, bool] = {}
 	for line: String in every_tip:
-		if line.contains("[") or line.contains("Esc") or line.contains("Enter"):
+		var bare: String = _without_set_out_key(line)
+		lines[bare] = true
+		if bare.contains("[") or bare.contains("Esc") or bare.contains("Enter"):
 			keyed.append(line)
-	if not _check(keyed.is_empty(), "the tips name actions and not keys: %s" % [keyed]):
+	if not _check(keyed.is_empty(), "the tips name actions and not keys, but the set-out key on the set-out tip: %s" % [keyed]):
 		return false
 	return _check(tip_overlaps.is_empty() and tip_frames > 0, "a tip covers no HUD panel or target and stays on the screen: %s in %s" % [tip_overlaps.slice(0, 5), tip_frames])
 
@@ -660,7 +694,7 @@ func _menus() -> void:
 ## nothing, so the run stays at base on day one with its time.
 func _a_click_closes_the_tip() -> bool:
 	var tip: Dictionary = scene.get_meta("hud_tip", {})
-	if not _check(_str("tip") == "set_out" and str(tip.get("text", "")).begins_with("Set out"), "the first tip at base says to set out: %s" % [tip]):
+	if not _check(_str("tip") == "set_out" and str(tip.get("text", "")) == SET_OUT_TIP + " Set out with [%s]." % _set_out_keys()[0], "the first tip at base says to set out and names the set-out key: %s" % [tip]):
 		return false
 	var remaining: int = _int("remaining_ms")
 	var area: Rect2 = tip["rect"]
@@ -892,7 +926,7 @@ func _touching_an_obstacle_sends_the_actor_away() -> void:
 ## stored dish once there is one to feed.
 func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -944,18 +978,80 @@ func _ai_chef_work_yields_to_a_dish_to_feed() -> void:
 		return
 	_check(line.begins_with("Feed "), "a dish to feed comes before the AI chef cooking another: %s" % line)
 
-## The chef and the appraiser stand on the kitchen floor and the feed crane
-## hangs over the monster's mouth with the stored dish on it: the base draws
-## both over the kitchen picture.
+## The chef and the appraiser stand on the kitchen floor, drawn over the
+## background and under the workbench front: the base draws both.
 func _base_figures_drawn() -> bool:
-	var figures: Array = scene.get_meta("workshop_figures", [])
-	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
-	if not _check(figures.size() == 2, "the base draws the appraiser and the chef: %d figures" % figures.size()):
+	var layers: Dictionary = _base_layers()
+	if not _check(layers.has("appraiser") and layers.has("chef"), "the base draws the appraiser and the chef: %s" % [layers.keys()]):
 		return false
-	for figure: Rect2 in figures:
+	for worker: String in ["appraiser", "chef"]:
+		var figure: Rect2 = layers[worker]["area"]
 		if not _check(figure.end.y > 440.0 and figure.end.y < 560.0 and figure.size.y > 100.0, "a worker stands on the kitchen floor: %s" % figure):
 			return false
+	if not _workers_are_clickable_where_drawn(layers):
+		return false
+	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
 	return _check(crane.size.x > 100.0 and crane.size.y > 40.0 and crane.position.x > 700.0, "the feed crane is drawn over the monster's mouth: %s" % crane)
+
+
+## Whether a click target of each worker lies inside, or equals, the area of
+## the layer that draws that worker, so the click lands on the figure.
+func _workers_are_clickable_where_drawn(layers: Dictionary) -> bool:
+	for worker: String in ["chef", "appraiser"]:
+		var figure: Rect2 = _layer_area(layers, worker)
+		var found: bool = false
+		for shown: Dictionary in scene.get_meta("pointer_targets", []):
+			var area: Rect2 = shown["rect"]
+			if shown["press"] == worker + "_interact" and figure.encloses(area):
+				found = true
+		if not _check(found and figure.size.y > 100.0, "a click target of the %s lies inside its drawn area %s" % [worker, figure]):
+			return false
+	return true
+
+
+## The base scene's layers as the last frame drew them: name to its draw order
+## and area, in layout units.
+func _base_layers() -> Dictionary:
+	var layers: Dictionary = {}
+	var drawn: Array = scene.get_meta("base_layers", [])
+	for order: int in range(drawn.size()):
+		var layer: Dictionary = drawn[order]
+		layers[layer["name"]] = {"order": order, "area": layer["area"]}
+	return layers
+
+
+## The area of a base layer, empty when it is not drawn.
+func _layer_area(layers: Dictionary, name: String) -> Rect2:
+	return layers[name]["area"] if layers.has(name) else Rect2()
+
+
+## Whether the base's layers hold: at rest the workbench front is drawn after
+## both workers and the crane over it, and with the crane lowered the mast and
+## the cable's top stay where they were while the cable grows by as much as the
+## cradle and the fed dish go down.
+func _base_layers_hold(rest: Dictionary, lowered: Dictionary) -> bool:
+	var names: Array = ["background", "appraiser", "chef", "front", "mast", "cable", "cradle"]
+	var drawn: bool = rest.has("dish") and names.all(func(name: String) -> bool: return rest.has(name) and lowered.has(name))
+	var ordered: bool = drawn and rest["front"]["order"] > rest["appraiser"]["order"] and rest["front"]["order"] > rest["chef"]["order"] and rest["front"]["order"] > rest["background"]["order"] and rest["front"]["order"] < rest["mast"]["order"]
+	var down: float = _layer_area(lowered, "cradle").position.y - _layer_area(rest, "cradle").position.y
+	var fixed: bool = _layer_area(lowered, "mast") == _layer_area(rest, "mast") and _layer_area(lowered, "cable").position == _layer_area(rest, "cable").position
+	var follows: bool = (lowered.has("dish") and is_equal_approx(_layer_area(lowered, "dish").position.y - _layer_area(rest, "dish").position.y, down)) and is_equal_approx(_layer_area(lowered, "cable").size.y - _layer_area(rest, "cable").size.y, down) and _layer_area(lowered, "cradle").position.x == _layer_area(rest, "cradle").position.x
+	return _check(ordered and down > 20.0 and fixed and follows, "the workbench front is drawn after both workers, and the mast and cable top stay while the cradle, dish and cable go down by %s: %s then %s" % [down, rest, lowered])
+
+
+## Whether the day's result card is drawn, is narrower than the widest line
+## it may hold (800 units) because it is sized to its words, and leaves the
+## chef's and the appraiser's drawn areas clear.
+func _result_clears_the_workers() -> bool:
+	var card: Rect2 = scene.get_meta("day_result", Rect2())
+	if not _check(card.size.x > 100.0 and card.size.x < 800.0 and card.size.y > 40.0, "the day's result is drawn as a card sized to its text: %s" % card):
+		return false
+	var layers: Dictionary = _base_layers()
+	for worker: String in ["appraiser", "chef"]:
+		var figure: Rect2 = _layer_area(layers, worker)
+		if not _check(figure.size.y > 100.0 and not card.intersects(figure), "the day's result stays clear of the %s: %s against %s" % [worker, card, figure]):
+			return false
+	return true
 
 
 ## How far down the feed crane's hook and dish hang.
@@ -982,8 +1078,11 @@ func _workshop_day_one() -> void:
 	if not _check(_lines("day_result").is_empty(), "the workshop shows no result until a day has ended"):
 		return
 	var resting: float = _crane_height()
+	var rest_layers: Dictionary = _base_layers()
 	await _tap(KEY_F)
 	if not await _until("the feed crane lowers its dish", func() -> bool: return _crane_height() > resting + 20.0, 30):
+		return
+	if not _base_layers_hold(rest_layers, _base_layers()):
 		return
 	if not await _until("feeding starts the next day", func() -> bool: return _int("day") == 2, 30):
 		return
@@ -1000,6 +1099,8 @@ func _workshop_day_one() -> void:
 	if not _check(_result_says("Day 1: " + fed) and _int("remaining_ms") == 18000, "the result stands on screen and spends no time"):
 		return
 	if not _text_fits("the day's result"):
+		return
+	if not _result_clears_the_workers():
 		return
 	if not _check(_str("reaction") == "satisfied" and _int("score") >= 100, "a new dish satisfies the monster"):
 		return
@@ -1042,7 +1143,7 @@ func _second_day() -> void:
 
 func _chef_chooses_a_dish() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _set_out_before_feeding()
@@ -1201,7 +1302,7 @@ func _set_out_before_feeding() -> void:
 ## would feed.
 func _follow_next_to_the_ending() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	scene.pin_survival_seed(LONG_RUN_SEED)
 	await _tap(KEY_1)
 	await _tap(KEY_E)
@@ -1416,7 +1517,7 @@ func _appraiser_run() -> void:
 	await _leave_run()
 	if not _check(scene.screen_name() == "main" and _status().is_empty(), "M ends the run"):
 		return
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	if not _check(_actor("appraiser", "key_set") == 0 and _actor("chef", "key_set") == -1, "choosing the appraiser gives AI the chef"):
@@ -1469,7 +1570,7 @@ func _appraiser_run() -> void:
 ## An AI chef cooks a step after the last appraisal, so NEXT must not end that day.
 func _appraiser_follows_next() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_2)
 	await _tap(KEY_E)
 	var steps: int = 0
@@ -1517,7 +1618,10 @@ func _two_players() -> void:
 	await _start_two_players()
 	if not _check(_actor("chef", "key_set") == 0 and _actor("appraiser", "key_set") == 1, "two players take one key set each"):
 		return
-	if not _check(_next().begins_with("Set out into the city"), "the base line tells two players to set out: %s" % _next()):
+	var keys: Array[String] = _set_out_keys()
+	var drawn_tip: Dictionary = scene.get_meta("hud_tip", {})
+	var two_tip: String = str(drawn_tip.get("text", ""))
+	if not _check(_next().begins_with("Set out into the city") and two_tip == SET_OUT_TIP + " Set out with [%s] (P1) or [%s] (P2)." % [keys[0], keys[1]], "the base line tells two players to set out, and the set-out tip names both keys: %s %s" % [_next(), two_tip]):
 		return
 	if not _text_fits("two players at base before setting out"):
 		return
@@ -1702,14 +1806,14 @@ func _search_screen_and_fridge() -> void:
 	# while it is open the chef refuses a click until it is closed.
 	if not _check(await _click("chef_search") and _screen_open(0), "a click on the chef's fridge button opens the inventory and the fridge at base"):
 		return
-	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE)
+	var kitchen_chef: Dictionary = _target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP)
 	if not _check(not kitchen_chef.is_empty() and str(kitchen_chef["refusal"]) == CLOSE_FIRST, "with the fridge open a click on the chef is refused with the close step: %s" % [_base_state()]):
 		return
 	if not _check(await _click("chef_other_%d" % fridge) and _int("fridge") == fridge and _actor("chef", "ingredients") == 1, "a click on a fridge slot withdraws the item into the pack"):
 		return
 	if not _check(await _click("chef_mine_0") and _int("fridge") == fridge + 1 and _actor("chef", "ingredients") == 0, "a click on a pack slot stores the item in the fridge"):
 		return
-	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.position.y < SCREEN_MIDDLE).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
+	if not _check(await _click("chef_search") and not _screen_open(0) and str(_target_where("chef_interact", func(area: Rect2) -> bool: return area.end.y < DECK_TOP).get("refusal", "")) != CLOSE_FIRST, "a click on the fridge button closes the screen and the chef stops refusing"):
 		return
 	var day: int = _int("day")
 	await _tap(KEY_G)
@@ -1815,7 +1919,7 @@ func _search_and_take(times: int, shared: String = "") -> bool:
 
 func _loss_clears_the_offer() -> void:
 	await _leave_run()
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -1837,7 +1941,7 @@ func _a_timed_cook_draws_its_bar() -> void:
 	await _leave_run()
 	OS.set_environment("NEOCITY_BASE_SECONDS", "300")
 	OS.set_environment("NEOCITY_COOK_SECONDS", "20")
-	await _tap(KEY_1)
+	await _new_game()
 	await _tap(KEY_1)
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
@@ -1931,14 +2035,14 @@ func _result_says(words: String) -> bool:
 
 ## Pauses and continues, and tells whether the ending goal was drawn over
 ## the pause screen and not on the screen under it. The screen and the pause
-## over it each draw every word at a whole multiple of the font's grid.
+## over it each draw every word in the new faces.
 func _pause_shows_ending_goal() -> bool:
 	var before: bool = _drawn_says(ENDING_GOAL)
-	if not _text_on_grid("the screen under the pause"):
+	if not _text_in_faces("the screen under the pause"):
 		return false
 	await _tap(KEY_ESCAPE)
 	var paused: bool = _str("interruption") == "paused" and _drawn_says(ENDING_GOAL)
-	if not _text_on_grid("the pause screen"):
+	if not _text_in_faces("the pause screen"):
 		return false
 	await _tap(KEY_ESCAPE)
 	return _str("goal") == ENDING_GOAL and not before and paused and _str("interruption") == ""
@@ -1947,17 +2051,22 @@ func _pause_shows_ending_goal() -> bool:
 func _drawn_lines() -> PackedStringArray:
 	return scene.get_meta("screen_text", PackedStringArray())
 
-## Whether every word the last frame drew was drawn at a whole multiple of the
-## font's grid, 16 layout units at the least, and the font is imported without
-## antialiasing; the control is that the frame drew words at all.
-func _text_on_grid(where: String) -> bool:
+## Whether the last frame drew words, none under MIN_TEXT_SIZE layout units, and
+## the interface's three faces are Chivo at 400 and 700 and Bricolage Grotesque
+## at 800, not the old pixel face; the control is that the frame drew words.
+func _text_in_faces(where: String) -> bool:
 	var sizes: PackedInt32Array = scene.get_meta("screen_text_sizes", PackedInt32Array())
-	var off: Array[int] = []
+	var small: Array[int] = []
 	for size: int in sizes:
-		if size % FONT_GRID != 0 or size < MIN_TEXT_SIZE:
-			off.append(size)
-	var face: FontFile = load(CHANGING_FONT)
-	return _check(not sizes.is_empty() and off.is_empty() and face.antialiasing == TextServer.FONT_ANTIALIASING_NONE, "every word on %s is drawn at a multiple of %d, %d at the least, in an unsmoothed face: off the grid %s of %s" % [where, FONT_GRID, MIN_TEXT_SIZE, off, sizes])
+		if size < MIN_TEXT_SIZE:
+			small.append(size)
+	var body: FontVariation = load(FONTS + "body.tres")
+	var strong: FontVariation = load(FONTS + "strong.tres")
+	var title: FontVariation = load(FONTS + "title.tres")
+	var wght: int = TextServerManager.get_primary_interface().name_to_tag("wght")
+	var faces: bool = body.base_font.resource_path.contains("Chivo") and strong.base_font.resource_path.contains("Chivo") and title.base_font.resource_path.contains("Bricolage")
+	var weights: bool = body.variation_opentype[wght] == 400.0 and strong.variation_opentype[wght] == 700.0 and title.variation_opentype[wght] == 800.0
+	return _check(not sizes.is_empty() and small.is_empty() and faces and weights, "every word on %s is drawn at %d at the least in the new faces: under it %s of %s" % [where, MIN_TEXT_SIZE, small, sizes])
 
 ## Whether the last frame drew a line reading exactly `words`.
 func _drawn(words: String) -> bool:
@@ -1991,14 +2100,16 @@ func _hud_area() -> float:
 		area += panel.get_area()
 	return area
 
-## Whether the last frame drew no Esc and no key cap but the search keys of
-## the action prompts, such as "[R]", while it drew the top bar's words.
+## Whether the last frame drew no Esc and no key cap but the keys of
+## the action prompts, such as "[R]", and the set-out key of the set-out tip,
+## while it drew the top bar's words.
 func _names_only_prompt_keys(where: String) -> bool:
 	var keyed: Array[String] = []
 	for line: String in _drawn_lines():
-		if line.contains("Esc") or (line.contains("[") and not PROMPT_CAPS.has(line)):
+		var bare: String = _without_set_out_key(line)
+		if bare.contains("Esc") or (bare.contains("[") and not PROMPT_CAPS.has(bare)):
 			keyed.append(line)
-	return _check(keyed.is_empty() and _top_bar_drawn(), "%s names no key but the prompts' search keys: %s" % [where, keyed])
+	return _check(keyed.is_empty() and _top_bar_drawn(), "%s names no key but the prompts' keys and the set-out tip's: %s" % [where, keyed])
 
 ## Whether the last frame drew the day, the acid and the clock.
 func _top_bar_drawn() -> bool:
@@ -2497,6 +2608,12 @@ func _leave_run() -> void:
 		await _tap(KEY_M)
 		await _tap(KEY_ENTER)
 	await _until("the title screen shows after leaving the run", func() -> bool: return scene.screen_name() == "main" and _status().is_empty(), 30)
+
+## Chooses New game on the title screen: a saved day puts Continue first, so
+## New game is then the second entry.
+func _new_game() -> void:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _tap(KEY_2 if lines.find("CONTINUE") >= 0 else KEY_1)
 
 func _tap(code: Key) -> void:
 	_key(code, true)

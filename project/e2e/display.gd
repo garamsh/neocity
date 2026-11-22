@@ -118,6 +118,11 @@ func _keys_change_the_settings_page() -> bool:
 	await _tap(KEY_ESCAPE)
 	return _check(scene.screen_name() == "main", "Esc goes back from the Settings page")
 
+## The title's Settings entry, the last one: a saved day adds Continue before it.
+func _settings_entry() -> String:
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	return "option_6" if lines.find("CONTINUE") >= 0 else "option_5"
+
 ## A click on the title's Settings entry, then on each arrow.
 func _mouse_changes_the_settings_page() -> bool:
 	if not _check(await _click("option_5") and scene.screen_name() == "settings", "a click on Settings opens its page"):
@@ -207,7 +212,7 @@ func _a_failed_save_is_reported() -> bool:
 	DirAccess.remove_absolute(global)
 	if not _check(DirAccess.make_dir_absolute(global) == OK, "setup: a folder stands where the display file goes"):
 		return false
-	if not _check(await _click("option_5") and scene.screen_name() == "settings", "setup: a click on Settings opens its page"):
+	if not _check(await _click(_settings_entry()) and scene.screen_name() == "settings", "setup: a click on Settings opens its page"):
 		return false
 	await _tap(KEY_S)
 	await _tap(KEY_D)

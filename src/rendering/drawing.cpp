@@ -1,9 +1,12 @@
 #include "drawing.hpp"
 
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/input.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/core/error_macros.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/packed_color_array.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 
 #include <survival/content.hpp>
@@ -28,12 +31,94 @@ constexpr int CORNER_STEPS = 6;
 constexpr std::uint64_t GLIDE_MICROSECONDS = 280000;
 constexpr std::uint64_t ENTRANCE_MICROSECONDS = 220000;
 
-/// The interface's pixel face, drawn without smoothing on its own grid.
-constexpr const char *FONT_FILE = "Tiny5-Regular.ttf";
+/// The interface's faces under the fonts folder, indexed by `Weight`: Chivo at
+/// 400 and 700, and Bricolage Grotesque at 800 with its largest optical size,
+/// each set in its own resource.
+constexpr std::array<const char *, 3> FACES{"body.tres", "strong.tres",
+                                            "title.tres"};
 
-/// `size` at the nearest whole multiple of the face's grid, one at least.
-int on_grid(int size) {
-  return std::max(1, (size + FONT_GRID / 2) / FONT_GRID) * FONT_GRID;
+/// How far a focused or resting main control's shadow falls down and to the
+/// right: 7.5 pixels at 1080p.
+constexpr float SHADOW = 5.0F;
+constexpr float RADIUS = 8.0F;
+constexpr float RING = 2.0F;
+
+/// The glyph a stamped control carries in ink at its right end.
+enum class Mark : std::uint8_t { None, Arrow, Chevron };
+
+/// The narrowest card that carries its chevron; narrower ones are slots.
+constexpr float CHEVRON_MIN_WIDTH = 120.0F;
+constexpr float MARK_INSET = 14.0F;
+constexpr float ARROW_LENGTH = 14.0F;
+constexpr float ARROW_HEAD = 4.0F;
+constexpr float CHEVRON_REACH = 16.0F;
+constexpr float CHEVRON_DEPTH = 5.0F;
+constexpr float MARK_WIDTH = 2.0F;
+
+/// How a stamped control is drawn in one state: a shadow, a ring outside it,
+/// an edge, a fill and the mark at its right end.
+struct Stamp {
+  godot::Color shadow;
+  float shadow_offset = 0.0F;
+  godot::Color ring;
+  godot::Color edge;
+  godot::Color fill;
+  /// How far the control has dropped.
+  float drop = 0.0F;
+  Mark mark = Mark::None;
+};
+
+/// Draws `mark` in `ink` at the right end of `area`.
+void marked(godot::Node2D &canvas, godot::Rect2 area, Mark mark,
+            godot::Color ink) {
+  const float middle = area.position.y + area.size.y / 2.0F;
+  godot::PackedVector2Array head;
+  if (mark == Mark::Arrow) {
+    const float end = area.get_end().x - MARK_INSET;
+    canvas.draw_line({end - ARROW_LENGTH, middle}, {end, middle}, ink,
+                     MARK_WIDTH);
+    head.push_back({end - ARROW_HEAD, middle - ARROW_HEAD});
+    head.push_back({end, middle});
+    head.push_back({end - ARROW_HEAD, middle + ARROW_HEAD});
+  } else if (mark == Mark::Chevron) {
+    const float x = area.get_end().x - CHEVRON_REACH - CHEVRON_DEPTH;
+    head.push_back({x, middle - CHEVRON_DEPTH * 1.4F});
+    head.push_back({x + CHEVRON_DEPTH, middle});
+    head.push_back({x, middle + CHEVRON_DEPTH * 1.4F});
+  }
+  if (!head.is_empty()) {
+    canvas.draw_polyline(head, ink, MARK_WIDTH);
+  }
+}
+
+/// Draws a control filling `area` as `stamp` says, and notes it in the canvas's
+/// `interface_stamps` for the checks that read the screen.
+void stamped(godot::Node2D &canvas, const char *kind, State state,
+             godot::Rect2 area, const Stamp &stamp) {
+  const Mark mark =
+      stamp.mark == Mark::Chevron && area.size.x < CHEVRON_MIN_WIDTH
+          ? Mark::None
+          : stamp.mark;
+  godot::Array noted = canvas.get_meta("interface_stamps", godot::Array());
+  godot::Dictionary entry;
+  entry.set("kind", kind);
+  entry.set("state", static_cast<int>(state));
+  entry.set("fill", stamp.fill);
+  entry.set("shadow_offset", stamp.shadow_offset);
+  entry.set("drop", stamp.drop);
+  entry.set("mark", static_cast<int>(mark));
+  noted.push_back(entry);
+  canvas.set_meta("interface_stamps", noted);
+  area.position.y += stamp.drop;
+  if (stamp.shadow_offset > 0.0F) {
+    area.position += Vector2(stamp.shadow_offset, stamp.shadow_offset);
+    rounded(canvas, area, RADIUS, stamp.shadow);
+    area.position -= Vector2(stamp.shadow_offset, stamp.shadow_offset);
+  }
+  rounded(canvas, area.grow(RING), RADIUS + RING, stamp.ring);
+  rounded(canvas, area, RADIUS, stamp.edge);
+  rounded(canvas, area.grow(-RING), RADIUS - RING, stamp.fill);
+  marked(canvas, area, mark, palette().ink);
 }
 
 constexpr auto IMAGE_COUNT = static_cast<std::size_t>(Image::TitleLogo) + 1;
@@ -258,14 +343,6 @@ const char *path(Image image) {
     return "icons/dish_truffle_soup.png";
   case Image::DishSurfAndTurf:
     return "icons/dish_surf_and_turf.png";
-  case Image::FramePanel:
-    return "ui/frame_panel.png";
-  case Image::FrameButton:
-    return "ui/frame_button.png";
-  case Image::FrameSlot:
-    return "ui/frame_slot.png";
-  case Image::BaseKitchen:
-    return "base/kitchen.png";
   case Image::TitleKeyArt:
     return "title/key_art.png";
   case Image::TitleLogo:
@@ -431,140 +508,135 @@ void rounded(godot::Node2D &canvas, godot::Rect2 area, float radius,
   canvas.draw_colored_polygon(rounded_outline(area, radius), fill);
 }
 
-namespace {
-
-/// Fills `area` with its corners cut back by `notch`, on whole pixels.
-void notched(godot::Node2D &canvas, godot::Rect2 area, float notch,
-             godot::Color fill) {
-  const godot::Rect2 whole(area.position.round(), area.size.round());
-  canvas.draw_rect(whole.grow_individual(-notch, 0.0F, -notch, 0.0F), fill);
-  canvas.draw_rect(whole.grow_individual(0.0F, -notch, 0.0F, -notch), fill);
+void hover(godot::Node2D &canvas, godot::Rect2 area) {
+  auto outline = rounded_outline(area.grow(RING), RADIUS + RING);
+  outline.push_back(outline.get(0));
+  canvas.draw_polyline(outline, palette().lime, RING);
 }
 
-/// Repeats a cut frame's edge pixels between its native nine-pixel corners.
-void frame(godot::Node2D &canvas, godot::Rect2 area, std::size_t kind) {
-  area = area.round();
-  static constexpr std::array frames{Image::FramePanel, Image::FrameButton,
-                                     Image::FrameSlot};
-  const auto texture =
-      load_texture(godot::String("res://levels/monster_mouth_escape/art/") +
-                   path(frames.at(kind)));
-  constexpr float EDGE = 9.0F;
-  const Vector2 native = texture->get_size();
-  const std::array source_x{0.0F, EDGE, native.x - EDGE};
-  const std::array source_y{0.0F, EDGE, native.y - EDGE};
-  const std::array source_width{EDGE, 1.0F, EDGE};
-  const std::array source_height{EDGE, 1.0F, EDGE};
-  const std::array target_x{area.position.x, area.position.x + EDGE,
-                            area.get_end().x - EDGE};
-  const std::array target_y{area.position.y, area.position.y + EDGE,
-                            area.get_end().y - EDGE};
-  const std::array target_width{EDGE, area.size.x - 2.0F * EDGE, EDGE};
-  const std::array target_height{EDGE, area.size.y - 2.0F * EDGE, EDGE};
-  for (std::size_t y = 0; y < 3; ++y) {
-    for (std::size_t x = 0; x < 3; ++x) {
-      canvas.draw_texture_rect_region(
-          texture,
-          rect(target_x.at(x), target_y.at(y), target_width.at(x),
-               target_height.at(y)),
-          rect(source_x.at(x), source_y.at(y), source_width.at(x),
-               source_height.at(y)));
-    }
+State stand(const godot::Node2D &canvas, godot::Rect2 area, bool focused) {
+  const bool held = godot::Input::get_singleton()->is_mouse_button_pressed(
+      godot::MOUSE_BUTTON_LEFT);
+  if (held && area.has_point(canvas.get_local_mouse_position())) {
+    return State::Pressed;
   }
-  godot::Dictionary drawn =
-      canvas.get_meta("interface_frames", godot::Dictionary());
-  godot::Dictionary observation;
-  observation.set("texture", texture);
-  observation.set("area", area);
-  drawn.set(texture->get_path(), observation);
-  canvas.set_meta("interface_frames", drawn);
+  return focused ? State::Focus : State::Default;
 }
 
-} // namespace
-
-void button(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
-  frame(canvas, area, 1);
-  if (marked) {
-    canvas.draw_rect(rect(area.position.x + 9.0F, area.position.y + 12.0F, 2.0F,
-                          std::max(2.0F, area.size.y - 24.0F)),
-                     palette().gold);
-  }
-}
-
-void panel(godot::Node2D &canvas, godot::Rect2 area) { frame(canvas, area, 0); }
-
-void inset(godot::Node2D &canvas, godot::Rect2 area) {
+void card(godot::Node2D &canvas, godot::Rect2 area, State state) {
   const auto tones = palette();
-  if (area.size.x >= 32.0F && area.size.y >= 32.0F) {
-    frame(canvas, area, 2);
-    return;
-  }
-  notched(canvas, area, 1.0F, tones.outline);
-  canvas.draw_rect(area.grow_individual(-2.0F, -2.0F, -1.0F, -1.0F).round(),
-                   tones.background);
+  const std::array<Stamp, 3> stamps{{
+      {.shadow = godot::Color(tones.outline, 0.5F),
+       .shadow_offset = 2.0F,
+       .ring = tones.lavender,
+       .edge = tones.surface,
+       .fill = tones.surface,
+       .drop = 0.0F},
+      {.shadow = tones.magenta,
+       .shadow_offset = SHADOW,
+       .ring = tones.white,
+       .edge = tones.outline,
+       .fill = tones.lime,
+       .drop = 0.0F,
+       .mark = Mark::Chevron},
+      {.shadow = tones.magenta,
+       .shadow_offset = 1.0F,
+       .ring = tones.lime_pressed,
+       .edge = tones.lime_pressed,
+       .fill = tones.lime_pressed,
+       .drop = PRESS_DROP,
+       .mark = Mark::Chevron},
+  }};
+  stamped(canvas, "card", state, area.grow(-RING),
+          stamps.at(static_cast<std::size_t>(state)));
 }
 
-godot::Color accent_colour(Accent accent) {
-  switch (accent) {
-  case Accent::Cyan:
-    return color(91, 226, 238, 1.0F);
-  case Accent::Magenta:
-    return color(255, 92, 190, 1.0F);
-  case Accent::Gold:
-    return color(255, 196, 70, 1.0F);
-  case Accent::Green:
-    return color(140, 235, 92, 1.0F);
-  }
-  std::abort();
+void button(godot::Node2D &canvas, godot::Rect2 area, State state) {
+  const auto tones = palette();
+  const std::array<Stamp, 3> stamps{{
+      {.shadow = tones.shadow,
+       .shadow_offset = SHADOW,
+       .ring = tones.outline,
+       .edge = tones.lime,
+       .fill = tones.lime,
+       .drop = 0.0F,
+       .mark = Mark::Arrow},
+      {.shadow = tones.magenta,
+       .shadow_offset = SHADOW,
+       .ring = tones.white,
+       .edge = tones.outline,
+       .fill = tones.lime,
+       .drop = 0.0F,
+       .mark = Mark::Arrow},
+      {.shadow = tones.magenta,
+       .shadow_offset = 1.0F,
+       .ring = tones.outline,
+       .edge = tones.lime_pressed,
+       .fill = tones.lime_pressed,
+       .drop = PRESS_DROP,
+       .mark = Mark::Arrow},
+  }};
+  stamped(canvas, "button", state, area.grow(-RING),
+          stamps.at(static_cast<std::size_t>(state)));
 }
 
-void kit_panel(godot::Node2D &canvas, godot::Rect2 area, Accent accent,
-               bool drip) {
+void key_cap(godot::Node2D &canvas, const Art &art, godot::Rect2 area,
+             const godot::String &label, State state) {
+  const auto tones = palette();
   const godot::Rect2 whole(area.position.round(), area.size.round());
-  const auto steel = color(74, 86, 128, 1.0F);
-  const auto rivet = color(168, 180, 214, 1.0F);
-  const auto neon = accent_colour(accent);
-  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
-  canvas.draw_rect(whole.grow(-2.0F), color(16, 22, 52, 1.0F));
-  canvas.draw_rect(whole, steel, false, 2.0F);
-  canvas.draw_rect(whole.grow(-5.0F), neon, false, 1.0F);
-  const Vector2 far = whole.get_end();
-  for (const float x : {whole.position.x + 2.0F, far.x - 5.0F}) {
-    for (const float y : {whole.position.y + 2.0F, far.y - 5.0F}) {
-      canvas.draw_rect(rect(x, y, 3.0F, 3.0F), rivet);
-    }
-  }
-  if (drip) {
-    const float x = whole.position.x + 18.0F;
-    canvas.draw_rect(rect(x, whole.position.y - 1.0F, 8.0F, 9.0F),
-                     accent_colour(Accent::Magenta));
-    canvas.draw_rect(rect(x + 1.0F, whole.position.y + 8.0F, 6.0F, 3.0F),
-                     accent_colour(Accent::Magenta));
-  }
+  rounded(canvas, whole, 5.0F,
+          state == State::Default ? tones.muted : tones.ink);
+  rounded(canvas, whole.grow(-1.5F), 4.0F, tones.ink);
+  const int size = static_cast<int>(whole.size.y * 0.55F);
+  const float width = art.text_width(label, size, Weight::Bold);
+  art.text(canvas, whole.position.x + (whole.size.x - width) / 2.0F,
+           whole.position.y +
+               (whole.size.y + static_cast<float>(size) * 0.72F) / 2.0F,
+           label, size, state == State::Default ? tones.white : tones.lime,
+           Weight::Bold);
 }
 
-void kit_slot(godot::Node2D &canvas, godot::Rect2 area, bool marked) {
+void plate(godot::Node2D &canvas, godot::Rect2 area) {
+  const auto tones = palette();
   const godot::Rect2 whole(area.position.round(), area.size.round());
-  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
-  canvas.draw_rect(whole.grow(-1.0F), color(28, 36, 78, 1.0F));
-  canvas.draw_rect(whole.grow(-2.0F), color(12, 16, 38, 1.0F));
-  if (marked) {
-    canvas.draw_rect(whole, palette().gold, false, 2.0F);
-  }
+  canvas.draw_rect(whole, tones.lavender);
+  canvas.draw_rect(whole.grow(-1.0F), tones.background);
 }
 
-void kit_bar(godot::Node2D &canvas, godot::Rect2 area, float fill,
-             godot::Color tint) {
+void warning(godot::Node2D &canvas, godot::Rect2 area) {
+  const auto tones = palette();
   const godot::Rect2 whole(area.position.round(), area.size.round());
-  canvas.draw_rect(whole, color(8, 10, 24, 1.0F));
-  canvas.draw_rect(whole, color(74, 86, 128, 1.0F), false, 1.0F);
-  const float width =
-      std::round((whole.size.x - 4.0F) * std::clamp(fill, 0.0F, 1.0F));
+  canvas.draw_rect(whole, tones.magenta);
+  canvas.draw_rect(whole.grow(-2.0F), tones.warn_fill);
+  const float side = std::max(8.0F, whole.size.y / 3.0F);
+  const Vector2 base(whole.position.x + 10.0F,
+                     whole.position.y + (whole.size.y + side) / 2.0F);
+  canvas.draw_colored_polygon(
+      godot::PackedVector2Array{base, base + Vector2(side, 0.0F),
+                                base + Vector2(side / 2.0F, -side)},
+      tones.magenta);
+}
+
+void progress(godot::Node2D &canvas, godot::Rect2 area, float fill) {
+  const auto tones = palette();
+  const godot::Rect2 whole(area.position.round(), area.size.round());
+  canvas.draw_rect(whole, tones.faint);
+  const float width = std::round(whole.size.x * std::clamp(fill, 0.0F, 1.0F));
   if (width > 0.0F) {
-    canvas.draw_rect(rect(whole.position.x + 2.0F, whole.position.y + 2.0F,
-                          width, whole.size.y - 4.0F),
-                     tint);
+    canvas.draw_rect(
+        rect(whole.position.x, whole.position.y, width, whole.size.y),
+        tones.cyan);
   }
+}
+
+void fade(godot::Node2D &canvas, godot::Rect2 area) {
+  const auto ink = palette().background;
+  const godot::Color clear(ink, 0.0F);
+  const Vector2 far = area.get_end();
+  canvas.draw_polygon(
+      godot::PackedVector2Array{area.position, Vector2(far.x, area.position.y),
+                                far, Vector2(area.position.x, far.y)},
+      godot::PackedColorArray{clear, ink, ink, clear});
 }
 
 godot::String place_name(const survival::GameView &view,
@@ -574,31 +646,37 @@ godot::String place_name(const survival::GameView &view,
 }
 
 Palette palette() {
-  return {.white = color(240, 241, 250, 1.0F),
-          .muted = color(166, 174, 204, 1.0F),
-          .cyan = color(91, 226, 238, 1.0F),
-          .gold = color(255, 196, 70, 1.0F),
-          .ink = color(28, 22, 12, 1.0F),
-          .background = color(9, 10, 20, 1.0F),
-          .surface = color(24, 24, 38, 1.0F),
-          .raised = color(42, 44, 66, 1.0F),
-          .outline = color(8, 8, 16, 1.0F),
-          .rim = color(150, 154, 178, 1.0F),
-          .faint = color(122, 130, 164, 1.0F),
-          .danger = color(255, 104, 104, 1.0F),
-          .success = color(140, 235, 92, 1.0F)};
+  return {.white = color(255, 242, 227, 1.0F),
+          .muted = color(196, 186, 220, 1.0F),
+          .cyan = color(83, 230, 247, 1.0F),
+          .lime = color(198, 242, 74, 1.0F),
+          .ink = color(18, 13, 32, 1.0F),
+          .background = color(16, 13, 33, 1.0F),
+          .surface = color(32, 25, 52, 1.0F),
+          .raised = color(46, 37, 72, 1.0F),
+          .outline = color(18, 13, 32, 1.0F),
+          .lavender = color(121, 95, 165, 1.0F),
+          .faint = color(93, 82, 112, 1.0F),
+          .magenta = color(255, 81, 156, 1.0F),
+          .warn_fill = color(53, 22, 46, 1.0F),
+          .shadow = color(103, 65, 162, 1.0F),
+          .lime_pressed = color(169, 212, 58, 1.0F),
+          .success = color(198, 242, 74, 1.0F)};
 }
 
 Art::Art(std::vector<godot::Ref<godot::Texture2D>> pictures,
-         godot::Ref<godot::Font> face)
-    : images(std::move(pictures)), font(std::move(face)), loaded(now()) {}
+         std::array<godot::Ref<godot::Font>, 3> faces)
+    : images(std::move(pictures)), fonts(std::move(faces)), loaded(now()) {}
 
 Art Art::load() {
-  const godot::String file =
-      godot::String("res://levels/monster_mouth_escape/fonts/") + FONT_FILE;
-  godot::Ref<godot::Font> font =
-      godot::ResourceLoader::get_singleton()->load(file);
-  CRASH_COND_MSG(font.is_null(), "Font must load: " + file);
+  std::array<godot::Ref<godot::Font>, 3> faces;
+  for (std::size_t weight = 0; weight < faces.size(); ++weight) {
+    const godot::String file =
+        godot::String("res://levels/monster_mouth_escape/fonts/") +
+        FACES.at(weight);
+    faces.at(weight) = godot::ResourceLoader::get_singleton()->load(file);
+    CRASH_COND_MSG(faces.at(weight).is_null(), "Font must load: " + file);
+  }
   std::vector<godot::Ref<godot::Texture2D>> pictures;
   pictures.reserve(IMAGE_COUNT);
   for (std::size_t image = 0; image < IMAGE_COUNT; ++image) {
@@ -608,21 +686,16 @@ Art Art::load() {
                                   : "res://levels/monster_mouth_escape/art/") +
         path(picture)));
   }
-  return {std::move(pictures), std::move(font)};
+  return {std::move(pictures), std::move(faces)};
 }
 
 void Art::text(godot::Node2D &canvas, float x, float y,
                const godot::String &text, int size, godot::Color tint,
                Weight weight) const {
   const Vector2 at = Vector2(x, y).round();
-  const int drawn = on_grid(size);
-  sizes.push_back(drawn);
-  canvas.draw_string(font, at, text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1,
-                     drawn, tint);
-  if (weight == Weight::Bold) {
-    canvas.draw_string(font, at + Vector2(1.0F, 0.0F), text,
-                       godot::HORIZONTAL_ALIGNMENT_LEFT, -1, drawn, tint);
-  }
+  sizes.push_back(size);
+  canvas.draw_string(fonts.at(static_cast<std::size_t>(weight)), at, text,
+                     godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size, tint);
   const Vector2 end = at + Vector2(text_width(text, size, weight), 0.0F);
   if (!written.empty() && written.back().end.is_equal_approx(at)) {
     written.back() = {.text = written.back().text + text, .end = end};
@@ -633,11 +706,9 @@ void Art::text(godot::Node2D &canvas, float x, float y,
 
 float Art::text_width(const godot::String &text, int size,
                       Weight weight) const {
-  const float width =
-      font->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1,
-                            on_grid(size))
-          .x;
-  return weight == Weight::Bold ? width + 1.0F : width;
+  return fonts.at(static_cast<std::size_t>(weight))
+      ->get_string_size(text, godot::HORIZONTAL_ALIGNMENT_LEFT, -1, size)
+      .x;
 }
 
 std::vector<godot::String> Art::take_written() const {
@@ -711,6 +782,144 @@ void Art::image(godot::Node2D &canvas, Image image, Vector2 position,
   canvas.draw_set_transform_matrix(placed);
 }
 
+/// How far, in picture pixels, an outline stands outside the shape.
+constexpr int OUTLINE_REACH = 5;
+/// The alpha from which a picture pixel belongs to the shape.
+constexpr float OPAQUE = 0.5F;
+
+const Art::Silhouette &Art::silhouette(Image image) const {
+  const auto found = silhouettes.find(slot(image));
+  if (found != silhouettes.end()) {
+    return found->second;
+  }
+  Silhouette made;
+  const godot::Ref<godot::Image> source = images.at(slot(image))->get_image();
+  if (source.is_valid() && !source->is_empty()) {
+    const int width = source->get_width();
+    const int height = source->get_height();
+    const auto index = [width](int x, int y) {
+      return static_cast<std::size_t>(y) * static_cast<std::size_t>(width) +
+             static_cast<std::size_t>(x);
+    };
+    std::vector<bool> solid(static_cast<std::size_t>(width) *
+                            static_cast<std::size_t>(height));
+    int left = width;
+    int top = height;
+    int right = -1;
+    int bottom = -1;
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        if (source->get_pixel(x, y).a >= OPAQUE) {
+          solid.at(index(x, y)) = true;
+          left = std::min(left, x);
+          right = std::max(right, x);
+          top = std::min(top, y);
+          bottom = std::max(bottom, y);
+        }
+      }
+    }
+    if (right >= 0) {
+      const auto at = [&](int x, int y) {
+        return x >= 0 && y >= 0 && x < width && y < height &&
+               solid.at(index(x, y));
+      };
+      for (int y = std::max(0, top - OUTLINE_REACH);
+           y <= std::min(height - 1, bottom + OUTLINE_REACH); ++y) {
+        int run_end = -1;
+        for (int x = std::max(0, left - OUTLINE_REACH);
+             x <= std::min(width - 1, right + OUTLINE_REACH); ++x) {
+          if (at(x, y)) {
+            run_end = -1;
+            continue;
+          }
+          bool near = false;
+          for (int dy = -OUTLINE_REACH; dy <= OUTLINE_REACH && !near; ++dy) {
+            for (int dx = -OUTLINE_REACH; dx <= OUTLINE_REACH; ++dx) {
+              if (dx * dx + dy * dy <= OUTLINE_REACH * OUTLINE_REACH &&
+                  at(x + dx, y + dy)) {
+                near = true;
+                break;
+              }
+            }
+          }
+          if (!near) {
+            run_end = -1;
+            continue;
+          }
+          ++made.ring_pixels;
+          if (run_end == x) {
+            made.ring.back().size.x += 1.0F;
+          } else {
+            made.ring.emplace_back(
+                Vector2(static_cast<float>(x), static_cast<float>(y)),
+                Vector2(1.0F, 1.0F));
+          }
+          run_end = x + 1;
+        }
+      }
+      made.opaque = godot::Rect2(
+          Vector2(static_cast<float>(left), static_cast<float>(top)),
+          Vector2(static_cast<float>(right - left + 1),
+                  static_cast<float>(bottom - top + 1)));
+    }
+  }
+  return silhouettes.emplace(slot(image), std::move(made)).first->second;
+}
+
+godot::Rect2 Art::opaque_area(Image image, Vector2 position, bool mirrored,
+                              float scale) const {
+  const auto &shape = silhouette(image);
+  const Vector2 full = images.at(slot(image))->get_size();
+  const Vector2 drawn = size(image) * scale;
+  const Vector2 ratio(drawn.x / full.x, drawn.y / full.y);
+  float left = shape.opaque.position.x;
+  const float width = shape.opaque.size.x;
+  if (mirrored) {
+    left = full.x - left - width;
+  }
+  return {position.floor() +
+              Vector2(left * ratio.x, shape.opaque.position.y * ratio.y),
+          Vector2(width * ratio.x, shape.opaque.size.y * ratio.y)};
+}
+
+bool Art::outline(godot::Node2D &canvas, Image image, Vector2 position,
+                  bool mirrored, godot::Color colour, float scale) const {
+  const auto &shape = silhouette(image);
+  if (shape.ring.empty()) {
+    return false;
+  }
+  const Vector2 drawn = size(image) * scale;
+  if (canvas.has_meta("actor_outlines")) {
+    godot::Array outlines = canvas.get_meta("actor_outlines", godot::Array());
+    godot::Dictionary mark;
+    mark.set("role", godot::String(path(image)).get_file().begins_with("chef_")
+                         ? "chef"
+                         : "appraiser");
+    const Vector2 zoom = placed.get_scale();
+    mark.set("area", godot::Rect2(placed.get_origin() + position.floor() * zoom,
+                                  drawn * zoom));
+    mark.set("opaque", opaque_area(image, position, mirrored, scale).abs());
+    mark.set("colour", colour);
+    mark.set("pixels", shape.ring_pixels);
+    outlines.push_back(mark);
+    canvas.set_meta("actor_outlines", outlines);
+  }
+  // The ring's runs are in picture pixels; a mirrored one flips about the
+  // frame's width.
+  const Vector2 full = images.at(slot(image))->get_size();
+  const Vector2 ratio(drawn.x / full.x, drawn.y / full.y);
+  const Vector2 origin = position.floor();
+  for (const auto &run : shape.ring) {
+    const float left =
+        mirrored ? full.x - run.position.x - run.size.x : run.position.x;
+    canvas.draw_rect(
+        godot::Rect2(origin + Vector2(left, run.position.y) * ratio,
+                     run.size * ratio),
+        colour);
+  }
+  return true;
+}
+
 void Art::shift(godot::Node2D &canvas, Vector2 offset) const {
   shaken = offset.round();
   placed = godot::Transform2D(0.0F, shaken);
@@ -725,6 +934,12 @@ void Art::look(godot::Node2D &canvas, Vector2 origin, float zoom) const {
 Look Art::looking() const {
   return {.origin = placed.get_origin() - shaken, .zoom = placed.get_scale().x};
 }
+
+void Art::note_room(std::optional<godot::Rect2> room) const {
+  noted_room = room;
+}
+
+std::optional<godot::Rect2> Art::room() const { return noted_room; }
 
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {

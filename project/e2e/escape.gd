@@ -2,6 +2,7 @@ class_name SurvivalEscapeCheck
 extends SceneTree
 ## Plays the survival game from the main menu to the ending with real key events,
 ## and drives the cinematic contract with no asset, a working scene, and broken ones.
+## At 60 frames per second it plays the group of parts named after `--` (`_parts`).
 
 ## Any seed does: following NEXT feeds to satisfaction on most days.
 const SEED: int = 7
@@ -24,6 +25,8 @@ const SLOW_FRAME_MS: int = 500
 const INTRO_CARD_SLOW_FRAMES: int = 12
 ## The placeholder card's button: its left part skips, its right part leaves.
 const CARD_BUTTON: String = "Skip     Main menu"
+## What each group of parts covers, as its finished line names it.
+const PART_NAMES: Dictionary[String, String] = {"route": "fallback, input block, days, ending", "cinematics": "scene, skip, broken assets, click, menu, instant finish"}
 
 var scene: MainScene
 var held: Dictionary[Key, bool] = {}
@@ -68,12 +71,30 @@ func _run() -> void:
 			print("Escape slow frames: ", checks, " live checks passed.")
 			quit(0)
 		return
-	for part: Callable in [_fallback_intro, _play_to_the_ending, _fallback_ending, _scene_intro, _skipped_scene, _broken_scenes, _clicks_work_the_card, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]:
+	var group: String = "" if OS.get_cmdline_user_args().is_empty() else OS.get_cmdline_user_args()[0]
+	var parts: Array[Callable] = _parts(group)
+	if parts.is_empty():
+		push_error("Escape check: name the parts to play after --: route or cinematics, not '%s'" % group)
+		quit(1)
+		return
+	for part: Callable in parts:
 		await part.call()
 		if failed:
 			return
-	print("Escape: ", checks, " live checks passed (fallback, input block, days, ending, scene, skip, broken assets, click, menu, instant finish).")
+	print("Escape %s: %d live checks passed (%s)." % [group, checks, PART_NAMES[group]])
 	quit(0)
+
+## The parts one process plays at a fixed 60 frames per second, by the group the
+## command line names. A group's parts share one process because each starts from
+## the state the last left: the ending card follows the run played to its end, and
+## a stand-in scene stays served until the next part replaces it.
+func _parts(group: String) -> Array[Callable]:
+	match group:
+		"route":
+			return [_fallback_intro, _play_to_the_ending, _fallback_ending]
+		"cinematics":
+			return [_scene_intro, _skipped_scene, _broken_scenes, _clicks_work_the_card, _menu_leaves_a_cinematic, _scene_ending, _instant_intro.bind(FINISHES_IN_ENTER_TREE), _instant_ending.bind(FINISHES_IN_ENTER_TREE), _instant_intro.bind(FINISHES_IN_READY), _instant_ending.bind(FINISHES_IN_READY)]
+	return []
 
 ## No intro asset exists, so a real run opens on the card, blocked, until it times out.
 func _fallback_intro() -> void:
@@ -110,7 +131,9 @@ func _play_to_the_ending() -> void:
 	_check(_str("ending") == "monster_satisfied" and _int("satisfied_days") >= 7, "the run ends as monster satisfied on at least seven satisfied days")
 
 func _fallback_ending() -> void:
-	if not _check(_str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the fallback card"):
+	await _frames(2)
+	var shown: String = EndScreenCheck.problem(scene, "satisfied", "Monster satisfied", "The monster has had enough after ")
+	if not _check(shown.is_empty() and _str("cinematic") == "ending" and _str("cinematic_source") == "fallback", "a missing ending takes the illustrated satisfaction card"):
 		return
 	if not _check(_str("dish_offered") == "", "an ended run is offered no dish"):
 		return
@@ -122,7 +145,7 @@ func _fallback_ending() -> void:
 	await _frames(30)
 	if not _check(_same_state(before), "no key changes an ended run"):
 		return
-	if not _check(not _target("party_interact").is_empty() and not _target("menu").is_empty() and _card_names_no_key(), "the ending card offers its skip and the main menu to a click, naming no key"):
+	if not _check(_target("party_interact").is_empty() and not _target("menu").is_empty(), "the ending card offers the main menu alone to a click, naming no key"):
 		return
 	if not await _until("the ending card times out", func() -> bool: return scene.screen_name() == "main", ENDING_CARD_FRAMES + CARD_FRAME_MARGIN):
 		return
@@ -263,8 +286,11 @@ func _stand_in(resource: Resource, path: String) -> void:
 	stand_in = resource
 	resource.take_over_path(path)
 
+## Starts a new two-player run: a saved day puts Continue first on the title
+## screen, so New game is then the second entry.
 func _start() -> void:
-	await _tap(KEY_1)
+	var lines: PackedStringArray = scene.get_meta("screen_text", PackedStringArray())
+	await _tap(KEY_2 if lines.find("CONTINUE") >= 0 else KEY_1)
 	await _tap(KEY_1)
 
 ## M asks first mid-run and Enter accepts; M leaves a cinematic at once. Enter on
