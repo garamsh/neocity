@@ -1712,10 +1712,9 @@ Labels label_city(const Art &art, const survival::GameView &view,
   const auto party = party_of(view);
   const auto on_screen = [&](const survival::WorldArea &area) {
     const auto box = area_rect(area);
-    return to_screen(
-        camera, camera.inside
-                    ? indoors(box, camera.room, actor_scale(true, camera.zoom))
-                    : box);
+    return to_screen(camera, camera.inside ? indoors(box, camera.room,
+                                                     actor_scale(camera.zoom))
+                                           : box);
   };
   Labels labels{.plates = {},
                 .pointers = camera.inside
@@ -1747,7 +1746,7 @@ Labels label_city(const Art &art, const survival::GameView &view,
   for (const auto &marker : markers) {
     plates.keep_clear(on_screen(marker.object.area));
   }
-  const float scale = actor_scale(camera.inside, camera.zoom);
+  const float scale = actor_scale(camera.zoom);
   const auto actor_box = [&](Actor actor, const survival::Body &body,
                              float offset) {
     const auto now = view.progression.world_time;
@@ -2040,6 +2039,7 @@ std::optional<Inside> inside_of(const survival::Content &content,
 
 void paint_mouth(godot::Node2D &canvas, const Art &art, float acid_ratio,
                  const View &camera) {
+  art.note_room(camera.inside ? std::optional(camera.room) : std::nullopt);
   if (camera.inside) {
     // Only the building's inside is on the screen: no throat, city or acid.
     art.look(canvas, Vector2(), 1.0F);
@@ -2148,7 +2148,8 @@ void paint_city(godot::Node2D &canvas, const Art &art,
                    static_cast<float>(everything.run.full_acid.value));
   canvas.set_texture_filter(
       godot::CanvasItem::TEXTURE_FILTER_NEAREST_WITH_MIPMAPS);
-  const auto inside = inside_of(everything, view);
+  // The view's state is the camera's, which `paint_mouth` noted for this frame.
+  const auto inside = art.room();
   if (inside) {
     canvas.draw_rect(
         rect(-MASK_REACH, -MASK_REACH, 2.0F * MASK_REACH, 2.0F * MASK_REACH),
@@ -2216,8 +2217,8 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       return;
     }
     const auto kept = art.looking();
-    const float scale = actor_scale(true, kept.zoom);
-    const Vector2 pivot = indoor_pivot(area_rect(where), inside->extent);
+    const float scale = actor_scale(kept.zoom);
+    const Vector2 pivot = indoor_pivot(area_rect(where), *inside);
     art.look(canvas, (kept.origin + pivot * kept.zoom * (1.0F - scale)).round(),
              kept.zoom * scale);
     draw();
@@ -2238,13 +2239,13 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   // The room darkens toward the screen's edges under the actors, so they and
   // the words stay readable.
   if (inside) {
-    paint_vignette(canvas, art, inside->extent);
+    paint_vignette(canvas, art, *inside);
   }
   canvas.set_meta("character_layers", godot::Array());
   if (canvas.has_meta("measure_art")) {
     canvas.set_meta("actor_outlines", godot::Array());
   }
-  const float scale = actor_scale(inside.has_value(), art.looking().zoom);
+  const float scale = actor_scale(art.looking().zoom);
   const float apart = party.shared ? 10.0F * scale : 0.0F;
   if (party.chef_out) {
     paint_actor(canvas, art, view, Actor::Chef, view.exploration.chef.body,
@@ -2259,7 +2260,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
   }
   paint_interior_covers(canvas, art, everything, view, inside.has_value());
   if (inside) {
-    paint_interior_mask(canvas, inside->extent);
+    paint_interior_mask(canvas, *inside);
   }
   // The measuring checks read whether the screen is only an inside.
   if (canvas.has_meta("measure_art")) {
@@ -2268,7 +2269,7 @@ void paint_city(godot::Node2D &canvas, const Art &art,
       canvas.set_meta("vignette", 0.0F);
       canvas.set_meta("open_door", godot::Dictionary());
     }
-    canvas.set_meta("inside_extent", inside ? inside->extent : godot::Rect2());
+    canvas.set_meta("inside_extent", inside ? *inside : godot::Rect2());
   }
 }
 
@@ -2325,11 +2326,10 @@ void paint_city_labels(godot::Node2D &canvas, const Art &art,
   for (const auto &marker : markers) {
     drawn.push_back(from(survival::object_name(marker.object.id)));
     const auto box = area_rect(marker.object.area);
-    areas.push_back(to_screen(shot.camera,
-                              shot.camera.inside
-                                  ? indoors(box, shot.camera.room,
-                                            actor_scale(true, shot.camera.zoom))
-                                  : box));
+    areas.push_back(to_screen(
+        shot.camera, shot.camera.inside ? indoors(box, shot.camera.room,
+                                                  actor_scale(shot.camera.zoom))
+                                        : box));
   }
   canvas.set_meta("map_plates", labels.plates.boxes());
   canvas.set_meta("map_words", labels.plates.words());

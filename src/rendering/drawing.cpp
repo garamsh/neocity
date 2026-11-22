@@ -935,6 +935,12 @@ Look Art::looking() const {
   return {.origin = placed.get_origin() - shaken, .zoom = placed.get_scale().x};
 }
 
+void Art::note_room(std::optional<godot::Rect2> room) const {
+  noted_room = room;
+}
+
+std::optional<godot::Rect2> Art::room() const { return noted_room; }
+
 void Art::image_part(godot::Node2D &canvas, Image image, godot::Rect2 source,
                      godot::Rect2 destination, godot::Color tint) const {
   const auto pixels = images.at(slot(image))->get_size();
