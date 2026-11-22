@@ -1020,6 +1020,21 @@ func _base_layers_hold(rest: Dictionary, lowered: Dictionary) -> bool:
 	return _check(ordered and down > 20.0 and fixed and follows, "the workbench front is drawn after both workers, and the mast and cable top stay while the cradle, dish and cable go down by %s: %s then %s" % [down, rest, lowered])
 
 
+## Whether the day's result card is drawn, is narrower than the widest line
+## it may hold (800 units) because it is sized to its words, and leaves the
+## chef's and the appraiser's drawn areas clear.
+func _result_clears_the_workers() -> bool:
+	var card: Rect2 = scene.get_meta("day_result", Rect2())
+	if not _check(card.size.x > 100.0 and card.size.x < 800.0 and card.size.y > 40.0, "the day's result is drawn as a card sized to its text: %s" % card):
+		return false
+	var layers: Dictionary = _base_layers()
+	for worker: String in ["appraiser", "chef"]:
+		var figure: Rect2 = _layer_area(layers, worker)
+		if not _check(figure.size.y > 100.0 and not card.intersects(figure), "the day's result stays clear of the %s: %s against %s" % [worker, card, figure]):
+			return false
+	return true
+
+
 ## How far down the feed crane's hook and dish hang.
 func _crane_height() -> float:
 	var crane: Rect2 = scene.get_meta("feed_crane", Rect2())
@@ -1065,6 +1080,8 @@ func _workshop_day_one() -> void:
 	if not _check(_result_says("Day 1: " + fed) and _int("remaining_ms") == 18000, "the result stands on screen and spends no time"):
 		return
 	if not _text_fits("the day's result"):
+		return
+	if not _result_clears_the_workers():
 		return
 	if not _check(_str("reaction") == "satisfied" and _int("score") >= 100, "a new dish satisfies the monster"):
 		return

@@ -139,7 +139,7 @@ void paint_pointer(godot::Node2D &canvas, const rendering::Art &drawing,
   }
   const auto &area = hovered->area;
   if (hovered->refusal.is_empty()) {
-    canvas.draw_rect(area.grow(2.0F), tones.white, false, 2.0F);
+    rendering::hover(canvas, area);
     return;
   }
   canvas.draw_rect(area, tones.faint, false, 2.0F);

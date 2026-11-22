@@ -41,13 +41,19 @@ enum class State : std::uint8_t { Default, Focus, Pressed };
 [[nodiscard]] State stand(const godot::Node2D &canvas, godot::Rect2 area,
                           bool focused);
 /// Draws a choice card filling `area`: dark with a lavender outline at rest,
-/// lime on a magenta offset shadow with a white ring when focused, and
-/// dropped on a shrunk shadow when pressed.
+/// lime on a magenta offset shadow with a white ring and a chevron at its
+/// right edge when focused, and dropped on a shrunk shadow when pressed.
 void card(godot::Node2D &canvas, godot::Rect2 area, State state);
+/// How much width a main button keeps at its right for its arrow: its words
+/// centre in the button less this.
+inline constexpr float ARROW_ROOM = 22.0F;
 /// Draws the main action button filling `area`: lime on a purple offset
-/// shadow, a white ring and a magenta shadow when focused, dropped when
-/// pressed.
+/// shadow with an arrow at its right end, a white ring and a magenta shadow
+/// when focused, dropped when pressed.
 void button(godot::Node2D &canvas, godot::Rect2 area, State state);
+/// Draws the ring round a target the mouse is over and can press: a lime
+/// rounded outline just outside `area`.
+void hover(godot::Node2D &canvas, godot::Rect2 area);
 /// Draws a plate filling `area`: near-black ink in a lavender outline, for
 /// the HUD and every panel.
 void plate(godot::Node2D &canvas, godot::Rect2 area);

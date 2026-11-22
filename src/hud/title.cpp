@@ -98,7 +98,8 @@ void paint_action(godot::Node2D &canvas, const rendering::Art &drawing,
   note(canvas, focused ? "selected" : "button", area);
   const float width = drawing.text_width(text, size, rendering::Weight::Bold);
   drawing.text(
-      canvas, area.position.x + (area.size.x - width) / 2.0F,
+      canvas,
+      area.position.x + (area.size.x - rendering::ARROW_ROOM - width) / 2.0F,
       area.position.y + (area.size.y + static_cast<float>(size) * 0.7F) / 2.0F +
           (state == rendering::State::Pressed ? rendering::PRESS_DROP : 0.0F),
       text, size, rendering::palette().ink, rendering::Weight::Bold);

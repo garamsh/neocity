@@ -136,7 +136,7 @@ test-startup: build
 test-title: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop TitleMenuCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 58 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Title: 60 live checks passed (entries, UI kit, cursor, wrap, controls, back, shortcuts, how to play, player choice, controls keys, new game, mouse, continue, quit).' "$$log"
 
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -r "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop DisplayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
@@ -162,7 +162,7 @@ test-timing: build
 test-survival: build
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalPlayCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
-	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 295 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, obstacle, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
+	cat "$$log"; test "$$status" -eq 0 && grep -Fxq 'Survival: 298 live checks passed (menus, days, return, appraisal, cooking, dish choice, feeding, map, obstacle, roles, pause, leaving, hand-off, mouse, quit).' "$$log"
 
 	@log=$$(mktemp); data=$$(mktemp -d) || exit 1; trap 'rm -rf "$$log" "$$data"' EXIT HUP INT TERM; \
 	XDG_DATA_HOME="$$data" "$(GODOT)" --headless --path $(PROJECT_DIR) --main-loop SurvivalScreenLockCheck --fixed-fps 60 > "$$log" 2>&1; status=$$?; \
