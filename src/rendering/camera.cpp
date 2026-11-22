@@ -192,18 +192,20 @@ View follow(const Art &art, const survival::MapContent &content,
   // only a moment is never drawn.
   const float easing = art.glide("camera_zoom", heading.zoom);
   const float zoom = std::clamp(std::floor(easing + 0.5F), FAR, MOST);
+  // The room alone fills the screen once the entry has eased halfway, so no
+  // frame shows it at the street's small zoom in a black screen.
+  const float entered =
+      art.glide("camera_entered", heading.inside ? 1.0F : 0.0F);
   auto camera = placed(
       Vector2(art.glide("camera_x", heading.centre.x),
               art.glide("camera_y", heading.centre.y)),
       zoom, heading.inside ? bounds_inside(heading.room) : bounds_of(content));
-  camera.inside = heading.inside;
+  camera.inside = heading.inside && entered >= 0.5F;
   camera.room = heading.room;
   return camera;
 }
 
-float actor_scale(bool inside, float zoom) {
-  return inside ? CLOSE / zoom : 1.0F;
-}
+float actor_scale(float zoom) { return std::min(1.0F, CLOSE / zoom); }
 
 Vector2 drift(const View &camera, float depth) {
   return ((camera.rest - camera.centre) * camera.zoom * depth).round();

@@ -32,15 +32,33 @@ const KITCHEN_STOPS: Array[Vector2i] = [Vector2i(0, 6), Vector2i(2, 6), Vector2i
 const NOODLE_STOPS: Array[Vector2i] = [Vector2i(20, 6), Vector2i(22, 6), Vector2i(25, 6)]
 ## The least the camera's centre moves between two stops, in scene pixels.
 const LEAST_TRAVEL: float = 4.0
+## How far, as shares of its height on the street, a drawn human's height on the screen may stray in any frame
+## while the two split up and come together again: the street's far zoom draws it at half, and no frame draws it larger.
+const LEAST_HEIGHT: float = 0.45
+const MOST_HEIGHT: float = 1.05
 var scene: MainScene
 var clock: float = 0.0
 var held_keys: Dictionary[Key, bool] = {}
 var failures: Array[String] = []
+## The exploration day's length for this walk, in seconds.
+const DAY_SECONDS: int = 120
+## The street's close zoom, which the room alone is never shown at.
+const STREET_ZOOM: float = 2.0
+## While set, every frame the walk passes is read for each human's drawn height, by role.
+var sampling: bool = false
+var street_height: Dictionary[String, float] = {}
+var sampled: int = 0
 ## With `--capture=<folder>` on a real window, each stop in the shops is saved there as a PNG, and the run ends after the noodle shop.
 var capture: String = ""
+## With `--capture-split=<folder>` on a real window, the split route alone runs and saves its stages and every few frames of the second human's entry there.
+var capture_split: String = ""
+var entering: bool = false
+var entry_frames: int = 0
 
 func _initialize() -> void:
 	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--capture-split="):
+			capture_split = argument.trim_prefix("--capture-split=")
 		if argument.begins_with("--capture="):
 			capture = argument.trim_prefix("--capture=")
 	Engine.max_fps = 60
@@ -52,6 +70,8 @@ func _run() -> void:
 	scene.get_node("World").set_meta("measure_art", true)
 	scene.pin_survival_seed(11)
 	scene.pin_scene_clock(clock)
+	# The walk is longer than the 18 second day the Makefile gives the other checks.
+	OS.set_environment("NEOCITY_EXPLORATION_SECONDS", str(DAY_SECONDS))
 	OS.set_environment("NEOCITY_BASE_SECONDS", "0")
 	OS.set_environment("NEOCITY_COOK_SECONDS", "0")
 	await _tap(KEY_1)
@@ -59,10 +79,18 @@ func _run() -> void:
 	await _tap(KEY_E)
 	await _tap(KEY_Q)
 	await _tap(KEY_U)
+	if not capture_split.is_empty():
+		capture = capture_split
+		var passed: bool = await _check_split_route()
+		print("Interior: split capture finished: %s; %d failures %s." % ["pass" if failures.is_empty() else "fail", failures.size(), failures])
+		quit(0 if passed and failures.is_empty() else 1)
+		return
 	if not await _check_kitchen_camera():
 		return
 	if not capture.is_empty():
 		await _capture_noodle()
+		return
+	if not await _check_split_route():
 		return
 	var on_street: bool = true
 	for target: Vector2i in ROUTE:
@@ -114,6 +142,88 @@ func _check_kitchen_camera() -> bool:
 	if _world().get_meta("vignette", 0.0) <= 0.0:
 		_fail("the kitchen drew no vignette")
 	return await _move(Vector2i(3, 6), Vector2i(3, 6)) and await _move(Vector2i(3, 8), Vector2i(3, 8))
+
+## One human goes into the kitchen while the other waits on the street, then the other follows and leaves again,
+## with every frame of it read: a drawn human is never larger on the screen than on the street, and never
+## smaller than the street's far zoom draws it, and the room fills the screen's width once both are inside.
+func _check_split_route() -> bool:
+	await _settle()
+	if not _measure_street():
+		return false
+	sampling = true
+	var chef_at: Vector2i = Vector2i(3, 8)
+	var appraiser_at: Vector2i = Vector2i(3, 8)
+	# The chef goes in alone, along the floor and back to the ladder's top, while the appraiser stays below.
+	for target: Vector2i in [Vector2i(3, 6), Vector2i(5, 6), Vector2i(3, 6)]:
+		if not await _move(target, appraiser_at):
+			return false
+		chef_at = target
+	await _settle()
+	await _save("split-1-chef-in-appraiser-out")
+	if _world().get_meta("inside_view", false):
+		_fail("split: the view was only the inside with the appraiser outside")
+	# The appraiser follows: both are inside, and the room fills the width.
+	entering = true
+	for target: Vector2i in [Vector2i(3, 6), Vector2i(5, 6)]:
+		if not await _move(chef_at, target):
+			return false
+		appraiser_at = target
+	entering = false
+	await _settle()
+	await _save("split-3-both-in")
+	if not _world().get_meta("inside_view", false):
+		_fail("split: both humans in the kitchen did not leave only the inside on screen")
+	_check_fills("split: both inside")
+	# The appraiser leaves again, then the chef after it.
+	for target: Vector2i in [Vector2i(3, 6), Vector2i(3, 8)]:
+		if not await _move(chef_at, target):
+			return false
+		appraiser_at = target
+	await _settle()
+	if not await _move(Vector2i(3, 8), appraiser_at):
+		return false
+	await _settle()
+	sampling = false
+	print("Interior: split route read %d frames." % sampled)
+	return sampled > 0
+
+## Reads each human's height on the screen on the street, where the later frames are measured against.
+func _measure_street() -> bool:
+	_sample()
+	if street_height.size() != 2:
+		_fail("split: both humans were not drawn on the street: %s" % [street_height])
+		return false
+	return true
+
+## Each drawn human's height on the screen against its own on the street, in the frame on show.
+func _sample() -> void:
+	var drawn: Dictionary[String, float] = {}
+	for layer: Dictionary in _world().get_meta("character_layers", []):
+		var area: Rect2 = layer["area"]
+		drawn[str(layer["role"])] = area.size.y
+	if not sampling:
+		for role: String in drawn:
+			street_height[role] = drawn[role]
+		return
+	sampled += 1
+	if _world().get_meta("inside_view", false) and _zoom() <= STREET_ZOOM:
+		_fail("frame %d: the room alone was drawn at zoom %s, the street's, a small strip in a black screen" % [sampled, _zoom()])
+	for role: String in drawn:
+		var share: float = drawn[role] / street_height[role]
+		if share > MOST_HEIGHT or share < LEAST_HEIGHT:
+			_fail("frame %d: the %s is drawn %.2f times its street height, at zoom %s, inside view %s" % [sampled, role, share, _zoom(), _world().get_meta("inside_view", false)])
+
+func _zoom() -> float:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	return view.get_scale().x
+
+## The room's width fills the screen, so the view shows none of the black beside it.
+func _check_fills(where: String) -> void:
+	var view: Transform2D = scene.get_meta("map_view", Transform2D())
+	var extent: Rect2 = _world().get_meta("inside_extent", Rect2())
+	var shown: Rect2 = view.affine_inverse() * Rect2(0, 0, 1280, 720)
+	if shown.size.x > extent.size.x + 1.0:
+		_fail("%s: the room, %s wide, does not fill the screen, which shows %s of the scene at zoom %s" % [where, extent.size.x, shown.size.x, view.get_scale().x])
 
 ## Saves the frame as `<capture>/<name>.png` when capturing.
 func _save(name: String) -> void:
@@ -365,6 +475,8 @@ func _settle() -> void:
 		clock += 0.2
 		scene.pin_scene_clock(clock)
 		await process_frame
+		if sampling:
+			_sample()
 
 ## Walks the chef to `target` and the appraiser to `partner` on real keys.
 func _move(target: Vector2i, partner: Vector2i) -> bool:
@@ -411,6 +523,12 @@ func _move(target: Vector2i, partner: Vector2i) -> bool:
 		clock += 0.1
 		scene.pin_scene_clock(clock)
 		await process_frame
+		if sampling:
+			_sample()
+		if entering and not capture.is_empty():
+			entry_frames += 1
+			if entry_frames % 3 == 0:
+				await _save("split-2-entry-%03d" % entry_frames)
 	_abort("did not reach %s: %s" % [target, scene.survival_status()])
 	return false
 

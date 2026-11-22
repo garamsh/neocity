@@ -43,9 +43,10 @@ struct Inside {
 
 /// The inside of the building every actor in the city is in, when there is an
 /// actor in the city and all of them are in the same building of the map: the
-/// screen then shows only that inside. Nullopt otherwise, including while one
-/// actor is outside, which the outside view shows with only the occupied
-/// rooms lit.
+/// camera then heads for only that inside, which it shows once the entry into
+/// the building has eased halfway (`follow`). Nullopt otherwise, including
+/// while one actor is outside, which the outside view shows with only the
+/// occupied rooms lit.
 [[nodiscard]] std::optional<Inside> inside_of(const survival::Content &content,
                                               const survival::GameView &view);
 
