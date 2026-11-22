@@ -129,11 +129,6 @@ constexpr const char *NEXT_DISH = "NEXT DISH";
 constexpr const char *NO_DISH_OFFERED = "No dish";
 constexpr const char *NOTHING_TO_APPRAISE = "Nothing to appraise.";
 constexpr const char *AI_APPRAISES = "The AI appraiser works here.";
-/// Where the chef stands in the kitchen art, as a target of its own.
-constexpr float CHEF_AREA_X = 536.0F;
-constexpr float CHEF_AREA_Y = 280.0F;
-constexpr float CHEF_AREA_WIDTH = 110.0F;
-constexpr float CHEF_AREA_HEIGHT = 170.0F;
 /// A transfer screen: slots in rows of eight under a title, the container's
 /// (or the fridge's) over the actor's own.
 constexpr float SLOT = 58.0F;
@@ -1763,6 +1758,17 @@ constexpr std::array BASE_LAYERS{
               .crane = false},
 };
 
+/// Where `BASE_LAYERS` draws the layer called `name` at rest, in layout
+/// units; a worker's click target is this area.
+godot::Rect2 base_layer_area(std::string_view name) {
+  const auto *const layer = std::ranges::find_if(
+      BASE_LAYERS, [name](const BaseLayer &each) { return each.name == name; });
+  if (layer == BASE_LAYERS.end()) {
+    std::abort();
+  }
+  return {layer->at / rendering::ART_SCALE, layer->size / rendering::ART_SCALE};
+}
+
 /// Draws the base scene beneath its interface: every layer of `BASE_LAYERS` in
 /// order, moved and stretched by how far the feed has lowered the crane.
 /// Leaves each drawn layer's name and area as the `base_layers` meta, in draw
@@ -3006,29 +3012,33 @@ void workshop_targets(std::vector<Target> &targets,
       refusal = "No dish can be cooked now.";
     }
     targets.push_back(
-        {.area =
-             rect(CHEF_AREA_X, CHEF_AREA_Y, CHEF_AREA_WIDTH, CHEF_AREA_HEIGHT),
+        {.area = base_layer_area("chef"),
          .press = PlayerPress{.actor = Actor::Chef, .key = PlayerKey::Interact},
          .refusal = refusal});
   }
   const auto unknown = unidentified(frame).size();
+  const bool human =
+      survival::key_set(frame.control, Actor::Appraiser).has_value();
+  const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
+  String refusal;
+  if (unknown > 0 && !human) {
+    refusal = AI_APPRAISES;
+  } else if (unknown > 0 && frame.screens.at(index_of(Actor::Appraiser)).open) {
+    refusal = CLOSE_FIRST;
+  } else if (unknown == 0 || !offer ||
+             !std::holds_alternative<survival::Appraise>(*offer)) {
+    refusal = "Nothing to appraise now.";
+  }
+  const PlayerPress appraise{.actor = Actor::Appraiser,
+                             .key = PlayerKey::Interact};
   if (unknown > 0) {
-    const bool human =
-        survival::key_set(frame.control, Actor::Appraiser).has_value();
-    const auto &offer = frame.offers.at(index_of(Actor::Appraiser)).interact;
-    String refusal;
-    if (!human) {
-      refusal = AI_APPRAISES;
-    } else if (frame.screens.at(index_of(Actor::Appraiser)).open) {
-      refusal = CLOSE_FIRST;
-    } else if (!offer || !std::holds_alternative<survival::Appraise>(*offer)) {
-      refusal = "Nothing to appraise now.";
-    }
     targets.push_back({.area = appraisal_area(drawing, unknown),
-                       .press = PlayerPress{.actor = Actor::Appraiser,
-                                            .key = PlayerKey::Interact},
+                       .press = appraise,
                        .refusal = refusal});
   }
+  targets.push_back({.area = base_layer_area("appraiser"),
+                     .press = appraise,
+                     .refusal = refusal});
   // The prompts of a human at base open the fridge, or close the screen.
   city_targets(targets, drawing, frame);
 }
