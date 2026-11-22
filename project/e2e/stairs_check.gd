@@ -223,10 +223,11 @@ func _interior_zoom() -> void:
 		for target: Vector2i in route:
 			if not await _tour_move(target):
 				return
+		# The room alone shows once the camera has eased into it.
+		zooms[leg["name"]] = await _settled_zoom()
 		if not scene.get_node("World").get_meta("inside_view", false):
 			_tour_fail("the camera does not show only the inside of " + str(leg["name"]))
 			return
-		zooms[leg["name"]] = await _settled_zoom()
 		found[leg["name"]] = _chef_height()
 	var cap: float = street_height
 	var bad: Array[String] = []

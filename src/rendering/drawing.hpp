@@ -325,6 +325,11 @@ public:
   /// Where the last look put the scene's origin, without the last shift's
   /// offset, and its zoom, so drawing can return to it with `look`.
   [[nodiscard]] Look looking() const;
+  /// Notes the whole extent of the building whose inside alone the camera
+  /// shows this frame, or none while it shows the street, for what is drawn
+  /// after the backdrop to follow the camera's view state.
+  void note_room(std::optional<godot::Rect2> room) const;
+  [[nodiscard]] std::optional<godot::Rect2> room() const;
   /// Eases from the value `name` last showed toward `target` whenever the
   /// target changes, on the clock `seconds` reads; a value missing from the
   /// frame before starts at its target.
@@ -406,6 +411,7 @@ private:
   mutable std::vector<Written> written;
   mutable std::vector<int> sizes;
   mutable std::optional<Waterline> waterline;
+  mutable std::optional<godot::Rect2> noted_room;
   /// What `outline` and `opaque_area` read of a picture, found once.
   struct Silhouette {
     /// The ring as runs of picture pixels, one row high.

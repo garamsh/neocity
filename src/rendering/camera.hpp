@@ -51,15 +51,22 @@ struct View {
 
 /// The camera easing from where it last was toward `heading` on the real
 /// clock, inside the same bounds as `aim`; its zoom is always a whole number,
-/// stepping once the eased zoom passes halfway between two.
+/// stepping once the eased zoom passes halfway between two. It is the one
+/// place that decides the view's state: the street, until the entry into a
+/// building, eased on the same clock and curve as the zoom, passes halfway; the
+/// building's inside alone from then until the actors leave it, when the street
+/// returns at once and the zoom eases down to its own.
 [[nodiscard]] View follow(const Art &art, const survival::MapContent &content,
                           const View &heading);
 
-/// How much of its size an actor is drawn at under `camera`: whole on the
-/// street, and inside a building the street's close zoom over the camera's, so
-/// an actor stands as tall on the screen as on the street while the rooms,
-/// drawn two cells tall, are four times its height.
-[[nodiscard]] float actor_scale(bool inside, float zoom);
+/// How much of its size an actor, or anything drawn at an actor's size, is
+/// drawn at under a camera at `zoom`: whole up to the street's close zoom, and
+/// above it the close zoom over the camera's, so an actor stands as tall on
+/// the screen as on the street at every zoom the camera eases through, in a
+/// building and while going into or out of one, while the rooms, drawn two
+/// cells tall, are four times its height. It reads the zoom alone, so the
+/// size follows the camera continuously.
+[[nodiscard]] float actor_scale(float zoom);
 
 /// How far, in screen pixels, a backdrop layer `depth` of the way from the
 /// back of the scene to the map has slid from where it rests: 0 stays and 1
